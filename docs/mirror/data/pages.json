@@ -1,0 +1,154 @@
+[
+  {
+    "path": "/",
+    "url": "https://www.pharosacademy.net/",
+    "title": "Home | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 1130
+  },
+  {
+    "path": "/about",
+    "url": "https://www.pharosacademy.net/about",
+    "title": "About | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 629
+  },
+  {
+    "path": "/courses",
+    "url": "https://www.pharosacademy.net/courses",
+    "title": "Courses | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 560
+  },
+  {
+    "path": "/policies",
+    "url": "https://www.pharosacademy.net/policies",
+    "title": "Policies | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 959
+  },
+  {
+    "path": "/calendars-and-events",
+    "url": "https://www.pharosacademy.net/calendars-and-events",
+    "title": "Calendars & Events | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 646
+  },
+  {
+    "path": "/core-values",
+    "url": "https://www.pharosacademy.net/core-values",
+    "title": "Why Pharos? | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 4630
+  },
+  {
+    "path": "/about-3",
+    "url": "https://www.pharosacademy.net/about-3",
+    "title": "Start Date | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 486
+  },
+  {
+    "path": "/about-1",
+    "url": "https://www.pharosacademy.net/about-1",
+    "title": "Location | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 528
+  },
+  {
+    "path": "/general-8",
+    "url": "https://www.pharosacademy.net/general-8",
+    "title": "Pharos Meaning | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 2724
+  },
+  {
+    "path": "/statement-of-faith",
+    "url": "https://www.pharosacademy.net/statement-of-faith",
+    "title": "Statement of Faith | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 4582
+  },
+  {
+    "path": "/team-4",
+    "url": "https://www.pharosacademy.net/team-4",
+    "title": "Staff | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 2562
+  },
+  {
+    "path": "/giving",
+    "url": "https://www.pharosacademy.net/giving",
+    "title": "Giving | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 835
+  },
+  {
+    "path": "/volunteer",
+    "url": "https://www.pharosacademy.net/volunteer",
+    "title": "Volunteer | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 690
+  },
+  {
+    "path": "/about-5",
+    "url": "https://www.pharosacademy.net/about-5",
+    "title": "Volunteer | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 690
+  },
+  {
+    "path": "/daily-course-offerings",
+    "url": "https://www.pharosacademy.net/daily-course-offerings",
+    "title": "Daily Course Offerings | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 3686
+  },
+  {
+    "path": "/full-course-descriptions",
+    "url": "https://www.pharosacademy.net/full-course-descriptions",
+    "title": "Full Course Descriptions | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 17558
+  },
+  {
+    "path": "/courses-by-grade-level",
+    "url": "https://www.pharosacademy.net/courses-by-grade-level",
+    "title": "Courses by Grade Level/Stages of Learnin | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 3514
+  },
+  {
+    "path": "/special-announcement",
+    "url": "https://www.pharosacademy.net/special-announcement",
+    "title": "Special Announcement | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 1188
+  },
+  {
+    "path": "/download-calendars",
+    "url": "https://www.pharosacademy.net/download-calendars",
+    "title": "Download Calendars | Pharos Academy",
+    "desc": "",
+    "status": 200,
+    "chars": 624
+  }
+]

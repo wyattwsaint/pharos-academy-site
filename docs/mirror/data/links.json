@@ -1,0 +1,1482 @@
+[
+  {
+    "page": "/",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/about",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Why Pharos?",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/core-values"
+      },
+      {
+        "text": "Start Date",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about-3"
+      },
+      {
+        "text": "Location",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about-1"
+      },
+      {
+        "text": "What Does \"Pharos\" Mean?",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/general-8"
+      },
+      {
+        "text": "Why Pharos Academy?",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/core-values"
+      },
+      {
+        "text": "Statement of Faith and Practice",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/statement-of-faith"
+      },
+      {
+        "text": "Staff",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/team-4"
+      },
+      {
+        "text": "Give to Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/giving"
+      },
+      {
+        "text": "Get Involved - Be a Volunteer!",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/volunteer"
+      },
+      {
+        "text": "Media",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about-5"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/courses",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Daily Course Offerings",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/daily-course-offerings"
+      },
+      {
+        "text": "Full Course Descriptions",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/full-course-descriptions"
+      },
+      {
+        "text": "Courses by Grade Level/Stage of Learning",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses-by-grade-level"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/policies",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Child Protection",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_51305558a9104cf2a79ca048e72b6008.pdf"
+      },
+      {
+        "text": "Child Protection Background Check",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_11c4e24a98d8487684d6f6367b48212f.pdf"
+      },
+      {
+        "text": "Code of Conduct",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_02a532a62748453d89f030af7ce3a27a.pdf"
+      },
+      {
+        "text": "Handbook",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_ad606f8c9ccc4a5aa743d2564cdc1c8e.pdf"
+      },
+      {
+        "text": "Teacher Contract",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_ac54f30df3d24eed92fd8f7a6a867bfb.pdf"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/calendars-and-events",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Calendars",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Latest School Board Update - 7/1/2026",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_d6beac512f4e40ccae70cc351a810b42.pdf"
+      },
+      {
+        "text": "Click here to learn about an opportunity to help Pharos raise funds through Weis Markets",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/special-announcement"
+      },
+      {
+        "text": "Click here to download calendars",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/download-calendars"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/core-values",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "OUR METHOD",
+        "aria": "OUR METHOD",
+        "href": "https://www.pharosacademy.net/core-values"
+      },
+      {
+        "text": "OUR CORE VALUES",
+        "aria": "OUR CORE VALUES",
+        "href": "https://www.pharosacademy.net/core-values"
+      },
+      {
+        "text": "OUR MISSION & VISION",
+        "aria": "OUR MISSION & VISION",
+        "href": "https://www.pharosacademy.net/core-values"
+      },
+      {
+        "text": "Enola First Church of God",
+        "aria": "",
+        "href": "http://enolacog.com"
+      },
+      {
+        "text": "variety of subjects and experiences",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/about-3",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/about-1",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "www.enolacog.com",
+        "aria": "",
+        "href": "http://www.enolacog.com"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/general-8",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Pharos of Alexandria",
+        "aria": "",
+        "href": "https://commons.wikimedia.org/wiki/Pharos_of_Alexandria"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/statement-of-faith",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "(Click here for a pdf copy)",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_9cdc1b55bccc472eac5b86c647fe76c9.pdf"
+      },
+      {
+        "text": "Here We Stand 2016",
+        "aria": "",
+        "href": "https://www.enolacog.com/_files/ugd/cecb9d_f075221ca072474b8d6c86452e3fc557.pdf"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/team-4",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/giving",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Give to Pharos Academy",
+        "aria": "",
+        "href": "https://secure.myvanco.com/YH8R/home"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/volunteer",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Volunteer Information Sheet",
+        "aria": "",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSf1w0NcCQBKBVovkrSMm2yDOPUw4iAlb1mdazNz5Su1a0cATQ/viewform?usp=sharing"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/about-5",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Volunteer Information Sheet",
+        "aria": "",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSf1w0NcCQBKBVovkrSMm2yDOPUw4iAlb1mdazNz5Su1a0cATQ/viewform?usp=sharing"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/daily-course-offerings",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Click here for a pdf copy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_14bbb9b67f6b4ba58d8a656a7ebeaaa6.pdf"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/full-course-descriptions",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Click here for a pdf copy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_2172e9d3ae1b4e7cbfd476c25e2298a1.pdf"
+      },
+      {
+        "text": "https://lithoskids.com/products/little-pilgrims-big-journey-part-i-lpbj-parti",
+        "aria": "",
+        "href": "https://lithoskids.com/products/little-pilgrims-big-journey-part-i-lpbj-parti"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/courses-by-grade-level",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Click here for a pdf copy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_7c6dc5f5b8ef4af0be96adfbc59c85cf.pdf"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/special-announcement",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "(Click here to download a pdf copy)",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_10464b943a204a9694b2c5597052eacd.pdf"
+      },
+      {
+        "text": "weis4school.com",
+        "aria": "",
+        "href": "http://weis4school.com"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  },
+  {
+    "page": "/download-calendars",
+    "links": [
+      {
+        "text": "Home",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "About",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/about"
+      },
+      {
+        "text": "Courses",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/courses"
+      },
+      {
+        "text": "Policies",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/policies"
+      },
+      {
+        "text": "Calendars & Events",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/calendars-and-events"
+      },
+      {
+        "text": "Apply Now!",
+        "aria": "Apply Now!",
+        "href": "https://docs.google.com/forms/d/e/1FAIpQLSfs9SzH-AF10Dxlfj_5xzy6_qST495-E3udZvt8X-JKF0CIUQ/viewform?usp=header"
+      },
+      {
+        "text": "Full School Calendar",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_2fe8a13479924f6d80021acd71decfcc.pdf"
+      },
+      {
+        "text": "School Calendar - Mondays",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_f811068348ec4c3d90c37dca5c118645.pdf"
+      },
+      {
+        "text": "School Calendar - Tuesdays",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_4d05902940e04989b47905139ae621c0.pdf"
+      },
+      {
+        "text": "School Calendar - Wednesdays",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_a2fa85556b3d4ddfaa2d9546ea7c9764.pdf"
+      },
+      {
+        "text": "School Calendar - Thursdays",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_9d3a5b35e60540bc8c139c757d396f1f.pdf"
+      },
+      {
+        "text": "Daily Course Offerings",
+        "aria": "",
+        "href": "https://www.pharosacademy.net/_files/ugd/cecb9d_1e2c970028c14fa3bd497762a82ddf23.pdf"
+      },
+      {
+        "text": "",
+        "aria": "Facebook",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "",
+        "aria": "YouTube",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Pharos Academy",
+        "aria": "",
+        "href": "https://www.pharosacademy.net"
+      },
+      {
+        "text": "Facebook",
+        "aria": "",
+        "href": "https://www.facebook.com/profile.php?id=61574661741710"
+      },
+      {
+        "text": "YouTube",
+        "aria": "",
+        "href": "https://www.youtube.com/@PharosAcademy"
+      },
+      {
+        "text": "Wix",
+        "aria": "",
+        "href": "https://wix.com/?utm_campaign=vir_created_with"
+      }
+    ]
+  }
+]
