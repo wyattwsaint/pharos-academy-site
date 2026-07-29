@@ -9,7 +9,8 @@ html = html.replace("/*FONTS*/", open("fonts.css", encoding="utf-8").read())
 
 a = json.load(open("assets.json"))
 for k, v in [("{{ENGRAVING}}", a["engraving_light"]), ("{{MARK}}", a["mark"]),
-             ("{{CHURCH}}", a["church"]), ("{{ENGRAVING_MASK}}", a["engraving_mask"])]:
+             ("{{CHURCH}}", a["church"]), ("{{ENGRAVING_MASK}}", a["engraving_mask"]),
+             ("{{STILL_STUDY}}", a["still_study"]), ("{{STILL_LAMP}}", a["still_lamp"])]:
     html = html.replace(k, v)
 
 # variant D's assets. The video is inlined as a data URI like everything else so
