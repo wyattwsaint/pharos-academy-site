@@ -1,0 +1,1069 @@
+<title>Pharos Academy — design language prototype</title>
+
+<style>
+/*FONTS*/
+
+/* ============================================================
+   PROTOTYPE — throwaway. Three homepage design directions for
+   Pharos Academy, switchable via ?variant=a|b|c.
+   Section order is fixed by issue #9 and is NOT what is being
+   tested here. What is being tested: palette, typefaces, what
+   "immersive" means, the seven image slots, the lighthouse
+   motif, and the component vocabulary.
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+img { max-width: 100%; display: block; }
+:root { color-scheme: light; }
+
+/* ---------- prototype chrome (not part of any design) ---------- */
+.px-bar {
+  position: fixed; z-index: 999; left: 50%; bottom: 14px;
+  transform: translateX(-50%);
+  display: flex; align-items: stretch; gap: 0;
+  background: #101014; color: #fff; border-radius: 999px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.12) inset;
+  font: 500 13px/1 ui-sans-serif, system-ui, sans-serif;
+  max-width: calc(100vw - 20px);
+}
+.px-bar button {
+  appearance: none; background: none; border: 0; color: inherit;
+  font: inherit; padding: 0 14px; cursor: pointer; min-height: 44px;
+  border-radius: 999px;
+}
+.px-bar button:hover { background: rgba(255,255,255,.12); }
+.px-bar button:focus-visible { outline: 2px solid #FAB03B; outline-offset: -3px; }
+.px-name { display: flex; align-items: center; padding: 0 6px; white-space: nowrap;
+  letter-spacing: .01em; }
+.px-name b { font-weight: 600; }
+.px-name span { opacity: .6; margin-left: 7px; }
+.px-sep { width: 1px; background: rgba(255,255,255,.16); margin: 10px 4px; }
+.px-slots[aria-pressed="true"] { background: #FAB03B; color: #101014; }
+@media (max-width: 560px) { .px-name span { display: none; } }
+
+/* image-slot annotations, toggled from the bar */
+.slot { position: relative; }
+.slot-note { display: none; }
+body.notes .slot-note {
+  display: block; position: absolute; inset: auto 0 0 0; z-index: 5;
+  background: rgba(16,16,20,.92); color: #fff;
+  font: 400 12.5px/1.45 ui-sans-serif, system-ui, sans-serif;
+  padding: 9px 12px; text-align: left;
+}
+body.notes .slot { outline: 1.5px dashed rgba(250,176,59,.85); outline-offset: -2px; }
+body.notes .slot-note b { color: #FAB03B; font-weight: 600; }
+body.notes .slot-note i { font-style: normal; opacity: .7; }
+
+.px-page { display: none; }
+.px-page.on { display: block; }
+
+/* ============================================================
+   VARIANT A — "Plate"
+   Harbour dark. The Pharos engraving carries the page; one gold
+   beam is the only colour event. Immersive = depth and scale,
+   not movement.
+   ============================================================ */
+.a {
+  --ink: #0C1C26;        /* harbour dark — not black */
+  --deep: #102B3B;
+  --paper: #E9F0F4;      /* warm-cool near-white */
+  --muted: #93AFBF;
+  --gold: #F0A93B;
+  --blue: #6FB6DB;
+  --rule: rgba(147,175,191,.26);
+  background: var(--ink); color: var(--paper);
+  font-family: 'Libre Franklin', sans-serif;
+  font-size: 17px; line-height: 1.6;
+}
+.a h1, .a h2, .a h3, .a .a-display {
+  font-family: 'Cormorant Garamond', serif; font-weight: 600;
+  line-height: .98; letter-spacing: -.015em; margin: 0;
+  text-wrap: balance;
+}
+.a-eyebrow {
+  font: 600 12px/1 'Libre Franklin', sans-serif;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--gold);
+  margin: 0 0 18px;
+}
+.a-wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+.a-measure { max-width: 62ch; }
+
+.a-head {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(12,28,38,.82); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--rule);
+}
+.a-head .a-wrap { display: flex; align-items: center; gap: 26px; min-height: 74px; }
+.a-logo { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+.a-logo img { width: 30px; }
+.a-logo b { font: 600 18px/1 'Cormorant Garamond', serif; letter-spacing: .06em;
+  text-transform: uppercase; }
+.a-nav { display: flex; gap: 26px; }
+.a-nav a { color: var(--paper); text-decoration: none; font-size: 15px; opacity: .82; }
+.a-nav a:hover { opacity: 1; color: var(--blue); }
+.a-btn {
+  display: inline-block; background: var(--gold); color: #16232B;
+  font: 600 14.5px/1 'Libre Franklin', sans-serif; text-decoration: none;
+  padding: 13px 20px; border-radius: 2px; border: 0; cursor: pointer;
+  transition: transform .25s cubic-bezier(.2,.7,.3,1), background .25s;
+}
+.a-btn:hover { background: #FFC161; transform: translateY(-1px); }
+@media (max-width: 860px) { .a-nav { display: none; } }
+@media (max-width: 760px) {
+  .a-wrap { padding: 0 20px; }
+  .a-head .a-wrap { flex-wrap: wrap; gap: 12px; min-height: 0; padding-top: 12px; padding-bottom: 12px; }
+  .a-logo { margin-right: 0; }
+  .a-logo b { font-size: 16px; letter-spacing: .04em; }
+  .a-logo img { width: 26px; }
+  .a-head .a-btn { flex: 1 0 100%; text-align: center; }
+  .a-hero { padding-top: 44px; }
+  .a-inq { padding: 0 20px; }
+}
+
+/* hero: the engraving as ground, beam as the one event */
+.a-hero { position: relative; overflow: hidden; padding: 92px 0 0; }
+.a-hero-eng {
+  position: absolute; inset: 0 0 -6% 0;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 26%, #000 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 26%, #000 100%);
+  background: url("{{ENGRAVING}}") center bottom / cover no-repeat;
+  filter: invert(1) grayscale(1) contrast(1.25) brightness(.85);
+  mix-blend-mode: screen; opacity: .34; pointer-events: none;
+}
+.a-hero::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(12,28,38,.2) 0%, rgba(12,28,38,0) 34%, rgba(12,28,38,.92) 92%);
+}
+.a-beam {
+  position: absolute; left: 46%; top: 22%; width: 150vw; height: 42vh;
+  transform-origin: 0 50%; pointer-events: none; opacity: .5;
+  background: linear-gradient(90deg, rgba(240,169,59,.42), rgba(240,169,59,.05) 38%, transparent 62%);
+  clip-path: polygon(0 47%, 100% 4%, 100% 96%, 0 53%);
+  animation: a-sweep 26s cubic-bezier(.45,0,.55,1) infinite alternate;
+  filter: blur(16px);
+}
+@keyframes a-sweep { from { transform: rotate(-11deg); } to { transform: rotate(9deg); } }
+.a-hero-inner { position: relative; z-index: 2; }
+.a-hero h1 { font-size: clamp(46px, 8.4vw, 118px); max-width: 15ch; }
+.a-hero h1 em { font-style: italic; font-weight: 300; color: var(--blue); }
+.a-lede { font-size: clamp(17px, 2vw, 21px); max-width: 46ch; color: #C6D8E2;
+  margin: 26px 0 0; line-height: 1.55; }
+.a-hero-pad { padding-bottom: clamp(70px, 14vw, 150px); }
+
+/* inquiry card */
+.a-inq {
+  position: relative; z-index: 3; margin: -60px auto 0; max-width: 1180px;
+  padding: 0 28px;
+}
+.a-card {
+  background: #10293A; border: 1px solid var(--rule);
+  border-top: 3px solid var(--gold);
+  padding: 34px clamp(22px, 4vw, 44px);
+  display: grid; grid-template-columns: 1fr 1.25fr; gap: clamp(24px, 4vw, 56px);
+  align-items: start;
+}
+.a-card h2 { font-size: clamp(30px, 3.4vw, 42px); }
+.a-card p { color: var(--muted); font-size: 15.5px; margin: 14px 0 0; }
+.a-form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.a-form label { font: 600 11.5px/1 'Libre Franklin', sans-serif; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 8px; }
+.a-form .full { grid-column: 1 / -1; }
+.a-form input, .a-form textarea {
+  width: 100%; background: rgba(255,255,255,.05); border: 1px solid var(--rule);
+  color: var(--paper); font: 400 16px/1.4 'Libre Franklin', sans-serif;
+  padding: 12px 13px; border-radius: 2px;
+}
+.a-form input:focus, .a-form textarea:focus {
+  outline: 2px solid var(--gold); outline-offset: 1px; border-color: transparent;
+}
+.a-form textarea { min-height: 78px; resize: vertical; }
+@media (max-width: 820px) {
+  .a-card { grid-template-columns: 1fr; }
+  .a-form { grid-template-columns: 1fr; }
+}
+
+.a-sec { padding: clamp(70px, 10vw, 130px) 0; border-top: 1px solid var(--rule); }
+.a-sec h2 { font-size: clamp(34px, 5vw, 62px); }
+.a-sec p { color: #BACBD6; }
+.a-sec .a-eyebrow, .a-hero .a-eyebrow { color: var(--gold); font-size: 12px; }
+
+/* the venue, treated — desaturate, tint to the ground, grade the highlights gold */
+.a-venue { margin: 44px 0 0; position: relative; }
+.a-venue img {
+  width: 100%; aspect-ratio: 21 / 7; object-fit: cover; object-position: center 62%;
+  filter: grayscale(1) contrast(1.12) brightness(.72) sepia(.35) hue-rotate(158deg) saturate(1.7);
+}
+.a-venue figcaption {
+  position: absolute; left: 0; bottom: 0; padding: 10px 16px;
+  background: var(--gold); color: #16232B;
+  font: 600 11.5px/1 'Libre Franklin', sans-serif; letter-spacing: .12em; text-transform: uppercase;
+}
+
+/* the week — three real mornings */
+.a-week { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--rule); border: 1px solid var(--rule); margin-top: 44px; }
+.a-day { background: var(--deep); padding: 26px 24px 30px; }
+.a-day h3 { font-size: 28px; color: var(--gold); }
+.a-day ul { list-style: none; margin: 20px 0 0; padding: 0; }
+.a-day li { display: flex; gap: 14px; padding: 11px 0; border-top: 1px solid var(--rule);
+  font-size: 14.5px; }
+.a-day li time { color: var(--blue); font-variant-numeric: tabular-nums;
+  flex: 0 0 66px; font-size: 13.5px; padding-top: 1px; }
+@media (max-width: 760px) { .a-week { grid-template-columns: 1fr; } }
+
+/* classes */
+.a-list { margin-top: 44px; border-top: 1px solid var(--rule); }
+.a-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 28px; align-items: baseline;
+  padding: 22px 4px; border-bottom: 1px solid var(--rule); text-decoration: none;
+  color: inherit; transition: padding-left .3s cubic-bezier(.2,.7,.3,1), background .3s;
+}
+.a-row:hover { background: rgba(111,182,219,.07); padding-left: 14px; }
+.a-row .t { font: 600 22px/1.2 'Cormorant Garamond', serif; }
+.a-row .g { color: var(--muted); font-size: 14px; }
+.a-row .p { color: var(--gold); font-variant-numeric: tabular-nums; font-size: 15px; }
+@media (max-width: 620px) {
+  .a-row { grid-template-columns: 1fr auto; }
+  .a-row .g { grid-column: 1 / -1; order: 3; }
+}
+
+/* staff */
+.a-staff { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; margin-top: 44px; }
+.a-person { background: var(--deep); border: 1px solid var(--rule); }
+.a-portrait { aspect-ratio: 4 / 5;
+  background: linear-gradient(170deg, #16394D 0%, #0C202C 100%); }
+.a-person .b { padding: 20px 22px 24px; }
+.a-person h3 { font-size: 24px; }
+.a-person .r { color: var(--gold); font: 600 11.5px/1 'Libre Franklin', sans-serif;
+  letter-spacing: .13em; text-transform: uppercase; margin: 10px 0 12px; }
+.a-person p { font-size: 14.5px; margin: 0; }
+@media (max-width: 760px) { .a-staff { grid-template-columns: 1fr; } }
+
+/* cost */
+.a-cost { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--rule); border: 1px solid var(--rule); margin-top: 44px; }
+.a-fig { background: var(--deep); padding: 32px 26px; }
+.a-fig b { display: block; font: 600 clamp(38px, 5vw, 58px)/1 'Cormorant Garamond', serif;
+  color: var(--gold); font-variant-numeric: tabular-nums; }
+.a-fig span { display: block; margin-top: 12px; color: #BACBD6; font-size: 14.5px; }
+@media (max-width: 760px) { .a-cost { grid-template-columns: 1fr; } }
+
+/* faith */
+.a-faith { display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(30px, 5vw, 70px);
+  align-items: center; }
+.a-hope { list-style: none; margin: 30px 0 0; padding: 0; }
+.a-hope li { display: flex; align-items: baseline; gap: 18px; padding: 14px 0;
+  border-top: 1px solid var(--rule); }
+.a-hope b { font: 600 34px/1 'Cormorant Garamond', serif; color: var(--gold); width: 34px; }
+.a-verse { font: 300 italic clamp(22px, 2.6vw, 30px)/1.4 'Cormorant Garamond', serif;
+  color: #D8E5EC; }
+.a-verse cite { display: block; font: 600 11.5px/1 'Libre Franklin', sans-serif;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+  font-style: normal; margin-top: 20px; }
+@media (max-width: 820px) { .a-faith { grid-template-columns: 1fr; } }
+
+.a-foot { border-top: 1px solid var(--rule); padding: 56px 0 40px; color: var(--muted);
+  font-size: 14.5px; }
+.a-foot .a-wrap { display: flex; flex-wrap: wrap; gap: 40px; justify-content: space-between; }
+.a-foot a { color: var(--blue); }
+
+/* ============================================================
+   VARIANT B — "Daybook"
+   The timetable is the hero. Chalk-paper ground, ink, one gold
+   rule. Immersive = density and truth: real classes, real
+   times, real prices, on the first screen.
+   ============================================================ */
+.b {
+  --paper: #EDEFEC;      /* chalk, faintly cool — not cream */
+  --card: #F7F8F6;
+  --ink: #17242C;
+  --ink-2: #4E6470;
+  --blue: #2C6E92;
+  --gold: #B4791A;       /* deepened for AA on paper */
+  --rule: #CBD2D2;
+  background: var(--paper); color: var(--ink);
+  font-family: 'Source Sans 3', sans-serif; font-size: 17px; line-height: 1.6;
+}
+.b h1, .b h2, .b h3 { font-family: 'Fraunces', serif; font-weight: 700;
+  line-height: 1.02; letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.b-wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+.b-mono { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+.b-label { font: 500 11px/1 'IBM Plex Mono', monospace; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--ink-2); }
+
+.b-head { border-bottom: 2px solid var(--ink); background: var(--paper);
+  position: sticky; top: 0; z-index: 20; }
+.b-head .b-wrap { display: flex; align-items: center; gap: 24px; min-height: 68px; }
+.b-logo { display: flex; align-items: center; gap: 11px; margin-right: auto; }
+.b-logo img { width: 26px; }
+.b-logo b { font: 700 17px/1 'Fraunces', serif; letter-spacing: -.01em; }
+.b-nav { display: flex; gap: 24px; }
+.b-nav a { color: var(--ink); text-decoration: none; font-size: 15.5px;
+  border-bottom: 2px solid transparent; padding-bottom: 2px; }
+.b-nav a:hover { border-color: var(--gold); }
+.b-btn { display: inline-block; background: var(--ink); color: var(--card);
+  font: 600 14.5px/1 'Source Sans 3', sans-serif; text-decoration: none;
+  padding: 12px 18px; border: 0; cursor: pointer;
+  transition: background .2s cubic-bezier(.2,.7,.3,1); }
+.b-btn:hover { background: var(--blue); }
+@media (max-width: 900px) { .b-nav { display: none; } }
+@media (max-width: 760px) {
+  .b-wrap { padding: 0 20px; }
+  .b-head .b-wrap { flex-wrap: wrap; gap: 10px; min-height: 0; padding-top: 12px; padding-bottom: 12px; }
+  .b-logo { margin-right: 0; }
+  .b-head .b-btn { flex: 1 0 100%; text-align: center; }
+  .b-boardwrap { margin: 0 -20px; padding: 0 20px; }
+}
+
+.b-hero { padding: 44px 0 0; }
+.b-hero-top { display: grid; grid-template-columns: 1fr 1fr; gap: 48px;
+  align-items: end; padding-bottom: 34px; border-bottom: 2px solid var(--ink); }
+.b-hero h1 { font-size: clamp(38px, 5.6vw, 74px); max-width: 13ch; }
+.b-hero p { font-size: clamp(16.5px, 1.6vw, 19px); color: var(--ink-2); margin: 0;
+  max-width: 42ch; }
+@media (max-width: 900px) { .b-hero-top { grid-template-columns: 1fr; gap: 24px; } }
+
+/* the board */
+.b-board { display: grid; grid-template-columns: 78px repeat(3, 1fr); }
+.b-board > * { border-bottom: 1px solid var(--rule); padding: 12px 14px; }
+.b-board .hd { border-bottom: 2px solid var(--ink); background: var(--paper); }
+.b-board .hd h2 { font-size: 25px; }
+.b-board .hd small { display: block; margin-top: 5px; }
+.b-time { font: 500 12px/1 'IBM Plex Mono', monospace; color: var(--ink-2);
+  padding-top: 16px; border-right: 1px solid var(--rule); }
+.b-slotcell { background: var(--card); }
+.b-slotcell:hover { background: #fff; }
+.b-slotcell.free { background: transparent; }
+.b-cls { display: block; text-decoration: none; color: inherit; }
+.b-cls .t { font: 600 15.5px/1.25 'Source Sans 3', sans-serif; display: block; }
+.b-cls .m { font: 400 11.5px/1 'IBM Plex Mono', monospace; color: var(--ink-2);
+  display: block; margin-top: 6px; }
+.b-cls:hover .t { color: var(--blue); text-decoration: underline;
+  text-underline-offset: 3px; }
+.b-boardwrap { overflow-x: auto; }
+@media (max-width: 780px) { .b-board { min-width: 660px; } }
+
+.b-sec { padding: clamp(56px, 8vw, 96px) 0; border-top: 2px solid var(--ink); }
+.b-sec h2 { font-size: clamp(30px, 4.2vw, 50px); }
+.b-sec > .b-wrap > p { max-width: 60ch; color: var(--ink-2); }
+.b-secgrid { display: grid; grid-template-columns: 200px 1fr; gap: clamp(24px, 4vw, 60px);
+  align-items: start; }
+@media (max-width: 860px) { .b-secgrid { grid-template-columns: 1fr; gap: 18px; } }
+
+.b-ledger { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.b-ledger th { text-align: left; font: 500 11px/1 'IBM Plex Mono', monospace;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2);
+  padding: 0 0 10px; border-bottom: 1px solid var(--ink); }
+.b-ledger td { padding: 13px 0; border-bottom: 1px solid var(--rule); font-size: 15.5px;
+  vertical-align: baseline; }
+.b-ledger td:last-child, .b-ledger th:last-child { text-align: right; }
+.b-ledger td .b-label { margin-left: 9px; }
+.b-ledger .num { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums;
+  font-size: 14px; }
+.b-ledger tr:hover td { background: var(--card); }
+
+.b-inq { background: var(--ink); color: var(--card); }
+.b-inq h2 { color: var(--card); }
+.b-inq p { color: #A9BAC4; }
+.b-inq .b-label { color: #8AA0AC; }
+.b-form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px; }
+.b-form .full { grid-column: 1 / -1; }
+.b-form label { display: block; margin-bottom: 7px; }
+.b-form input, .b-form textarea { width: 100%; background: #22323B; border: 1px solid #3B4E58;
+  color: var(--card); font: 400 16px/1.4 'Source Sans 3', sans-serif; padding: 12px 13px; }
+.b-form input:focus, .b-form textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+.b-form textarea { min-height: 80px; resize: vertical; }
+.b-inq .b-btn { background: var(--gold); color: #17242C; }
+.b-inq .b-btn:hover { background: #D69526; }
+@media (max-width: 720px) { .b-form { grid-template-columns: 1fr; } }
+
+.b-people { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.b-person { background: var(--card); border: 1px solid var(--rule); }
+.b-portrait { aspect-ratio: 1 / 1; background: #DDE3E1; }
+.b-person .bd { padding: 16px 18px 20px; }
+.b-person h3 { font-size: 20px; }
+.b-person .r { margin: 8px 0 10px; }
+.b-person p { font-size: 14.5px; margin: 0; color: var(--ink-2); }
+@media (max-width: 780px) { .b-people { grid-template-columns: 1fr; } }
+
+.b-foot { border-top: 2px solid var(--ink); padding: 40px 0; font-size: 14.5px;
+  color: var(--ink-2); }
+.b-foot .b-wrap { display: flex; flex-wrap: wrap; gap: 36px; justify-content: space-between; }
+.b-foot a { color: var(--blue); }
+
+/* ============================================================
+   VARIANT C — "Lantern"
+   Near-white, one column, enormous air. The page is set, not
+   decorated. Immersive = scale and restraint; the only motion
+   is a gold hairline that fills as you read, like a beam.
+   ============================================================ */
+.c {
+  --paper: #FCFBF9;
+  --ink: #14202A;
+  --ink-2: #5C6B76;
+  --gold: #C98A22;
+  --blue: #40708F;
+  --rule: #E2E0DA;
+  background: var(--paper); color: var(--ink);
+  font-family: 'Public Sans', sans-serif; font-size: 18px; line-height: 1.65;
+}
+.c h1, .c h2, .c h3 { font-family: 'Instrument Serif', serif; font-weight: 400;
+  line-height: 1.0; letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+.c-wrap { max-width: 760px; margin: 0 auto; padding: 0 26px; }
+.c-wide { max-width: 1000px; margin: 0 auto; padding: 0 26px; }
+.c-label { font: 600 11px/1 'Public Sans', sans-serif; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--ink-2); }
+
+.c-beam { position: fixed; left: 0; top: 0; width: 2px; height: 100vh;
+  background: var(--rule); z-index: 15; }
+.c-beam i { display: block; width: 100%; height: 0; background: var(--gold); }
+@media (max-width: 700px) { .c-beam { display: none; } }
+
+.c-head { padding: 30px 0; }
+.c-head .c-wide { display: flex; align-items: center; gap: 22px; }
+.c-logo { display: flex; align-items: center; gap: 10px; margin-right: auto;
+  text-decoration: none; color: inherit; }
+.c-logo img { width: 22px; }
+.c-logo b { font: 400 16px/1 'Instrument Serif', serif; letter-spacing: .02em; }
+.c-nav { display: flex; gap: 22px; }
+.c-nav a { color: var(--ink-2); text-decoration: none; font-size: 14.5px; }
+.c-nav a:hover { color: var(--ink); }
+.c-btn { display: inline-block; border: 1px solid var(--ink); color: var(--ink);
+  background: none; font: 600 13.5px/1 'Public Sans', sans-serif; text-decoration: none;
+  padding: 12px 18px; border-radius: 999px; cursor: pointer;
+  transition: background .3s cubic-bezier(.2,.7,.3,1), color .3s; }
+.c-btn:hover { background: var(--ink); color: var(--paper); }
+.c-btn.solid { background: var(--ink); color: var(--paper); }
+.c-btn.solid:hover { background: var(--gold); border-color: var(--gold); color: #14202A; }
+@media (max-width: 860px) { .c-nav { display: none; } }
+@media (max-width: 760px) {
+  .c-wide, .c-wrap { padding: 0 20px; }
+  .c-head { padding: 16px 0; }
+  .c-head .c-wide { flex-wrap: wrap; gap: 12px; }
+  .c-logo { margin-right: 0; }
+  .c-head .c-btn { flex: 1 0 100%; text-align: center; }
+  .c-hero { padding-top: 44px; }
+}
+
+.c-hero { padding: clamp(60px, 12vw, 150px) 0 clamp(70px, 12vw, 140px); }
+.c-hero h1 { font-size: clamp(44px, 9vw, 104px); max-width: 12ch; }
+.c-hero h1 em { font-style: italic; color: var(--gold); }
+.c-hero p { font-size: clamp(18px, 2.1vw, 22px); color: var(--ink-2); max-width: 40ch;
+  margin: 34px 0 0; }
+.c-hero p.c-label { font-size: 11px; max-width: none; margin: 0; line-height: 1.6; }
+.c-sec p.c-label { font-size: 11px; }
+.c-hero .c-cta { margin-top: 42px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.c-hero .c-cta small { color: var(--ink-2); font-size: 13.5px; }
+
+.c-sec { padding: clamp(56px, 9vw, 110px) 0; }
+.c-sec h2 { font-size: clamp(32px, 4.6vw, 54px); margin-bottom: 10px; }
+.c-sec p { color: var(--ink-2); }
+.c-rule { height: 1px; background: var(--rule); max-width: 1000px; margin: 0 auto; }
+
+.c-week { list-style: none; margin: 40px 0 0; padding: 0; }
+.c-week li { display: grid; grid-template-columns: 130px 1fr; gap: 20px;
+  padding: 22px 0; border-top: 1px solid var(--rule); align-items: baseline; }
+.c-week h3 { font-size: 27px; }
+.c-week span { color: var(--ink-2); font-size: 16px; }
+
+.c-classes { list-style: none; margin: 36px 0 0; padding: 0; }
+.c-classes li { border-top: 1px solid var(--rule); }
+.c-classes a { display: grid; grid-template-columns: 1fr auto; gap: 20px;
+  padding: 18px 0; text-decoration: none; color: inherit; align-items: baseline; }
+.c-classes a:hover .n { color: var(--blue); }
+.c-classes .n { font: 400 23px/1.2 'Instrument Serif', serif; }
+.c-classes .d { color: var(--ink-2); font-size: 14px; display: block; margin-top: 4px; }
+.c-classes .p { font-variant-numeric: tabular-nums; color: var(--gold); font-size: 15px;
+  font-weight: 600; }
+
+.c-people { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-top: 40px; }
+.c-portrait { aspect-ratio: 1 / 1; border-radius: 50%; background: #EFEDE7;
+  width: 100%; max-width: 150px; }
+.c-people h3 { font-size: 22px; margin-top: 18px; }
+.c-people .r { margin: 6px 0 8px; }
+.c-people p { font-size: 14.5px; margin: 0; }
+@media (max-width: 720px) { .c-people { grid-template-columns: 1fr; } }
+
+.c-figs { display: flex; flex-wrap: wrap; gap: clamp(28px, 6vw, 74px); margin-top: 40px; }
+.c-fig b { display: block; font: 400 clamp(42px, 6vw, 66px)/1 'Instrument Serif', serif;
+  color: var(--ink); font-variant-numeric: tabular-nums; }
+.c-fig span { display: block; color: var(--ink-2); font-size: 14.5px; margin-top: 8px;
+  max-width: 22ch; }
+
+.c-quiet { background: #F4F2ED; }
+.c-verse { font: 400 italic clamp(24px, 3.4vw, 40px)/1.35 'Instrument Serif', serif;
+  max-width: 22ch; }
+.c-verse cite { display: block; font: 600 11px/1 'Public Sans', sans-serif;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--ink-2);
+  font-style: normal; margin-top: 24px; }
+.c-tail { margin: 46px auto 0; max-width: 320px; opacity: .55;
+  mix-blend-mode: multiply; }
+
+.c-form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 34px; }
+.c-form .full { grid-column: 1 / -1; }
+.c-form label { display: block; margin-bottom: 8px; }
+.c-form input, .c-form textarea { width: 100%; background: transparent; border: 0;
+  border-bottom: 1px solid var(--rule); color: var(--ink);
+  font: 400 17px/1.4 'Public Sans', sans-serif; padding: 10px 2px; }
+.c-form input:focus, .c-form textarea:focus { outline: 0; border-bottom-color: var(--gold);
+  box-shadow: 0 1px 0 var(--gold); }
+.c-form textarea { min-height: 70px; resize: vertical; }
+@media (max-width: 700px) { .c-form { grid-template-columns: 1fr; } }
+
+.c-foot { padding: 60px 0 46px; border-top: 1px solid var(--rule); font-size: 14.5px;
+  color: var(--ink-2); }
+.c-foot .c-wide { display: flex; flex-wrap: wrap; gap: 36px; justify-content: space-between; }
+.c-foot a { color: var(--blue); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important; }
+}
+</style>
+
+<!-- ==================== A — Plate ==================== -->
+<main class="px-page a" id="v-a">
+  <header class="a-head">
+    <div class="a-wrap">
+      <a class="a-logo" href="#" style="text-decoration:none;color:inherit">
+        <img src="{{MARK}}" alt="Pharos Academy" />
+        <b>Pharos Academy</b>
+      </a>
+      <nav class="a-nav">
+        <a href="#">About</a><a href="#">Classes</a><a href="#">Admissions</a><a href="#">Current Families</a>
+      </nav>
+      <a class="a-btn" href="#a-inq">Ask us about Pharos</a>
+    </div>
+  </header>
+
+  <section class="a-hero slot">
+    <div class="a-beam"></div>
+    <div class="a-hero-eng"></div>
+    <div class="a-wrap a-hero-inner a-hero-pad">
+      <p class="a-eyebrow">Enola, Pennsylvania</p>
+      <h1>Classical education,<br /><em>Christian conviction</em></h1>
+      <p class="a-lede">Christian classical classes in Enola for ages 4 to 18. Mornings, Monday,
+        Wednesday and Thursday. You choose the classes; you teach the rest at home.</p>
+    </div>
+    <p class="slot-note"><b>Slot 1 — Hero.</b> The Pharos of Alexandria engraving the school already owns,
+      inverted to line-work and screened over the ground. <i>Held today. No release needed. Zero cost.</i></p>
+  </section>
+
+  <div class="a-inq" id="a-inq">
+    <div class="a-card">
+      <div>
+        <h2>Ask us about Pharos</h2>
+        <p>Tell us your children's ages and we'll tell you what fits. No commitment,
+          no application yet.</p>
+        <p style="margin-top:26px;padding-top:22px;border-top:1px solid var(--rule)">
+          Would rather talk? Call Jill Kilker on
+          <a href="tel:7174970896" style="color:var(--gold)">717-497-0896</a>.</p>
+      </div>
+      <form class="a-form" onsubmit="return px.sent(this)">
+        <div><label for="a-n">Your name</label><input id="a-n" name="name" required /></div>
+        <div><label for="a-e">Email</label><input id="a-e" name="email" type="email" required /></div>
+        <div class="full"><label for="a-a">Children's ages</label><input id="a-a" name="ages" placeholder="e.g. 6, 9 and 13" /></div>
+        <div class="full"><label for="a-m">Anything you'd like to ask (optional)</label><textarea id="a-m" name="msg"></textarea></div>
+        <div class="full"><button class="a-btn" type="submit">Send my question</button></div>
+      </form>
+    </div>
+  </div>
+
+  <section class="a-sec" style="border-top:0">
+    <div class="a-wrap">
+      <p class="a-eyebrow">What a week looks like</p>
+      <h2>Three mornings here.<br />The rest of the week at home.</h2>
+      <p class="a-measure" style="margin-top:24px">Classes run 9:00 a.m. to 12:20 p.m. You enrol
+        per class, not per year — one Latin class and nothing else is a perfectly normal way to
+        use Pharos.</p>
+      <figure class="a-venue slot">
+        <img src="{{CHURCH}}" alt="Enola First Church of God, where Pharos Academy meets" />
+        <figcaption>9 Sherwood Drive — three mornings a week</figcaption>
+        <p class="slot-note"><b>Slot 2 — The week.</b> The venue, treated: desaturated, ground-tinted,
+          gold-graded. The one real photograph the school already holds.
+          <i>Held today. The treatment is the point — untreated, it is a snapshot.</i></p>
+      </figure>
+      <div class="a-week">
+        <div class="a-day"><h3>Monday</h3><ul>
+          <li><time>9:00</time><span>Beginner Latin Immersion, grades 7–8</span></li>
+          <li><time>9:00</time><span>God Made Everything: Early Elementary Science</span></li>
+          <li><time>10:10</time><span>Principles of Drawing</span></li>
+          <li><time>10:40</time><span>Kingdom Math: Early Elementary Enrichment</span></li>
+          <li><time>11:20</time><span>Algebra 1</span></li>
+        </ul></div>
+        <div class="a-day"><h3>Wednesday</h3><ul>
+          <li><time>9:00</time><span>Basic Spanish Conversation, grades 5–8</span></li>
+          <li><time>9:00</time><span>Introduction to Church and Bible History</span></li>
+          <li><time>10:10</time><span>Basic Spanish Conversation, grades 9–12</span></li>
+          <li><time>10:40</time><span>The Pilgrim's Progress for Kids</span></li>
+          <li><time>11:20</time><span>Algebra 1</span></li>
+        </ul></div>
+        <div class="a-day"><h3>Thursday</h3><ul>
+          <li><time>9:30</time><span>Letter of the Week</span></li>
+          <li><time>10:00</time><span>Poetry, Plays, and Patterns</span></li>
+          <li><time>11:10</time><span>Backyard Botany</span></li>
+        </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="a-sec">
+    <div class="a-wrap">
+      <p class="a-eyebrow">Nineteen classes, 2026–27</p>
+      <h2>Pick what your family needs.</h2>
+      <div class="a-list">
+        <a class="a-row" href="#"><span class="t">Beginner Latin Immersion</span><span class="g">Ages 12–15 · Monday</span><span class="p">$280 / year</span></a>
+        <a class="a-row" href="#"><span class="t">Algebra 1</span><span class="g">Grade 8+ · Mon &amp; Wed · 1 credit</span><span class="p">$840 / year</span></a>
+        <a class="a-row" href="#"><span class="t">Letter of the Week</span><span class="g">Ages 4–6 · Thursday</span><span class="p">$420 / year</span></a>
+        <a class="a-row" href="#"><span class="t">Poetry, Plays, and Patterns</span><span class="g">Ages 14–18 · Thursday</span><span class="p">$420 / year</span></a>
+        <a class="a-row" href="#"><span class="t">Backyard Botany</span><span class="g">Ages 5–10 · Thursday · fall only</span><span class="p">$140 / semester</span></a>
+      </div>
+      <p style="margin-top:28px"><a href="#" style="color:var(--gold)">See all nineteen classes →</a></p>
+    </div>
+  </section>
+
+  <section class="a-sec">
+    <div class="a-wrap">
+      <p class="a-eyebrow">Who teaches</p>
+      <h2>You will know their names.</h2>
+      <div class="a-staff">
+        <article class="a-person"><div class="a-portrait slot"><p class="slot-note"><b>Slot 4 — Staff.</b>
+          The one slot where a face is right: these are consenting adults. <i>Needs three portraits.
+          Ask Jill.</i></p></div><div class="b">
+          <h3>Jill Kilker</h3><p class="r">Head of School</p>
+          <p>Elementary education, Bloomsburg; M.Ed. special education, Shippensburg. Homeschool
+            evaluator in Pennsylvania.</p></div></article>
+        <article class="a-person"><div class="a-portrait"></div><div class="b">
+          <h3>Pastor George Jensen</h3><p class="r">Chaplain · teaches Algebra 1</p>
+          <p>B.S. secondary mathematics, Millersville; M.Div., Winebrenner. Lead pastor at Enola
+            First Church of God.</p></div></article>
+        <article class="a-person"><div class="a-portrait"></div><div class="b">
+          <h3>Mrs. Mandy Saint</h3><p class="r">Instructor · six classes</p>
+          <p>Teaches Letter of the Week, Kingdom Math, and the early elementary science
+            sequence.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="a-sec">
+    <div class="a-wrap">
+      <p class="a-eyebrow">What it costs</p>
+      <h2>The whole of it, before you ask.</h2>
+      <div class="a-cost">
+        <div class="a-fig"><b>$90–$840</b><span>per class, per year, depending on contact hours</span></div>
+        <div class="a-fig"><b>$25</b><span>registration, once per student per year</span></div>
+        <div class="a-fig"><b>$100</b><span>deposit per class, held against your seat</span></div>
+      </div>
+      <p style="margin-top:26px" class="a-measure">Tuition is paid directly to your instructor.
+        Registration and deposits are paid by cheque, mailed to the school.</p>
+    </div>
+  </section>
+
+  <section class="a-sec">
+    <div class="a-wrap a-faith">
+      <div>
+        <p class="a-eyebrow">Why we do this</p>
+        <h2>H.O.P.E. for families</h2>
+        <p style="margin-top:22px">We partner with parents. Students learn in a real classroom
+          with a real teacher; parents lead the rest at home. We stand alongside you.</p>
+        <ul class="a-hope">
+          <li><b>H</b><span>Helping</span></li><li><b>O</b><span>Our</span></li>
+          <li><b>P</b><span>Parents</span></li><li><b>E</b><span>Educate</span></li>
+        </ul>
+        <p style="margin-top:26px"><a href="#" style="color:var(--gold)">Read our Statement of Faith →</a></p>
+      </div>
+      <div class="slot">
+        <p class="a-verse">"Honor Christ the Lord as holy, always being prepared to make a
+          defense for the hope that is within."<cite>1 Peter 3:15</cite></p>
+        <p class="slot-note"><b>Slot 6 — Faith.</b> No image. Scripture set as type is the image.
+          <i>Costs nothing, asks nothing of the school.</i></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="a-sec" style="text-align:center">
+    <div class="a-wrap">
+      <h2 style="font-size:clamp(32px,5vw,58px)">Still deciding? So is everyone,<br />in July.</h2>
+      <p style="margin:22px auto 30px;max-width:48ch">Send us your children's ages. Jill will
+        write back and tell you honestly whether Pharos fits.</p>
+      <a class="a-btn" href="#a-inq">Ask us about Pharos</a>
+    </div>
+  </section>
+
+  <footer class="a-foot"><div class="a-wrap">
+    <div><b style="color:var(--paper)">Pharos Academy</b><br />9 Sherwood Drive<br />Enola, PA 17025</div>
+    <div>Call Jill Kilker<br /><a href="tel:7174970896">717-497-0896</a></div>
+    <div><a href="#">Statement of Faith</a><br /><a href="#">Policies &amp; forms</a><br /><a href="#">Teach at Pharos</a></div>
+  </div></footer>
+</main>
+
+<!-- ==================== B — Daybook ==================== -->
+<main class="px-page b" id="v-b">
+  <header class="b-head">
+    <div class="b-wrap">
+      <a class="b-logo" href="#" style="text-decoration:none;color:inherit">
+        <img src="{{MARK}}" alt="Pharos Academy" /><b>Pharos Academy</b>
+      </a>
+      <nav class="b-nav">
+        <a href="#">About</a><a href="#">Classes</a><a href="#">Admissions</a><a href="#">Current Families</a>
+      </nav>
+      <a class="b-btn" href="#b-inq">Ask us about Pharos</a>
+    </div>
+  </header>
+
+  <section class="b-hero">
+    <div class="b-wrap">
+      <div class="b-hero-top">
+        <h1>You choose the classes. We teach them.</h1>
+        <p>Christian classical classes in Enola for ages 4 to 18, three mornings a week.
+          Here is the entire 2026–27 timetable — no form, no phone call.</p>
+      </div>
+    </div>
+    <div class="b-wrap slot">
+      <div class="b-boardwrap">
+      <div class="b-board">
+        <div class="b-time hd" style="border-right:1px solid var(--rule)"><span class="b-label">2026–27</span></div>
+        <div class="hd"><h2>Monday</h2><small class="b-label">5 classes</small></div>
+        <div class="hd"><h2>Wednesday</h2><small class="b-label">7 classes</small></div>
+        <div class="hd"><h2>Thursday</h2><small class="b-label">3 classes</small></div>
+
+        <div class="b-time">9:00</div>
+        <div class="b-slotcell"><a class="b-cls" href="#"><span class="t">Beginner Latin Immersion</span><span class="m">gr 7–8 · $280/yr</span></a>
+          <a class="b-cls" href="#" style="margin-top:10px"><span class="t">God Made Everything: Science</span><span class="m">ages 5–8 · $420/yr</span></a></div>
+        <div class="b-slotcell"><a class="b-cls" href="#"><span class="t">Basic Spanish Conversation</span><span class="m">gr 5–8 · $280/yr</span></a>
+          <a class="b-cls" href="#" style="margin-top:10px"><span class="t">Church &amp; Bible History</span><span class="m">ages 6–8 · $420/yr</span></a></div>
+        <div class="b-slotcell free"></div>
+
+        <div class="b-time">9:30</div>
+        <div class="b-slotcell free"></div>
+        <div class="b-slotcell free"></div>
+        <div class="b-slotcell"><a class="b-cls" href="#"><span class="t">Letter of the Week</span><span class="m">ages 4–6 · $420/yr</span></a></div>
+
+        <div class="b-time">10:10</div>
+        <div class="b-slotcell"><a class="b-cls" href="#"><span class="t">Principles of Drawing</span><span class="m">ages 14–18 · $420/yr</span></a></div>
+        <div class="b-slotcell"><a class="b-cls" href="#"><span class="t">Basic Spanish Conversation</span><span class="m">gr 9–12 · $420/yr</span></a></div>
+        <div class="b-slotcell"><a class="b-cls" href="#"><span class="t">Poetry, Plays, and Patterns</span><span class="m">ages 14–18 · $420/yr</span></a></div>
+
+        <div class="b-time">10:40</div>
+        <div class="b-slotcell"><a class="b-cls" href="#"><span class="t">Kingdom Math</span><span class="m">ages 6–8 · $420/yr</span></a>
+          <a class="b-cls" href="#" style="margin-top:10px"><span class="t">Drawing &amp; Painting</span><span class="m">gr 5–8 · $210/sem</span></a></div>
+        <div class="b-slotcell"><a class="b-cls" href="#"><span class="t">The Pilgrim's Progress for Kids</span><span class="m">ages 5–10 · 12 weeks</span></a>
+          <a class="b-cls" href="#" style="margin-top:10px"><span class="t">Three six-week electives</span><span class="m">ages 6–10 · rotating</span></a></div>
+        <div class="b-slotcell free"></div>
+
+        <div class="b-time">11:10</div>
+        <div class="b-slotcell free"></div>
+        <div class="b-slotcell free"></div>
+        <div class="b-slotcell"><a class="b-cls" href="#"><span class="t">Backyard Botany</span><span class="m">ages 5–10 · $140/sem</span></a></div>
+
+        <div class="b-time">11:20</div>
+        <div class="b-slotcell"><a class="b-cls" href="#"><span class="t">Algebra 1</span><span class="m">gr 8+ · 1 credit · $840/yr</span></a></div>
+        <div class="b-slotcell"><a class="b-cls" href="#"><span class="t">Algebra 1</span><span class="m">gr 8+ · 1 credit · $840/yr</span></a></div>
+        <div class="b-slotcell free"></div>
+      </div>
+      </div>
+      <p class="slot-note"><b>Slots 1 + 2 — Hero and the week, merged.</b> This direction spends no
+        image on either: the timetable is the picture. <i>Nothing to shoot, nothing to license.</i></p>
+    </div>
+  </section>
+
+  <section class="b-sec">
+    <div class="b-wrap b-secgrid">
+      <div><span class="b-label">How it works</span></div>
+      <div>
+        <h2>Enrol by the class, not by the year.</h2>
+        <p style="margin-top:16px">One Latin class and nothing else is a normal way to use Pharos.
+          Parents lead the rest of the week at home; we teach the three mornings and hand the
+          work back. Every price below is the hours multiplied by the rate — $10 an hour,
+          $15 for high-school credit — and nothing else.</p>
+        <table class="b-ledger">
+          <thead><tr><th>Class</th><th>Ages</th><th>Days</th><th>Year</th></tr></thead>
+          <tbody>
+            <tr><td>Beginner Latin Immersion</td><td>12–15</td><td class="num">Mon</td><td class="num">$280</td></tr>
+            <tr><td>Algebra 1 <span class="b-label">1 credit</span></td><td>gr 8+</td><td class="num">Mon, Wed</td><td class="num">$840</td></tr>
+            <tr><td>Letter of the Week</td><td>4–6</td><td class="num">Thu</td><td class="num">$420</td></tr>
+            <tr><td>Backyard Botany <span class="b-label">fall</span></td><td>5–10</td><td class="num">Thu</td><td class="num">$140</td></tr>
+            <tr><td>Poetry, Plays, and Patterns</td><td>14–18</td><td class="num">Thu</td><td class="num">$420</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:22px"><a href="#" style="color:var(--blue)">All nineteen classes →</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="b-sec">
+    <div class="b-wrap b-secgrid">
+      <div><span class="b-label">Who teaches</span></div>
+      <div>
+        <h2>Nine instructors. You will know their names.</h2>
+        <div class="b-people" style="margin-top:32px">
+          <article class="b-person"><div class="b-portrait slot"><p class="slot-note"><b>Slot 4 — Staff.</b>
+            Consenting adults, so a real portrait is right here. <i>Needs three photographs.</i></p></div>
+            <div class="bd"><h3>Jill Kilker</h3><p class="r b-label">Head of School</p>
+            <p>M.Ed. special education, Shippensburg. Homeschool evaluator in Pennsylvania.</p></div></article>
+          <article class="b-person"><div class="b-portrait"></div>
+            <div class="bd"><h3>Pastor George Jensen</h3><p class="r b-label">Chaplain · Algebra 1</p>
+            <p>B.S. secondary mathematics, Millersville. M.Div., Winebrenner.</p></div></article>
+          <article class="b-person"><div class="b-portrait"></div>
+            <div class="bd"><h3>Mrs. Mandy Saint</h3><p class="r b-label">Instructor · six classes</p>
+            <p>Letter of the Week, Kingdom Math, and the early elementary science sequence.</p></div></article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="b-sec">
+    <div class="b-wrap b-secgrid">
+      <div><span class="b-label">What it costs</span></div>
+      <div>
+        <h2>Three numbers, and no others.</h2>
+        <table class="b-ledger" style="margin-top:24px">
+          <tbody>
+            <tr><td>Tuition, per class, per year <span class="b-label">paid to your instructor</span></td><td class="num">$90 – $840</td></tr>
+            <tr><td>Registration, per student, per year <span class="b-label">cheque, mailed</span></td><td class="num">$25</td></tr>
+            <tr><td>Deposit, per class <span class="b-label">holds the seat</span></td><td class="num">$100</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="b-sec">
+    <div class="b-wrap b-secgrid">
+      <div><span class="b-label">Why we do this</span></div>
+      <div>
+        <h2>H.O.P.E. — Helping Our Parents Educate</h2>
+        <p style="margin-top:16px">Pharos is a partnership. Students engage in vibrant classroom
+          learning; parents take the lead at home. We stand alongside you.</p>
+        <p style="font: 700 clamp(20px,2.6vw,28px)/1.4 'Fraunces',serif; margin-top:30px; max-width:26ch">
+          "Honor Christ the Lord as holy, always being prepared to make a defense for the hope
+          that is within."</p>
+        <p class="b-label" style="margin-top:14px">1 Peter 3:15</p>
+        <p style="margin-top:26px"><a href="#" style="color:var(--blue)">Read our Statement of Faith →</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="b-sec b-inq" id="b-inq">
+    <div class="b-wrap b-secgrid">
+      <div><span class="b-label">Ask us</span><h2 style="margin-top:12px;font-size:clamp(28px,3.6vw,40px)">Tell us your children's ages.</h2></div>
+      <div>
+        <p>We'll tell you what fits. No commitment, and no application yet.</p>
+        <form class="b-form" onsubmit="return px.sent(this)">
+          <div><label class="b-label" for="b-n">Your name</label><input id="b-n" required /></div>
+          <div><label class="b-label" for="b-e">Email</label><input id="b-e" type="email" required /></div>
+          <div class="full"><label class="b-label" for="b-a">Children's ages</label><input id="b-a" placeholder="e.g. 6, 9 and 13" /></div>
+          <div class="full"><label class="b-label" for="b-m">Anything you'd like to ask (optional)</label><textarea id="b-m"></textarea></div>
+          <div class="full"><button class="b-btn" type="submit">Send my question</button></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <footer class="b-foot"><div class="b-wrap">
+    <div><b style="color:var(--ink)">Pharos Academy</b><br />9 Sherwood Drive<br />Enola, PA 17025</div>
+    <div>Call Jill Kilker<br /><a href="tel:7174970896">717-497-0896</a></div>
+    <div><a href="#">Statement of Faith</a><br /><a href="#">Policies &amp; forms</a><br /><a href="#">Teach at Pharos</a></div>
+  </div></footer>
+</main>
+
+<!-- ==================== C — Lantern ==================== -->
+<main class="px-page c" id="v-c">
+  <div class="c-beam" aria-hidden="true"><i id="c-beam-fill"></i></div>
+  <header class="c-head">
+    <div class="c-wide">
+      <a class="c-logo" href="#"><img src="{{MARK}}" alt="Pharos Academy" /><b>Pharos Academy</b></a>
+      <nav class="c-nav">
+        <a href="#">About</a><a href="#">Classes</a><a href="#">Admissions</a><a href="#">Current Families</a>
+      </nav>
+      <a class="c-btn" href="#c-inq">Ask us about Pharos</a>
+    </div>
+  </header>
+
+  <section class="c-hero">
+    <div class="c-wide">
+      <p class="c-label">Enola, Pennsylvania · ages 4 to 18</p>
+      <h1 style="margin-top:26px">Three mornings a week, your child is <em>taught</em>.</h1>
+      <p>The rest of the week, you teach. Christian classical classes on Monday, Wednesday and
+        Thursday mornings — chosen one at a time, by you.</p>
+      <div class="c-cta">
+        <a class="c-btn solid" href="#c-inq">Ask us about Pharos</a>
+        <a class="c-btn" href="#">See the classes</a>
+        <small>No application yet. Just a question.</small>
+      </div>
+    </div>
+  </section>
+
+  <div class="c-rule"></div>
+
+  <section class="c-sec">
+    <div class="c-wide">
+      <p class="c-label">What a week looks like</p>
+      <h2 style="margin-top:16px">Mornings here. Afternoons yours.</h2>
+      <ul class="c-week">
+        <li><h3>Monday</h3><span>9:00 – 12:20 · Latin, drawing, early science, Kingdom Math, Algebra 1</span></li>
+        <li><h3>Wednesday</h3><span>9:00 – 12:20 · Spanish, Bible history, the six-week electives, Algebra 1</span></li>
+        <li><h3>Thursday</h3><span>9:30 – 12:10 · Letter of the Week, Shakespeare and poetry, Backyard Botany</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="c-rule"></div>
+
+  <section class="c-sec">
+    <div class="c-wide">
+      <p class="c-label">Nineteen classes, 2026–27</p>
+      <h2 style="margin-top:16px">Take one. Take five.</h2>
+      <ul class="c-classes">
+        <li><a href="#"><span><span class="n">Beginner Latin Immersion</span><span class="d">Ages 12–15 · Monday · full year</span></span><span class="p">$280</span></a></li>
+        <li><a href="#"><span><span class="n">Algebra 1</span><span class="d">Grade 8 and older · Monday and Wednesday · 1 high-school credit</span></span><span class="p">$840</span></a></li>
+        <li><a href="#"><span><span class="n">Letter of the Week</span><span class="d">Ages 4–6 · Thursday · full year</span></span><span class="p">$420</span></a></li>
+        <li><a href="#"><span><span class="n">Poetry, Plays, and Patterns</span><span class="d">Ages 14–18 · Thursday · Shakespeare and poetry</span></span><span class="p">$420</span></a></li>
+        <li><a href="#"><span><span class="n">Backyard Botany</span><span class="d">Ages 5–10 · Thursday · fall semester</span></span><span class="p">$140</span></a></li>
+      </ul>
+      <p style="margin-top:30px"><a href="#" style="color:var(--blue)">All nineteen classes →</a></p>
+    </div>
+  </section>
+
+  <div class="c-rule"></div>
+
+  <section class="c-sec">
+    <div class="c-wide">
+      <p class="c-label">Who teaches</p>
+      <h2 style="margin-top:16px">Nine instructors.</h2>
+      <div class="c-people">
+        <article><div class="c-portrait slot"><p class="slot-note"><b>Slot 4 — Staff.</b> Adults who
+          can consent. <i>Needs three portraits; nothing else on this page needs a camera.</i></p></div>
+          <h3>Jill Kilker</h3><p class="r c-label">Head of School</p>
+          <p>M.Ed. special education, Shippensburg. Homeschool evaluator in Pennsylvania.</p></article>
+        <article><div class="c-portrait"></div>
+          <h3>Pastor George Jensen</h3><p class="r c-label">Chaplain · Algebra 1</p>
+          <p>B.S. secondary mathematics, Millersville. M.Div., Winebrenner.</p></article>
+        <article><div class="c-portrait"></div>
+          <h3>Mrs. Mandy Saint</h3><p class="r c-label">Instructor · six classes</p>
+          <p>Letter of the Week, Kingdom Math, and early elementary science.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <div class="c-rule"></div>
+
+  <section class="c-sec">
+    <div class="c-wide">
+      <p class="c-label">What it costs</p>
+      <h2 style="margin-top:16px">Everything, before you ask.</h2>
+      <div class="c-figs">
+        <div class="c-fig"><b>$90–840</b><span>per class per year, paid to your instructor</span></div>
+        <div class="c-fig"><b>$25</b><span>registration, once per student per year</span></div>
+        <div class="c-fig"><b>$100</b><span>deposit per class, holds the seat</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="c-sec c-quiet slot">
+    <div class="c-wide" style="text-align:center">
+      <p class="c-label">Why we do this</p>
+      <p class="c-verse" style="margin:26px auto 0">"Honor Christ the Lord as holy, always being
+        prepared to make a defense for the hope that is within."<cite>1 Peter 3:15</cite></p>
+      <p style="max-width:44ch;margin:34px auto 0">H.O.P.E. — Helping Our Parents Educate. We
+        partner with parents rather than replace them.
+        <a href="#" style="color:var(--blue)">Read our Statement of Faith →</a></p>
+      <img class="c-tail" src="{{ENGRAVING}}" alt="" />
+    </div>
+    <p class="slot-note"><b>Slots 6 + 7 — Faith and close, merged.</b> The engraving appears exactly
+      once, small, as a tailpiece. <i>The lighthouse is a signature here, not a theme.</i></p>
+  </section>
+
+  <div class="c-rule"></div>
+
+  <section class="c-sec" id="c-inq">
+    <div class="c-wrap" style="margin:0 auto;max-width:760px">
+      <p class="c-label">Ask us about Pharos</p>
+      <h2 style="margin-top:16px">Tell us your children's ages.</h2>
+      <p>We'll tell you honestly whether Pharos fits. No commitment, and no application yet.</p>
+      <form class="c-form" onsubmit="return px.sent(this)">
+        <div><label class="c-label" for="c-n">Your name</label><input id="c-n" required /></div>
+        <div><label class="c-label" for="c-e">Email</label><input id="c-e" type="email" required /></div>
+        <div class="full"><label class="c-label" for="c-a">Children's ages</label><input id="c-a" placeholder="e.g. 6, 9 and 13" /></div>
+        <div class="full"><label class="c-label" for="c-m">Anything you'd like to ask (optional)</label><textarea id="c-m"></textarea></div>
+        <div class="full"><button class="c-btn solid" type="submit">Send my question</button></div>
+      </form>
+    </div>
+  </section>
+
+  <footer class="c-foot"><div class="c-wide">
+    <div><b style="color:var(--ink)">Pharos Academy</b><br />9 Sherwood Drive<br />Enola, PA 17025</div>
+    <div>Call Jill Kilker<br /><a href="tel:7174970896">717-497-0896</a></div>
+    <div><a href="#">Statement of Faith</a><br /><a href="#">Policies &amp; forms</a><br /><a href="#">Teach at Pharos</a></div>
+  </div></footer>
+</main>
+
+<div class="px-bar" role="group" aria-label="Prototype controls">
+  <button type="button" id="px-prev" aria-label="Previous variant">←</button>
+  <span class="px-name"><b id="px-key">A</b><span id="px-title">Plate</span></span>
+  <button type="button" id="px-next" aria-label="Next variant">→</button>
+  <span class="px-sep"></span>
+  <button type="button" class="px-slots" id="px-slots" aria-pressed="false">Image slots</button>
+</div>
+
+<script>
+const VARIANTS = [
+  { k: 'a', name: 'Plate — harbour dark, engraved' },
+  { k: 'b', name: 'Daybook — the timetable is the hero' },
+  { k: 'c', name: 'Lantern — near-white, type-led' }
+];
+const px = {
+  i: 0,
+  show(i) {
+    this.i = (i + VARIANTS.length) % VARIANTS.length;
+    const v = VARIANTS[this.i];
+    document.querySelectorAll('.px-page').forEach(function (p) { p.classList.remove('on'); });
+    document.getElementById('v-' + v.k).classList.add('on');
+    document.getElementById('px-key').textContent = v.k.toUpperCase();
+    document.getElementById('px-title').textContent = v.name;
+    const u = new URL(location.href);
+    u.searchParams.set('variant', v.k);
+    history.replaceState(null, '', u);
+    window.scrollTo(0, 0);
+  },
+  sent(form) {
+    const b = form.querySelector('button');
+    b.textContent = "We'll get back to you!";
+    b.disabled = true;
+    return false;
+  }
+};
+const start = new URL(location.href).searchParams.get('variant') || 'a';
+px.show(Math.max(0, VARIANTS.findIndex(function (v) { return v.k === start; })));
+
+document.getElementById('px-prev').onclick = function () { px.show(px.i - 1); };
+document.getElementById('px-next').onclick = function () { px.show(px.i + 1); };
+function setNotes(on) {
+  document.body.classList.toggle('notes', on);
+  document.getElementById('px-slots').setAttribute('aria-pressed', String(on));
+  const u = new URL(location.href);
+  if (on) { u.searchParams.set('notes', '1'); } else { u.searchParams.delete('notes'); }
+  history.replaceState(null, '', u);
+}
+document.getElementById('px-slots').onclick = function () {
+  setNotes(!document.body.classList.contains('notes'));
+};
+setNotes(new URL(location.href).searchParams.get('notes') === '1');
+document.addEventListener('keydown', function (e) {
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if (e.key === 'ArrowLeft') px.show(px.i - 1);
+  if (e.key === 'ArrowRight') px.show(px.i + 1);
+});
+
+/* variant C's one piece of motion: the beam fills as you read */
+const fill = document.getElementById('c-beam-fill');
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+addEventListener('scroll', function () {
+  if (reduce) { fill.style.height = '100%'; return; }
+  const max = document.body.scrollHeight - innerHeight;
+  fill.style.height = (max > 0 ? (scrollY / max) * 100 : 0) + '%';
+}, { passive: true });
+</script>
