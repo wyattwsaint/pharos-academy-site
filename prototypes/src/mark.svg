@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 320" role="img" aria-label="Pharos Academy">
+  <!-- APPROXIMATE trace of the existing raster mark, drawn by hand for the prototype.
+       Structure and colours are faithful; curves are not measured. The real trace is
+       a separate piece of work and needs Jill's confirmation. -->
+  <g fill="var(--mark-gold, #FAB03B)">
+    <!-- three beams, fanning up-right from the lantern -->
+    <path d="M117 43 L233 20 L233 39 L117 50 Z"/>
+    <path d="M117 53 L239 49 L239 66 L117 60 Z"/>
+    <path d="M117 63 L227 78 L222 95 L117 69 Z"/>
+  </g>
+  <g fill="var(--mark-blue, #5AA7D0)">
+    <!-- spire -->
+    <path d="M94 3 L96 3 L98 25 L92 25 Z"/>
+    <!-- lantern dome -->
+    <path d="M79 33 Q95 16 111 33 L111 36 L79 36 Z"/>
+    <!-- lantern room, panes knocked out by the paper colour -->
+    <path d="M80 36 h30 v30 h-30 Z"/>
+    <!-- upper gallery + railing -->
+    <path d="M70 66 h50 v8 h-50 Z"/>
+    <path d="M73 60 h1.6 v6 h-1.6 Z M79 60 h1.6 v6 h-1.6 Z M85 60 h1.6 v6 h-1.6 Z
+             M91 60 h1.6 v6 h-1.6 Z M97 60 h1.6 v6 h-1.6 Z M103 60 h1.6 v6 h-1.6 Z
+             M109 60 h1.6 v6 h-1.6 Z M115 60 h1.6 v6 h-1.6 Z"/>
+    <!-- upper tower -->
+    <path d="M80 74 L77 100 L113 100 L110 74 Z"/>
+    <!-- mid gallery + railing -->
+    <path d="M68 100 h54 v7 h-54 Z"/>
+    <path d="M71 95 h1.6 v5 h-1.6 Z M77 95 h1.6 v5 h-1.6 Z M83 95 h1.6 v5 h-1.6 Z
+             M89 95 h1.6 v5 h-1.6 Z M95 95 h1.6 v5 h-1.6 Z M101 95 h1.6 v5 h-1.6 Z
+             M107 95 h1.6 v5 h-1.6 Z M113 95 h1.6 v5 h-1.6 Z M119 95 h1.6 v5 h-1.6 Z"/>
+    <!-- main tower, tapering -->
+    <path d="M77 107 L70 186 L120 186 L113 107 Z"/>
+    <!-- flared shoulder -->
+    <path d="M66 186 L60 205 L130 205 L124 186 Z"/>
+    <!-- plinth down into the water -->
+    <path d="M63 205 L57 258 L133 258 L127 205 Z"/>
+  </g>
+  <!-- panes: paper-coloured slots in the lantern room -->
+  <g fill="var(--mark-paper, #FFFFFF)">
+    <path d="M83 40 h6 v22 h-6 Z"/>
+    <path d="M92 40 h6 v22 h-6 Z"/>
+    <path d="M101 40 h6 v22 h-6 Z"/>
+  </g>
+  <!-- two waves: light over deep -->
+  <path fill="var(--mark-blue, #5AA7D0)"
+        d="M6 258 C58 236 118 270 178 259 C228 250 264 237 294 243 L294 264
+           C262 259 226 276 176 279 C118 282 58 260 6 277 Z"/>
+  <path fill="var(--mark-deep, #45789E)"
+        d="M6 288 C68 268 128 298 188 285 C238 274 270 263 294 269 L294 291
+           C264 287 228 303 180 307 C124 311 62 290 6 307 Z"/>
+</svg>

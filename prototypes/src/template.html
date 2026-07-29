@@ -4,12 +4,14 @@
 /*FONTS*/
 
 /* ============================================================
-   PROTOTYPE — throwaway. Three homepage design directions for
-   Pharos Academy, switchable via ?variant=a|b|c.
+   PROTOTYPE — throwaway. Homepage design directions for Pharos
+   Academy, switchable via ?variant=d|a|b|c.
+   A, B and C were the three exploratory directions. D — "Beacon"
+   — is the direction decided on issue #12: C's air and type, a
+   full-bleed video hero at 0.5x parallax, B's real timetable
+   pulled up early. D is what goes in front of the client.
    Section order is fixed by issue #9 and is NOT what is being
-   tested here. What is being tested: palette, typefaces, what
-   "immersive" means, the seven image slots, the lighthouse
-   motif, and the component vocabulary.
+   tested here.
    ============================================================ */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -517,9 +519,197 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 .c-foot .c-wide { display: flex; flex-wrap: wrap; gap: 36px; justify-content: space-between; }
 .c-foot a { color: var(--blue); }
 
+/* ============================================================
+   VARIANT D — "Beacon"
+   The decided direction (issue #12). C's air and typography, a
+   full-bleed video hero, B's real timetable pulled up early.
+   Immersive = a moving photograph that the page rises over:
+   video parallaxes at 0.5x while content moves at 1x, blurring
+   and dimming across the first viewport, then releasing.
+   ============================================================ */
+.d {
+  --paper: #FCFBF9;
+  --ink: #14202A;
+  --ink-2: #5C6B76;
+  --gold: #C98A22;
+  --blue: #40708F;
+  --rule: #E2E0DA;
+  --mark-blue: #5AA7D0;
+  --mark-gold: #FAB03B;
+  --mark-deep: #45789E;
+  background: var(--paper); color: var(--ink);
+  font-family: 'Public Sans', sans-serif; font-size: 18px; line-height: 1.65;
+}
+.d h1, .d h2, .d h3 { font-family: 'Instrument Serif', serif; font-weight: 400;
+  line-height: 1.02; letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+.d-wrap { max-width: 760px; margin: 0 auto; padding: 0 26px; }
+.d-wide { max-width: 1100px; margin: 0 auto; padding: 0 26px; }
+.d-label { font: 600 11px/1 'Public Sans', sans-serif; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--ink-2); }
+
+/* ---------- the hero ---------- */
+.d-hero { position: relative; height: 100vh; overflow: hidden; background: #0E1B23; }
+@supports (height: 100dvh) { .d-hero { height: 100dvh; } }
+
+/* Parallax needs NO overscan, which is the non-obvious part. The hero is 100vh
+   and is the first thing on the page, so at scroll s the still-visible slice of
+   it is hero-local [s, h] — the window onto the hero recedes downward exactly as
+   fast as the page scrolls. Translating the media down by +0.5s therefore always
+   covers that shrinking slice (0 <= 0.5s <= s), while the media's screen
+   position moves up at 0.5x. So the media is exactly frame-sized: no extra
+   material, and no upscaling beyond the viewport. */
+.d-media { position: absolute; inset: 0; overflow: hidden; }
+.d-media > video, .d-media > .d-still {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 22% 50%;
+}
+.d-media { will-change: transform; }
+.d-poster { display: none; }
+.d-blur { opacity: 0; }
+/* base scrim: always on, carries white type over a bright photograph */
+.d-scrim {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(9,21,29,.46) 0%, rgba(9,21,29,.10) 32%, rgba(9,21,29,.34) 100%),
+    linear-gradient(to right, rgba(9,21,29,0) 34%, rgba(9,21,29,.40) 100%);
+}
+/* deepening layer: opacity ramps with scroll */
+.d-deep { position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: #0B1A22; opacity: 0; }
+
+.d-head { position: absolute; top: 0; left: 0; right: 0; z-index: 10; padding: 24px 0; }
+.d-head .d-wide { display: flex; align-items: center; gap: 22px; }
+.d-logo { display: flex; align-items: center; gap: 11px; margin-right: auto;
+  text-decoration: none; color: #fff; }
+.d-logo svg { width: 27px; height: auto; display: block;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,.35)); }
+.d-logo b { font: 400 17.5px/1 'Instrument Serif', serif; letter-spacing: .02em; }
+.d-nav { display: flex; gap: 22px; }
+.d-nav a { color: rgba(255,255,255,.88); text-decoration: none; font-size: 14.5px;
+  text-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.d-nav a:hover { color: #fff; }
+
+.d-btn { display: inline-block; border: 1px solid var(--ink); color: var(--ink);
+  background: none; font: 600 13.5px/1 'Public Sans', sans-serif; text-decoration: none;
+  padding: 12px 18px; border-radius: 999px; cursor: pointer;
+  transition: background .3s cubic-bezier(.2,.7,.3,1), color .3s, border-color .3s; }
+.d-btn:hover { background: var(--ink); color: var(--paper); }
+.d-btn.solid { background: var(--ink); color: var(--paper); }
+.d-btn.solid:hover { background: var(--gold); border-color: var(--gold); color: #14202A; }
+/* on the hero, inverted for the dark ground */
+.d-btn.on-dark { border-color: rgba(255,255,255,.62); color: #fff; }
+.d-btn.on-dark:hover { background: #fff; border-color: #fff; color: #14202A; }
+.d-btn.on-dark.solid { background: #fff; border-color: #fff; color: #14202A; }
+.d-btn.on-dark.solid:hover { background: var(--mark-gold); border-color: var(--mark-gold); }
+
+.d-hero-inner { position: relative; z-index: 3; height: 100%;
+  display: grid; grid-template-columns: 36% 1fr; align-items: center; }
+.d-hero-copy { grid-column: 2; max-width: 640px; padding-right: 26px; color: #fff; }
+.d-hero-copy .d-label { color: rgba(255,255,255,.82); }
+.d-hero-copy h1 { font-size: clamp(40px, 5.6vw, 82px); margin-top: 22px;
+  text-shadow: 0 2px 22px rgba(6,16,22,.42); }
+.d-hero-copy h1 em { font-style: italic; color: var(--mark-gold); }
+.d-hero-copy p { font-size: clamp(17px, 1.5vw, 20px); color: rgba(255,255,255,.9);
+  max-width: 44ch; margin: 26px 0 0; text-shadow: 0 1px 12px rgba(6,16,22,.5); }
+.d-hero-cta { margin-top: 34px; display: flex; gap: 13px; flex-wrap: wrap; align-items: center; }
+.d-hero-cta small { color: rgba(255,255,255,.82); font-size: 13.5px; }
+
+@media (max-width: 1000px) {
+  .d-hero-inner { grid-template-columns: 1fr; align-items: end;
+    padding-bottom: clamp(52px, 11vh, 108px); }
+  .d-hero-copy { grid-column: 1; max-width: 34ch; }
+}
+@media (max-width: 860px) { .d-nav { display: none; } }
+@media (max-width: 760px) {
+  .d-wide, .d-wrap { padding: 0 20px; }
+  .d-head { padding: 14px 0; }
+  .d-hero-copy h1 { font-size: clamp(34px, 8.6vw, 52px); }
+}
+
+/* ---------- body: C's air ---------- */
+.d-sec { padding: clamp(56px, 9vw, 108px) 0; }
+.d-sec h2 { font-size: clamp(32px, 4.6vw, 54px); margin-bottom: 10px; }
+.d-sec p { color: var(--ink-2); }
+.d-sec p.d-label { font-size: 11px; }
+.d-rule { height: 1px; background: var(--rule); max-width: 1100px; margin: 0 auto; }
+.d-quiet { background: #F4F2ED; }
+
+.d-week { list-style: none; margin: 40px 0 0; padding: 0; }
+.d-week li { display: grid; grid-template-columns: 130px 1fr; gap: 20px;
+  padding: 22px 0; border-top: 1px solid var(--rule); align-items: baseline; }
+.d-week h3 { font-size: 27px; }
+.d-week span { color: var(--ink-2); font-size: 16px; }
+@media (max-width: 620px) { .d-week li { grid-template-columns: 1fr; gap: 6px; } }
+
+/* ---------- body: B's timetable, pulled up ---------- */
+.d-gridscroll { overflow-x: auto; margin-top: 38px; -webkit-overflow-scrolling: touch; }
+.d-grid { display: grid; grid-template-columns: 62px repeat(3, minmax(190px, 1fr));
+  gap: 1px; background: var(--rule); border: 1px solid var(--rule); min-width: 660px; }
+.d-grid > * { background: var(--paper); padding: 13px 13px; }
+.d-grid .hd { background: #F4F2ED; display: flex; align-items: baseline;
+  justify-content: space-between; gap: 10px; }
+.d-grid .hd h3 { font-size: 21px; }
+.d-grid .hd small { font-size: 10.5px; }
+.d-time { background: #F8F6F2; color: var(--ink-2); font-size: 12.5px;
+  font-variant-numeric: tabular-nums; }
+.d-cell.free { background: #FBFAF7; }
+.d-cls { display: block; text-decoration: none; color: inherit; }
+.d-cls + .d-cls { margin-top: 11px; }
+.d-cls .t { display: block; font: 400 16.5px/1.24 'Instrument Serif', serif; }
+.d-cls .m { display: block; font-size: 12.5px; color: var(--ink-2); margin-top: 3px; }
+.d-cls:hover .t { color: var(--blue); }
+
+.d-people { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-top: 40px; }
+.d-portrait { aspect-ratio: 1 / 1; border-radius: 50%; background: #EFEDE7;
+  width: 100%; max-width: 150px; }
+.d-people h3 { font-size: 22px; margin-top: 18px; }
+.d-people .r { margin: 6px 0 8px; }
+.d-people p { font-size: 14.5px; margin: 0; }
+@media (max-width: 720px) { .d-people { grid-template-columns: 1fr; } }
+
+.d-figs { display: flex; flex-wrap: wrap; gap: clamp(28px, 6vw, 74px); margin-top: 40px; }
+.d-fig b { display: block; font: 400 clamp(42px, 6vw, 66px)/1 'Instrument Serif', serif;
+  color: var(--ink); font-variant-numeric: tabular-nums; }
+.d-fig span { display: block; color: var(--ink-2); font-size: 14.5px; margin-top: 8px;
+  max-width: 22ch; }
+
+.d-verse { font: 400 italic clamp(24px, 3.4vw, 40px)/1.35 'Instrument Serif', serif;
+  max-width: 22ch; }
+.d-verse cite { display: block; font: 600 11px/1 'Public Sans', sans-serif;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--ink-2);
+  font-style: normal; margin-top: 24px; }
+/* the engraving as a mask over a flat ink fill, so the scan's grey ground can't
+   leave a rectangle on the section colour */
+.d-tail { margin: 46px auto 0; width: 300px; aspect-ratio: 1024 / 871;
+  background: var(--ink); opacity: .5;
+  -webkit-mask: var(--tail) center / contain no-repeat;
+  mask: var(--tail) center / contain no-repeat; }
+
+.d-form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 34px; }
+.d-form .full { grid-column: 1 / -1; }
+.d-form label { display: block; margin-bottom: 8px; }
+.d-form input, .d-form textarea { width: 100%; background: transparent; border: 0;
+  border-bottom: 1px solid var(--rule); color: var(--ink);
+  font: 400 17px/1.4 'Public Sans', sans-serif; padding: 10px 2px; }
+.d-form input:focus, .d-form textarea:focus { outline: 0; border-bottom-color: var(--gold);
+  box-shadow: 0 1px 0 var(--gold); }
+.d-form textarea { min-height: 70px; resize: vertical; }
+@media (max-width: 700px) { .d-form { grid-template-columns: 1fr; } }
+
+.d-foot { padding: 60px 0 46px; border-top: 1px solid var(--rule); font-size: 14.5px;
+  color: var(--ink-2); }
+.d-foot .d-wide { display: flex; flex-wrap: wrap; gap: 36px; justify-content: space-between; }
+.d-foot a { color: var(--blue); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important;
     transition-duration: .001ms !important; }
+  /* the video hero is a hard stop, not a gentler ramp: poster frame only */
+  .d-media > video { display: none !important; }
+  .d-media > .d-poster { display: block !important; }
+  .d-media { transform: none !important; }
+  .d-blur { opacity: 0 !important; }
+  .d-deep { opacity: 0 !important; }
 }
 </style>
 
@@ -1000,6 +1190,191 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
   </div></footer>
 </main>
 
+<!-- ==================== D — Beacon (the decided direction) ==================== -->
+<main class="px-page d" id="v-d">
+  <header class="d-head">
+    <div class="d-wide">
+      <a class="d-logo" href="#">{{MARKSVG}}<b>Pharos Academy</b></a>
+      <nav class="d-nav">
+        <a href="#">About</a><a href="#">Classes</a><a href="#">Admissions</a><a href="#">Current Families</a>
+      </nav>
+      <a class="d-btn on-dark" href="#d-inq">Ask us about Pharos</a>
+    </div>
+  </header>
+
+  <section class="d-hero slot" id="d-hero">
+    <div class="d-media" id="d-media">
+      <video id="d-vid" data-lg="{{VIDEO_LG}}" data-sm="{{VIDEO_SM}}"
+             poster="{{POSTER}}" muted loop playsinline preload="none"
+             aria-hidden="true"></video>
+      <img class="d-still d-poster" id="d-poster" src="{{POSTER}}" alt="" />
+      <img class="d-still d-blur" id="d-blur" src="{{POSTER_BLUR}}" alt="" />
+    </div>
+    <div class="d-scrim"></div>
+    <div class="d-deep" id="d-deep"></div>
+    <div class="d-hero-inner">
+      <div class="d-hero-copy d-wide" id="d-copy" style="max-width:none">
+        <div style="max-width:640px;margin-left:auto">
+          <p class="d-label">Enola, Pennsylvania · ages 4 to 18</p>
+          <h1>Three mornings a week, your child is <em>taught</em>.</h1>
+          <p>The rest of the week, you teach. Christian classical classes on Monday, Wednesday
+            and Thursday mornings — chosen one at a time, by you.</p>
+          <div class="d-hero-cta">
+            <a class="d-btn on-dark solid" href="#d-inq">Ask us about Pharos</a>
+            <a class="d-btn on-dark" href="#d-classes">See the classes</a>
+            <small>No application yet. Just a question.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="slot-note"><b>Slot 1 — Hero. The video.</b> 0.5× parallax, blur and scrim ramping
+      across this one viewport, then it releases. <i>The only generated asset on the site;
+      the tower is held left so tall-viewport cropping eats the sea, not the lighthouse.</i></p>
+  </section>
+
+  <section class="d-sec">
+    <div class="d-wide">
+      <p class="d-label">What a week looks like</p>
+      <h2 style="margin-top:16px">Mornings here. Afternoons yours.</h2>
+      <ul class="d-week">
+        <li><h3>Monday</h3><span>9:00 – 12:20 · Latin, drawing, early science, Kingdom Math, Algebra 1</span></li>
+        <li><h3>Wednesday</h3><span>9:00 – 12:20 · Spanish, Bible history, the six-week electives, Algebra 1</span></li>
+        <li><h3>Thursday</h3><span>9:30 – 12:10 · Letter of the Week, Shakespeare and poetry, Backyard Botany</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="d-rule"></div>
+
+  <section class="d-sec slot" id="d-classes">
+    <div class="d-wide">
+      <p class="d-label">Nineteen classes, 2026–27</p>
+      <h2 style="margin-top:16px">Take one. Take five.</h2>
+      <p style="margin-top:14px;max-width:56ch">Every price is the hours multiplied by the rate —
+        $10 an hour, $15 for high-school credit — and nothing else.</p>
+      <div class="d-gridscroll">
+        <div class="d-grid">
+          <div class="d-time"></div>
+          <div class="hd"><h3>Monday</h3><small class="d-label">6 classes</small></div>
+          <div class="hd"><h3>Wednesday</h3><small class="d-label">6 classes</small></div>
+          <div class="hd"><h3>Thursday</h3><small class="d-label">3 classes</small></div>
+
+          <div class="d-time">9:00</div>
+          <div class="d-cell"><a class="d-cls" href="#"><span class="t">Beginner Latin Immersion</span><span class="m">gr 7–8 · $280/yr</span></a>
+            <a class="d-cls" href="#"><span class="t">God Made Everything: Science</span><span class="m">ages 5–8 · $420/yr</span></a></div>
+          <div class="d-cell"><a class="d-cls" href="#"><span class="t">Basic Spanish Conversation</span><span class="m">gr 5–8 · $280/yr</span></a>
+            <a class="d-cls" href="#"><span class="t">Church &amp; Bible History</span><span class="m">ages 6–8 · $420/yr</span></a></div>
+          <div class="d-cell free"></div>
+
+          <div class="d-time">9:30</div>
+          <div class="d-cell free"></div>
+          <div class="d-cell free"></div>
+          <div class="d-cell"><a class="d-cls" href="#"><span class="t">Letter of the Week</span><span class="m">ages 4–6 · $420/yr</span></a></div>
+
+          <div class="d-time">10:10</div>
+          <div class="d-cell"><a class="d-cls" href="#"><span class="t">Principles of Drawing</span><span class="m">ages 14–18 · $420/yr</span></a></div>
+          <div class="d-cell"><a class="d-cls" href="#"><span class="t">Basic Spanish Conversation</span><span class="m">gr 9–12 · $420/yr</span></a></div>
+          <div class="d-cell"><a class="d-cls" href="#"><span class="t">Poetry, Plays, and Patterns</span><span class="m">ages 14–18 · $420/yr</span></a></div>
+
+          <div class="d-time">10:40</div>
+          <div class="d-cell"><a class="d-cls" href="#"><span class="t">Kingdom Math</span><span class="m">ages 6–8 · $420/yr</span></a>
+            <a class="d-cls" href="#"><span class="t">Drawing &amp; Painting</span><span class="m">gr 5–8 · $210/sem</span></a></div>
+          <div class="d-cell"><a class="d-cls" href="#"><span class="t">The Pilgrim's Progress for Kids</span><span class="m">ages 5–10 · 12 weeks</span></a>
+            <a class="d-cls" href="#"><span class="t">Three six-week electives</span><span class="m">ages 6–10 · rotating</span></a></div>
+          <div class="d-cell free"></div>
+
+          <div class="d-time">11:10</div>
+          <div class="d-cell free"></div>
+          <div class="d-cell free"></div>
+          <div class="d-cell"><a class="d-cls" href="#"><span class="t">Backyard Botany</span><span class="m">ages 5–10 · $140/sem</span></a></div>
+
+          <div class="d-time">11:20</div>
+          <div class="d-cell"><a class="d-cls" href="#"><span class="t">Algebra 1</span><span class="m">gr 8+ · 1 credit · $840/yr</span></a></div>
+          <div class="d-cell"><a class="d-cls" href="#"><span class="t">Algebra 1</span><span class="m">gr 8+ · 1 credit · $840/yr</span></a></div>
+          <div class="d-cell free"></div>
+        </div>
+      </div>
+      <p style="margin-top:28px"><a href="#" style="color:var(--blue)">All nineteen classes →</a></p>
+    </div>
+    <p class="slot-note"><b>Slots 2 + 3 — spent as type, not pictures.</b> The timetable arrives at
+      section three, one air section after the hero. <i>Nothing to shoot, nothing to license.</i></p>
+  </section>
+
+  <div class="d-rule"></div>
+
+  <section class="d-sec">
+    <div class="d-wide">
+      <p class="d-label">Who teaches</p>
+      <h2 style="margin-top:16px">Nine instructors.</h2>
+      <div class="d-people">
+        <article><div class="d-portrait slot"><p class="slot-note"><b>Slot 4 — Staff.</b> Adults who
+          can consent. <i>Three portraits: the only photography this page needs, and the only
+          people on it.</i></p></div>
+          <h3>Jill Kilker</h3><p class="r d-label">Head of School</p>
+          <p>M.Ed. special education, Shippensburg. Homeschool evaluator in Pennsylvania.</p></article>
+        <article><div class="d-portrait"></div>
+          <h3>Pastor George Jensen</h3><p class="r d-label">Chaplain · Algebra 1</p>
+          <p>B.S. secondary mathematics, Millersville. M.Div., Winebrenner.</p></article>
+        <article><div class="d-portrait"></div>
+          <h3>Mrs. Mandy Saint</h3><p class="r d-label">Instructor · six classes</p>
+          <p>Letter of the Week, Kingdom Math, and early elementary science.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <div class="d-rule"></div>
+
+  <section class="d-sec">
+    <div class="d-wide">
+      <p class="d-label">What it costs</p>
+      <h2 style="margin-top:16px">Everything, before you ask.</h2>
+      <div class="d-figs">
+        <div class="d-fig"><b>$90–840</b><span>per class per year, paid to your instructor</span></div>
+        <div class="d-fig"><b>$25</b><span>registration, once per student per year</span></div>
+        <div class="d-fig"><b>$100</b><span>deposit per class, holds the seat</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="d-sec d-quiet slot">
+    <div class="d-wide" style="text-align:center">
+      <p class="d-label">Why we do this</p>
+      <p class="d-verse" style="margin:26px auto 0">"Honor Christ the Lord as holy, always being
+        prepared to make a defense for the hope that is within."<cite>1 Peter 3:15</cite></p>
+      <p style="max-width:44ch;margin:34px auto 0;color:var(--ink-2)">H.O.P.E. — Helping Our Parents
+        Educate. We partner with parents rather than replace them.
+        <a href="#" style="color:var(--blue)">Read our Statement of Faith →</a></p>
+      <div class="d-tail" style="--tail:url({{ENGRAVING_MASK}})" aria-hidden="true"></div>
+    </div>
+    <p class="slot-note"><b>Slots 6 + 7 — the engraving, once, small.</b> The video opened as the
+      metaphor; the engraving closes as the namesake. <i>Opposite ends, opposite scales, so they
+      bookend instead of competing.</i></p>
+  </section>
+
+  <div class="d-rule"></div>
+
+  <section class="d-sec" id="d-inq">
+    <div class="d-wrap">
+      <p class="d-label">Ask us about Pharos</p>
+      <h2 style="margin-top:16px">Tell us your children's ages.</h2>
+      <p>We'll tell you honestly whether Pharos fits. No commitment, and no application yet.</p>
+      <form class="d-form" onsubmit="return px.sent(this)">
+        <div><label class="d-label" for="d-n">Your name</label><input id="d-n" required /></div>
+        <div><label class="d-label" for="d-e">Email</label><input id="d-e" type="email" required /></div>
+        <div class="full"><label class="d-label" for="d-a">Children's ages</label><input id="d-a" placeholder="e.g. 6, 9 and 13" /></div>
+        <div class="full"><label class="d-label" for="d-m">Anything you'd like to ask (optional)</label><textarea id="d-m"></textarea></div>
+        <div class="full"><button class="d-btn solid" type="submit">Send my question</button></div>
+      </form>
+    </div>
+  </section>
+
+  <footer class="d-foot"><div class="d-wide">
+    <div><b style="color:var(--ink)">Pharos Academy</b><br />9 Sherwood Drive<br />Enola, PA 17025</div>
+    <div>Call Jill Kilker<br /><a href="tel:7174970896">717-497-0896</a></div>
+    <div><a href="#">Statement of Faith</a><br /><a href="#">Policies &amp; forms</a><br /><a href="#">Teach at Pharos</a></div>
+  </div></footer>
+</main>
+
 <div class="px-bar" role="group" aria-label="Prototype controls">
   <button type="button" id="px-prev" aria-label="Previous variant">←</button>
   <span class="px-name"><b id="px-key">A</b><span id="px-title">Plate</span></span>
@@ -1010,6 +1385,7 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 
 <script>
 const VARIANTS = [
+  { k: 'd', name: 'Beacon — video hero (the decided direction)' },
   { k: 'a', name: 'Plate — harbour dark, engraved' },
   { k: 'b', name: 'Daybook — the timetable is the hero' },
   { k: 'c', name: 'Lantern — near-white, type-led' }
@@ -1027,6 +1403,8 @@ const px = {
     u.searchParams.set('variant', v.k);
     history.replaceState(null, '', u);
     window.scrollTo(0, 0);
+    /* only load and play D's video while D is the variant on screen */
+    if (window.__dHero) window.__dHero(v.k === 'd');
   },
   sent(form) {
     const b = form.querySelector('button');
@@ -1066,4 +1444,97 @@ addEventListener('scroll', function () {
   const max = document.body.scrollHeight - innerHeight;
   fill.style.height = (max > 0 ? (scrollY / max) * 100 : 0) + '%';
 }, { passive: true });
+
+/* ------------------------------------------------------------------
+   variant D's hero.
+
+   Parallax: translate the media DOWN by half the scroll offset. The hero
+   scrolls up at 1x, so the media's net screen speed is 0.5x and content
+   rises over it. No overscan is needed — see the note in .d-media above:
+   the visible slice of a 100vh first-child hero recedes as fast as the
+   page scrolls, so a frame-sized media element always covers it.
+
+   Blur: the playing video is never filtered. A pre-blurred still is
+   crossfaded over it instead, because re-blurring 24 frames a second is
+   what turns this from premium into janky on cheap hardware.
+
+   Phones get the video but none of the scroll work (decided on #12).
+   prefers-reduced-motion gets the poster frame and nothing else.
+   ------------------------------------------------------------------ */
+(function () {
+  const hero = document.getElementById('d-hero');
+  if (!hero) return;
+  const media = document.getElementById('d-media');
+  const blur = document.getElementById('d-blur');
+  const deep = document.getElementById('d-deep');
+  const copy = document.getElementById('d-copy');
+  const vid = document.getElementById('d-vid');
+  const reduceQ = matchMedia('(prefers-reduced-motion: reduce)');
+  const smallQ = matchMedia('(max-width: 760px)');
+
+  /* ?p=0.6 pins the ramp's OPTICAL state — blur, dim, copy fade — at that
+     progress, without scrolling and without the parallax offset. A still can't
+     convey parallax anyway, and applying the translate at scroll 0 would just
+     expose it as a gap at the top of the frame. For the real thing, scroll. */
+  const forced = parseFloat(new URL(location.href).searchParams.get('p'));
+  const pinned = isFinite(forced) ? Math.min(1, Math.max(0, forced)) : null;
+
+  /* ?flat=1 pins the hero to a fixed height instead of the viewport, so a very
+     tall window can capture the hero and the whole body in one screenshot.
+     Review affordance only — the hero is 100dvh in the real thing. */
+  if (new URL(location.href).searchParams.get('flat') === '1') {
+    hero.style.height = '640px';
+  }
+
+  function apply(p, optical) {
+    const h = hero.offsetHeight || 1;
+    if (!optical) {
+      media.style.transform = 'translate3d(0,' + (p * h * 0.5).toFixed(2) + 'px,0)';
+    }
+    blur.style.opacity = Math.pow(p, 1.15).toFixed(3);
+    deep.style.opacity = (p * 0.55).toFixed(3);
+    copy.style.opacity = Math.max(0, 1 - p * 1.6).toFixed(3);
+    copy.style.transform = 'translate3d(0,' + (p * -40).toFixed(1) + 'px,0)';
+  }
+  function reset() {
+    media.style.transform = '';
+    blur.style.opacity = '0';
+    deep.style.opacity = '0';
+    copy.style.opacity = '';
+    copy.style.transform = '';
+  }
+
+  let raf = 0;
+  function frame() {
+    raf = 0;
+    apply(Math.min(1, Math.max(0, scrollY / (hero.offsetHeight || 1))));
+  }
+  function onScroll() { if (!raf) raf = requestAnimationFrame(frame); }
+
+  function wire() {
+    removeEventListener('scroll', onScroll);
+    reset();
+    if (pinned !== null) { apply(pinned, true); return; }
+    if (reduceQ.matches || smallQ.matches) return;   /* phones: no scroll effects */
+    addEventListener('scroll', onScroll, { passive: true });
+    frame();
+  }
+
+  let loaded = false;
+  window.__dHero = function (on) {
+    if (!on) { if (vid) vid.pause(); return; }
+    if (!loaded && !reduceQ.matches) {
+      loaded = true;
+      vid.src = smallQ.matches ? vid.dataset.sm : vid.dataset.lg;
+      vid.muted = true;                 /* belt and braces for autoplay policy */
+    }
+    if (!reduceQ.matches) { const q = vid.play(); if (q && q.catch) q.catch(function () {}); }
+    wire();
+  };
+
+  wire();
+  addEventListener('resize', wire);
+  /* px.show already ran before this script block defined __dHero */
+  window.__dHero(document.getElementById('v-d').classList.contains('on'));
+})();
 </script>

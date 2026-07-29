@@ -26,6 +26,15 @@ ink.putalpha(alpha)
 d, n = enc(ink, "WEBP", quality=70, method=6)
 out["engraving_ink"] = d
 print("engraving_ink", n // 1024, "KB")
+# mask version for variant D: the scan's ground is ~215-234, not white, so a
+# multiply blend always leaves a faint rectangle. Drive the ground fully to
+# zero alpha instead and use the result as a CSS mask over a flat ink fill.
+mask_a = eng.point(lambda v: 0 if v >= 200 else min(255, int((200 - v) * 255 / 150)))
+mask = Image.new("RGBA", eng.size, (0, 0, 0, 0))
+mask.putalpha(mask_a)
+d, n = enc(mask, "PNG", optimize=True)
+out["engraving_mask"] = d
+print("engraving_mask", n // 1024, "KB", eng.size)
 
 # --- 2. the existing lighthouse mark, background knocked out ---
 logo = Image.open(SRC + r"\cecb9d_0ca6169ee8cf426fbc06471e38be23f4~mv2.jpg").convert("RGB")
