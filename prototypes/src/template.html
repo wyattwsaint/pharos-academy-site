@@ -701,15 +701,282 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 .d-foot .d-wide { display: flex; flex-wrap: wrap; gap: 36px; justify-content: space-between; }
 .d-foot a { color: var(--blue); }
 
+/* ============================================================
+   VARIANT E — "Beacon, warmed"
+   D with a warm, more ceremonial surface. Decided against a
+   reference poster (ImageTemplateStyles.png), style principles
+   only. What is taken: warm paper, navy as ground and headings,
+   deepened gold, a serif/sans split by ROLE, a rule-with-diamond
+   between sections, a navy ceremonial footer band.
+   What is deliberately NOT taken: the reference's density (it is
+   carried by 14 illustrations; this page owns 3 usable images),
+   navy body copy, all-serif setting, its invented taglines, its
+   generated people, and its false claim that Pharos teaches music.
+   The hero video and its 0.5x parallax are D's, untouched — that
+   was the whole of issue #12. Section order is fixed by #9.
+   ============================================================ */
+.e {
+  --paper: #FBF7EF;      /* warm off-white */
+  --quiet: #F3E9D6;      /* parchment band */
+  --navy: #17365C;       /* ground and headings only — never body copy */
+  --navy-deep: #102647;
+  --ink: #14202A;        /* body copy stays near-black */
+  --ink-2: #5C6B76;
+  --gold: #C08A2E;
+  --gold-lit: #E0AC4E;   /* on navy, where the deep gold goes muddy */
+  --rule: #E4D9C4;
+  --mark-blue: #5AA7D0;
+  --mark-gold: #FAB03B;
+  --mark-deep: #45789E;
+  background: var(--paper); color: var(--ink);
+  font-family: 'Public Sans', sans-serif; font-size: 18px; line-height: 1.65;
+}
+/* the ceremonial parts are serif: headings, labels, tagline, verse, footer.
+   the working parts stay sans: body paragraphs, timetable, prices, nav, form. */
+.e h1, .e h2, .e h3 { font-family: 'Instrument Serif', serif; font-weight: 400;
+  line-height: 1.04; letter-spacing: -.005em; margin: 0; text-wrap: balance;
+  color: var(--navy); }
+.e-wrap { max-width: 760px; margin: 0 auto; padding: 0 26px; }
+.e-wide { max-width: 1100px; margin: 0 auto; padding: 0 26px; }
+.e-label { font: 400 13px/1 'Instrument Serif', serif; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--gold); }
+.e-tag { font: italic 400 clamp(17px, 1.7vw, 21px)/1.3 'Instrument Serif', serif;
+  color: var(--gold); }
+
+/* the repeated ornament: a gold hairline with a centre diamond */
+.e-orn { max-width: 1100px; margin: 0 auto; padding: 0 26px;
+  display: flex; align-items: center; gap: 14px; }
+.e-orn::before, .e-orn::after { content: ""; flex: 1 1 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rule) 18%, var(--gold)); }
+.e-orn::after { background: linear-gradient(270deg, transparent, var(--rule) 18%, var(--gold)); }
+.e-orn i { width: 7px; height: 7px; background: var(--gold); transform: rotate(45deg);
+  flex: 0 0 auto; }
+/* the same device, short and left-aligned, inside a lockup */
+.e-hair { display: flex; align-items: center; gap: 11px; width: 210px; margin: 22px 0; }
+.e-hair::after { content: ""; flex: 1 1 0; height: 1px;
+  background: linear-gradient(90deg, var(--mark-gold), transparent); }
+.e-hair i { width: 6px; height: 6px; background: var(--mark-gold); transform: rotate(45deg); }
+
+/* ---------- the hero: D's video and parallax, a formal lockup over it ---------- */
+.e-hero { position: relative; height: 100vh; overflow: hidden; background: #0E1B23; }
+@supports (height: 100dvh) { .e-hero { height: 100dvh; } }
+/* see the geometry note on .d-media — the parallax needs no overscan */
+.e-media { position: absolute; inset: 0; overflow: hidden; will-change: transform; }
+.e-media > video, .e-media > .e-still {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 22% 50%;
+}
+.e-poster { display: none; }
+.e-blur { opacity: 0; }
+/* warmer scrim than D's: the ground under the type tends gold-navy, not slate */
+.e-scrim {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(12,26,44,.50) 0%, rgba(12,26,44,.12) 32%, rgba(12,26,44,.40) 100%),
+    linear-gradient(to right, rgba(12,26,44,0) 30%, rgba(16,38,71,.52) 100%);
+}
+.e-deep { position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: var(--navy-deep); opacity: 0; }
+
+.e-head { position: absolute; top: 0; left: 0; right: 0; z-index: 10; padding: 24px 0; }
+.e-head .e-wide { display: flex; align-items: center; gap: 22px; }
+.e-brand { display: flex; align-items: center; gap: 11px; margin-right: auto;
+  text-decoration: none; color: #fff; }
+.e-brand svg { width: 25px; height: auto; display: block;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,.4)); }
+.e-brand b { font: 400 17px/1 'Instrument Serif', serif; letter-spacing: .08em;
+  text-transform: uppercase; }
+.e-nav { display: flex; gap: 22px; }
+.e-nav a { color: rgba(255,255,255,.9); text-decoration: none;
+  font: 400 14.5px/1 'Public Sans', sans-serif; text-shadow: 0 1px 3px rgba(0,0,0,.35); }
+.e-nav a:hover { color: var(--mark-gold); }
+
+.e-btn { display: inline-block; border: 1px solid var(--navy); color: var(--navy);
+  background: none; font: 600 13.5px/1 'Public Sans', sans-serif; text-decoration: none;
+  padding: 12px 18px; border-radius: 2px; cursor: pointer;
+  transition: background .3s cubic-bezier(.2,.7,.3,1), color .3s, border-color .3s; }
+.e-btn:hover { background: var(--navy); color: var(--paper); }
+.e-btn.solid { background: var(--navy); color: var(--paper); border-color: var(--navy); }
+.e-btn.solid:hover { background: var(--gold); border-color: var(--gold); color: #1B1206; }
+.e-btn.on-dark { border-color: rgba(255,255,255,.6); color: #fff; }
+.e-btn.on-dark:hover { background: #fff; border-color: #fff; color: var(--navy); }
+.e-btn.on-dark.solid { background: var(--mark-gold); border-color: var(--mark-gold);
+  color: #21170A; }
+.e-btn.on-dark.solid:hover { background: #fff; border-color: #fff; color: var(--navy); }
+
+.e-hero-inner { position: relative; z-index: 3; height: 100%;
+  display: grid; grid-template-columns: 34% 1fr; align-items: center; }
+.e-hero-copy { grid-column: 2; padding-right: 26px; color: #fff; }
+/* the lockup. Deliberately a MEDIUM mark, not a poster-sized one: mark.svg is
+   still the hand-drawn approximation (#13), and enlarging it shows every flaw. */
+.e-lockup svg { width: 84px; height: auto; display: block;
+  filter: drop-shadow(0 2px 10px rgba(6,16,30,.45)); }
+.e-lockup .wm { font: 400 clamp(23px, 2.5vw, 34px)/1 'Instrument Serif', serif;
+  letter-spacing: .17em; text-transform: uppercase; margin: 20px 0 0;
+  text-shadow: 0 2px 14px rgba(6,16,30,.5); }
+.e-lockup .e-tag { display: block; margin-top: 13px; color: var(--mark-gold);
+  text-shadow: 0 1px 10px rgba(6,16,30,.55); }
+.e-hero-copy h1 { font-size: clamp(36px, 4.6vw, 66px); color: #fff;
+  text-shadow: 0 2px 22px rgba(6,16,30,.45); max-width: 22ch; }
+.e-hero-copy p { font-size: clamp(16.5px, 1.4vw, 19px); color: rgba(255,255,255,.92);
+  max-width: 44ch; margin: 22px 0 0; text-shadow: 0 1px 12px rgba(6,16,30,.55); }
+.e-hero-cta { margin-top: 32px; display: flex; gap: 13px; flex-wrap: wrap; align-items: center; }
+.e-hero-cta small { color: rgba(255,255,255,.84); font-size: 13.5px; }
+
+@media (max-width: 1000px) {
+  .e-hero-inner { grid-template-columns: 1fr; align-items: end;
+    padding-bottom: clamp(48px, 10vh, 100px); }
+  .e-hero-copy { grid-column: 1; }
+  .e-hero-copy h1 { max-width: 20ch; }
+  .e-lockup svg { width: 66px; }
+}
+@media (max-width: 860px) { .e-nav { display: none; } }
+@media (max-width: 760px) {
+  .e-wide, .e-wrap { padding: 0 20px; }
+  .e-head { padding: 14px 0; }
+  .e-hero-copy h1 { font-size: clamp(30px, 7.6vw, 46px); }
+  .e-lockup svg { width: 54px; }
+  .e-lockup .wm { font-size: 20px; letter-spacing: .13em; }
+}
+
+/* ---------- body: D's air, warmed. Cream / parchment / navy alternate ---------- */
+.e-sec { padding: clamp(56px, 9vw, 108px) 0; }
+.e-sec h2 { font-size: clamp(31px, 4.4vw, 52px); margin-bottom: 10px; }
+.e-sec p { color: var(--ink); }
+.e-sec .e-sub { color: var(--ink-2); }
+.e-quiet { background: var(--quiet); }
+.e-dark { background: var(--navy); color: #EFE7D8; }
+.e-dark h2, .e-dark h3 { color: #fff; }
+.e-dark .e-label { color: var(--gold-lit); }
+.e-dark p { color: #DCD3C4; }
+.e-dark a { color: var(--gold-lit); }
+
+.e-week { list-style: none; margin: 38px 0 0; padding: 0; }
+.e-week li { display: grid; grid-template-columns: 140px 1fr; gap: 20px;
+  padding: 22px 0; border-top: 1px solid var(--rule); align-items: baseline; }
+.e-week h3 { font-size: 27px; }
+.e-week span { color: var(--ink-2); font-size: 16px; }
+@media (max-width: 620px) { .e-week li { grid-template-columns: 1fr; gap: 6px; } }
+
+/* the timetable stays sans and stays working — the reference has nothing like it */
+.e-gridscroll { overflow-x: auto; margin-top: 38px; -webkit-overflow-scrolling: touch; }
+.e-grid { display: grid; grid-template-columns: 62px repeat(3, minmax(190px, 1fr));
+  gap: 1px; background: var(--rule); border: 1px solid var(--rule); min-width: 660px; }
+.e-grid > * { background: #FEFCF8; padding: 13px; }
+.e-grid .hd { background: var(--navy); display: flex; align-items: baseline;
+  justify-content: space-between; gap: 10px; }
+.e-grid .hd h3 { font-size: 21px; color: #fff; }
+.e-grid .hd small { font-size: 11px; color: var(--gold-lit);
+  font-family: 'Instrument Serif', serif; letter-spacing: .18em; text-transform: uppercase; }
+.e-time { background: var(--quiet); color: #6C5B3C; font-size: 12.5px;
+  font-variant-numeric: tabular-nums; }
+.e-cell.free { background: #F8F3E9; }
+.e-cls { display: block; text-decoration: none; color: inherit; }
+.e-cls + .e-cls { margin-top: 11px; }
+.e-cls .t { display: block; font: 500 15.5px/1.3 'Public Sans', sans-serif; }
+.e-cls .m { display: block; font-size: 12.5px; color: var(--ink-2); margin-top: 3px;
+  font-variant-numeric: tabular-nums; }
+.e-cls:hover .t { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+
+.e-people { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-top: 40px; }
+.e-portrait { aspect-ratio: 1 / 1; border-radius: 50%; background: #E9DEC8;
+  width: 100%; max-width: 150px; box-shadow: 0 0 0 1px var(--rule); }
+.e-people h3 { font-size: 22px; margin-top: 18px; }
+.e-people .r { margin: 6px 0 8px; }
+.e-people p { font-size: 14.5px; margin: 0; color: var(--ink-2); }
+@media (max-width: 720px) { .e-people { grid-template-columns: 1fr; } }
+
+/* the cost figures: numerals stay sans and tabular, each under a gold mark */
+.e-figs { display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: clamp(26px, 5vw, 64px); margin-top: 40px; }
+.e-fig svg { width: 26px; height: 26px; display: block; color: var(--gold); }
+.e-fig b { display: block; font: 300 clamp(34px, 4.4vw, 50px)/1 'Public Sans', sans-serif;
+  color: var(--navy); font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  margin-top: 14px; }
+.e-fig span { display: block; color: var(--ink-2); font-size: 14.5px; margin-top: 8px;
+  max-width: 24ch; }
+@media (max-width: 720px) { .e-figs { grid-template-columns: 1fr; gap: 30px; } }
+
+/* H.O.P.E. as four panels — gold initials and rules, and no pictures of families */
+.e-hope { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 44px;
+  border-top: 1px solid rgba(224,172,78,.34); }
+.e-hope div { padding: 30px 18px 8px; text-align: center;
+  border-left: 1px solid rgba(224,172,78,.34); }
+.e-hope div:first-child { border-left: 0; }
+.e-hope b { display: block; font: 400 clamp(48px, 6.4vw, 84px)/1 'Instrument Serif', serif;
+  color: var(--gold-lit); }
+.e-hope span { display: block; margin-top: 14px;
+  font: 400 13px/1 'Instrument Serif', serif; letter-spacing: .2em;
+  text-transform: uppercase; color: #EFE7D8; }
+@media (max-width: 620px) {
+  .e-hope { grid-template-columns: repeat(2, 1fr); }
+  .e-hope div:nth-child(3) { border-left: 0; }
+  .e-hope div:nth-child(n+3) { border-top: 1px solid rgba(224,172,78,.34); }
+}
+
+.e-verse { font: 400 italic clamp(23px, 3.2vw, 38px)/1.36 'Instrument Serif', serif;
+  max-width: 24ch; color: #fff; }
+.e-verse cite { display: block; font: 400 12px/1 'Instrument Serif', serif;
+  letter-spacing: .22em; text-transform: uppercase; color: var(--gold-lit);
+  font-style: normal; margin-top: 22px; }
+.e-versemark { width: 30px; height: 30px; color: var(--gold-lit); }
+
+/* the engraving, masked over a flat navy fill, as the tailpiece */
+.e-tail { margin: 44px auto 0; width: 280px; aspect-ratio: 1024 / 871;
+  background: var(--navy); opacity: .42;
+  -webkit-mask: var(--tail) center / contain no-repeat;
+  mask: var(--tail) center / contain no-repeat; }
+
+/* ---------- the five empty imagery slots ---------- */
+.e-slot { position: relative; background: var(--quiet);
+  box-shadow: 0 0 0 1px var(--rule) inset; display: grid; place-items: center;
+  color: #A79063; }
+.e-dark .e-slot { background: rgba(255,255,255,.05);
+  box-shadow: 0 0 0 1px rgba(224,172,78,.3) inset; color: var(--gold-lit); }
+.e-slot em { font: italic 400 14px/1.4 'Instrument Serif', serif; letter-spacing: .06em;
+  padding: 16px; text-align: center; }
+.e-slot::before, .e-slot::after {
+  content: ""; position: absolute; width: 6px; height: 6px; transform: rotate(45deg);
+  background: currentColor; opacity: .5; }
+.e-slot::before { left: 10px; top: 10px; }
+.e-slot::after { right: 10px; bottom: 10px; }
+
+.e-form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 34px; }
+.e-form .full { grid-column: 1 / -1; }
+.e-form label { display: block; margin-bottom: 8px;
+  font: 600 11px/1 'Public Sans', sans-serif; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink-2); }
+.e-form input, .e-form textarea { width: 100%; background: #FEFCF8;
+  border: 1px solid var(--rule); color: var(--ink);
+  font: 400 17px/1.4 'Public Sans', sans-serif; padding: 12px 13px; border-radius: 2px; }
+.e-form input:focus, .e-form textarea:focus { outline: 2px solid var(--gold);
+  outline-offset: 1px; border-color: transparent; }
+.e-form textarea { min-height: 74px; resize: vertical; }
+@media (max-width: 700px) { .e-form { grid-template-columns: 1fr; } }
+
+/* the one spatial move borrowed from the reference: a navy ceremonial footer */
+.e-foot { background: var(--navy); color: #C9D3E1; padding: 60px 0 48px;
+  font: 400 14.5px/1.7 'Public Sans', sans-serif; }
+.e-foot-mark { text-align: center; padding-bottom: 40px; }
+.e-foot-mark svg { width: 40px; height: auto; margin: 0 auto 16px; display: block; }
+.e-foot-mark b { font: 400 19px/1 'Instrument Serif', serif; letter-spacing: .2em;
+  text-transform: uppercase; color: #fff; display: block; }
+.e-foot-mark .e-tag { display: block; margin-top: 11px; color: var(--gold-lit); }
+.e-foot-cols { display: flex; flex-wrap: wrap; gap: 40px; justify-content: space-between;
+  border-top: 1px solid rgba(224,172,78,.28); padding-top: 34px; }
+.e-foot-cols b { font: 400 16px/1.5 'Instrument Serif', serif; letter-spacing: .1em;
+  text-transform: uppercase; color: #fff; }
+.e-foot a { color: var(--gold-lit); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important;
     transition-duration: .001ms !important; }
   /* the video hero is a hard stop, not a gentler ramp: poster frame only */
-  .d-media > video { display: none !important; }
-  .d-media > .d-poster { display: block !important; }
-  .d-media { transform: none !important; }
-  .d-blur { opacity: 0 !important; }
-  .d-deep { opacity: 0 !important; }
+  .d-media > video, .e-media > video { display: none !important; }
+  .d-media > .d-poster, .e-media > .e-poster { display: block !important; }
+  .d-media, .e-media { transform: none !important; }
+  .d-blur, .e-blur { opacity: 0 !important; }
+  .d-deep, .e-deep { opacity: 0 !important; }
 }
 </style>
 
@@ -1375,6 +1642,253 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
   </div></footer>
 </main>
 
+<!-- ==================== E — Beacon, warmed ==================== -->
+<main class="px-page e" id="v-e">
+  <header class="e-head">
+    <div class="e-wide">
+      <a class="e-brand" href="#">{{MARKSVG}}<b>Pharos Academy</b></a>
+      <nav class="e-nav">
+        <a href="#">About</a><a href="#">Classes</a><a href="#">Admissions</a><a href="#">Current Families</a>
+      </nav>
+      <a class="e-btn on-dark" href="#e-inq">Ask us about Pharos</a>
+    </div>
+  </header>
+
+  <section class="e-hero slot" id="e-hero">
+    <div class="e-media" id="e-media">
+      <!-- src comes from d-vid's data attributes: one copy of the video in the
+           file, not two. Poster and blur are small enough to duplicate. -->
+      <video id="e-vid" poster="{{POSTER}}" muted loop playsinline preload="none"
+             aria-hidden="true"></video>
+      <img class="e-still e-poster" id="e-poster" src="{{POSTER}}" alt="" />
+      <img class="e-still e-blur" id="e-blur" src="{{POSTER_BLUR}}" alt="" />
+    </div>
+    <div class="e-scrim"></div>
+    <div class="e-deep" id="e-deep"></div>
+    <div class="e-hero-inner">
+      <div class="e-hero-copy e-wide" id="e-copy">
+        <div style="max-width:660px;margin-left:auto">
+          <div class="e-lockup">
+            {{MARKSVG}}
+            <p class="wm">Pharos Academy</p>
+            <em class="e-tag">Helping Our Parents Educate</em>
+          </div>
+          <div class="e-hair"><i></i></div>
+          <h1>Three mornings a week, your child is taught.</h1>
+          <p>The rest of the week, you teach. Christian classical classes in Enola for
+            ages 4 to 18 — Monday, Wednesday and Thursday mornings, chosen one at a time,
+            by you.</p>
+          <div class="e-hero-cta">
+            <a class="e-btn on-dark solid" href="#e-inq">Ask us about Pharos</a>
+            <a class="e-btn on-dark" href="#e-classes">See the classes</a>
+            <small>No application yet. Just a question.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="slot-note"><b>Slot 1 — Hero. The video, unchanged.</b> 0.5× parallax, blur and
+      scrim ramping across this one viewport. Only the copy layer differs from D: a formal
+      lockup — mark, wordmark, gold tagline, gold rule, headline. <i>The mark is deliberately
+      medium, not poster-sized: mark.svg is still the hand-drawn approximation (#13).</i></p>
+  </section>
+
+  <section class="e-sec">
+    <div class="e-wide">
+      <p class="e-label">What a week looks like</p>
+      <h2 style="margin-top:16px">Mornings here. Afternoons yours.</h2>
+      <ul class="e-week">
+        <li><h3>Monday</h3><span>9:00 – 12:20 · Latin, drawing, early science, Kingdom Math, Algebra 1</span></li>
+        <li><h3>Wednesday</h3><span>9:00 – 12:20 · Spanish, Bible history, the six-week electives, Algebra 1</span></li>
+        <li><h3>Thursday</h3><span>9:30 – 12:10 · Letter of the Week, Shakespeare and poetry, Backyard Botany</span></li>
+      </ul>
+      <figure class="slot" style="margin:44px 0 0;max-width:720px">
+        <div class="e-slot" style="aspect-ratio:3/2"><em>Still-life, to be made</em></div>
+        <p class="slot-note"><b>Slot 2 — The week. EMPTY.</b>
+          <i>Prompt:</i> golden-hour light across a kitchen table — open primer, pencils,
+          a jar of wildflowers, no people. <i>3:2. Treatment: painterly, warm, low contrast,
+          bled to the parchment band so it reads as illustration, not photograph.</i></p>
+      </figure>
+    </div>
+  </section>
+
+  <div class="e-orn"><i></i></div>
+
+  <section class="e-sec slot" id="e-classes">
+    <div class="e-wide">
+      <p class="e-label">Nineteen classes, 2026–27</p>
+      <h2 style="margin-top:16px">Take one. Take five.</h2>
+      <p class="e-sub" style="margin-top:14px;max-width:56ch">Every price is the hours
+        multiplied by the rate — $10 an hour, $15 for high-school credit — and nothing else.</p>
+      <div class="e-gridscroll">
+        <div class="e-grid">
+          <div class="e-time"></div>
+          <div class="hd"><h3>Monday</h3><small>6 classes</small></div>
+          <div class="hd"><h3>Wednesday</h3><small>6 classes</small></div>
+          <div class="hd"><h3>Thursday</h3><small>3 classes</small></div>
+
+          <div class="e-time">9:00</div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Beginner Latin Immersion</span><span class="m">gr 7–8 · $280/yr</span></a>
+            <a class="e-cls" href="#"><span class="t">God Made Everything: Science</span><span class="m">ages 5–8 · $420/yr</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Basic Spanish Conversation</span><span class="m">gr 5–8 · $280/yr</span></a>
+            <a class="e-cls" href="#"><span class="t">Church &amp; Bible History</span><span class="m">ages 6–8 · $420/yr</span></a></div>
+          <div class="e-cell free"></div>
+
+          <div class="e-time">9:30</div>
+          <div class="e-cell free"></div>
+          <div class="e-cell free"></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Letter of the Week</span><span class="m">ages 4–6 · $420/yr</span></a></div>
+
+          <div class="e-time">10:10</div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Principles of Drawing</span><span class="m">ages 14–18 · $420/yr</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Basic Spanish Conversation</span><span class="m">gr 9–12 · $420/yr</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Poetry, Plays, and Patterns</span><span class="m">ages 14–18 · $420/yr</span></a></div>
+
+          <div class="e-time">10:40</div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Kingdom Math</span><span class="m">ages 6–8 · $420/yr</span></a>
+            <a class="e-cls" href="#"><span class="t">Drawing &amp; Painting</span><span class="m">gr 5–8 · $210/sem</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">The Pilgrim's Progress for Kids</span><span class="m">ages 5–10 · 12 weeks</span></a>
+            <a class="e-cls" href="#"><span class="t">Three six-week electives</span><span class="m">ages 6–10 · rotating</span></a></div>
+          <div class="e-cell free"></div>
+
+          <div class="e-time">11:10</div>
+          <div class="e-cell free"></div>
+          <div class="e-cell free"></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Backyard Botany</span><span class="m">ages 5–10 · $140/sem</span></a></div>
+
+          <div class="e-time">11:20</div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Algebra 1</span><span class="m">gr 8+ · 1 credit · $840/yr</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Algebra 1</span><span class="m">gr 8+ · 1 credit · $840/yr</span></a></div>
+          <div class="e-cell free"></div>
+        </div>
+      </div>
+      <p style="margin-top:28px"><a href="#" style="color:var(--gold)">All nineteen classes →</a></p>
+      <figure class="slot" style="margin:44px 0 0;max-width:380px">
+        <div class="e-slot" style="aspect-ratio:4/5"><em>Still-life, to be made</em></div>
+        <p class="slot-note"><b>Slot 3 — Classes. EMPTY.</b>
+          <i>Prompt:</i> a stack of worn Latin readers, brass dividers, a magnifying glass,
+          side-lit against a dark ground. <i>4:5. Treatment: painterly, deep navy shadows,
+          one gold highlight. Sits beside the timetable as its only ornament.</i></p>
+      </figure>
+    </div>
+  </section>
+
+  <div class="e-orn"><i></i></div>
+
+  <section class="e-sec e-quiet">
+    <div class="e-wide">
+      <p class="e-label">Who teaches</p>
+      <h2 style="margin-top:16px">Nine instructors.</h2>
+      <div class="e-people">
+        <article><div class="e-portrait slot"><p class="slot-note"><b>Slot 4 — Staff.</b> Adults
+          who can consent — the only people anywhere on this page.
+          <i>Three portraits. Ask Jill (#13).</i></p></div>
+          <h3>Jill Kilker</h3><p class="r e-label">Head of School</p>
+          <p>M.Ed. special education, Shippensburg. Homeschool evaluator in Pennsylvania.</p></article>
+        <article><div class="e-portrait"></div>
+          <h3>Pastor George Jensen</h3><p class="r e-label">Chaplain · Algebra 1</p>
+          <p>B.S. secondary mathematics, Millersville. M.Div., Winebrenner.</p></article>
+        <article><div class="e-portrait"></div>
+          <h3>Mrs. Mandy Saint</h3><p class="r e-label">Instructor · six classes</p>
+          <p>Letter of the Week, Kingdom Math, and early elementary science.</p></article>
+      </div>
+      <figure class="slot" style="margin:48px 0 0">
+        <div class="e-slot" style="aspect-ratio:21/9"><em>Still-life, to be made</em></div>
+        <p class="slot-note"><b>Slot 5 — The room. EMPTY.</b>
+          <i>Prompt:</i> an empty classroom before the morning — chairs in a half-circle,
+          a chalkboard, light through high windows. No people. <i>21:9 band. Treatment:
+          painterly, warm dust in the light, sits full-width across the parchment.</i></p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="e-sec">
+    <div class="e-wide">
+      <p class="e-label">What it costs</p>
+      <h2 style="margin-top:16px">Everything, before you ask.</h2>
+      <div class="e-figs">
+        <div class="e-fig">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+            <path d="M12 2 L22 12 L12 22 L2 12 Z" /><circle cx="12" cy="12" r="3.4" />
+          </svg>
+          <b>$90–840</b><span>per class per year, paid directly to your instructor</span></div>
+        <div class="e-fig">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+            <circle cx="12" cy="12" r="9.5" /><path d="M12 5.5 L14 12 L12 18.5 L10 12 Z" />
+          </svg>
+          <b>$25</b><span>registration, once per student per year</span></div>
+        <div class="e-fig">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+            <rect x="2.5" y="5.5" width="19" height="13" /><path d="M2.5 5.5 L12 13 L21.5 5.5" />
+          </svg>
+          <b>$100</b><span>deposit per class, by cheque, holds the seat</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="e-sec e-dark slot">
+    <div class="e-wide" style="text-align:center">
+      <p class="e-label">Why we do this</p>
+      <svg class="e-versemark" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.1" aria-hidden="true" style="margin:26px auto 0">
+        <path d="M12 2 L12 22 M5 8 L19 8" /><path d="M12 2 L15 5 L12 8 L9 5 Z" fill="currentColor" stroke="none" />
+      </svg>
+      <p class="e-verse" style="margin:22px auto 0">"Honor Christ the Lord as holy, always being
+        prepared to make a defense for the hope that is within."<cite>1 Peter 3:15</cite></p>
+      <div class="e-hope">
+        <div><b>H</b><span>Helping</span></div>
+        <div><b>O</b><span>Our</span></div>
+        <div><b>P</b><span>Parents</span></div>
+        <div><b>E</b><span>Educate</span></div>
+      </div>
+      <p style="max-width:46ch;margin:38px auto 0">We partner with parents rather than replace
+        them. <a href="#">Read our Statement of Faith →</a></p>
+      <figure class="slot" style="margin:46px auto 0;max-width:340px">
+        <div class="e-slot" style="aspect-ratio:1/1"><em>Still-life, to be made</em></div>
+        <p class="slot-note"><b>Slot 6 — Faith. EMPTY.</b>
+          <i>Prompt:</i> an open Bible and a single candle on dark wood, gold light on the
+          page edges. No hands, no people. <i>1:1. Treatment: painterly, navy ground so it
+          bleeds into this band; the one warm point in the darkest section.</i></p>
+      </figure>
+      <div class="e-tail" style="--tail:url({{ENGRAVING_MASK}});background:#EFE7D8;opacity:.3"
+           aria-hidden="true"></div>
+    </div>
+    <p class="slot-note"><b>The navy band.</b> Cream / parchment / navy alternate down the page;
+      this is the ceremonial one, and the engraving closes it as the namesake.
+      <i>H O P E is gold letters and gold rules — not pictures of families.</i></p>
+  </section>
+
+  <section class="e-sec" id="e-inq">
+    <div class="e-wrap">
+      <p class="e-label">Ask us about Pharos</p>
+      <h2 style="margin-top:16px">Tell us your children's ages.</h2>
+      <p class="e-sub">We'll tell you honestly whether Pharos fits. No commitment, and no
+        application yet.</p>
+      <form class="e-form" onsubmit="return px.sent(this)">
+        <div><label for="e-n">Your name</label><input id="e-n" required /></div>
+        <div><label for="e-e">Email</label><input id="e-e" type="email" required /></div>
+        <div class="full"><label for="e-a">Children's ages</label><input id="e-a" placeholder="e.g. 6, 9 and 13" /></div>
+        <div class="full"><label for="e-m">Anything you'd like to ask (optional)</label><textarea id="e-m"></textarea></div>
+        <div class="full"><button class="e-btn solid" type="submit">Send my question</button></div>
+      </form>
+    </div>
+  </section>
+
+  <footer class="e-foot">
+    <div class="e-wide">
+      <div class="e-foot-mark">
+        {{MARKSVG}}
+        <b>Pharos Academy</b>
+        <em class="e-tag">Helping Our Parents Educate</em>
+      </div>
+      <div class="e-foot-cols">
+        <div><b>Pharos Academy</b><br />9 Sherwood Drive<br />Enola, PA 17025</div>
+        <div><b>Call Jill Kilker</b><br /><a href="tel:7174970896">717-497-0896</a></div>
+        <div><b>More</b><br /><a href="#">Statement of Faith</a><br /><a href="#">Policies &amp; forms</a><br /><a href="#">Teach at Pharos</a></div>
+      </div>
+    </div>
+  </footer>
+</main>
+
 <div class="px-bar" role="group" aria-label="Prototype controls">
   <button type="button" id="px-prev" aria-label="Previous variant">←</button>
   <span class="px-name"><b id="px-key">A</b><span id="px-title">Plate</span></span>
@@ -1385,7 +1899,8 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 
 <script>
 const VARIANTS = [
-  { k: 'd', name: 'Beacon — video hero (the decided direction)' },
+  { k: 'e', name: 'Beacon, warmed — the ceremonial surface' },
+  { k: 'd', name: 'Beacon — video hero (the direction decided on #12)' },
   { k: 'a', name: 'Plate — harbour dark, engraved' },
   { k: 'b', name: 'Daybook — the timetable is the hero' },
   { k: 'c', name: 'Lantern — near-white, type-led' }
@@ -1403,8 +1918,10 @@ const px = {
     u.searchParams.set('variant', v.k);
     history.replaceState(null, '', u);
     window.scrollTo(0, 0);
-    /* only load and play D's video while D is the variant on screen */
-    if (window.__dHero) window.__dHero(v.k === 'd');
+    /* only load and play a video hero while its variant is on screen */
+    Object.keys(window.__heroes || {}).forEach(function (k) {
+      window.__heroes[k](v.k === k);
+    });
   },
   sent(form) {
     const b = form.querySelector('button');
@@ -1413,7 +1930,7 @@ const px = {
     return false;
   }
 };
-const start = new URL(location.href).searchParams.get('variant') || 'a';
+const start = new URL(location.href).searchParams.get('variant') || 'e';
 px.show(Math.max(0, VARIANTS.findIndex(function (v) { return v.k === start; })));
 
 document.getElementById('px-prev').onclick = function () { px.show(px.i - 1); };
@@ -1446,7 +1963,8 @@ addEventListener('scroll', function () {
 }, { passive: true });
 
 /* ------------------------------------------------------------------
-   variant D's hero.
+   the video hero, shared by variants D and E. E's surface differs;
+   its hero mechanics are D's, untouched — that was the whole of #12.
 
    Parallax: translate the media DOWN by half the scroll offset. The hero
    scrolls up at 1x, so the media's net screen speed is 0.5x and content
@@ -1461,14 +1979,18 @@ addEventListener('scroll', function () {
    Phones get the video but none of the scroll work (decided on #12).
    prefers-reduced-motion gets the poster frame and nothing else.
    ------------------------------------------------------------------ */
-(function () {
-  const hero = document.getElementById('d-hero');
+window.__heroes = {};
+function heroFx(k) {
+  const hero = document.getElementById(k + '-hero');
   if (!hero) return;
-  const media = document.getElementById('d-media');
-  const blur = document.getElementById('d-blur');
-  const deep = document.getElementById('d-deep');
-  const copy = document.getElementById('d-copy');
-  const vid = document.getElementById('d-vid');
+  const media = document.getElementById(k + '-media');
+  const blur = document.getElementById(k + '-blur');
+  const deep = document.getElementById(k + '-deep');
+  const copy = document.getElementById(k + '-copy');
+  const vid = document.getElementById(k + '-vid');
+  /* one copy of the video data URI in the file: E's <video> carries no data
+     attributes and borrows D's. */
+  const srcs = document.getElementById('d-vid').dataset;
   const reduceQ = matchMedia('(prefers-reduced-motion: reduce)');
   const smallQ = matchMedia('(max-width: 760px)');
 
@@ -1521,20 +2043,25 @@ addEventListener('scroll', function () {
   }
 
   let loaded = false;
-  window.__dHero = function (on) {
-    if (!on) { if (vid) vid.pause(); return; }
+  window.__heroes[k] = function (on) {
+    if (!on) { if (vid) vid.pause(); removeEventListener('scroll', onScroll); return; }
     if (!loaded && !reduceQ.matches) {
       loaded = true;
-      vid.src = smallQ.matches ? vid.dataset.sm : vid.dataset.lg;
+      vid.src = smallQ.matches ? srcs.sm : srcs.lg;
       vid.muted = true;                 /* belt and braces for autoplay policy */
     }
     if (!reduceQ.matches) { const q = vid.play(); if (q && q.catch) q.catch(function () {}); }
     wire();
   };
 
-  wire();
-  addEventListener('resize', wire);
-  /* px.show already ran before this script block defined __dHero */
-  window.__dHero(document.getElementById('v-d').classList.contains('on'));
-})();
+  addEventListener('resize', function () {
+    if (document.getElementById('v-' + k).classList.contains('on')) wire();
+  });
+}
+heroFx('d');
+heroFx('e');
+/* px.show already ran before this script block defined __heroes */
+['d', 'e'].forEach(function (k) {
+  window.__heroes[k](document.getElementById('v-' + k).classList.contains('on'));
+});
 </script>

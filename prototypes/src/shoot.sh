@@ -40,7 +40,7 @@ print(round(os.path.getsize(out) / 1024), "KB total")
 PY
 
 CH="/c/Program Files/Google/Chrome/Application/chrome.exe"
-SHOTS='C:\Users\wyatt\AppData\Local\Temp\claude\C--Users-wyatt-source-repos-pharos-academy-site\5f5f5229-5d22-493d-bb1a-f51b3dcbf776\scratchpad\shots'
+SHOTS='C:\Users\wyatt\AppData\Local\Temp\claude\C--Users-wyatt-source-repos-pharos-academy-site\f036e4b7-3f66-4805-ad04-54d65ec36ea7\scratchpad\shots'
 SHOTS_POSIX=$(printf '%s' "$SHOTS" | tr '\\' '/')
 mkdir -p "$SHOTS_POSIX"   # chrome --screenshot will not create parent dirs
 URL="file:///C:/Users/wyatt/source/repos/pharos-academy-site/prototypes/homepage-design-language.html"
@@ -52,7 +52,7 @@ shot () { # shot <name> <window-size> <device-scale> <query>
     --screenshot="$SHOTS\\$1.png" "$URL?$4" >/dev/null 2>&1
 }
 
-for v in d a b c; do
+for v in e d a b c; do
   # headless clamps the window to 500px wide, so the phone shot renders at
   # device-scale 2 in a 796px window => a true 390px CSS viewport.
   shot "$v-desktop" "1440,1600" 1 "variant=$v"
@@ -64,5 +64,10 @@ done
 shot "d-hero-rest" "1440,900" 1 "variant=d&p=0"
 shot "d-hero-mid"  "1440,900" 1 "variant=d&p=0.5"
 shot "d-hero-end"  "1440,900" 1 "variant=d&p=1"
+shot "e-hero-rest" "1440,900" 1 "variant=e&p=0"
+shot "e-hero-mid"  "1440,900" 1 "variant=e&p=0.5"
+shot "e-hero-end"  "1440,900" 1 "variant=e&p=1"
+# E with the five empty imagery slots annotated
+shot "e-notes"     "1440,2600" 1 "variant=e&notes=1"
 
 ls -l "$SHOTS_POSIX"

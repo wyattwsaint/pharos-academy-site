@@ -13,28 +13,44 @@ Open the file directly in a browser, or use the published copy linked from #12.
 
 | | | |
 |---|---|---|
-| `?variant=d` | **Beacon** | **The decided direction.** Full-bleed video hero at 0.5× parallax with a blur-and-dim ramp, C's air and type, B's real timetable pulled up to section three. Instrument Serif + Public Sans. |
+| `?variant=e` | **Beacon, warmed** | **The current front-runner** — D's structure on a warm, ceremonial surface: warm paper and parchment bands, navy as ground and headings only, a serif/sans split by role, a rule-with-diamond between sections, an H O P E panel row, a navy footer band. The hero video and its parallax are D's, untouched. |
+| `?variant=d` | **Beacon** | The direction decided on #12. Full-bleed video hero at 0.5× parallax with a blur-and-dim ramp, C's air and type, B's real timetable pulled up to section three. Instrument Serif + Public Sans. |
 | `?variant=a` | **Plate** | Harbour dark. The Pharos engraving carries the page; one gold beam is the only colour event. Cormorant Garamond + Libre Franklin. |
 | `?variant=b` | **Daybook** | The 2026–27 timetable *is* the hero — real classes, times and prices above the fold, no imagery at all. Fraunces + Source Sans 3 + IBM Plex Mono. |
 | `?variant=c` | **Lantern** | Near-white, one column, enormous air. The lighthouse appears once, small, as a tailpiece. Instrument Serif + Public Sans. |
 
-A, B and C were the three exploratory directions. **D is what goes in front of the
-client**; A/B/C are kept only so the choice can be re-read.
+A, B and C were the three exploratory directions; **D** was the decision on #12; **E** is
+D's surface warmed towards a reference poster the user supplied
+(`ImageTemplateStyles.png`, an AI-generated composite), taking **style principles only**.
+D is left intact as the artefact #12 recorded — E is a new variant, not an edit of D.
+
+E deliberately does **not** take from that reference: its density (which is carried
+entirely by fourteen illustrations — this page owns three usable images), navy body copy,
+an all-serif setting, its invented taglines ("Faith. Family. Learning. Together.", "A
+Christian homeschool co-op."), its generated mothers and children, or its five-pillar
+strip — which claims a **music** programme Pharos does not teach. `"Helping Our Parents
+Educate"` is real (the H.O.P.E. acronym) and is the one piece of its copy used.
 
 Add `&notes=1`, or press **Image slots** in the bar, to annotate the homepage image
 slots with what goes in each and whether the school can supply it. `←` / `→` cycle
-variants.
+variants. E's five still-life slots are **empty by design** — each note carries its
+prompt, aspect ratio and treatment, because the images do not exist yet and no agent
+here can make them.
 
 Section order is fixed by [#9](https://github.com/wyattwsaint/pharos-academy-site/issues/9)
 and is not what is being tested. Copy, prices, times, class names and staff bios are
 real, from `docs/mirror/`.
 
-### Variant D's review affordances
+### Review affordances for the video heroes (D and E)
 
 | | |
 |---|---|
 | `&p=0.5` | Pins the ramp's **optical** state — blur, dim, copy fade — at that progress, without scrolling. A still cannot convey parallax, and applying the translate at scroll 0 would just expose it as a gap, so `p` deliberately leaves the parallax offset alone. **Scroll to see the real thing.** |
 | `&flat=1` | Pins the hero to 640px instead of the viewport, so a very tall window can capture the hero and the whole body in one screenshot. |
+
+Both use the **same** hero code (`heroFx('d')` / `heroFx('e')`) and, in the built file,
+the **same single copy** of the video: E's `<video>` carries no data attributes and
+borrows D's, so adding E cost ~160 KB, not ~1.3 MB.
 
 The hero's mark is `src/mark.svg` — a **hand-drawn approximation** of the existing raster
 mark, not a measured trace. Structure and colours are faithful; the tower is chunkier
