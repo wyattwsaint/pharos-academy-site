@@ -722,7 +722,11 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
   --navy-deep: #102647;
   --ink: #14202A;        /* body copy stays near-black */
   --ink-2: #5C6B76;
-  --gold: #C08A2E;
+  --gold: #C08A2E;       /* ornament and icons only — 2.8:1, decorative */
+  --gold-ink: #896221;   /* the same hue at AA on all three light grounds:
+                            4.55 parchment / 5.13 paper / 5.35 card. Gold that
+                            carries WORDS uses this; gold that draws a line or
+                            an icon keeps --gold, which is exempt. */
   --gold-lit: #E0AC4E;   /* on navy, where the deep gold goes muddy */
   --rule: #E4D9C4;
   --mark-blue: #59A6D0;
@@ -738,10 +742,13 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
   color: var(--navy); }
 .e-wrap { max-width: 760px; margin: 0 auto; padding: 0 26px; }
 .e-wide { max-width: 1100px; margin: 0 auto; padding: 0 26px; }
-.e-label { font: 400 13px/1 'Instrument Serif', serif; letter-spacing: .22em;
-  text-transform: uppercase; color: var(--gold); }
+/* `.e .e-label`, not `.e-label`: `.e-sec p` is (0,1,1) and was quietly winning,
+   so every eyebrow on a light band rendered as --ink and the gold never showed.
+   `.e-dark .e-label` below is (0,2,0) and declared later, so it still wins. */
+.e .e-label { font: 400 13px/1 'Instrument Serif', serif; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--gold-ink); }
 .e-tag { font: italic 400 clamp(17px, 1.7vw, 21px)/1.3 'Instrument Serif', serif;
-  color: var(--gold); }
+  color: var(--gold-ink); }
 
 /* the repeated ornament: a gold hairline with a centre diamond */
 .e-orn { max-width: 1100px; margin: 0 auto; padding: 0 26px;
@@ -876,7 +883,7 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 .e-cls .t { display: block; font: 500 15.5px/1.3 'Public Sans', sans-serif; }
 .e-cls .m { display: block; font-size: 12.5px; color: var(--ink-2); margin-top: 3px;
   font-variant-numeric: tabular-nums; }
-.e-cls:hover .t { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+.e-cls:hover .t { color: var(--gold-ink); text-decoration: underline; text-underline-offset: 3px; }
 
 .e-people { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-top: 40px; }
 .e-portrait { aspect-ratio: 1 / 1; border-radius: 50%; background: #E9DEC8;
@@ -974,7 +981,7 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 .e-form input, .e-form textarea { width: 100%; background: #FEFCF8;
   border: 1px solid var(--rule); color: var(--ink);
   font: 400 17px/1.4 'Public Sans', sans-serif; padding: 12px 13px; border-radius: 2px; }
-.e-form input:focus, .e-form textarea:focus { outline: 2px solid var(--gold);
+.e-form input:focus, .e-form textarea:focus { outline: 2px solid var(--gold-ink);
   outline-offset: 1px; border-color: transparent; }
 .e-form textarea { min-height: 74px; resize: vertical; }
 @media (max-width: 700px) { .e-form { grid-template-columns: 1fr; } }
@@ -1787,7 +1794,7 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
           <div class="e-cell free"></div>
         </div>
       </div>
-      <p style="margin-top:28px"><a href="#" style="color:var(--gold)">All nineteen classes →</a></p>
+      <p style="margin-top:28px"><a href="#" style="color:var(--gold-ink)">All nineteen classes →</a></p>
       <figure class="slot e-fill" style="margin:48px 0 0">
         <img src="{{STILL_SCRIPTURE}}" alt="" />
         <p class="slot-note"><b>Slot 3 — Classes. FILLED.</b> An open Bible and a hand-written
