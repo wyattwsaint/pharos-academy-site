@@ -24,3 +24,5 @@ prototypes/src/shots/
 
 # build output: reproducible from prototypes/src/build_site.py
 prototypes/site/
+
+.vercel

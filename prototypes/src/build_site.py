@@ -20,6 +20,10 @@ should not turn up in a search for the school either.
 
     python build_site.py            # writes ../site/
 
+Vercel runs this itself: see buildCommand in vercel.json at the repo root. It
+needs nothing but the standard library, so there is no requirements.txt and no
+install step.
+
 Run build_assets.py and shoot.sh first: this reads the built files, not the
 templates.
 """
@@ -100,23 +104,6 @@ def document(fragment, title=None):
     )
 
 
-VERCEL_JSON = """{
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
-    },
-    {
-      "source": "/assets/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
-    }
-  ]
-}
-"""
-
-
 def main():
     # Clear what this script owns and nothing else — `vercel link` leaves a
     # .vercel/ here, and wiping the whole directory would unlink the project on
@@ -124,6 +111,8 @@ def main():
     assets = SITE / "assets"
     if assets.exists():
         shutil.rmtree(assets)
+    # vercel.json is listed only to sweep away copies an older build left here;
+    # it now lives at the repo root.
     for name in ("index.html", "mark.html", "robots.txt", "vercel.json"):
         (SITE / name).unlink(missing_ok=True)
     assets.mkdir(parents=True, exist_ok=True)
@@ -146,7 +135,6 @@ def main():
     )
 
     (SITE / "robots.txt").write_text("User-agent: *\nDisallow: /\n", encoding="utf-8")
-    (SITE / "vercel.json").write_text(VERCEL_JSON, encoding="utf-8")
 
     total = sum(f.stat().st_size for f in SITE.rglob("*") if f.is_file())
     print(f"{SITE}")
