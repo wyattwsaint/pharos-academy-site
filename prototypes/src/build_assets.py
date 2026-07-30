@@ -89,7 +89,7 @@ def crop_to(im, ratio, bias=0.5):
 #   vista-path: 21:9 off a 16:9 frame drops the horizon to about a third up,
 #              which is where it wants to sit in a band this wide.
 STILL_SPECS = [
-    ("still_study", "still-study.png", None, 0.5),
+    ("still_scripture", "still-scripture.jpg", None, 0.5),
     ("still_lamp",  "still-lamp.png",  None, 0.5),
     ("still_desk",  "still-desk.png",  3 / 2,  0.70),
     ("vista_path",  "vista-path.png",  21 / 9, 0.60),
@@ -103,10 +103,11 @@ for key, name, ratio, bias in STILL_SPECS:
     out[key] = d
     print(key, n // 1024, "KB", im.size)
 
-# still-library.png is in the repo but deliberately unused: its subject (books, a
-# globe, a brass compass, a portico drawing) is the same subject as slot 3's
-# still-study.png, and two near-identical plates on one page read as padding.
-# Held in reserve for an interior page.
+# still-study.png and still-library.png are both in the repo and both unused. They
+# are the two academic plates — books, a globe, a brass compass, a portico drawing —
+# and they are near-identical to each other, so only one could ever have run. Slot 3
+# then went to still-scripture.jpg on the owner's instruction, which displaced the
+# survivor too. Held in reserve for an interior page.
 
 json.dump(out, open("assets.json", "w"))
 print("total json", len(json.dumps(out)) // 1024, "KB")

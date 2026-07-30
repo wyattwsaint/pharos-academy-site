@@ -10,7 +10,7 @@ html = html.replace("/*FONTS*/", open("fonts.css", encoding="utf-8").read())
 a = json.load(open("assets.json"))
 for k, v in [("{{ENGRAVING}}", a["engraving_light"]), ("{{MARK}}", a["mark"]),
              ("{{CHURCH}}", a["church"]), ("{{ENGRAVING_MASK}}", a["engraving_mask"]),
-             ("{{STILL_STUDY}}", a["still_study"]), ("{{STILL_LAMP}}", a["still_lamp"]),
+             ("{{STILL_SCRIPTURE}}", a["still_scripture"]), ("{{STILL_LAMP}}", a["still_lamp"]),
              ("{{STILL_DESK}}", a["still_desk"]), ("{{VISTA_PATH}}", a["vista_path"])]:
     html = html.replace(k, v)
 
