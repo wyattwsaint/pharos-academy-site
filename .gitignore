@@ -21,3 +21,6 @@ prototypes/src/fonts/
 prototypes/src/fonts.css
 prototypes/src/assets.json
 prototypes/src/shots/
+
+# build output: reproducible from prototypes/src/build_site.py
+prototypes/site/
