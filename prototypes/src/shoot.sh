@@ -10,7 +10,8 @@ html = html.replace("/*FONTS*/", open("fonts.css", encoding="utf-8").read())
 a = json.load(open("assets.json"))
 for k, v in [("{{ENGRAVING}}", a["engraving_light"]), ("{{MARK}}", a["mark"]),
              ("{{CHURCH}}", a["church"]), ("{{ENGRAVING_MASK}}", a["engraving_mask"]),
-             ("{{STILL_STUDY}}", a["still_study"]), ("{{STILL_LAMP}}", a["still_lamp"])]:
+             ("{{STILL_STUDY}}", a["still_study"]), ("{{STILL_LAMP}}", a["still_lamp"]),
+             ("{{STILL_DESK}}", a["still_desk"]), ("{{VISTA_PATH}}", a["vista_path"])]:
     html = html.replace(k, v)
 
 # variant D's assets. The video is inlined as a data URI like everything else so
@@ -41,7 +42,7 @@ print(round(os.path.getsize(out) / 1024), "KB total")
 PY
 
 CH="/c/Program Files/Google/Chrome/Application/chrome.exe"
-SHOTS='C:\Users\wyatt\AppData\Local\Temp\claude\C--Users-wyatt-source-repos-pharos-academy-site\f036e4b7-3f66-4805-ad04-54d65ec36ea7\scratchpad\shots'
+SHOTS='C:\Users\wyatt\AppData\Local\Temp\claude\C--Users-wyatt-source-repos-pharos-academy-site\ca0ee430-5608-4102-af80-e5c9beb18006\scratchpad\shots'
 SHOTS_POSIX=$(printf '%s' "$SHOTS" | tr '\\' '/')
 mkdir -p "$SHOTS_POSIX"   # chrome --screenshot will not create parent dirs
 URL="file:///C:/Users/wyatt/source/repos/pharos-academy-site/prototypes/homepage-design-language.html"
@@ -68,7 +69,8 @@ shot "d-hero-end"  "1440,900" 1 "variant=d&p=1"
 shot "e-hero-rest" "1440,900" 1 "variant=e&p=0"
 shot "e-hero-mid"  "1440,900" 1 "variant=e&p=0.5"
 shot "e-hero-end"  "1440,900" 1 "variant=e&p=1"
-# E with the five empty imagery slots annotated
+# E with the imagery slots annotated — four of five now filled, slot 4 (staff
+# portraits) is the only one left and needs real photographs, not a painting.
 shot "e-notes"     "1440,2600" 1 "variant=e&notes=1"
 
 ls -l "$SHOTS_POSIX"

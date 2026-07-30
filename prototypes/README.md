@@ -25,7 +25,7 @@ D's surface warmed towards a reference poster the user supplied
 D is left intact as the artefact #12 recorded — E is a new variant, not an edit of D.
 
 E deliberately does **not** take from that reference: its density (which is carried
-entirely by fourteen illustrations — this page owns three usable images), navy body copy,
+entirely by fourteen illustrations — this page owns five usable images), navy body copy,
 an all-serif setting, its invented taglines ("Faith. Family. Learning. Together.", "A
 Christian homeschool co-op."), its generated mothers and children, or its five-pillar
 strip — which claims a **music** programme Pharos does not teach. `"Helping Our Parents
@@ -33,9 +33,13 @@ Educate"` is real (the H.O.P.E. acronym) and is the one piece of its copy used.
 
 Add `&notes=1`, or press **Image slots** in the bar, to annotate the homepage image
 slots with what goes in each and whether the school can supply it. `←` / `→` cycle
-variants. E's five still-life slots are **empty by design** — each note carries its
-prompt, aspect ratio and treatment, because the images do not exist yet and no agent
-here can make them.
+variants. Four of E's five imagery slots are now **filled** with paintings the owner
+generated (provenance in `assets/imagery/README.md`); their notes record the crop and the
+treatment. Two things the notes say out loud: slot 5 holds a **landscape**, not the
+classroom interior it was specified as, so the page shows no picture of anywhere Pharos
+actually is; and slot 4 — the three staff portraits — stays empty because it must be
+photographs of real consenting adults ([#13](https://github.com/wyattwsaint/pharos-academy-site/issues/13)),
+never a painting. No agent here can generate images.
 
 Section order is fixed by [#9](https://github.com/wyattwsaint/pharos-academy-site/issues/9)
 and is not what is being tested. Copy, prices, times, class names and staff bios are
