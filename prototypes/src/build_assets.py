@@ -90,7 +90,6 @@ def crop_to(im, ratio, bias=0.5):
 #              which is where it wants to sit in a band this wide.
 STILL_SPECS = [
     ("still_scripture", "still-scripture.jpg", None, 0.5),
-    ("still_lamp",  "still-lamp.png",  None, 0.5),
     ("still_desk",  "still-desk.png",  3 / 2,  0.70),
     ("vista_path",  "vista-path.png",  21 / 9, 0.60),
 ]
