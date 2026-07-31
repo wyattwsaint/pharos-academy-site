@@ -102,3 +102,16 @@ viewport to a **500px minimum** regardless of `--window-size`: passing 390 yield
 but isn't. The phone shots are therefore a true 500px viewport. Media queries break at
 760px so the phone layout is exercised, but **real 390px wrapping remains unverified**
 and wants a device check before this direction is built.
+
+## `application-flow/`
+
+**Question:** [#8 — Decide the shape of the application, class selection and the deferred
+payment slot](https://github.com/wyattwsaint/pharos-academy-site/issues/8). Behaviour, not
+appearance — a terminal state machine over the real 19-course catalogue, so enrolment
+units, clash detection, applied-vs-paid and the empty payment slot can be driven by hand.
+
+```
+python prototypes/application-flow/tui.py
+```
+
+See `application-flow/README.md`.

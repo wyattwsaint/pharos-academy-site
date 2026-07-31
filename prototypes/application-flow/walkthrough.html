@@ -1,0 +1,454 @@
+<title>Pharos application flow — prototype walkthrough</title>
+<style>
+  :root {
+    --ink: #0c1420; --paper: #f7f5f0; --pane: #0b1219; --pane-line: #1d2a38;
+    --fg: #14202e; --fg-soft: #55637a; --rule: #ddd8cd;
+    --gold: #c08a2e; --bad: #b4322b; --warn: #a8781e; --ok: #2f7a55; --info: #2a6f8f;
+    --bg: var(--paper); --card: #fffdf8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c1420; --card: #111c2a; --fg: #e6e9ef; --fg-soft: #97a3b6; --rule: #223145;
+      --gold: #d9a441; --bad: #e5776f; --warn: #d9a441; --ok: #5fb489; --info: #6cb6d6;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c1420; --card: #111c2a; --fg: #e6e9ef; --fg-soft: #97a3b6; --rule: #223145;
+    --gold: #d9a441; --bad: #e5776f; --warn: #d9a441; --ok: #5fb489; --info: #6cb6d6;
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f5f0; --card: #fffdf8; --fg: #14202e; --fg-soft: #55637a; --rule: #ddd8cd;
+    --gold: #c08a2e; --bad: #b4322b; --warn: #a8781e; --ok: #2f7a55; --info: #2a6f8f;
+  }
+
+  body {
+    background: var(--bg); color: var(--fg); margin: 0;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    line-height: 1.55; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: clamp(2rem, 5vw, 4.5rem) clamp(1rem, 4vw, 2.5rem) 6rem; }
+
+  .mast { display: flex; flex-direction: column; gap: .85rem; padding-bottom: 2rem; border-bottom: 1px solid var(--rule); }
+  .eyebrow {
+    font-family: ui-monospace, "Cascadia Mono", "Cascadia Code", Consolas, "DejaVu Sans Mono", monospace;
+    font-size: .74rem; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); margin: 0;
+  }
+  h1 { font-size: clamp(1.9rem, 4.2vw, 3rem); line-height: 1.08; margin: 0; font-weight: 400; text-wrap: balance; }
+  .standfirst { margin: 0; max-width: 62ch; color: var(--fg-soft); font-size: 1.05rem; }
+  .meta {
+    font-family: ui-monospace, "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+    font-size: .78rem; color: var(--fg-soft); margin: .4rem 0 0;
+  }
+  .meta a { color: var(--gold); }
+
+  .steps { display: flex; flex-direction: column; gap: clamp(2.5rem, 5vw, 4rem); margin-top: clamp(2.5rem, 5vw, 3.5rem); }
+  .step { display: flex; flex-direction: column; gap: 1.1rem; }
+  .step header { display: flex; flex-direction: column; gap: .5rem; max-width: 68ch; }
+  .step-n {
+    font-family: ui-monospace, "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+    font-size: .72rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--gold); margin: 0;
+  }
+  .step h2 { margin: 0; font-size: clamp(1.25rem, 2.4vw, 1.7rem); font-weight: 400; line-height: 1.2; text-wrap: balance; }
+  .note { margin: 0; color: var(--fg-soft); font-size: 1rem; }
+
+  .pane-wrap {
+    overflow-x: auto; background: var(--pane); border: 1px solid var(--pane-line);
+    border-radius: 3px; box-shadow: 0 1px 0 rgba(0,0,0,.25);
+  }
+  .pane {
+    margin: 0; padding: 1.15rem 1.35rem; min-width: max-content;
+    font-family: ui-monospace, "Cascadia Mono", "Cascadia Code", Consolas, "DejaVu Sans Mono", monospace;
+    font-size: 12.5px; line-height: 1.45; color: #c9d4e2; white-space: pre;
+    font-variant-numeric: tabular-nums;
+  }
+  .pane .b { font-weight: 700; color: #f2f6fb; }
+  .pane .d { color: #7d8ca0; }
+  .pane .c-bad { color: #ef8078; }
+  .pane .c-warn { color: #e2b055; }
+  .pane .c-ok { color: #6dc396; }
+  .pane .c-info { color: #74bcdd; }
+
+  .foot { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); color: var(--fg-soft); font-size: .95rem; max-width: 68ch; }
+  code {
+    font-family: ui-monospace, "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+    font-size: .88em; background: color-mix(in srgb, var(--gold) 12%, transparent);
+    padding: .1em .35em; border-radius: 2px;
+  }
+  a:focus-visible, .pane-wrap:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Prototype walkthrough &middot; issue #8</p>
+    <h1>Nine keystrokes through the Pharos application flow</h1>
+    <p class="standfirst">A throwaway terminal state machine, driven over the real 2026&ndash;27 catalogue:
+      nineteen courses, real times, real prices. It answers behaviour, not appearance. Each frame below is
+      the prototype's actual output, unedited.</p>
+    <p class="meta">python prototypes/application-flow/tui.py &nbsp;&middot;&nbsp; keys 1&ndash;6 switch screen</p>
+  </header>
+
+  <div class="steps">
+<section class="step">
+  <header>
+    <p class="step-n">Step 01</p>
+    <h2>The application starts warm</h2>
+    <p class="note">Under inquiry-first, whoever reaches this has already been spoken to. Name, email and both children&#x27;s ages arrive from the inquiry record — the family does not retype them.</p>
+  </header>
+  <div class="pane-wrap"><pre class="pane"><span class="b">PHAROS APPLICATION FLOW</span> <span class="d">prototype for #8 — throwaway</span>
+<span class="d">day 0   applications 3   payment slot: </span><span class="d">empty — cheque by post</span>
+
+<span class="b">APP-003</span>  Whitmore  <span class="d">hannah.whitmore@example.com</span>
+  status <span class="b">draft</span>   application-state and payment-state are separate: <span class="d">not due</span>
+  students 2   classes 0   SoF F-, M-, G-   <span class="d">from inquiry: INQ-014</span>
+  <span class="b">due now $50</span> <span class="d">(reg $50 + deposits $0)   tuition to instructors $0</span> <span class="c-warn">or $0</span> <span class="d">(unresolved)   other fees $0</span>
+
+<span class="d">1 Home</span>  <span class="b">2 Family</span>  <span class="d">3 Classes</span>  <span class="d">4 Statement</span>  <span class="d">5 Review</span>  <span class="d">6 School</span>
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="b">FAMILY AND STUDENTS</span>
+
+ <span class="c-info">&gt;</span> Nell             age  13   <span class="d">0 classes</span>
+   Gus              age   7   <span class="d">0 classes</span>
+
+<span class="d">Not collected here, and that is the open question: DOB, home address, allergies and</span>
+<span class="d">medical conditions, learning-disability / ADHD / mental-health evaluation history,</span>
+<span class="d">custody arrangements. The live Google Form asks for all of it, up front, from a</span>
+<span class="d">stranger. This prototype takes name + age only and defers the rest — [w] to see what</span>
+<span class="d">the deferred set would look like as a separate, later, signed-on-paper step.</span>
+
+  <span class="b">a</span> add student   <span class="b">e</span> edit selected   <span class="b">UP/DOWN</span> select   <span class="b">f</span> family name/email   <span class="b">w</span> sensitive-data note
+
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="d">1-6 screens   q quit</span>   <span class="c-info">pre-filled from inquiry — name, email, two children&#x27;s ages</span></pre></div>
+</section>
+<section class="step">
+  <header>
+    <p class="step-n">Step 02</p>
+    <h2>Monday, 11:20 — the real clash</h2>
+    <p class="note">Algebra 1 and Beginner Latin genuinely collide in the published 2026-27 timetable. It is caught at selection and it blocks submission. Note the yellow ! on four of five rows: those courses print a semester price but publish no semester.</p>
+  </header>
+  <div class="pane-wrap"><pre class="pane"><span class="b">PHAROS APPLICATION FLOW</span> <span class="d">prototype for #8 — throwaway</span>
+<span class="d">day 0   applications 3   payment slot: </span><span class="d">empty — cheque by post</span>
+
+<span class="b">APP-003</span>  Whitmore  <span class="d">hannah.whitmore@example.com</span>
+  status <span class="b">draft</span>   application-state and payment-state are separate: <span class="d">not due</span>
+  students 2   classes 2   SoF F-, M-, G-   <span class="d">from inquiry: INQ-014</span>
+  <span class="b">due now $250</span> <span class="d">(reg $50 + deposits $200)   tuition to instructors $1120</span> <span class="c-warn">or $920</span> <span class="d">(unresolved)   other fees $75</span>
+
+<span class="d">1 Home</span>  <span class="d">2 Family</span>  <span class="b">3 Classes</span>  <span class="d">4 Statement</span>  <span class="d">5 Review</span>  <span class="d">6 School</span>
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="b">CLASS SELECTION</span>  <span class="d">for Nell, age 13</span>
+<span class="d">filter by age: ON  (5/19 courses)   a course offers year OR a semester, never both</span>
+
+  <span class="c-ok">[x]</span> Algebra 1                              <span class="d">Mon/Wed  11:20am-12:20pm </span> Full year (28 wks)    $840 <span class="c-warn">!</span>
+  [ ] Basic Spanish Conversation for Beginne <span class="d">Wed      9:00am-10:00am </span> Full year (28 wks)    $280 <span class="c-warn">!</span>
+ <span class="c-info">&gt;</span><span class="c-ok">[x]</span> Beginner Latin Immersion (Grades 5-6)  <span class="d">Mon      11:20am-12:20pm </span> Full year (28 wks)    $280 <span class="c-warn">!</span>
+  [ ] Beginner Latin Immersion (Grades 7-8)  <span class="d">Mon      9:00am-10:00am </span> Full year (28 wks)    $280 <span class="c-warn">!</span>
+  [ ] Introduction to Drawing and Painting ( <span class="d">Mon      10:40am-12:10pm </span> Fall semester         $210
+
+ <span class="c-bad">CLASH</span>: Algebra 1 vs Beginner Latin Immersion (Grades 5-6) <span class="d">(Monday 11:20 a.m.-12:20 p.m.)</span>
+
+ <span class="c-warn">!</span> Beginner Latin Immersion (Grades 5-6): <span class="d">a semester price is published but the duration says full year only — is a single semester actually purchasable?</span>
+
+  <span class="b">UP/DOWN</span> move  <span class="b">SPACE</span> select/deselect  <span class="b">u</span> cycle enrolment unit  <span class="b">g</span> age filter  <span class="b">TAB</span> next student
+
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="d">1-6 screens   q quit</span>   <span class="c-info">added: Beginner Latin Immersion (Grades 5-6)</span></pre></div>
+</section>
+<section class="step">
+  <header>
+    <p class="step-n">Step 03</p>
+    <h2>Changing the enrolment unit does not clear it</h2>
+    <p class="note">Latin moved to Spring — and the clash survives, because Algebra 1 runs the full year. Clash detection has to compare which weeks two courses share, not just the day and the hour. A naive same-slot check clears this and sells the family a $280 collision.</p>
+  </header>
+  <div class="pane-wrap"><pre class="pane"><span class="b">PHAROS APPLICATION FLOW</span> <span class="d">prototype for #8 — throwaway</span>
+<span class="d">day 0   applications 3   payment slot: </span><span class="d">empty — cheque by post</span>
+
+<span class="b">APP-003</span>  Whitmore  <span class="d">hannah.whitmore@example.com</span>
+  status <span class="b">draft</span>   application-state and payment-state are separate: <span class="d">not due</span>
+  students 2   classes 2   SoF F-, M-, G-   <span class="d">from inquiry: INQ-014</span>
+  <span class="b">due now $250</span> <span class="d">(reg $50 + deposits $200)   tuition to instructors $980</span> <span class="c-warn">or $780</span> <span class="d">(unresolved)   other fees $75</span>
+
+<span class="d">1 Home</span>  <span class="d">2 Family</span>  <span class="b">3 Classes</span>  <span class="d">4 Statement</span>  <span class="d">5 Review</span>  <span class="d">6 School</span>
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="b">CLASS SELECTION</span>  <span class="d">for Nell, age 13</span>
+<span class="d">filter by age: ON  (5/19 courses)   a course offers year OR a semester, never both</span>
+
+  <span class="c-ok">[x]</span> Algebra 1                              <span class="d">Mon/Wed  11:20am-12:20pm </span> Full year (28 wks)    $840 <span class="c-warn">!</span>
+  [ ] Basic Spanish Conversation for Beginne <span class="d">Wed      9:00am-10:00am </span> Full year (28 wks)    $280 <span class="c-warn">!</span>
+ <span class="c-info">&gt;</span><span class="c-ok">[x]</span> Beginner Latin Immersion (Grades 5-6)  <span class="d">Mon      11:20am-12:20pm </span> Spring semester <span class="c-warn">?</span>  $140 <span class="c-warn">!</span>
+  [ ] Beginner Latin Immersion (Grades 7-8)  <span class="d">Mon      9:00am-10:00am </span> Full year (28 wks)    $280 <span class="c-warn">!</span>
+  [ ] Introduction to Drawing and Painting ( <span class="d">Mon      10:40am-12:10pm </span> Fall semester         $210
+
+ <span class="c-bad">CLASH</span>: Algebra 1 vs Beginner Latin Immersion (Grades 5-6) <span class="d">(Monday 11:20 a.m.-12:20 p.m.)</span>
+
+ <span class="c-warn">!</span> Beginner Latin Immersion (Grades 5-6): <span class="d">a semester price is published but the duration says full year only — is a single semester actually purchasable?</span>
+
+  <span class="b">UP/DOWN</span> move  <span class="b">SPACE</span> select/deselect  <span class="b">u</span> cycle enrolment unit  <span class="b">g</span> age filter  <span class="b">TAB</span> next student
+
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="d">1-6 screens   q quit</span>   <span class="c-info">Beginner Latin Immersion (Grades 5-6): Spring semester</span></pre></div>
+</section>
+<section class="step">
+  <header>
+    <p class="step-n">Step 04</p>
+    <h2>Wednesday, 10:40 — the one it cannot answer</h2>
+    <p class="note">Five short-block electives share this slot deliberately. But no block publishes a start date anywhere, so whether two blocks actually overlap is unknowable. The model returns a third state — possible clash — which the design has to render, and which somebody at Pharos has to retire by publishing dates.</p>
+  </header>
+  <div class="pane-wrap"><pre class="pane"><span class="b">PHAROS APPLICATION FLOW</span> <span class="d">prototype for #8 — throwaway</span>
+<span class="d">day 0   applications 3   payment slot: </span><span class="d">empty — cheque by post</span>
+
+<span class="b">APP-003</span>  Whitmore  <span class="d">hannah.whitmore@example.com</span>
+  status <span class="b">draft</span>   application-state and payment-state are separate: <span class="d">not due</span>
+  students 2   classes 4   SoF F-, M-, G-   <span class="d">from inquiry: INQ-014</span>
+  <span class="b">due now $450</span> <span class="d">(reg $50 + deposits $400)   tuition to instructors $1300</span> <span class="c-warn">or $900</span> <span class="d">(unresolved)   other fees $68</span>
+
+<span class="d">1 Home</span>  <span class="d">2 Family</span>  <span class="b">3 Classes</span>  <span class="d">4 Statement</span>  <span class="d">5 Review</span>  <span class="d">6 School</span>
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="b">CLASS SELECTION</span>  <span class="d">for Gus, age 7</span>
+<span class="d">filter by age: ON  (11/19 courses)   a course offers year OR a semester, never both</span>
+
+  [ ] Algebra 1                              <span class="d">Mon/Wed  11:20am-12:20pm </span> Full year (28 wks)    $840 <span class="c-warn">!</span>
+  [ ] Backyard Botany                        <span class="d">Thu      11:10am-12:10pm </span> Fall semester         $140
+  [ ] God Made Everything: Early Elementary  <span class="d">Mon      9:00am-10:30am </span> Full year (28 wks)    $420 <span class="c-warn">!</span>
+  <span class="c-ok">[x]</span> Insect Explorers: Early Elementary Sci <span class="d">Wed      10:40am-12:10pm </span> 6-week block           $90 <span class="c-warn">!</span>
+  [ ] Introduction to Church and Bible Histo <span class="d">Wed      9:00am-10:30am </span> Full year (28 wks)    $420
+  [ ] Introduction to Drawing and Painting ( <span class="d">Mon      10:40am-12:10pm </span> Spring semester       $210
+  [ ] Kingdom Math: Early Elementary Math En <span class="d">Mon      10:40am-12:10pm </span> Full year (28 wks)    $420 <span class="c-warn">!</span>
+  [ ] Nocturnal Wonders: Early Elementary Sc <span class="d">Wed      10:40am-12:10pm </span> 6-week block           $90 <span class="c-warn">!</span>
+  [ ] The Pilgrim&#x27;s Progress for Kids        <span class="d">Wed      10:40am-11:40am </span> 12-week block         $120 <span class="c-warn">!</span>
+ <span class="c-info">&gt;</span><span class="c-ok">[x]</span> The Virtue of Kindness: Elementary Ele <span class="d">Wed      10:40am-12:10pm </span> 6-week block           $90 <span class="c-warn">!</span>
+  [ ] What is a Community? Early Elementary  <span class="d">Wed      10:40am-12:10pm </span> 8-week block          $120 <span class="c-warn">!</span>
+
+ <span class="c-warn">POSSIBLE CLASH (block dates unpublished)</span>: Insect Explorers: Early Elementary Science Elective vs The Virtue of Kindness: Elementary Elective <span class="d">(Wednesday 10:40 a.m.-12:10 p.m.)</span>
+
+ <span class="c-warn">!</span> The Virtue of Kindness: Elementary Elective: <span class="d">block start date is not published anywhere, so a block&#x27;s term is unknown</span>
+
+  <span class="b">UP/DOWN</span> move  <span class="b">SPACE</span> select/deselect  <span class="b">u</span> cycle enrolment unit  <span class="b">g</span> age filter  <span class="b">TAB</span> next student
+
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="d">1-6 screens   q quit</span>   <span class="c-info">added: The Virtue of Kindness: Elementary Elective</span></pre></div>
+</section>
+<section class="step">
+  <header>
+    <p class="step-n">Step 05</p>
+    <h2>The Statement of Faith discloses, it does not gate</h2>
+    <p class="note">The mother disagrees with one article and writes why. The application still submits. What is stored is who answered, what they answered, the free text, the day, and the version of the Statement they were shown — not whether they scrolled it. A scroll-to-unlock control is a WCAG 2.2 AA hazard that buys no real evidence.</p>
+  </header>
+  <div class="pane-wrap"><pre class="pane"><span class="b">PHAROS APPLICATION FLOW</span> <span class="d">prototype for #8 — throwaway</span>
+<span class="d">day 0   applications 3   payment slot: </span><span class="d">empty — cheque by post</span>
+
+<span class="b">APP-003</span>  Whitmore  <span class="d">hannah.whitmore@example.com</span>
+  status <span class="b">draft</span>   application-state and payment-state are separate: <span class="d">not due</span>
+  students 2   classes 4   SoF F+, M+, G-   <span class="d">from inquiry: INQ-014</span>
+  <span class="b">due now $450</span> <span class="d">(reg $50 + deposits $400)   tuition to instructors $1300</span> <span class="c-warn">or $900</span> <span class="d">(unresolved)   other fees $68</span>
+
+<span class="d">1 Home</span>  <span class="d">2 Family</span>  <span class="d">3 Classes</span>  <span class="b">4 Statement</span>  <span class="d">5 Review</span>  <span class="d">6 School</span>
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="b">STATEMENT OF FAITH</span>  <span class="d">version 2026-07-23</span>
+
+<span class="d">Disclose-and-discuss, not pass/fail. An objection never blocks submission — it</span>
+<span class="d">routes the application to a conversation. Asked separately of each respondent.</span>
+
+ <span class="b">1</span>. Father     present
+      <span class="d">1) Have you read the Statement of Faith in full?                 </span> <span class="c-ok">yes</span>
+      <span class="d">2) Do you agree with the Statement of Faith?                     </span> <span class="c-ok">yes</span>
+      <span class="d">3) Will you support it in your home while your child attends?    </span> <span class="c-ok">yes</span>
+ <span class="b">2</span>. Mother     present
+      <span class="d">1) Have you read the Statement of Faith in full?                 </span> <span class="c-ok">yes</span>
+      <span class="d">2) Do you agree with the Statement of Faith?                     </span> <span class="c-warn">no</span>
+      <span class="d">3) Will you support it in your home while your child attends?    </span> <span class="c-ok">yes</span>
+ <span class="b">3</span>. Guardian   <span class="d">not part of this household</span>
+
+ objections recorded: We baptise infants; we understand the school does not.
+
+<span class="d">What gets stored: which respondents answered, each answer, the free text, the day,</span>
+<span class="d">and the version of the Statement they saw. Not stored: whether they scrolled it.</span>
+<span class="d">A scroll-to-unlock control is a WCAG 2.2 AA hazard and buys no real evidence.</span>
+
+  <span class="b">f/m/g</span> toggle Father / Mother / Guardian present and answering yes
+  <span class="b">F/M/G</span> flip that respondent&#x27;s answer to &#x27;do you agree&#x27; to NO   <span class="b">t</span> type an objection
+  <span class="d">(digits are the screen switcher — respondents cannot own them)</span>
+
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="d">1-6 screens   q quit</span>   </pre></div>
+</section>
+<section class="step">
+  <header>
+    <p class="step-n">Step 06</p>
+    <h2>$550 now, and an unanswered question about the rest</h2>
+    <p class="note">The cheque total is firm: registration plus deposits, every figure read from the money settings of #7. What the family owes the instructors is not — the published material never says whether the $100 deposit comes off the course price or sits on top of it. $1,300 or $900. The flow cannot state a family&#x27;s total until Pharos answers.</p>
+  </header>
+  <div class="pane-wrap"><pre class="pane"><span class="b">PHAROS APPLICATION FLOW</span> <span class="d">prototype for #8 — throwaway</span>
+<span class="d">day 0   applications 3   payment slot: </span><span class="d">empty — cheque by post</span>
+
+<span class="b">APP-003</span>  Whitmore  <span class="d">hannah.whitmore@example.com</span>
+  status <span class="b">draft</span>   application-state and payment-state are separate: <span class="d">not due</span>
+  students 2   classes 4   SoF F+, M+, G-   <span class="d">from inquiry: INQ-014</span>
+  <span class="b">due now $450</span> <span class="d">(reg $50 + deposits $400)   tuition to instructors $1300</span> <span class="c-warn">or $900</span> <span class="d">(unresolved)   other fees $68</span>
+
+<span class="d">1 Home</span>  <span class="d">2 Family</span>  <span class="d">3 Classes</span>  <span class="d">4 Statement</span>  <span class="b">5 Review</span>  <span class="d">6 School</span>
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="b">REVIEW AND SUBMIT</span>
+
+ <span class="b">Nell</span> <span class="d">age 13</span>
+   Algebra 1                                <span class="d">Mon/Wed </span> Full year (28 wks)   $840   <span class="d">deposit $100</span>
+   Basic Spanish Conversation for Beginners <span class="d">Wed     </span> Full year (28 wks)   $280   <span class="d">deposit $100</span>
+ <span class="b">Gus</span> <span class="d">age 7</span>
+   Insect Explorers: Early Elementary Scien <span class="d">Wed     </span> 6-week block         $90    <span class="d">deposit $100</span>
+   The Virtue of Kindness: Elementary Elect <span class="d">Wed     </span> 6-week block         $90    <span class="d">deposit $100</span>
+
+ <span class="b">Post a cheque for $450</span> to 9 Sherwood Drive, Enola, PA 17025, payable to Pharos Academy.
+ <span class="d">Tuition is paid direct to instructors — not to the school, not through this site.</span>
+ <span class="c-warn">Unresolved:</span> is the $100 deposit credited against the course price, or on top of it?
+ <span class="d">   deposit on top     -&gt; the family owes instructors $1300</span>
+ <span class="d">   deposit credited   -&gt; the family owes instructors $900</span>
+ <span class="d">The published material does not say. The flow cannot state a family&#x27;s total until it does.</span>
+ <span class="d">Other fees $68 (materials, assessment).</span>
+ <span class="d">All figures read from the money settings of #7, none hard-coded.</span>
+
+ <span class="c-ok">ready to submit</span>
+
+  <span class="b">s</span> submit
+
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="d">1-6 screens   q quit</span>   </pre></div>
+</section>
+<section class="step">
+  <header>
+    <p class="step-n">Step 07</p>
+    <h2>Applied and paid are separate from the first second</h2>
+    <p class="note">Submitted, awaiting cheque. Two states, not one — because today an application arrives online and a cheque arrives days later by post. The flag reading needs a conversation is the Statement of Faith objection routing itself to a human.</p>
+  </header>
+  <div class="pane-wrap"><pre class="pane"><span class="b">PHAROS APPLICATION FLOW</span> <span class="d">prototype for #8 — throwaway</span>
+<span class="d">day 0   applications 3   payment slot: </span><span class="d">empty — cheque by post</span>
+
+<span class="b">APP-003</span>  Whitmore  <span class="d">hannah.whitmore@example.com</span>
+  status <span class="b">submitted</span>   application-state and payment-state are separate: <span class="c-warn">awaiting cheque (due day 14)</span>
+  students 2   classes 4   SoF F+, M+, G-   <span class="d">from inquiry: INQ-014</span>
+  <span class="b">due now $450</span> <span class="d">(reg $50 + deposits $400)   tuition to instructors $1300</span> <span class="c-warn">or $900</span> <span class="d">(unresolved)   other fees $68</span>
+
+<span class="d">1 Home</span>  <span class="d">2 Family</span>  <span class="d">3 Classes</span>  <span class="d">4 Statement</span>  <span class="d">5 Review</span>  <span class="b">6 School</span>
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="b">WHAT THE SCHOOL RECEIVES</span>
+
+<span class="b">Inbox</span>
+  APP-001  Ballard      2 students, 3 classes  <span class="d">$350 awaiting</span>  
+  APP-002  Okoro        1 students, 2 classes  <span class="d">$225 received</span>  
+  APP-003  Whitmore     2 students, 4 classes  <span class="d">$450 awaiting</span>  <span class="c-warn">needs a conversation</span>
+
+<span class="b">Class tally</span> <span class="d">— the question the map&#x27;s fog list calls &#x27;how registrations tabulate&#x27;</span>
+  Algebra 1                              <span class="d">Full year (28 wks)  </span> 1  <span class="d">Whitmore</span>
+  Basic Spanish Conversation for Beginne <span class="d">Full year (28 wks)  </span> 2  <span class="d">Okoro, Whitmore</span>
+  Beginner Latin Immersion (Grades 5-6)  <span class="d">Full year (28 wks)  </span> 1  <span class="d">Okoro</span>
+  Insect Explorers: Early Elementary Sci <span class="d">6-week block        </span> 1  <span class="d">Whitmore</span>
+  Kingdom Math: Early Elementary Math En <span class="d">Full year (28 wks)  </span> 1  <span class="d">Ballard</span>
+  Poetry, Plays, and Patterns (Shakespea <span class="d">Full year (28 wks)  </span> 1  <span class="d">Ballard</span>
+  Principles of Drawing                  <span class="d">Full year (28 wks)  </span> 1  <span class="d">Ballard</span>
+  The Virtue of Kindness: Elementary Ele <span class="d">6-week block        </span> 1  <span class="d">Whitmore</span>
+
+<span class="d">Failure paths — press the key and watch the state, not the happy path:</span>
+  <span class="b">t</span> advance 7 days (drafts go stale, cheques go overdue)   <span class="b">c</span> receive cheque for current
+  <span class="b">k</span> confirm places for current   <span class="b">d</span> same family applies twice   <span class="b">v</span> flip the payment slot live
+
+
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="d">1-6 screens   q quit</span>   <span class="c-info">submitted</span></pre></div>
+</section>
+<section class="step">
+  <header>
+    <p class="step-n">Step 08</p>
+    <h2>Three weeks pass, and the tally quietly goes wrong</h2>
+    <p class="note">Nobody acted. Ballard&#x27;s cheque went overdue on its own. Then the same family applied twice — and Whitmore now appears twice in Algebra 1, twice in Spanish, twice in both blocks. That tally is the number Jill uses to decide whether a class runs. Deduplication belongs in the tally, not in a small tag on the inbox.</p>
+  </header>
+  <div class="pane-wrap"><pre class="pane"><span class="b">PHAROS APPLICATION FLOW</span> <span class="d">prototype for #8 — throwaway</span>
+<span class="d">day 21   applications 4   payment slot: </span><span class="d">empty — cheque by post</span>
+
+<span class="b">APP-003</span>  Whitmore  <span class="d">hannah.whitmore@example.com</span>
+  status <span class="b">submitted</span>   application-state and payment-state are separate: <span class="c-bad">CHEQUE OVERDUE</span>
+  students 2   classes 4   SoF F+, M+, G-   <span class="d">from inquiry: INQ-014</span>
+  <span class="b">due now $450</span> <span class="d">(reg $50 + deposits $400)   tuition to instructors $1300</span> <span class="c-warn">or $900</span> <span class="d">(unresolved)   other fees $68</span>
+
+<span class="d">1 Home</span>  <span class="d">2 Family</span>  <span class="d">3 Classes</span>  <span class="d">4 Statement</span>  <span class="d">5 Review</span>  <span class="b">6 School</span>
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="b">WHAT THE SCHOOL RECEIVES</span>
+
+<span class="b">Inbox</span>
+  APP-001  Ballard      2 students, 3 classes  <span class="d">$350 overdue</span>  <span class="c-bad">cheque overdue</span>
+  APP-002  Okoro        1 students, 2 classes  <span class="d">$225 received</span>  
+  APP-003  Whitmore     2 students, 4 classes  <span class="d">$450 overdue</span>  <span class="c-warn">needs a conversation</span>  <span class="c-bad">cheque overdue</span>
+  APP-004  Whitmore     2 students, 4 classes  <span class="d">$450 awaiting</span>  <span class="c-warn">needs a conversation</span>  <span class="c-warn">duplicate of APP-003</span>
+
+<span class="b">Class tally</span> <span class="d">— the question the map&#x27;s fog list calls &#x27;how registrations tabulate&#x27;</span>
+  Algebra 1                              <span class="d">Full year (28 wks)  </span> 2  <span class="d">Whitmore, Whitmore</span>
+  Basic Spanish Conversation for Beginne <span class="d">Full year (28 wks)  </span> 3  <span class="d">Okoro, Whitmore, Whitmore</span>
+  Beginner Latin Immersion (Grades 5-6)  <span class="d">Full year (28 wks)  </span> 1  <span class="d">Okoro</span>
+  Insect Explorers: Early Elementary Sci <span class="d">6-week block        </span> 2  <span class="d">Whitmore, Whitmore</span>
+  Kingdom Math: Early Elementary Math En <span class="d">Full year (28 wks)  </span> 1  <span class="d">Ballard</span>
+  Poetry, Plays, and Patterns (Shakespea <span class="d">Full year (28 wks)  </span> 1  <span class="d">Ballard</span>
+  Principles of Drawing                  <span class="d">Full year (28 wks)  </span> 1  <span class="d">Ballard</span>
+  The Virtue of Kindness: Elementary Ele <span class="d">6-week block        </span> 2  <span class="d">Whitmore, Whitmore</span>
+
+<span class="d">Failure paths — press the key and watch the state, not the happy path:</span>
+  <span class="b">t</span> advance 7 days (drafts go stale, cheques go overdue)   <span class="b">c</span> receive cheque for current
+  <span class="b">k</span> confirm places for current   <span class="b">d</span> same family applies twice   <span class="b">v</span> flip the payment slot live
+
+  <span class="c-warn">*</span> APP-001 cheque overdue — applied day 0, nothing arrived
+  <span class="c-warn">*</span> APP-003 cheque overdue — applied day 0, nothing arrived
+
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="d">1-6 screens   q quit</span>   <span class="c-info">APP-004 is a second application from the same family — nothing stopped it</span></pre></div>
+</section>
+<section class="step">
+  <header>
+    <p class="step-n">Step 09</p>
+    <h2>Vanco drops into the slot, and nothing else moves</h2>
+    <p class="note">The payment stage was designed in and left empty. Switching it live changes exactly one thing: the next submission reads paid online instead of awaiting cheque. Every other state, screen and flag is untouched. The hole is the right shape.</p>
+  </header>
+  <div class="pane-wrap"><pre class="pane"><span class="b">PHAROS APPLICATION FLOW</span> <span class="d">prototype for #8 — throwaway</span>
+<span class="d">day 21   applications 5   payment slot: </span><span class="c-ok">LIVE (Vanco simulated)</span>
+
+<span class="b">APP-005</span>  Reyes  <span class="d">reyes@example.com</span>
+  status <span class="b">submitted</span>   application-state and payment-state are separate: <span class="c-ok">paid online day 21</span>
+  students 1   classes 1   SoF F-, M+, G-   <span class="d">from inquiry: no — clean slate</span>
+  <span class="b">due now $125</span> <span class="d">(reg $25 + deposits $100)   tuition to instructors $420</span> <span class="c-warn">or $320</span> <span class="d">(unresolved)   other fees $0</span>
+
+<span class="d">1 Home</span>  <span class="d">2 Family</span>  <span class="d">3 Classes</span>  <span class="d">4 Statement</span>  <span class="d">5 Review</span>  <span class="b">6 School</span>
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="b">WHAT THE SCHOOL RECEIVES</span>
+
+<span class="b">Inbox</span>
+  APP-001  Ballard      2 students, 3 classes  <span class="d">$350 overdue</span>  <span class="c-bad">cheque overdue</span>
+  APP-002  Okoro        1 students, 2 classes  <span class="d">$225 received</span>  
+  APP-003  Whitmore     2 students, 4 classes  <span class="d">$450 overdue</span>  <span class="c-warn">needs a conversation</span>  <span class="c-bad">cheque overdue</span>
+  APP-004  Whitmore     2 students, 4 classes  <span class="d">$450 awaiting</span>  <span class="c-warn">needs a conversation</span>  <span class="c-warn">duplicate of APP-003</span>
+  APP-005  Reyes        1 students, 1 classes  <span class="d">$125 paid_online</span>  
+
+<span class="b">Class tally</span> <span class="d">— the question the map&#x27;s fog list calls &#x27;how registrations tabulate&#x27;</span>
+  Algebra 1                              <span class="d">Full year (28 wks)  </span> 2  <span class="d">Whitmore, Whitmore</span>
+  Basic Spanish Conversation for Beginne <span class="d">Full year (28 wks)  </span> 3  <span class="d">Okoro, Whitmore, Whitmore</span>
+  Beginner Latin Immersion (Grades 5-6)  <span class="d">Full year (28 wks)  </span> 1  <span class="d">Okoro</span>
+  Insect Explorers: Early Elementary Sci <span class="d">6-week block        </span> 2  <span class="d">Whitmore, Whitmore</span>
+  Kingdom Math: Early Elementary Math En <span class="d">Full year (28 wks)  </span> 2  <span class="d">Ballard, Reyes</span>
+  Poetry, Plays, and Patterns (Shakespea <span class="d">Full year (28 wks)  </span> 1  <span class="d">Ballard</span>
+  Principles of Drawing                  <span class="d">Full year (28 wks)  </span> 1  <span class="d">Ballard</span>
+  The Virtue of Kindness: Elementary Ele <span class="d">6-week block        </span> 2  <span class="d">Whitmore, Whitmore</span>
+
+<span class="d">Failure paths — press the key and watch the state, not the happy path:</span>
+  <span class="b">t</span> advance 7 days (drafts go stale, cheques go overdue)   <span class="b">c</span> receive cheque for current
+  <span class="b">k</span> confirm places for current   <span class="b">d</span> same family applies twice   <span class="b">v</span> flip the payment slot live
+
+  <span class="c-warn">*</span> APP-001 cheque overdue — applied day 0, nothing arrived
+  <span class="c-warn">*</span> APP-003 cheque overdue — applied day 0, nothing arrived
+
+<span class="d">----------------------------------------------------------------------------------------------------</span>
+<span class="d">1-6 screens   q quit</span>   </pre></div>
+</section>
+  </div>
+
+  <p class="foot">Three things the walkthrough settled: clash detection must compare shared weeks, not
+    shared hours; applied and paid are separate states before Vanco exists and stay separate after it
+    arrives; and the empty payment slot holds. Two it opened: the class tally double-counts a duplicate
+    application, and the deposit&rsquo;s relationship to tuition is undefined in the school&rsquo;s own
+    published material.</p>
+</div>
