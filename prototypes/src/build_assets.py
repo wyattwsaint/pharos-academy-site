@@ -86,12 +86,14 @@ def crop_to(im, ratio, bias=0.5):
 # slot, source, target ratio (None = leave as delivered), crop bias.
 #   still-desk: the left third is bare wall, so the 3:2 crop leans right to keep
 #              the mug and the brush jar in frame.
-#   vista-path: 21:9 off a 16:9 frame drops the horizon to about a third up,
-#              which is where it wants to sit in a band this wide.
+#   vista-path: was 21:9, when it ran full-bleed across a band. E now sets it as
+#              an accent beside a heading, about a 38% column, where a 21:9 frame
+#              is a 180px sliver — so it takes the desk's 3:2 instead. Centred:
+#              unlike the desk, nothing in this frame is off to one side.
 STILL_SPECS = [
     ("still_scripture", "still-scripture.jpg", None, 0.5),
     ("still_desk",  "still-desk.png",  3 / 2,  0.70),
-    ("vista_path",  "vista-path.png",  21 / 9, 0.60),
+    ("vista_path",  "vista-path.png",  3 / 2,  0.50),
 ]
 for key, name, ratio, bias in STILL_SPECS:
     im = Image.open(STILLS + "\\" + name).convert("RGB")

@@ -26,16 +26,27 @@ D is left intact as the artefact #12 recorded — E is a new variant, not an edi
 
 E deliberately does **not** take from that reference: its density (which is carried
 entirely by fourteen illustrations — this page owns five usable images), navy body copy,
-an all-serif setting, its invented taglines ("Faith. Family. Learning. Together.", "A
-Christian homeschool co-op."), its generated mothers and children, or its five-pillar
-strip — which claims a **music** programme Pharos does not teach. `"Helping Our Parents
-Educate"` is real (the H.O.P.E. acronym) and is the one piece of its copy used.
+an all-serif setting, "A Christian homeschool co-op.", its generated mothers and children,
+or its five-pillar strip — which claims a **music** programme Pharos does not teach.
+`"Helping Our Parents Educate"` is real (the H.O.P.E. acronym).
+
+**One tagline is now taken, and taken knowingly.** E's hero sets "Faith. Family. Learning.
+Together." beneath the lockup. This reverses an earlier decision recorded here that E takes
+no invented copy from the reference: the owner was shown that the line appears nowhere on
+`pharosacademy.net`, and chose it anyway. It is the single deliberate exception to the rule
+that every word on this page is real copy from `docs/mirror/`. The hero's other caps line,
+"A Christian Classical, Hybrid-Microschool", is the owner's punctuation of the client's own
+sub-brand — the 19 mirrored pages all set it as "A Christian Classical Hybrid Microschool",
+without the comma or the hyphen. Flagged on #12.
 
 Add `&notes=1`, or press **Image slots** in the bar, to annotate the homepage image
 slots with what goes in each and whether the school can supply it. `←` / `→` cycle
-variants. Four of E's five imagery slots are now **filled** with paintings the owner
-generated (provenance in `assets/imagery/README.md`); their notes record the crop and the
-treatment. Two things the notes say out loud: slot 5 holds a **landscape**, not the
+variants. E now carries **two** paintings the owner generated — slots 2 + 3, merged into one
+section, and slot 5 (provenance in `assets/imagery/README.md`); their notes record the crop
+and the treatment. Both are set as **accents**: a plate never gets a row to itself, it pairs
+with its section's eyebrow and heading in a ~38% column. The Bible still-life that used to
+fill slot 3 was dropped from the page when the two sections merged. Two things the notes
+say out loud: slot 5 holds a **landscape**, not the
 classroom interior it was specified as, so the page shows no picture of anywhere Pharos
 actually is; and slot 4 — the three staff portraits — stays empty because it must be
 photographs of real consenting adults ([#13](https://github.com/wyattwsaint/pharos-academy-site/issues/13)),
@@ -56,9 +67,12 @@ Both use the **same** hero code (`heroFx('d')` / `heroFx('e')`) and, in the buil
 the **same single copy** of the video: E's `<video>` carries no data attributes and
 borrows D's, so adding E cost ~160 KB, not ~1.3 MB.
 
-The hero's mark is `src/mark.svg` — a **hand-drawn approximation** of the existing raster
-mark, not a measured trace. Structure and colours are faithful; the tower is chunkier
-than the original. The real trace, and Jill's confirmation of it, is separate work.
+The hero's mark is `src/mark.svg` — a **real trace** of the existing raster mark, redrawn
+deterministically by `mark/trace.py` from the 287×335 original (commit `9636651`). Same
+shapes, no rebrand. Three colours shifted slightly when they were read off the raster
+instead of by eye, so every variant moved with them; the details, and the one judgement
+call about the gallery railings, are in `mark/README.md`. Jill's confirmation of the
+redraw is still outstanding ([#13](https://github.com/wyattwsaint/pharos-academy-site/issues/13)).
 
 ### Rebuilding
 

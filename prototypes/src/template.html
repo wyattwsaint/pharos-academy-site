@@ -1,15 +1,30 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pharos Academy — design language prototype</title>
+
+<!-- These four lines were missing, and their absence hid two things for the whole
+     life of this prototype. Without a doctype the file rendered in QUIRKS mode
+     (document.compatMode === 'BackCompat'), while the deployed preview — which
+     build_site.py wraps in a real head — rendered in standards mode: the artefact
+     being reviewed and the artefact the client opens were not the same document.
+     And without a viewport meta, a real phone lays the page out at 980px and
+     zooms out, which is the actual reason "390px on a device" was never
+     verifiable by opening this file on one. build_client.py cuts this block back
+     out, because build_site.py supplies the canonical head. -->
 
 <style>
 /*FONTS*/
 
 /* ============================================================
    PROTOTYPE — throwaway. Homepage design directions for Pharos
-   Academy, switchable via ?variant=d|a|b|c.
+   Academy, switchable via ?variant=e|d|a|b|c. E is the default.
    A, B and C were the three exploratory directions. D — "Beacon"
    — is the direction decided on issue #12: C's air and type, a
    full-bleed video hero at 0.5x parallax, B's real timetable
-   pulled up early. D is what goes in front of the client.
+   pulled up early. E is D's structure on a warm ceremonial
+   surface, and E is what goes in front of the client (#13).
    Section order is fixed by issue #9 and is NOT what is being
    tested here.
    ============================================================ */
@@ -812,21 +827,28 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 .e-btn.on-dark.solid:hover { background: #fff; border-color: #fff; color: var(--navy); }
 
 .e-hero-inner { position: relative; z-index: 3; height: 100%;
-  display: grid; grid-template-columns: 34% 1fr; align-items: center; }
+  display: grid; grid-template-columns: 24% 1fr; align-items: center; }
 .e-hero-copy { grid-column: 2; padding-right: 26px; color: #fff; }
-/* the lockup. Deliberately a MEDIUM mark, not a poster-sized one: mark.svg is
-   still the hand-drawn approximation (#13), and enlarging it shows every flaw. */
-.e-lockup svg { width: 84px; height: auto; display: block;
-  filter: drop-shadow(0 2px 10px rgba(6,16,30,.45)); }
-.e-lockup .wm { font: 400 clamp(23px, 2.5vw, 34px)/1 'Instrument Serif', serif;
-  letter-spacing: .17em; text-transform: uppercase; margin: 20px 0 0;
-  text-shadow: 0 2px 14px rgba(6,16,30,.5); }
-.e-lockup .e-tag { display: block; margin-top: 13px; color: var(--mark-gold);
+/* The lockup is HORIZONTAL: the mark stands beside all three lines, not above
+   the name alone. The mark is now poster-sized (110px) because it carries a
+   three-line block — mark.svg is still the hand-drawn approximation (#13), and
+   at this size every flaw in it is legible. That is a known cost, taken. */
+.e-lockup { display: flex; align-items: center; gap: var(--lock-gap, 22px); }
+.e-lockup svg { width: var(--lock-mark, 110px); height: auto; display: block;
+  flex: 0 0 auto; filter: drop-shadow(0 2px 10px rgba(6,16,30,.45)); }
+.e-lockup h1 { font: 400 clamp(34px, 4.6vw, 66px)/1 'Instrument Serif', serif;
+  letter-spacing: .17em; text-transform: uppercase; color: #fff; margin: 0;
+  text-shadow: 0 2px 22px rgba(6,16,30,.45); }
+.e-lockup .wm { font: 400 clamp(22px, 2.5vw, 34px)/1.1 'Instrument Serif', serif;
+  margin: 14px 0 0; text-shadow: 0 2px 14px rgba(6,16,30,.5); }
+.e-lockup .e-tag { display: block; margin-top: 11px; color: var(--mark-gold);
   text-shadow: 0 1px 10px rgba(6,16,30,.55); }
-.e-hero-copy h1 { font-size: clamp(36px, 4.6vw, 66px); color: #fff;
-  text-shadow: 0 2px 22px rgba(6,16,30,.45); max-width: 22ch; }
-.e-hero-copy p { font-size: clamp(16.5px, 1.4vw, 19px); color: rgba(255,255,255,.92);
-  max-width: 44ch; margin: 22px 0 0; text-shadow: 0 1px 12px rgba(6,16,30,.55); }
+/* everything under the lockup hangs off the TEXT column, not the mark column */
+.e-hero-sub { margin-left: calc(var(--lock-mark, 110px) + var(--lock-gap, 22px)); }
+.e-hero-caps { font: 400 clamp(12px, 1.15vw, 15px)/1.7 'Instrument Serif', serif;
+  letter-spacing: .22em; text-transform: uppercase; color: #fff; margin: 0;
+  text-shadow: 0 1px 12px rgba(6,16,30,.55); }
+.e-hero-caps + .e-hero-caps { color: var(--mark-gold); }
 .e-hero-cta { margin-top: 32px; display: flex; gap: 13px; flex-wrap: wrap; align-items: center; }
 .e-hero-cta small { color: rgba(255,255,255,.84); font-size: 13.5px; }
 
@@ -834,16 +856,18 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
   .e-hero-inner { grid-template-columns: 1fr; align-items: end;
     padding-bottom: clamp(48px, 10vh, 100px); }
   .e-hero-copy { grid-column: 1; }
-  .e-hero-copy h1 { max-width: 20ch; }
-  .e-lockup svg { width: 66px; }
+  .e { --lock-mark: 86px; --lock-gap: 18px; }
 }
 @media (max-width: 860px) { .e-nav { display: none; } }
 @media (max-width: 760px) {
   .e-wide, .e-wrap { padding: 0 20px; }
   .e-head { padding: 14px 0; }
-  .e-hero-copy h1 { font-size: clamp(30px, 7.6vw, 46px); }
-  .e-lockup svg { width: 54px; }
-  .e-lockup .wm { font-size: 20px; letter-spacing: .13em; }
+  .e { --lock-mark: 62px; --lock-gap: 14px; }
+  .e-lockup h1 { font-size: clamp(26px, 6.6vw, 40px); letter-spacing: .13em; }
+  .e-lockup .wm { font-size: 19px; }
+  /* the sub-block stops hanging off the text column once the mark is this
+     small — the indent costs more than the alignment is worth */
+  .e-hero-sub { margin-left: 0; }
 }
 
 /* ---------- body: D's air, warmed. Cream / parchment / navy alternate ---------- */
@@ -858,12 +882,16 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 .e-dark p { color: #DCD3C4; }
 .e-dark a { color: var(--gold-lit); }
 
-.e-week { list-style: none; margin: 38px 0 0; padding: 0; }
-.e-week li { display: grid; grid-template-columns: 140px 1fr; gap: 20px;
-  padding: 22px 0; border-top: 1px solid var(--rule); align-items: baseline; }
-.e-week h3 { font-size: 27px; }
-.e-week span { color: var(--ink-2); font-size: 16px; }
-@media (max-width: 620px) { .e-week li { grid-template-columns: 1fr; gap: 6px; } }
+/* Images in E are accent, not centrepiece: a plate never gets a row to itself.
+   Each one pairs with its section's eyebrow and heading at the top of the
+   section, heading left, picture in a ~38% column. */
+.e-accent { display: grid; grid-template-columns: 1fr 38%;
+  gap: clamp(24px, 4vw, 56px); align-items: center; }
+.e-accent > figure { margin: 0; }
+@media (max-width: 760px) {
+  .e-accent { grid-template-columns: 1fr; gap: 28px; }
+  .e-accent > figure { max-width: 420px; }
+}
 
 /* the timetable stays sans and stays working — the reference has nothing like it */
 .e-gridscroll { overflow-x: auto; margin-top: 38px; -webkit-overflow-scrolling: touch; }
@@ -881,9 +909,24 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 .e-cls { display: block; text-decoration: none; color: inherit; }
 .e-cls + .e-cls { margin-top: 11px; }
 .e-cls .t { display: block; font: 500 15.5px/1.3 'Public Sans', sans-serif; }
+/* end times, on their own line above grades/price. No text-transform anywhere on
+   these two — the strings are typed as courses.json holds them ("a.m.", "p.m."). */
+.e-cls .w { display: block; font-size: 12.5px; color: #6C5B3C; margin-top: 4px;
+  font-variant-numeric: tabular-nums; }
 .e-cls .m { display: block; font-size: 12.5px; color: var(--ink-2); margin-top: 3px;
   font-variant-numeric: tabular-nums; }
-.e-cls:hover .t { color: var(--gold-ink); text-decoration: underline; text-underline-offset: 3px; }
+.e-cls:hover .t, .e-cls:focus-visible .t { color: var(--gold-ink);
+  text-decoration: underline; text-underline-offset: 3px; }
+.e-cls:focus-visible { outline: 2px solid var(--gold-ink); outline-offset: 3px; }
+/* the description panel. It expands INSIDE the cell rather than floating over
+   the grid: .e-gridscroll is overflow-x:auto, which clips on both axes, so an
+   absolutely positioned popover would be cut off exactly where the grid starts
+   scrolling — on a phone, which is where the client opens this. */
+.e-cls .d { display: none; margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid var(--gold); font-size: 13px; line-height: 1.55;
+  color: var(--ink-2); }
+.e-cls.on .d { display: block; }
+.e-cls.on .t { color: var(--gold-ink); }
 
 .e-people { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-top: 40px; }
 .e-portrait { aspect-ratio: 1 / 1; border-radius: 50%; background: #E9DEC8;
@@ -1699,59 +1742,55 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
     <div class="e-deep" id="e-deep"></div>
     <div class="e-hero-inner">
       <div class="e-hero-copy e-wide" id="e-copy">
-        <div style="max-width:660px;margin-left:auto">
+        <div style="max-width:800px;margin-left:auto">
           <div class="e-lockup">
             {{MARKSVG}}
-            <p class="wm">Pharos Academy</p>
-            <em class="e-tag">Helping Our Parents Educate</em>
+            <div>
+              <h1>Pharos Academy</h1>
+              <p class="wm">H.O.P.E. for Families</p>
+              <em class="e-tag">Helping Our Parents Educate</em>
+            </div>
           </div>
           <div class="e-hair"><i></i></div>
-          <h1>Three mornings a week, your child is taught.</h1>
-          <p>The rest of the week, you teach. Christian classical classes in Enola for
-            ages 4 to 18 — Monday, Wednesday and Thursday mornings, chosen one at a time,
-            by you.</p>
-          <div class="e-hero-cta">
-            <a class="e-btn on-dark solid" href="#e-inq">Ask us about Pharos</a>
-            <a class="e-btn on-dark" href="#e-classes">See the classes</a>
-            <small>No application yet. Just a question.</small>
+          <div class="e-hero-sub">
+            <p class="e-hero-caps">A Christian Classical, Hybrid-Microschool</p>
+            <p class="e-hero-caps">Faith. Family. Learning. Together.</p>
+            <div class="e-hero-cta">
+              <a class="e-btn on-dark solid" href="#e-inq">Ask us about Pharos</a>
+              <a class="e-btn on-dark" href="#e-classes">See the classes</a>
+              <small>No application yet. Just a question.</small>
+            </div>
           </div>
         </div>
       </div>
     </div>
     <p class="slot-note"><b>Slot 1 — Hero. The video, unchanged.</b> 0.5× parallax, blur and
-      scrim ramping across this one viewport. Only the copy layer differs from D: a formal
-      lockup — mark, wordmark, gold tagline, gold rule, headline. <i>The mark is deliberately
-      medium, not poster-sized: mark.svg is still the hand-drawn approximation (#13).</i></p>
+      scrim ramping across this one viewport. Only the copy layer differs from D: a horizontal
+      lockup — the mark standing beside the name, the H.O.P.E. line and the gold tagline —
+      then the rule, two letterspaced caps lines and the buttons. <i>The mark is now
+      poster-sized at 110px, and mark.svg is still the hand-drawn approximation (#13), so
+      every flaw in it is legible here. "Faith. Family. Learning. Together." is invented
+      copy, taken from the reference poster deliberately (see the README).</i></p>
   </section>
-
-  <section class="e-sec">
-    <div class="e-wide">
-      <p class="e-label">What a week looks like</p>
-      <h2 style="margin-top:16px">Mornings here. Afternoons yours.</h2>
-      <ul class="e-week">
-        <li><h3>Monday</h3><span>9:00 – 12:20 · Latin, drawing, early science, Kingdom Math, Algebra 1</span></li>
-        <li><h3>Wednesday</h3><span>9:00 – 12:20 · Spanish, Bible history, the six-week electives, Algebra 1</span></li>
-        <li><h3>Thursday</h3><span>9:30 – 12:10 · Letter of the Week, Shakespeare and poetry, Backyard Botany</span></li>
-      </ul>
-      <figure class="slot e-fill" style="margin:44px 0 0;max-width:720px">
-        <img src="{{STILL_DESK}}" alt="" />
-        <p class="slot-note"><b>Slot 2 — The week. FILLED.</b> The desk still-life — an open
-          journal and loose pages by a window, brushes in a jar, daisies on the table.
-          <i>Delivered 16:9, cropped to 3:2 leaning right to keep the mug and the brush jar.
-          Generated by the owner, no people. Edges dissolved into the paper — no frame, the
-          same treatment as the navy band, which the owner asked for on every plate.</i></p>
-      </figure>
-    </div>
-  </section>
-
-  <div class="e-orn"><i></i></div>
 
   <section class="e-sec slot" id="e-classes">
     <div class="e-wide">
-      <p class="e-label">Nineteen classes, 2026–27</p>
-      <h2 style="margin-top:16px">Take one. Take five.</h2>
-      <p class="e-sub" style="margin-top:14px;max-width:56ch">Every price is the hours
-        multiplied by the rate — $10 an hour, $15 for high-school credit — and nothing else.</p>
+      <div class="e-accent">
+        <div>
+          <p class="e-label">What a week looks like</p>
+          <h2 style="margin-top:16px">Mornings here. Afternoons yours.</h2>
+        </div>
+        <figure class="slot e-fill">
+          <img src="{{STILL_DESK}}" alt="" />
+          <p class="slot-note"><b>Slots 2 + 3 — merged. FILLED.</b> The desk still-life — an
+            open journal and loose pages by a window, brushes in a jar, daisies on the table.
+            <i>Delivered 16:9, cropped to 3:2 leaning right to keep the mug and the brush jar.
+            Generated by the owner, no people. Edges dissolved into the paper — no frame, the
+            same treatment as the navy band, which the owner asked for on every plate. It now
+            sits beside the heading at about a 38% column rather than filling a row of its
+            own: accent, not centrepiece.</i></p>
+        </figure>
+      </div>
       <div class="e-gridscroll">
         <div class="e-grid">
           <div class="e-time"></div>
@@ -1760,50 +1799,41 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
           <div class="hd"><h3>Thursday</h3><small>3 classes</small></div>
 
           <div class="e-time">9:00</div>
-          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Beginner Latin Immersion</span><span class="m">gr 7–8 · $280/yr</span></a>
-            <a class="e-cls" href="#"><span class="t">God Made Everything: Science</span><span class="m">ages 5–8 · $420/yr</span></a></div>
-          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Basic Spanish Conversation</span><span class="m">gr 5–8 · $280/yr</span></a>
-            <a class="e-cls" href="#"><span class="t">Church &amp; Bible History</span><span class="m">ages 6–8 · $420/yr</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Beginner Latin Immersion</span><span class="w">ends 10:00 a.m.</span><span class="m">Grades 7–8 · $280/yr</span><span class="d">This immersion course in Latin will utilize short stories, simple fables, and scenes set in the Roman era to learn the language through use. By reading, hearing, and speaking, we will breathe the native air of the ancient Latin speakers. The built-in repetition and the intrinsic retention that accompanies learning from stories will assure the student is building a vocabulary base and a familiarity with the inflected endings of the language. There will be some grammar instruction, but we will rely on reading, hearing, and speaking in the language to build the foundations of Latin.</span></a>
+            <a class="e-cls" href="#"><span class="t">God Made Everything: Science</span><span class="w">ends 10:30 a.m.</span><span class="m">Ages 5–8 · $420/yr</span><span class="d">Your little explorer will participate in a beginner's science class, inspired by the Biblically-based curriculum, Generations. Through hands-on engaging lessons, music, literature, and catechism questions, your child will grow in wonder as they discover that all of creation reflects God's handiwork. Semester 1 will include topics such as light, moon, space, water and plants; Semester 2, insects, amphibians, reptiles, mammals, fish, birds, and created in the Image of God.</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Basic Spanish Conversation</span><span class="w">ends 10:00 a.m.</span><span class="m">Grades 5–8 · $280/yr</span><span class="d">This introductory course is designed for students with little or no prior knowledge of Spanish who want to develop practical communication skills for everyday situations. Through interactive speaking activities, guided conversations, vocabulary building, and pronunciation practice, students will learn how to introduce themselves, greet others, ask and answer simple questions, and engage in basic social interactions.</span></a>
+            <a class="e-cls" href="#"><span class="t">Church &amp; Bible History</span><span class="w">ends 10:30 a.m.</span><span class="m">Ages 6–8 · $420/yr</span><span class="d">Young learners will discover God's history by engaging in weekly activities inspired by the Biblically based curriculums, Generations and My Father's World. We will learn how God uses his people, from all over the world, to build his church. Children will learn about 15 different heroes of the faith — among them Alfred the Great, Martin Luther, Anna Bullinger and Olga in the fall, and Robert Boyle, Johann Sebastian Bach, Janet Paton and Dandeson Crowther in the spring. We will also apply selected verses from Proverbs to build our faith.</span></a></div>
           <div class="e-cell free"></div>
 
           <div class="e-time">9:30</div>
           <div class="e-cell free"></div>
           <div class="e-cell free"></div>
-          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Letter of the Week</span><span class="m">ages 4–6 · $420/yr</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Letter of the Week</span><span class="w">ends 11:00 a.m.</span><span class="m">Ages 4–6 · $420/yr</span><span class="d">Your early learner will engage in sensory based activities to build an understanding of the letters, A–Z, and their sounds. Each session is designed to foster a love of learning through songs, nursery rhymes, literature, crafts, snacks, and more. As a Christian academy, your child will also learn Psalm 23 ESV. This course is ideal if your early learner has basic knowledge of the alphabet, or if your child needs a review of these foundational skills.</span></a></div>
 
           <div class="e-time">10:10</div>
-          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Principles of Drawing</span><span class="m">ages 14–18 · $420/yr</span></a></div>
-          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Basic Spanish Conversation</span><span class="m">gr 9–12 · $420/yr</span></a></div>
-          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Poetry, Plays, and Patterns</span><span class="m">ages 14–18 · $420/yr</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Principles of Drawing</span><span class="w">ends 11:10 a.m.</span><span class="m">Ages 14–18 · $420/yr</span><span class="d">This drawing course will begin with the basics: orientation, scale, pressure, composition, and basic shapes. We will advance to finding interior shapes, exploring values, measuring proportions, and using shading techniques. Class time will include instructional time and project time with teacher input. We will do both exercises and finished pieces. Projects may include still life subjects, drawing from masters, and working with toned paper and white charcoal. Drawing mediums, subjects and accessories will be provided.</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Basic Spanish Conversation</span><span class="w">ends 11:10 a.m.</span><span class="m">Grades 9–12 · $420/yr</span><span class="d">This introductory course is designed for students with little or no prior knowledge of Spanish who want to develop practical communication skills for everyday situations. Through interactive speaking activities, guided conversations, vocabulary building, and pronunciation practice, students will learn how to introduce themselves, greet others, ask and answer simple questions, and engage in basic social interactions.</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Poetry, Plays, and Patterns</span><span class="w">ends 11:00 a.m.</span><span class="m">Ages 14–18 · $420/yr</span><span class="d">Students will read and study Shakespeare's Hamlet, Julius Caesar and Macbeth, as well as poetry by various poets. Throughout the course, there will be recognition and modeling of the seven basic sentence patterns and usage in students' own writings. Homework will consist of writing assignments, reading, and grammar review.</span></a></div>
 
           <div class="e-time">10:40</div>
-          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Kingdom Math</span><span class="m">ages 6–8 · $420/yr</span></a>
-            <a class="e-cls" href="#"><span class="t">Drawing &amp; Painting</span><span class="m">gr 5–8 · $210/sem</span></a></div>
-          <div class="e-cell"><a class="e-cls" href="#"><span class="t">The Pilgrim's Progress for Kids</span><span class="m">ages 5–10 · 12 weeks</span></a>
-            <a class="e-cls" href="#"><span class="t">Three six-week electives</span><span class="m">ages 6–10 · rotating</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Kingdom Math</span><span class="w">ends 12:10 p.m.</span><span class="m">Ages 6–8 · $420/yr</span><span class="d">Kingdom Math is a hands-on homeschool class where children discover the wonder of mathematics through games, building projects, puzzles, nature studies, experiments, and real-world challenges. Students build confidence, creativity, and problem-solving skills while learning that math is far more than worksheets — it is a way to understand God's beautifully ordered world.</span></a>
+            <a class="e-cls" href="#"><span class="t">Drawing &amp; Painting</span><span class="w">ends 12:10 p.m.</span><span class="m">Grades 5–8 · $210/sem</span><span class="d">Half of the semester will focus on technical drawing skills using both photographs (like animals) and three dimensional objects (still life), while looking at works of great art. Similarly, the second half of the semester will focus on technical painting skills using both photographs, three dimensional objects, and works of great art (especially landscapes). The grades 5–8 section runs in the fall; a grades 2–4 section runs in the spring at the same hour.</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">The Pilgrim's Progress for Kids</span><span class="w">ends 11:40 a.m.</span><span class="m">Ages 5–10 · 12 weeks</span><span class="d">This course will introduce your child to a children's adaptation of one of the best-selling books of all time: The Pilgrim's Progress, by John Bunyan. Students will read Little Pilgrim's Big Journey and follow the allegorical story of Christian, a boy determined to reach the Celestial City while navigating many obstacles that Christians encounter. Students will read scripture, learn catechisms, and sing hymns to fortify their biblical knowledge and equip them to overcome common trials of the Christian life.</span></a>
+            <a class="e-cls" href="#"><span class="t">Three six-week electives</span><span class="w">ends 12:10 p.m.</span><span class="m">Ages 6–10 · rotating</span><span class="d">Short electives rotate through this hour across the year. Nocturnal Wonders (six weeks from September) introduces young learners to creatures that wake when most people sleep. The Virtue of Kindness (six weeks from October), inspired by Gentle and Classical, cultivates a heart that delights in loving others well, alongside the artwork of Carl Larsson and the music of Robert Schumann. What is a Community? (eight weeks from January) introduces the idea of community through stories, Scripture, memory work and a simple service project. Insect Explorers (six weeks from March) explores how insects live, grow, build, fly, and help God's world flourish.</span></a></div>
           <div class="e-cell free"></div>
 
           <div class="e-time">11:10</div>
           <div class="e-cell free"></div>
           <div class="e-cell free"></div>
-          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Backyard Botany</span><span class="m">ages 5–10 · $140/sem</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Backyard Botany</span><span class="w">ends 12:10 p.m.</span><span class="m">Ages 5–10 · $140/sem</span><span class="d">Discover some of the most common trees and plants found right in your own backyard here in Central Pennsylvania. Learn about their botanical, beneficial, and medicinal qualities. Sketch and paint this beautiful part of God's creation.</span></a></div>
 
           <div class="e-time">11:20</div>
-          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Algebra 1</span><span class="m">gr 8+ · 1 credit · $840/yr</span></a></div>
-          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Algebra 1</span><span class="m">gr 8+ · 1 credit · $840/yr</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Algebra 1</span><span class="w">ends 12:20 p.m.</span><span class="m">Grades 8+ · 1 credit · $840/yr</span><span class="d">This Algebra 1 course delivers clear, engaging instruction tailored for homeschool students. Designed in a classical style, it emphasizes understanding, logical reasoning, and problem-solving skills while also equipping parents with the knowledge, tools, and confidence to support and teach Algebra 1 effectively at home. Students attend live classes for direct instruction. All sessions are recorded and provided to families through private video access. Parents proctor exams and submit them to the instructor for grading.</span></a></div>
+          <div class="e-cell"><a class="e-cls" href="#"><span class="t">Algebra 1</span><span class="w">ends 12:20 p.m.</span><span class="m">Grades 8+ · 1 credit · $840/yr</span><span class="d">This Algebra 1 course delivers clear, engaging instruction tailored for homeschool students. Designed in a classical style, it emphasizes understanding, logical reasoning, and problem-solving skills while also equipping parents with the knowledge, tools, and confidence to support and teach Algebra 1 effectively at home. Students attend live classes for direct instruction. All sessions are recorded and provided to families through private video access. Parents proctor exams and submit them to the instructor for grading.</span></a></div>
           <div class="e-cell free"></div>
         </div>
       </div>
       <p style="margin-top:28px"><a href="#" style="color:var(--gold-ink)">All nineteen classes →</a></p>
-      <figure class="slot e-fill" style="margin:48px 0 0">
-        <img src="{{STILL_SCRIPTURE}}" alt="" />
-        <p class="slot-note"><b>Slot 3 — Classes. FILLED.</b> An open Bible and a hand-written
-          journal by lamplight, daisies, a shelf behind. <i>16:9, uncropped, generated by the
-          owner, no people. Edges dissolved into the paper, no frame. Owner's choice, over the two academic
-          plates the repo also holds — so nothing on this page pictures a class. Note also
-          that slot 6, the Faith band, is the same subject in a darker key: open book, journal,
-          lamp. Two readings of one still-life, three sections apart.</i></p>
-      </figure>
     </div>
   </section>
 
@@ -1811,8 +1841,23 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 
   <section class="e-sec e-quiet">
     <div class="e-wide">
-      <p class="e-label">Who teaches</p>
-      <h2 style="margin-top:16px">Nine instructors.</h2>
+      <div class="e-accent">
+        <div>
+          <p class="e-label">Who teaches</p>
+          <h2 style="margin-top:16px">Nine instructors.</h2>
+        </div>
+        <figure class="slot e-fill">
+          <img src="{{VISTA_PATH}}" alt="" />
+          <p class="slot-note"><b>Slot 5 — was "the room", now the path. FILLED.</b> A footpath
+            through a wildflower meadow at sunrise. <i>Not what this slot was specified as — the
+            spec asked for the empty classroom before the morning, and none of the delivered
+            paintings is an interior. The light-at-the-end reading is the same figure as the
+            lighthouse, so it earns the place, but the page still has no picture of anywhere
+            Pharos actually is. Delivered 16:9; re-cropped from 21:9 to 3:2, centred, now that
+            it sits beside the heading rather than spanning a band — at accent width a 21:9
+            frame was a sliver. Generated by the owner, no people.</i></p>
+        </figure>
+      </div>
       <div class="e-people">
         <article><div class="e-portrait slot"><p class="slot-note"><b>Slot 4 — Staff.</b> Adults
           who can consent — the only people anywhere on this page.
@@ -1826,16 +1871,6 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
           <h3>Mrs. Mandy Saint</h3><p class="r e-label">Instructor · six classes</p>
           <p>Letter of the Week, Kingdom Math, and early elementary science.</p></article>
       </div>
-      <figure class="slot e-fill" style="margin:48px 0 0">
-        <img src="{{VISTA_PATH}}" alt="" />
-        <p class="slot-note"><b>Slot 5 — was "the room", now the path. FILLED.</b> A footpath
-          through a wildflower meadow at sunrise. <i>Not what this slot was specified as — the
-          spec asked for the empty classroom before the morning, and none of the delivered
-          paintings is an interior. This one is the only landscape wide enough for the band,
-          and the light-at-the-end reading is the same figure as the lighthouse, so it earns
-          the place. But the page now has no picture of anywhere Pharos actually is.
-          Delivered 16:9, cropped to 21:9. Generated by the owner, no people.</i></p>
-      </figure>
     </div>
   </section>
 
@@ -1879,7 +1914,8 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
         <div><b>E</b><span>Educate</span></div>
       </div>
       <p style="max-width:46ch;margin:38px auto 0">We partner with parents rather than replace
-        them. <a href="#">Read our Statement of Faith →</a></p>
+        them.</p>
+      <p style="margin:18px auto 0"><a href="#">Read our Statement of Faith →</a></p>
       <div class="slot">
         <p class="slot-note"><b>Slot 6 — Faith. NO IMAGE, and that is the decision.</b>
           It briefly held the lamp still-life, which turned out to be the same painting as
@@ -2098,6 +2134,37 @@ function heroFx(k) {
     if (document.getElementById('v-' + k).classList.contains('on')) wire();
   });
 }
+/* E's class descriptions: hover, tap AND keyboard focus. Hover alone was
+   rejected — the client opens this on a phone. One panel open at a time.
+   This sits BELOW `window.__heroes = {}` on purpose: build_client.py keeps only
+   the script from that line to `heroFx('d')`, so anything above it is cut out of
+   the client copy along with the switcher. */
+(function () {
+  /* `stuck` is the difference between a panel you are hovering and one you
+     opened on purpose. Without it a mouse user gets the panel on hover, and
+     their click — which is how you would expect to *open* it — reads as a
+     second toggle and shuts it again. */
+  var open = null, stuck = false;
+  function shut() {
+    if (open) { open.classList.remove('on'); open = null; }
+    stuck = false;
+  }
+  function show(a, s) { shut(); a.classList.add('on'); open = a; stuck = !!s; }
+  document.querySelectorAll('#v-e .e-cls').forEach(function (a) {
+    if (!a.querySelector('.d')) return;
+    a.addEventListener('mouseenter', function () { if (!stuck) show(a); });
+    a.addEventListener('mouseleave', function () { if (open === a && !stuck) shut(); });
+    a.addEventListener('focus', function () { if (!stuck) show(a); });
+    a.addEventListener('blur', function () { if (open === a) shut(); });
+    /* tap: the href is a placeholder, so the panel is what the tap is for */
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (open === a && stuck) { shut(); } else { show(a, true); }
+    });
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') shut(); });
+})();
+
 heroFx('d');
 heroFx('e');
 /* px.show already ran before this script block defined __heroes */

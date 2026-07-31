@@ -35,8 +35,12 @@ illustrations, and it is the reason the line above is stated absolutely.
 
 ## What is still missing
 
-Three of the five imagery slots hold a painting: slot 2 (`still-desk.png`), slot 3
-(`still-scripture.jpg`) and slot 5 (`vista-path.png`). Slot 6, the Faith band, is
+Two of the five imagery slots hold a painting: the merged slot 2 + 3
+(`still-desk.png`) and slot 5 (`vista-path.png`). `still-scripture.jpg` is now
+generated-but-unused, alongside `still-study.png` and `still-library.png` — it left the
+page when the week and the classes merged into one section. It is still built by
+`build_assets.py`, and costs the page nothing, because E no longer holds a
+`{{STILL_SCRIPTURE}}` placeholder for it to be inlined into. Slot 6, the Faith band, is
 deliberately **type only** — the verse, the cross mark and the gold H O P E row.
 
 Slot 4 — the three staff portraits — is the only slot still wanting an image, and it must

@@ -45,6 +45,16 @@ def cut(pattern, expect=1, flags=re.S):
     assert n == expect, "%r matched %d times, expected %d" % (pattern[:48], n, expect)
 
 
+# --- the document head -------------------------------------------------------
+# template.html carries a doctype, lang, charset and viewport so that the raw
+# prototype file is a real standards-mode document on a real phone. This output
+# is a *fragment*: build_site.document() supplies exactly the same head, and two
+# of them would nest a second <html> inside the body. The <title> stays — that
+# function looks for it and lifts it into the head it builds.
+cut(r"<!doctype html>\n<html lang=\"en\">\n<meta charset=\"utf-8\">\n"
+    r"<meta name=\"viewport\"[^>]*>\n")
+cut(r"<!-- These four lines were missing.*?-->\n\n")
+
 # --- the video data URIs live on D's <video>; E's borrows them ---------------
 # One copy in the file is the reason E cost ~340 KB instead of ~1.3 MB. Deleting
 # D would take the sources with it, so move them onto E's element first and
@@ -67,8 +77,10 @@ cut(r'<div class="px-bar".*?</div>\n')
 # and the chrome's stylesheet: the bar, the dashed slot outlines, the note
 # panels. .px-page/.on is inside this block, hence the `on` class added above.
 cut(r'/\* -+ prototype chrome.*?\.px-page\.on \{ display: block; \}\n')
-# E carries seven: one per slot 1-6 plus the note on the navy band itself.
-cut(r'\s*<p class="slot-note">.*?</p>', expect=7)
+# E carries six: slots 1, 2+3 (merged), 4, 5 and 6, plus the note on the navy
+# band itself. It was seven until the week and the classes became one section
+# and the Bible still-life left the page with slot 3's own note.
+cut(r'\s*<p class="slot-note">.*?</p>', expect=6)
 # The `slot` class is left on the wrappers. It only drives the dashed outline
 # under body.notes, which can no longer be switched on, and stripping it means
 # rewriting class lists on nested elements for no visible gain.
