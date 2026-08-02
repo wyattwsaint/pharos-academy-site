@@ -13,7 +13,11 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 
 FAMILIES = {
     # variant A
-    "cormorant-garamond": "Cormorant+Garamond:ital,wght@0,300;0,600;1,300",
+    # italic 600 is for E's hero sub-line only. It is a real face on purpose:
+    # the line is set in italic Cormorant, and asking for a weight that is not
+    # loaded gets a synthesised faux-bold — a smeared stroke, which is the
+    # opposite of the legibility the weight was raised for.
+    "cormorant-garamond": "Cormorant+Garamond:ital,wght@0,300;0,600;1,300;1,600",
     "libre-franklin": "Libre+Franklin:wght@400;500;600",
     # variant B
     "fraunces": "Fraunces:wght@400;600;700",

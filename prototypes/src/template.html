@@ -790,20 +790,117 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 }
 .e-poster { display: none; }
 .e-blur { opacity: 0; }
-/* warmer scrim than D's: the ground under the type tends gold-navy, not slate */
+/* INVERTED on 2026-08-01, when the lockup went to navy ink from the owner's
+   reference. This layer's job reversed with it: it no longer darkens a ground
+   for white type, it lightens one for dark type. Right-weighted, because the
+   type occupies that half alone and the left has to stay the painting. The top
+   band is for the header — the nav is navy over the hero now, and the clip's
+   first 15% is open sky it would otherwise disappear into. The bottom wash is
+   the hand-off to the paper band below, so the hero fades rather than cuts. */
+/* NARROWED TO ONE ELLIPSE on 2026-08-01, over two passes, both driven by the
+   same complaint: the wash was flattening the painting the clip was chosen for.
+
+   The layer began as a right-half gradient plus a top band plus a bottom band —
+   three washes, only one of which had type under it. It is now a single ellipse
+   roughly the size of the lockup. What went, and why it could go:
+
+     - the bottom band: nothing ever sat on it. It only cost the meadow.
+     - the top band: it was the navy nav's ground. The nav also carries
+       `text-shadow: 0 1px 8px rgba(255,252,244,.85)` (see .e-head:not(.stuck)
+       .e-nav a), and measured against the bare sky it still holds 5.01:1 — so
+       the band was doing work the shadow already did, and it was what made the
+       sky read as haze rather than sky.
+     - the right half: pulled in to 40%/56% at 71% 50%, which clears the sea and
+       the sun-glitter on it while keeping the ink's own ground intact.
+
+   The fix was a SMALLER wash, not a fainter one. A fainter wash over the same
+   area loses contrast everywhere; a smaller one loses none where the type is.
+
+   The opacities are not taste. Every line was re-measured after each pass, by
+   the corrected method: foreground is the DECLARED CSS colour and ground is the
+   40th-percentile luminance pixel of the box, sampled across the whole 8s loop
+   at 390px and 1440px. Taking the darkest 8% of the box instead measures glyph
+   antialiasing on thin type and reports failures that are not real. Worst line
+   now: 5.01:1 desktop (nav), 5.67:1 phone (gold italic), against a 4.5:1 need.
+
+   The gold italic is the lockup's weakest line and the phone ellipse is sized
+   for it — an intermediate 72%/34% put it at 4.09:1, a real failure. Re-measure,
+   do not eyeball, after any change here. */
+/* THIRD PASS, same day, same complaint: still flattening the painting. By this
+   point only one ellipse per breakpoint was left, so this round varied the two
+   things that remained — the extent and the falloff shape — and found that the
+   two breakpoints were limited by completely different things.
+
+   DESKTOP was limited by nothing much. The nav sits on bare sky and moves only
+   5.01 -> 4.88 across the whole range tested, so the ellipse's SKIRT — the part
+   that hazes the sea, not the part the ink sits on — was pure cost. The mid and
+   outer stops came in from .76@46%/.22@74% to .70@34%/.10@60%. The core stop is
+   untouched, which is why the type barely moves while the sea comes back.
+
+   PHONE was limited by GEOMETRY, and this is the part worth remembering. The
+   wash was 78% wide by 40% tall over a lockup that is five lines stacked — so
+   the bottom two lines (the gold italic and the caps rule) were never on the
+   core at all, they were living on the skirt. That is why every straightforward
+   reduction in round 3a broke them and only them: the gold italic went 5.77 ->
+   3.24 on nothing more than a faster falloff. The wash was the wrong SHAPE, not
+   the wrong strength — spending its width hazing the sea on both flanks and its
+   skirt doing the type's actual work.
+
+   Re-proportioning it to the type it covers — 58% wide by 60% tall — fixes both
+   halves at once: every line passes, the caps line IMPROVES (7.15 -> 7.46), and
+   20% of the frame's width comes back on each side, which is the tower on the
+   left and the treeline on the right.
+
+   If a fourth pass comes, the desktop has a little left (34%/48% also cleared,
+   at 4.56 worst) and the phone has almost none — 48% wide failed the caps at
+   4.12 and a collapsed skirt failed the italic at 2.93. Worst line now: 4.88:1
+   desktop (nav), 5.29:1 phone (gold italic), against a 4.5:1 need. */
 .e-scrim {
   position: absolute; inset: 0; z-index: 2; pointer-events: none;
   background:
-    linear-gradient(to bottom, rgba(12,26,44,.50) 0%, rgba(12,26,44,.12) 32%, rgba(12,26,44,.40) 100%),
-    linear-gradient(to right, rgba(12,26,44,0) 30%, rgba(16,38,71,.52) 100%);
+    radial-gradient(40% 56% at 71% 50%, rgba(255,251,241,.90) 0%,
+                    rgba(255,251,241,.70) 34%, rgba(255,251,241,.10) 60%,
+                    rgba(255,251,241,0) 100%);
+}
+/* Below 1000px the lockup centres, so a right-weighted wash washes the wrong
+   half — and the crop puts the tower and the treeline directly under the type.
+   The phone gets a centred ellipse instead, proportioned to the stacked lockup
+   rather than to the frame: TALLER THAN IT IS WIDE RELATIVE TO THE VIEWPORT, so
+   all five lines sit on the core. Widening it back out is the specific mistake
+   this shape exists to avoid — see the note above. */
+@media (max-width: 1000px) {
+  .e-scrim {
+    background:
+      radial-gradient(58% 60% at 50% 46%, rgba(255,251,241,.93) 0%,
+                      rgba(255,251,241,.86) 52%, rgba(255,251,241,.18) 76%,
+                      rgba(255,251,241,0) 100%);
+  }
 }
 .e-deep { position: absolute; inset: 0; z-index: 2; pointer-events: none;
   background: var(--navy-deep); opacity: 0; }
 
-.e-head { position: absolute; top: 0; left: 0; right: 0; z-index: 10; padding: 24px 0; }
+/* The header is FIXED, not absolute: it rides the whole page, not just the hero.
+   Over the hero it is chrome-less — the video is the surface and the nav floats
+   on it. Once the hero is past, it takes the navy band and the gold hairline,
+   which is E's existing ceremonial surface rather than a new one. Links stay
+   white throughout, because the band they land on is navy. */
+.e-head { position: fixed; top: 0; left: 0; right: 0; z-index: 40; padding: 24px 0;
+  transition: background .35s ease, padding .35s ease, box-shadow .35s ease; }
+.e-head::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0;
+  height: 1px; background: var(--mark-gold); opacity: 0; transition: opacity .35s ease; }
+.e-head.stuck { background: var(--navy-deep); padding: 13px 0;
+  box-shadow: 0 6px 24px rgba(6,16,30,.22); }
+.e-head.stuck::after { opacity: .55; }
 .e-head .e-wide { display: flex; align-items: center; gap: 22px; }
+/* The brand is the hero's own lockup while the hero is on screen — repeating it
+   in the corner at 25px would put the mark on screen twice, three inches apart.
+   It fades in only once the header has stuck and the hero lockup has scrolled
+   away, which is the moment the page stops identifying itself. */
 .e-brand { display: flex; align-items: center; gap: 11px; margin-right: auto;
-  text-decoration: none; color: #fff; }
+  text-decoration: none; color: #fff;
+  opacity: 0; visibility: hidden; transform: translateY(-4px);
+  transition: opacity .35s ease, transform .35s ease, visibility .35s; }
+.e-head.stuck .e-brand { opacity: 1; visibility: visible; transform: none; }
 .e-brand svg { width: 25px; height: auto; display: block;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,.4)); }
 .e-brand b { font: 400 17px/1 'Instrument Serif', serif; letter-spacing: .08em;
@@ -812,6 +909,15 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 .e-nav a { color: rgba(255,255,255,.9); text-decoration: none;
   font: 400 14.5px/1 'Public Sans', sans-serif; text-shadow: 0 1px 3px rgba(0,0,0,.35); }
 .e-nav a:hover { color: var(--mark-gold); }
+/* Consequence of the inverted scrim: white nav links on a lightened sunrise sky
+   are unreadable. Over the hero the header is navy; the moment it sticks it has
+   its own navy band underneath and the links go back to white. */
+.e-head:not(.stuck) .e-nav a { color: var(--navy); text-shadow: 0 1px 8px rgba(255,252,244,.85); }
+.e-head:not(.stuck) .e-nav a:hover { color: var(--gold-ink); }
+.e-head:not(.stuck) .e-btn.on-dark { border-color: rgba(23,54,92,.55); color: var(--navy);
+  text-shadow: none; }
+.e-head:not(.stuck) .e-btn.on-dark:hover { background: var(--navy); border-color: var(--navy);
+  color: var(--paper); }
 
 .e-btn { display: inline-block; border: 1px solid var(--navy); color: var(--navy);
   background: none; font: 600 13.5px/1 'Public Sans', sans-serif; text-decoration: none;
@@ -826,48 +932,86 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
   color: #21170A; }
 .e-btn.on-dark.solid:hover { background: #fff; border-color: #fff; color: var(--navy); }
 
+/* Recomposed 2026-08-01 to the owner's reference lockup. The two-column split —
+   mark and name to the LEFT of the lighthouse, copy right — is gone. It is now a
+   SINGLE centred block in the right half, and the same block at every width: a
+   lockup that re-composes on a phone stops being a lockup. Centring is not a
+   preference here, it is what the rule-with-cross requires; a cross hung off a
+   left-aligned rule reads as a bullet. */
 .e-hero-inner { position: relative; z-index: 3; height: 100%;
-  display: grid; grid-template-columns: 24% 1fr; align-items: center; }
-.e-hero-copy { grid-column: 2; padding-right: 26px; color: #fff; }
-/* The lockup is HORIZONTAL: the mark stands beside all three lines, not above
-   the name alone. The mark is now poster-sized (110px) because it carries a
-   three-line block — mark.svg is still the hand-drawn approximation (#13), and
-   at this size every flaw in it is legible. That is a known cost, taken. */
-.e-lockup { display: flex; align-items: center; gap: var(--lock-gap, 22px); }
-.e-lockup svg { width: var(--lock-mark, 110px); height: auto; display: block;
-  flex: 0 0 auto; filter: drop-shadow(0 2px 10px rgba(6,16,30,.45)); }
-.e-lockup h1 { font: 400 clamp(34px, 4.6vw, 66px)/1 'Instrument Serif', serif;
-  letter-spacing: .17em; text-transform: uppercase; color: #fff; margin: 0;
-  text-shadow: 0 2px 22px rgba(6,16,30,.45); }
-.e-lockup .wm { font: 400 clamp(22px, 2.5vw, 34px)/1.1 'Instrument Serif', serif;
-  margin: 14px 0 0; text-shadow: 0 2px 14px rgba(6,16,30,.5); }
-.e-lockup .e-tag { display: block; margin-top: 11px; color: var(--mark-gold);
-  text-shadow: 0 1px 10px rgba(6,16,30,.55); }
-/* everything under the lockup hangs off the TEXT column, not the mark column */
-.e-hero-sub { margin-left: calc(var(--lock-mark, 110px) + var(--lock-gap, 22px)); }
-.e-hero-caps { font: 400 clamp(12px, 1.15vw, 15px)/1.7 'Instrument Serif', serif;
-  letter-spacing: .22em; text-transform: uppercase; color: #fff; margin: 0;
-  text-shadow: 0 1px 12px rgba(6,16,30,.55); }
-.e-hero-caps + .e-hero-caps { color: var(--mark-gold); }
-.e-hero-cta { margin-top: 32px; display: flex; gap: 13px; flex-wrap: wrap; align-items: center; }
-.e-hero-cta small { color: rgba(255,255,255,.84); font-size: 13.5px; }
+  display: flex; align-items: center; justify-content: flex-end; }
+.e-lock { width: min(54%, 640px); text-align: center; color: var(--navy); }
+
+/* The hand-drawn mark.svg is not used here any more. The reference shows the
+   school's REAL logo — two-tone tower, gold beam, wave base — and the trace's
+   flaws only got more visible next to a 62px wordmark. The SVG still runs in the
+   stuck header and the footer, where it has to inherit a colour; this is a
+   raster and cannot. That divergence is deliberate and is on #13. */
+.e-lock-mark { width: var(--lock-mark, 200px); height: auto; display: block;
+  margin: 0 auto 20px; filter: drop-shadow(0 2px 14px rgba(255,250,238,.75)); }
+
+/* Fraunces, hero only — the rest of E stays Instrument Serif. Instrument is the
+   more elegant face but too light to carry a wordmark at this size; rendered
+   side by side against the reference it read airy where the reference reads
+   solid. The italic sub-line is Cormorant, because Fraunces ships no italic in
+   this build's subset. */
+.e-lock h1 { font: 600 clamp(34px, 4.4vw, 62px)/1.02 'Fraunces', serif;
+  letter-spacing: -.012em; color: var(--navy); margin: 0; }
+/* not --mark-deep (#4D82A1): the logo's own blue measured 3.29:1 on the washed
+   sky, which is a decorative value carrying words. This is the same hue taken
+   down to AA on this ground. */
+.e-lock-sub { font: 400 clamp(15px, 1.5vw, 21px)/1.3 'Fraunces', serif;
+  color: #2A6086; margin: 9px 0 0; }
+
+/* a variant of .e-hair, not an edit of it: the shared rule keeps its diamond and
+   is used further down the page. Here the ornament is a cross, on instruction,
+   and the rule runs out both sides of it as the reference sets it. */
+.e-hero-hair { display: flex; align-items: center; gap: 13px; margin: 18px auto 16px;
+  width: min(560px, 100%); }
+.e-hero-hair::before, .e-hero-hair::after { content: ""; flex: 1 1 0; height: 1px;
+  background: var(--mark-deep); opacity: .5; }
+.e-hero-hair svg { width: 15px; height: auto; display: block; flex: 0 0 auto;
+  color: var(--gold-ink); }
+
+/* The hierarchy inverted with the reference: "Pharos Academy" is the display
+   line now and H.O.P.E. is secondary. h1 stays on the school's name, which it
+   always was — the difference is that heading level and visual weight finally
+   agree instead of disagreeing on purpose. */
+.e-display { font: 400 clamp(25px, 3.1vw, 42px)/1.1 'Fraunces', serif;
+  margin: 0; color: var(--navy); }
+/* --gold-ink is AA on paper and parchment; the sunlit sky is brighter than both
+   and it measured 2.18:1 there. Cormorant at 300 is also a thinner stroke than
+   anything --gold-ink was set against, so this goes darker again.
+
+   Both of these lines then went HEAVIER, on the owner's call, after the scrim's
+   third narrowing: they are the two lines sitting on the least wash, and stroke
+   weight buys legibility that neither a darker ink nor a bigger wash was going
+   to. Cormorant italic 600 is fetched as a REAL face (see fetch_fonts.py) —
+   asking for 600 without loading it gets a synthesised faux-bold, which smears
+   the stroke and loses exactly what the weight was raised for. Costs 38KB in
+   the self-contained file. Public Sans 600 was already loaded. */
+.e-display-tag { display: block; margin-top: 5px; color: #6B4A15;
+  font: italic 600 clamp(18px, 2vw, 29px)/1.25 'Cormorant Garamond', serif; }
+.e-hero-caps { font: 600 clamp(11.5px, 1.05vw, 14px)/1.7 'Public Sans', sans-serif;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--navy);
+  margin: 15px 0 0; }
 
 @media (max-width: 1000px) {
-  .e-hero-inner { grid-template-columns: 1fr; align-items: end;
-    padding-bottom: clamp(48px, 10vh, 100px); }
-  .e-hero-copy { grid-column: 1; }
-  .e { --lock-mark: 86px; --lock-gap: 18px; }
+  /* Same composition, centred in the frame rather than pushed right — below this
+     width there is no right half to speak of, the video crop centres on the
+     tower, and the scrim carries the type over it. */
+  .e-hero-inner { justify-content: center; }
+  .e-lock { width: 100%; max-width: 520px; }
+  .e { --lock-mark: 150px; }
 }
 @media (max-width: 860px) { .e-nav { display: none; } }
 @media (max-width: 760px) {
   .e-wide, .e-wrap { padding: 0 20px; }
   .e-head { padding: 14px 0; }
-  .e { --lock-mark: 62px; --lock-gap: 14px; }
-  .e-lockup h1 { font-size: clamp(26px, 6.6vw, 40px); letter-spacing: .13em; }
-  .e-lockup .wm { font-size: 19px; }
-  /* the sub-block stops hanging off the text column once the mark is this
-     small — the indent costs more than the alignment is worth */
-  .e-hero-sub { margin-left: 0; }
+  .e-head.stuck { padding: 10px 0; }
+  .e { --lock-mark: 112px; }
+  .e-lock h1 { font-size: clamp(30px, 8.6vw, 44px); }
+  .e-hero-hair { margin: 15px auto 13px; }
 }
 
 /* ---------- body: D's air, warmed. Cream / parchment / navy alternate ---------- */
@@ -950,18 +1094,68 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 /* H.O.P.E. as four panels — gold initials and rules, and no pictures of families */
 .e-hope { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 44px;
   border-top: 1px solid rgba(224,172,78,.34); }
-.e-hope div { padding: 30px 18px 8px; text-align: center;
+.e-hopecell { position: relative;
   border-left: 1px solid rgba(224,172,78,.34); }
-.e-hope div:first-child { border-left: 0; }
-.e-hope b { display: block; font: 400 clamp(48px, 6.4vw, 84px)/1 'Instrument Serif', serif;
-  color: var(--gold-lit); }
-.e-hope span { display: block; margin-top: 14px;
+.e-hopecell:first-child { border-left: 0; }
+/* each letter is a real <button>, not a div with a mouseenter handler: this row
+   is now the only interactive thing in the navy band, and keyboard and screen
+   reader users get it for free. Reset, because a button brings a lot with it. */
+.e-hopebtn { display: block; width: 100%; padding: 30px 18px 8px; text-align: center;
+  background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+.e-hopebtn b { display: block; font: 400 clamp(48px, 6.4vw, 84px)/1 'Instrument Serif', serif;
+  color: var(--gold-lit); transition: color .25s ease, transform .25s ease; }
+.e-hopebtn span { display: block; margin-top: 14px;
   font: 400 13px/1 'Instrument Serif', serif; letter-spacing: .2em;
   text-transform: uppercase; color: #EFE7D8; }
+.e-hopebtn:hover b, .e-hopecell.on .e-hopebtn b { color: #fff; transform: translateY(-2px); }
+.e-hopebtn:focus-visible { outline: 2px solid var(--gold-lit); outline-offset: -4px; }
+
+/* the popout. Unlike the class descriptions, this one really can float: the navy
+   band has no overflow clip, so nothing cuts it off. It is a LIGHT card on a
+   navy ground on purpose — a navy card on navy would need a border to exist at
+   all, and the gold-on-navy contrast risk is the one #12 flagged. */
+/* it opens UPWARD. Downward it cleared the row fine but ran ~180px past the
+   bottom of the navy band and finished on the cream section, which read as the
+   card having escaped rather than opened. Upward it covers the verse — which
+   has already been read by the time you are at the letters — and stays wholly
+   on its own ground. */
+.e-hopecard { display: none; position: absolute; z-index: 6;
+  bottom: calc(100% - 4px); left: 50%; transform: translateX(-50%);
+  width: 380px; background: var(--paper); border-radius: 3px; text-align: left;
+  box-shadow: 0 18px 44px rgba(4,12,26,.45); overflow: hidden; }
+.e-hopecell.on .e-hopecard { display: block; }
+/* the outer cells would hang off the container, so they anchor to their own edge
+   instead of centring. Deterministic — no measuring, no reflow. */
+.e-hopecell:first-child .e-hopecard { left: 0; transform: none; }
+.e-hopecell:last-child .e-hopecard { left: auto; right: 0; transform: none; }
+.e-hopecard img { display: block; width: 100%; aspect-ratio: 3 / 2;
+  object-fit: cover; }
+.e-hopecard .t { margin: 0; padding: 16px 20px 0;
+  font: 400 21px/1 'Instrument Serif', serif; color: var(--navy); }
+.e-hopecard .d { margin: 8px 0 0; padding: 0 20px 18px;
+  font: 400 14px/1.55 'Public Sans', sans-serif; color: var(--ink); }
+
+@media (max-width: 1000px) {
+  /* below the desktop composition the card stops floating and expands inside its
+     own cell, which is the same answer the class grid arrived at: a floating
+     panel anchored to a 2-up cell is wider than the cell and taller than the row
+     it sits in, and there is no hover to dismiss it with. */
+  .e-hopecard { position: static; transform: none; width: auto; bottom: auto;
+    margin: 14px 12px 4px; box-shadow: 0 10px 26px rgba(4,12,26,.35); }
+  .e-hopecell:first-child .e-hopecard,
+  .e-hopecell:last-child .e-hopecard { left: auto; right: auto; }
+}
 @media (max-width: 620px) {
   .e-hope { grid-template-columns: repeat(2, 1fr); }
-  .e-hope div:nth-child(3) { border-left: 0; }
-  .e-hope div:nth-child(n+3) { border-top: 1px solid rgba(224,172,78,.34); }
+  .e-hopecell:nth-child(3) { border-left: 0; }
+  .e-hopecell:nth-child(n+3) { border-top: 1px solid rgba(224,172,78,.34); }
+  /* 2-up, a cell is ~150px and the sentence wrapped to five lines of three
+     words. The card goes back to floating here, but spanning BOTH columns —
+     anchored to its own side so it never leaves the row — and covers the pair
+     below it. Escape, an outside tap, or tapping the letter again closes it. */
+  .e-hopecard { position: absolute; z-index: 8; top: calc(100% - 6px); bottom: auto;
+    left: 0; right: auto; transform: none; width: calc(200% + 1px); margin: 0; }
+  .e-hopecell:nth-child(even) .e-hopecard { left: auto; right: 0; }
 }
 
 .e-verse { font: 400 italic clamp(23px, 3.2vw, 38px)/1.36 'Instrument Serif', serif;
@@ -1226,7 +1420,7 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 
   <footer class="a-foot"><div class="a-wrap">
     <div><b style="color:var(--paper)">Pharos Academy</b><br />9 Sherwood Drive<br />Enola, PA 17025</div>
-    <div>Call Jill Kilker<br /><a href="tel:7174970896">717-497-0896</a></div>
+    <div>Jill Kilker, Head of School<br /><a href="tel:7174970896">717-497-0896</a></div>
     <div><a href="#">Statement of Faith</a><br /><a href="#">Policies &amp; forms</a><br /><a href="#">Teach at Pharos</a></div>
   </div></footer>
 </main>
@@ -1396,7 +1590,7 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 
   <footer class="b-foot"><div class="b-wrap">
     <div><b style="color:var(--ink)">Pharos Academy</b><br />9 Sherwood Drive<br />Enola, PA 17025</div>
-    <div>Call Jill Kilker<br /><a href="tel:7174970896">717-497-0896</a></div>
+    <div>Jill Kilker, Head of School<br /><a href="tel:7174970896">717-497-0896</a></div>
     <div><a href="#">Statement of Faith</a><br /><a href="#">Policies &amp; forms</a><br /><a href="#">Teach at Pharos</a></div>
   </div></footer>
 </main>
@@ -1527,7 +1721,7 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 
   <footer class="c-foot"><div class="c-wide">
     <div><b style="color:var(--ink)">Pharos Academy</b><br />9 Sherwood Drive<br />Enola, PA 17025</div>
-    <div>Call Jill Kilker<br /><a href="tel:7174970896">717-497-0896</a></div>
+    <div>Jill Kilker, Head of School<br /><a href="tel:7174970896">717-497-0896</a></div>
     <div><a href="#">Statement of Faith</a><br /><a href="#">Policies &amp; forms</a><br /><a href="#">Teach at Pharos</a></div>
   </div></footer>
 </main>
@@ -1712,7 +1906,7 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 
   <footer class="d-foot"><div class="d-wide">
     <div><b style="color:var(--ink)">Pharos Academy</b><br />9 Sherwood Drive<br />Enola, PA 17025</div>
-    <div>Call Jill Kilker<br /><a href="tel:7174970896">717-497-0896</a></div>
+    <div>Jill Kilker, Head of School<br /><a href="tel:7174970896">717-497-0896</a></div>
     <div><a href="#">Statement of Faith</a><br /><a href="#">Policies &amp; forms</a><br /><a href="#">Teach at Pharos</a></div>
   </div></footer>
 </main>
@@ -1731,46 +1925,51 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
 
   <section class="e-hero slot" id="e-hero">
     <div class="e-media" id="e-media">
-      <!-- src comes from d-vid's data attributes: one copy of the video in the
-           file, not two. Poster and blur are small enough to duplicate. -->
-      <video id="e-vid" poster="{{POSTER}}" muted loop playsinline preload="none"
+      <!-- E's hero is its own clip now, not D's. It used to borrow d-vid's data
+           attributes so the file held one copy of the video; D keeps the clip
+           #12 decided on, so this file now carries both and is ~1.2 MB larger.
+           The client build ships E alone and pays none of it. -->
+      <video id="e-vid" data-lg="{{VIDEO_E_LG}}" data-sm="{{VIDEO_E_SM}}"
+             poster="{{POSTER_E}}" muted loop playsinline preload="none"
              aria-hidden="true"></video>
-      <img class="e-still e-poster" id="e-poster" src="{{POSTER}}" alt="" />
-      <img class="e-still e-blur" id="e-blur" src="{{POSTER_BLUR}}" alt="" />
+      <img class="e-still e-poster" id="e-poster" src="{{POSTER_E}}" alt="" />
+      <img class="e-still e-blur" id="e-blur" src="{{POSTER_E_BLUR}}" alt="" />
     </div>
     <div class="e-scrim"></div>
     <div class="e-deep" id="e-deep"></div>
-    <div class="e-hero-inner">
-      <div class="e-hero-copy e-wide" id="e-copy">
-        <div style="max-width:800px;margin-left:auto">
-          <div class="e-lockup">
-            {{MARKSVG}}
-            <div>
-              <h1>Pharos Academy</h1>
-              <p class="wm">H.O.P.E. for Families</p>
-              <em class="e-tag">Helping Our Parents Educate</em>
-            </div>
-          </div>
-          <div class="e-hair"><i></i></div>
-          <div class="e-hero-sub">
-            <p class="e-hero-caps">A Christian Classical, Hybrid-Microschool</p>
-            <p class="e-hero-caps">Faith. Family. Learning. Together.</p>
-            <div class="e-hero-cta">
-              <a class="e-btn on-dark solid" href="#e-inq">Ask us about Pharos</a>
-              <a class="e-btn on-dark" href="#e-classes">See the classes</a>
-              <small>No application yet. Just a question.</small>
-            </div>
-          </div>
+    <div class="e-hero-inner e-wide" id="e-copy">
+      <div class="e-lock">
+        <img class="e-lock-mark" src="{{MARK}}" alt="" />
+        <h1>Pharos Academy</h1>
+        <p class="e-lock-sub">A Christian Classical Hybrid Homeschool</p>
+        <div class="e-hero-hair" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round"><path d="M12 3 L12 21 M5.5 9 L18.5 9" /></svg>
         </div>
+        <p class="e-display">H.O.P.E. for Families<em class="e-display-tag">Helping Our
+          Parents Educate</em></p>
+        <p class="e-hero-caps">Faith. Family. Learning. Together.</p>
       </div>
     </div>
-    <p class="slot-note"><b>Slot 1 — Hero. The video, unchanged.</b> 0.5× parallax, blur and
-      scrim ramping across this one viewport. Only the copy layer differs from D: a horizontal
-      lockup — the mark standing beside the name, the H.O.P.E. line and the gold tagline —
-      then the rule, two letterspaced caps lines and the buttons. <i>The mark is now
-      poster-sized at 110px, and mark.svg is still the hand-drawn approximation (#13), so
-      every flaw in it is legible here. "Faith. Family. Learning. Together." is invented
-      copy, taken from the reference poster deliberately (see the README).</i></p>
+    <p class="slot-note"><b>Slot 1 — Hero. A DIFFERENT video from D's, re-shot again 2026-08-01.</b>
+      Same generator and same 1280×720 / 8s / 24fps; the tower moved right and the horizon
+      dropped, so the open sky the lockup sits on is larger. D keeps the clip #12 decided on,
+      untouched, so this file still carries two videos rather than sharing one. 0.5× parallax,
+      blur and scrim ramp across this one viewport as before.
+      <i>Recomposed to the owner's reference of 2026-08-01: ONE centred lockup in the right
+      half — real logo, PHAROS ACADEMY, sub-brand, a rule carrying a cross, H.O.P.E., the gold
+      italic, the caps line — the same block at every width. Three things reversed with it.
+      The scrim is INVERTED: navy ink on a lightened ground, not white on a darkened one, so
+      the nav is navy over the hero too. The hierarchy is INVERTED: the school's name is now
+      the display line and H.O.P.E. is secondary; the h1 was always the name, and now weight
+      and heading level agree. The mark is the school's REAL logo, not the traced SVG, which
+      still runs in the header and footer where it has to inherit a colour — that divergence
+      is on #13, whose sign-off request predates it. The hero has NO button: the inquiry CTA
+      lives in the fixed header alone, which is thinner than #9's "persistent CTA" intends.
+      The sub-brand now reads "A Christian Classical Hybrid Homeschool" on the owner's
+      instruction — the 19 mirrored pages all say <b>Microschool</b>, so this is a positioning
+      change the client has not confirmed. "Faith. Family. Learning. Together." remains
+      invented copy, taken deliberately (see the README).</i></p>
   </section>
 
   <section class="e-sec slot" id="e-classes">
@@ -1907,11 +2106,50 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
       </svg>
       <p class="e-verse" style="margin:22px auto 0">"Honor Christ the Lord as holy, always being
         prepared to make a defense for the hope that is within."<cite>1 Peter 3:15</cite></p>
+      <!-- The four sentences below are NOT the school's words. Nothing in
+           docs/mirror/ expands the acronym past "Helping Our Parents Educate" —
+           these are the prototype's drafts, standing in so the row can be seen
+           working, and #13 asks George and Jill to approve or replace them.
+           The paintings are the owner's, generated, and three of the four
+           contain people: a line assets/imagery/README.md states absolutely and
+           the owner overruled on 2026-07-31, for this row only. -->
       <div class="e-hope">
-        <div><b>H</b><span>Helping</span></div>
-        <div><b>O</b><span>Our</span></div>
-        <div><b>P</b><span>Parents</span></div>
-        <div><b>E</b><span>Educate</span></div>
+        <div class="e-hopecell">
+          <button class="e-hopebtn" type="button" aria-expanded="false" aria-controls="e-hope-h">
+            <b>H</b><span>Helping</span></button>
+          <div class="e-hopecard" id="e-hope-h">
+            <img src="{{HOPE_H}}" alt="" />
+            <p class="t">Helping</p>
+            <p class="d">We come alongside families to support and encourage.</p>
+          </div>
+        </div>
+        <div class="e-hopecell">
+          <button class="e-hopebtn" type="button" aria-expanded="false" aria-controls="e-hope-o">
+            <b>O</b><span>Our</span></button>
+          <div class="e-hopecard" id="e-hope-o">
+            <img src="{{HOPE_O}}" alt="" />
+            <p class="t">Our</p>
+            <p class="d">A community of families learning and growing together.</p>
+          </div>
+        </div>
+        <div class="e-hopecell">
+          <button class="e-hopebtn" type="button" aria-expanded="false" aria-controls="e-hope-p">
+            <b>P</b><span>Parents</span></button>
+          <div class="e-hopecard" id="e-hope-p">
+            <img src="{{HOPE_P}}" alt="" />
+            <p class="t">Parents</p>
+            <p class="d">Parents are the primary educators. We equip and empower you.</p>
+          </div>
+        </div>
+        <div class="e-hopecell">
+          <button class="e-hopebtn" type="button" aria-expanded="false" aria-controls="e-hope-e">
+            <b>E</b><span>Educate</span></button>
+          <div class="e-hopecard" id="e-hope-e">
+            <img src="{{HOPE_E}}" alt="" />
+            <p class="t">Educate</p>
+            <p class="d">Cultivating truth, goodness, and beauty in every subject.</p>
+          </div>
+        </div>
       </div>
       <p style="max-width:46ch;margin:38px auto 0">We partner with parents rather than replace
         them.</p>
@@ -1958,7 +2196,7 @@ body.notes .slot-note i { font-style: normal; opacity: .7; }
       </div>
       <div class="e-foot-cols">
         <div><b>Pharos Academy</b><br />9 Sherwood Drive<br />Enola, PA 17025</div>
-        <div><b>Call Jill Kilker</b><br /><a href="tel:7174970896">717-497-0896</a></div>
+        <div><b>Jill Kilker, Head of School</b><br /><a href="tel:7174970896">717-497-0896</a></div>
         <div><b>More</b><br /><a href="#">Statement of Faith</a><br /><a href="#">Policies &amp; forms</a><br /><a href="#">Teach at Pharos</a></div>
       </div>
     </div>
@@ -2064,9 +2302,10 @@ function heroFx(k) {
   const deep = document.getElementById(k + '-deep');
   const copy = document.getElementById(k + '-copy');
   const vid = document.getElementById(k + '-vid');
-  /* one copy of the video data URI in the file: E's <video> carries no data
-     attributes and borrows D's. */
-  const srcs = document.getElementById('d-vid').dataset;
+  /* D and E are different clips now, so each <video> carries its own sources.
+     The fallback to d-vid is kept for any variant that has none of its own. */
+  const srcs = (vid && vid.dataset.lg) ? vid.dataset
+             : document.getElementById('d-vid').dataset;
   const reduceQ = matchMedia('(prefers-reduced-motion: reduce)');
   const smallQ = matchMedia('(max-width: 760px)');
 
@@ -2163,6 +2402,63 @@ function heroFx(k) {
     });
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') shut(); });
+})();
+
+/* E's H.O.P.E. row: same hover / tap / focus contract as the class panels, and
+   deliberately the same code shape — two different answers to "how does a panel
+   open" on one page is how a client finds the inconsistent one. `stuck` is here
+   for the same reason it is there: without it a mouse user's click, which is how
+   you would expect to OPEN the card, reads as a second toggle and shuts it. */
+(function () {
+  var cells = document.querySelectorAll('#v-e .e-hopecell');
+  if (!cells.length) return;
+  var open = null, stuck = false;
+  function shut() {
+    if (open) {
+      open.classList.remove('on');
+      open.querySelector('.e-hopebtn').setAttribute('aria-expanded', 'false');
+      open = null;
+    }
+    stuck = false;
+  }
+  function show(cell, s) {
+    shut();
+    cell.classList.add('on');
+    cell.querySelector('.e-hopebtn').setAttribute('aria-expanded', 'true');
+    open = cell; stuck = !!s;
+  }
+  cells.forEach(function (cell) {
+    var btn = cell.querySelector('.e-hopebtn');
+    cell.addEventListener('mouseenter', function () { if (!stuck) show(cell); });
+    cell.addEventListener('mouseleave', function () { if (open === cell && !stuck) shut(); });
+    btn.addEventListener('focus', function () { if (!stuck) show(cell); });
+    btn.addEventListener('blur', function () { if (open === cell && !stuck) shut(); });
+    btn.addEventListener('click', function () {
+      if (open === cell && stuck) { shut(); } else { show(cell, true); }
+    });
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') shut(); });
+  document.addEventListener('click', function (e) {
+    if (stuck && !e.target.closest('.e-hopecell')) shut();
+  });
+})();
+
+/* E's header is fixed and chrome-less over the hero, then takes the navy band
+   once the hero is past. The threshold is the hero's height less the stuck
+   header's own, so the band arrives just before the type it would otherwise sit
+   on. offsetHeight is read live because ?flat=1 pins the hero to 640px. */
+(function () {
+  var head = document.querySelector('#v-e .e-head');
+  var hero = document.getElementById('e-hero');
+  if (!head || !hero) return;
+  var raf = 0;
+  function frame() {
+    raf = 0;
+    head.classList.toggle('stuck', scrollY > (hero.offsetHeight || 1) - 88);
+  }
+  addEventListener('scroll', function () { if (!raf) raf = requestAnimationFrame(frame); },
+                   { passive: true });
+  frame();
 })();
 
 heroFx('d');
