@@ -67,43 +67,37 @@
           "nodes": [
             {
               "target": [
-                ".e-brand > b"
-              ],
-              "summary": "Element's background color could not be determined due to a background gradient"
-            },
-            {
-              "target": [
                 ".e-wide > .e-btn.on-dark[href$=\"#e-inq\"]"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".e-lockup > div > h1"
+                ".e-hero-mark > h1"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".wm"
+                ".e-display"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".e-lockup > div > .e-tag"
+                ".e-display-tag"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".e-hero-caps:nth-child(1)"
+                ".e-hero-caps:nth-child(3)"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".e-hero-caps:nth-child(2)"
+                ".e-hero-caps:nth-child(4)"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
@@ -136,11 +130,17 @@
                 "#px-next"
               ],
               "summary": "Element content contains only non-text characters"
+            },
+            {
+              "target": [
+                "#px-slots"
+              ],
+              "summary": "Element's background color could not be determined because it partially overlaps other elements"
             }
           ]
         }
       ],
-      "contrastPasses": 132
+      "contrastPasses": 131
     },
     "768": {
       "viewport": [
@@ -209,43 +209,37 @@
           "nodes": [
             {
               "target": [
-                ".e-brand > b"
-              ],
-              "summary": "Element's background color could not be determined due to a background gradient"
-            },
-            {
-              "target": [
                 ".e-wide > .e-btn.on-dark[href$=\"#e-inq\"]"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".e-lockup > div > h1"
+                ".e-hero-mark > h1"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".wm"
+                ".e-display"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".e-lockup > div > .e-tag"
+                ".e-display-tag"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".e-hero-caps:nth-child(1)"
+                ".e-hero-caps:nth-child(3)"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".e-hero-caps:nth-child(2)"
+                ".e-hero-caps:nth-child(4)"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
@@ -278,6 +272,316 @@
                 "#px-next"
               ],
               "summary": "Element content contains only non-text characters"
+            }
+          ]
+        }
+      ],
+      "contrastPasses": 133
+    },
+    "834": {
+      "viewport": [
+        834,
+        1112,
+        2
+      ],
+      "docScrollWidth": 834,
+      "horizontalOverflow": false,
+      "offenders": [],
+      "under24": [
+        {
+          "sel": "a",
+          "text": "All nineteen classes \u2192",
+          "w": 189,
+          "h": 21,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "Read our Statement of Faith \u2192",
+          "w": 257,
+          "h": 21,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "717-497-0896",
+          "w": 97,
+          "h": 17,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "Statement of Faith",
+          "w": 125,
+          "h": 17,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "Policies & forms",
+          "w": 109,
+          "h": 17,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "Teach at Pharos",
+          "w": 107,
+          "h": 17,
+          "fails": false,
+          "crowdedBy": null
+        }
+      ],
+      "violations": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".e-wide > .e-btn.on-dark[href$=\"#e-inq\"]"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-hero-mark > h1"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-display"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-display-tag"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-hero-caps:nth-child(3)"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-hero-caps:nth-child(4)"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                "a[href$=\"#e-classes\"]"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-hero-cta > small"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                "#e-m"
+              ],
+              "summary": "Element's background color could not be determined because it's partially obscured by another element"
+            },
+            {
+              "target": [
+                "#px-prev"
+              ],
+              "summary": "Element content contains only non-text characters"
+            },
+            {
+              "target": [
+                "#px-next"
+              ],
+              "summary": "Element content contains only non-text characters"
+            }
+          ]
+        }
+      ],
+      "contrastPasses": 133
+    },
+    "1024": {
+      "viewport": [
+        1024,
+        1366,
+        2
+      ],
+      "docScrollWidth": 1024,
+      "horizontalOverflow": false,
+      "offenders": [],
+      "under24": [
+        {
+          "sel": "a",
+          "text": "About",
+          "w": 41,
+          "h": 15,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "Classes",
+          "w": 52,
+          "h": 15,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "Admissions",
+          "w": 77,
+          "h": 15,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "Current Families",
+          "w": 111,
+          "h": 15,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "All nineteen classes \u2192",
+          "w": 189,
+          "h": 21,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "Read our Statement of Faith \u2192",
+          "w": 257,
+          "h": 21,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "717-497-0896",
+          "w": 97,
+          "h": 17,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "Statement of Faith",
+          "w": 125,
+          "h": 17,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "Policies & forms",
+          "w": 109,
+          "h": 17,
+          "fails": false,
+          "crowdedBy": null
+        },
+        {
+          "sel": "a",
+          "text": "Teach at Pharos",
+          "w": 107,
+          "h": 17,
+          "fails": false,
+          "crowdedBy": null
+        }
+      ],
+      "violations": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".e-nav > a[href=\"#\"]:nth-child(1)"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-nav > a[href=\"#\"]:nth-child(2)"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-nav > a[href=\"#\"]:nth-child(3)"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-nav > a[href=\"#\"]:nth-child(4)"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-wide > .e-btn.on-dark[href$=\"#e-inq\"]"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-hero-mark > h1"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-display"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-display-tag"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-hero-caps:nth-child(3)"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-hero-caps:nth-child(4)"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                "a[href$=\"#e-classes\"]"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-hero-cta > small"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
             }
           ]
         }
@@ -383,12 +687,6 @@
           "nodes": [
             {
               "target": [
-                ".e-brand > b"
-              ],
-              "summary": "Element's background color could not be determined due to a background gradient"
-            },
-            {
-              "target": [
                 ".e-nav > a[href=\"#\"]:nth-child(1)"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
@@ -419,37 +717,43 @@
             },
             {
               "target": [
-                ".e-lockup > div > h1"
+                ".e-hero-mark > h1"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".wm"
+                ".e-display"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".e-lockup > div > .e-tag"
+                ".e-display-tag"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".e-hero-caps:nth-child(1)"
+                ".e-hero-caps:nth-child(3)"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
-                ".e-hero-caps:nth-child(2)"
+                ".e-hero-caps:nth-child(4)"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             },
             {
               "target": [
                 "a[href$=\"#e-classes\"]"
+              ],
+              "summary": "Element's background color could not be determined due to a background gradient"
+            },
+            {
+              "target": [
+                ".e-hero-cta > small"
               ],
               "summary": "Element's background color could not be determined due to a background gradient"
             }

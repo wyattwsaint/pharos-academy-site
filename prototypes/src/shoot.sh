@@ -11,7 +11,9 @@ a = json.load(open("assets.json"))
 for k, v in [("{{ENGRAVING}}", a["engraving_light"]), ("{{MARK}}", a["mark"]),
              ("{{CHURCH}}", a["church"]), ("{{ENGRAVING_MASK}}", a["engraving_mask"]),
              ("{{STILL_SCRIPTURE}}", a["still_scripture"]),
-             ("{{STILL_DESK}}", a["still_desk"]), ("{{VISTA_PATH}}", a["vista_path"])]:
+             ("{{STILL_DESK}}", a["still_desk"]), ("{{VISTA_PATH}}", a["vista_path"]),
+             ("{{HOPE_H}}", a["hope_h"]), ("{{HOPE_O}}", a["hope_o"]),
+             ("{{HOPE_P}}", a["hope_p"]), ("{{HOPE_E}}", a["hope_e"])]:
     html = html.replace(k, v)
 
 # variant D's assets. The video is inlined as a data URI like everything else so
@@ -28,6 +30,17 @@ html = html.replace("{{VIDEO_SM}}", durl(ASSETS / "hero-1280.mp4", "video/mp4"))
 html = html.replace("{{POSTER}}", durl(ASSETS / "poster.webp", "image/webp"))
 html = html.replace("{{POSTER_BLUR}}", durl(ASSETS / "poster-blur.webp", "image/webp"))
 
+# E's hero is now a DIFFERENT clip (assets/hero/veo-hope-720p.mp4). D keeps the
+# one #12 decided on, untouched, so the artefact that ticket recorded still
+# reads. The cost is that this file no longer shares one video between the two
+# variants — it carries both, ~1.2 MB of base64 more. The client build ships E
+# alone, so it pays none of that.
+print("variant E assets:")
+html = html.replace("{{VIDEO_E_LG}}", durl(ASSETS / "hope-1920.mp4", "video/mp4"))
+html = html.replace("{{VIDEO_E_SM}}", durl(ASSETS / "hope-1280.mp4", "video/mp4"))
+html = html.replace("{{POSTER_E}}", durl(ASSETS / "hope-poster.webp", "image/webp"))
+html = html.replace("{{POSTER_E_BLUR}}", durl(ASSETS / "hope-poster-blur.webp", "image/webp"))
+
 # the hand-drawn SVG mark goes in as markup, not a data URI, so it inherits the
 # variant's colour tokens and can be inspected in devtools
 svg = pathlib.Path("mark.svg").read_text(encoding="utf-8")
@@ -42,7 +55,7 @@ print(round(os.path.getsize(out) / 1024), "KB total")
 PY
 
 CH="/c/Program Files/Google/Chrome/Application/chrome.exe"
-SHOTS='C:\Users\wyatt\AppData\Local\Temp\claude\C--Users-wyatt-source-repos-pharos-academy-site\ca0ee430-5608-4102-af80-e5c9beb18006\scratchpad\shots'
+SHOTS='C:\Users\wyatt\AppData\Local\Temp\claude\C--Users-wyatt-source-repos-pharos-academy-site\b2c022b7-b7f0-46e6-ac14-dde0ef7ab705\scratchpad\shots'
 SHOTS_POSIX=$(printf '%s' "$SHOTS" | tr '\\' '/')
 mkdir -p "$SHOTS_POSIX"   # chrome --screenshot will not create parent dirs
 URL="file:///C:/Users/wyatt/source/repos/pharos-academy-site/prototypes/homepage-design-language.html"

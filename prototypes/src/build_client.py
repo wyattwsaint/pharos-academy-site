@@ -55,13 +55,13 @@ cut(r"<!doctype html>\n<html lang=\"en\">\n<meta charset=\"utf-8\">\n"
     r"<meta name=\"viewport\"[^>]*>\n")
 cut(r"<!-- These four lines were missing.*?-->\n\n")
 
-# --- the video data URIs live on D's <video>; E's borrows them ---------------
-# One copy in the file is the reason E cost ~340 KB instead of ~1.3 MB. Deleting
-# D would take the sources with it, so move them onto E's element first and
-# point the hero script at its own variant.
-srcs = re.search(r'<video id="d-vid" (data-lg="[^"]+" data-sm="[^"]+")', html)
-assert srcs, "D's video sources not found — has the hero markup changed?"
-html = html.replace('<video id="e-vid" ', '<video id="e-vid" ' + srcs.group(1) + " ", 1)
+# --- the video data URIs -----------------------------------------------------
+# E used to borrow D's, which is why deleting D meant moving them across first.
+# E now has its own clip and its own attributes, so there is nothing to move —
+# but the script still names d-vid as a fallback for variants without sources,
+# and that element is about to be deleted. Point the fallback at E's own.
+assert re.search(r'<video id="e-vid" data-lg="[^"]+" data-sm="[^"]+"', html), \
+    "E's video sources not found — has the hero markup changed?"
 html = html.replace("document.getElementById('d-vid').dataset", "vid.dataset", 1)
 
 # --- variants A-D -----------------------------------------------------------
@@ -129,6 +129,15 @@ for tag in ("style", "script"):
 # --- the title --------------------------------------------------------------
 html = html.replace("<title>Pharos Academy — design language prototype</title>",
                     "<title>Pharos Academy — Helping Our Parents Educate</title>", 1)
+
+# --- the HTML comments -------------------------------------------------------
+# The stylesheet's and the script's comments are stripped above; the markup's
+# were not, and E's now carry the internal argument too — whose instruction a
+# choice came from, which images are generated, which words are the prototype's
+# drafts rather than the school's. View Source is not private. base64's alphabet
+# has no "-", so no data URI can contain "-->" and this cannot eat one.
+html, n = re.subn(r"<!--.*?-->\n?", "", html, flags=re.S)
+print("stripped %d HTML comments" % n)
 
 for stray in ("px-page e on", "id=\"v-e\""):
     assert stray in html, "lost E's page wrapper"
