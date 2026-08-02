@@ -12,15 +12,39 @@ place, object or person belonging to Pharos Academy.
 | `vista-path.png` | Painterly landscape: a footpath through a wildflower meadow at sunrise. 1672×941 (16:9); cropped to 21:9 for slot 5. | **AI-generated**, ChatGPT, 29 July 2026, by the site owner. |
 | `still-library.png` | Painterly still-life: bookshelf, a globe on a brass stand, a compass, a portico drawing. 1672×941 (16:9). **Unused** — same subject as `still-study.png`; only one of the two could ever have run, and neither does. Held for an interior page. | **AI-generated**, ChatGPT, 29 July 2026, by the site owner. |
 
-## The line that governs this directory
+## The H.O.P.E. popouts — and the line they cross
 
-**No generated people, anywhere on this site, ever.** Every file above is deliberately
-free of people, hands and faces — that is what makes them usable. A generated image of
-adults or children would read to a parent as a photograph of *this school's* families,
-which it is not, and no framing fixes that.
+| File | What | Provenance |
+|---|---|---|
+| `hope-h-helping.png` | Watercolour: two women in a sunlit library, one passing an open book to the other. **H — Helping.** | **AI-generated**, ChatGPT, 31 July 2026, by the site owner. |
+| `hope-o-our.png` | Watercolour: eight people — two men, a woman, five children — working around a long table. **O — Our.** | as above |
+| `hope-p-parents.png` | Watercolour: a woman on a sofa reading to a boy and a girl. **P — Parents.** | as above |
+| `hope-e-educate.png` | Watercolour still-life: a gilt globe, a botanical book, blue-and-gold bindings, daisies. **E — Educate.** No people. | as above |
 
-Real people appear on this site only as the three consenting staff portraits, which are
-photographs the school supplies (issue #13).
+## The line that governed this directory, and the day it was overruled
+
+**The rule was: no generated people, anywhere on this site, ever.** Every still-life above
+is deliberately free of people, hands and faces — that is what made them usable. A
+generated image of adults or children reads to a parent as a photograph of *this school's*
+families, which it is not, and no framing fixes that. The rule had already been enforced
+twice: a painted family of eleven offered for slot 2 was refused and never copied into this
+repo, and the reference poster's family illustrations were dropped for the same reason. It
+was written here absolutely so it would not have to be argued a third time.
+
+**On 2026-07-31 the owner was shown that argument again, in those terms, and overruled it.**
+Three of the four H.O.P.E. popout paintings above show adults and children. They are on the
+page. This is the owner's decision, taken knowingly, not an oversight and not a case of the
+rule being forgotten — and it is recorded here rather than quietly absorbed, so that anyone
+reading this directory later sees both the rule and the exception.
+
+What did **not** change:
+
+- The exception is these four popouts. Nothing else on the page gained people.
+- **Slot 4 — the three staff portraits — is still photographs only.** It must be real
+  adults who consent (issue #13). A painting there was never on the table and still isn't.
+- The disclosure position is unchanged: generated, mentioned to the client if asked. Issue
+  #13 carries this specific reversal into the sign-off conversation, so George and Jill are
+  told rather than left to notice.
 
 ## Disclosure
 
@@ -28,10 +52,13 @@ The hero video (`../hero/`) is also AI-generated. The owner's decision, recorded
 #12 with the risk stated, is that this is **mentioned to the client only if asked**. The
 same treatment covers these two files unless the owner says otherwise.
 
-A fifth generated image was offered for slot 2 on the same day and **refused**: a painted
-family of eleven — two mothers, two fathers, seven invented children. It was never copied
-into this repo. It is the same refusal that removed the reference poster's family
-illustrations, and it is the reason the line above is stated absolutely.
+A fifth generated image was offered for slot 2 on 29 July and **refused**: a painted family
+of eleven — two mothers, two fathers, seven invented children. It was never copied into
+this repo. It is the same refusal that removed the reference poster's family illustrations,
+and it is why the rule was stated absolutely in the first place. Two days later the owner
+overruled that rule for the H.O.P.E. popouts (above). Slot 2's refusal was not revisited
+and no reason was given for treating the two differently, so none is invented here: the
+record is simply that the same rule was applied on 29 July and set aside on 31 July.
 
 ## What is still missing
 
