@@ -34,6 +34,16 @@ Resend for notification email.
 | `npm run test:e2e` | Playwright + axe. Starts a dev server unless `PLAYWRIGHT_BASE_URL` is set |
 | `npm run verify:isr` | Asserts the build output really is ISR. Run after `npm run build` |
 
+## The pre-commit gate
+
+[`.githooks/pre-commit`](.githooks/pre-commit) runs `npm run check` and `npm test` before
+every commit that touches source. `npm install` installs it (the `prepare` script sets
+`core.hooksPath`); by hand it is `git config core.hooksPath .githooks`.
+
+It is deliberately narrower than CI — no build, no ISR assertion, no Playwright, since
+those need a build or a browser. A gate slow enough to be bypassed is not a gate.
+Docs- and workflow-only commits skip it. `git commit --no-verify` bypasses it.
+
 ## The public route list
 
 [`src/lib/routes.ts`](src/lib/routes.ts) holds `PUBLIC_ROUTES`, and it is the only place

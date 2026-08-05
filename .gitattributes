@@ -1,0 +1,3 @@
+# Hooks run under sh even on Windows — CRLF in .githooks/* makes them fail to
+# execute. Pin LF for everything text; nothing here needs CRLF.
+* text=auto eol=lf
