@@ -1,0 +1,158 @@
+name: Merge train
+
+# Serial merge train — the free stand-in for GitHub's paywalled merge queue.
+# This repo is private, so required-status-checks / merge queue are paywalled (403).
+# This driver lands PRs SERIALLY: each marked PR is brought up-to-date with main and
+# re-tested green before it squash-merges, so stale-base breaks are caught at merge
+# time instead of landing silently.
+#
+#   * Mark a PR with the **automerge** label to put it on the train (opt-IN).
+#   * Mark a PR **draft** to hold it back — drafts are never merged (hard brake).
+#     The AFK orchestrator uses this for its [AFK runaway]/[AFK thrashing] brakes.
+#   * One ACTION per invocation (merge one, or update one), then exit.
+#
+# Ported from AdvancingAlternatives/advansync-2. Differences ON PURPOSE:
+#   - `ubuntu-latest`, not a self-hosted runner — this repo has none.
+#   - `workflow_dispatch:` added. The `workflow_run` trigger names "PR tests", which
+#     does not exist until #19 builds the test harness; without a manual kick the very
+#     first PR could only land on the 25-minute cron. Remove it once #19 has landed if
+#     an unpushable manual merge path is ever unwanted.
+#   - Squash-merge is retained, and /afk-ticket depends on it: `Closes #<n>` in the PR
+#     body is what closes the ticket when the train squashes.
+#
+# NOTE: merging to main deploys. There is no separate deploy step on this repo.
+#
+# Token: uses the PAT secret AUTOMERGE_TOKEN, NOT the default GITHUB_TOKEN.
+# A push to main made with GITHUB_TOKEN does NOT trigger downstream workflows.
+# A PAT-driven merge is attributed to a real user, so push-triggered workflows still fire.
+#
+# One-time setup:
+#   1. Create a fine-grained PAT scoped to this repo with
+#      Contents: Read/Write and Pull requests: Read/Write.
+#   2. Add it as repo secret AUTOMERGE_TOKEN.
+#   3. Repo setting allow_update_branch must be true (the train calls update-branch).
+
+on:
+  # Re-evaluate after a PR's checks finish (the retest-done signal).
+  workflow_run:
+    workflows: ["PR tests", "PR title lint"]
+    types: [completed]
+  # The chain step: a landing pushes main, which re-fires the train for the next PR.
+  push:
+    branches: [main]
+  # Responsive pickup when a PR is marked or un-drafted.
+  pull_request:
+    types: [labeled, ready_for_review]
+  # Manual kick — needed before "PR tests" exists (see header).
+  workflow_dispatch:
+  # Backstop against dropped workflow_run/push events. One action per tick.
+  schedule:
+    - cron: "*/25 * * * *"
+
+# GITHUB_TOKEN is unused (we drive gh with the PAT) — drop its permissions.
+permissions:
+  contents: read
+
+# Never run two train steps at once; let a running step finish.
+concurrency:
+  group: automerge-main
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Advance the merge train (one action, then exit)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::AUTOMERGE_TOKEN is not set — the train cannot merge anything."
+            exit 1
+          fi
+
+          # Comment on a skipped PR, de-duped by head SHA so the cron can't spam.
+          # Best-effort: a comment glitch must not red the run.
+          note_blocked() {
+            local n="$1" oid="$2" reason="$3"
+            local marker="<!-- merge-train-blocked:${oid} -->"
+            if gh pr view "$n" --repo "$REPO" --json comments \
+                 --jq '.comments[].body' 2>/dev/null | grep -qF "$marker"; then
+              return 0   # already told them about THIS commit
+            fi
+            gh pr comment "$n" --repo "$REPO" --body "${marker}
+          ⛔ **Merge train skipped this PR** (\`${oid:0:12}\`): ${reason}.
+          It keeps the \`automerge\` label and will retry when \`main\` advances or the branch is updated." \
+              || echo "Train: warning — could not comment on #$n (continuing)"
+          }
+
+          # All labeled, non-draft, open PRs to main, with merge state + head SHA.
+          mapfile -t rows < <(gh pr list --repo "$REPO" --state open --base main \
+            --label automerge --json number,isDraft,mergeStateStatus,headRefOid \
+            --jq '.[] | select(.isDraft|not) | [.number,.mergeStateStatus,.headRefOid] | @tsv')
+
+          if [ "${#rows[@]}" -eq 0 ]; then
+            echo "Train empty (no labeled, non-draft PRs)."
+            exit 0
+          fi
+
+          # ---- Pass 1: land ONE up-to-date + green PR (SHA-pinned), then exit. ----
+          for row in "${rows[@]}"; do
+            IFS=$'\t' read -r n state oid <<<"$row"
+            case "$state" in
+              BEHIND)  continue ;;                       # → Pass 2 (needs update)
+              DIRTY)   note_blocked "$n" "$oid" "merge conflict with main — resolve and push"; continue ;;
+              BLOCKED) note_blocked "$n" "$oid" "GitHub is blocking the merge (required review/check?)"; continue ;;
+              UNKNOWN) echo "Train: #$n mergeability not computed yet — re-poll next tick"; continue ;;
+            esac
+            # state is CLEAN / UNSTABLE / HAS_HOOKS — up-to-date & mergeable. Gate on checks.
+            set +e; gh pr checks "$n" --repo "$REPO" >/dev/null 2>&1; rc=$?; set -e
+            if [ "$rc" -eq 8 ]; then
+              echo "Train: #$n up-to-date but checks still pending — leaving"
+              continue
+            elif [ "$rc" -ne 0 ]; then
+              note_blocked "$n" "$oid" "checks are failing"
+              continue
+            fi
+
+            echo "Train: landing #$n (state=$state, sha=${oid:0:12})"
+            if gh pr merge "$n" --repo "$REPO" --squash --delete-branch --match-head-commit "$oid"; then
+              echo "Train: merged #$n — push to main will advance the train."
+              exit 0
+            fi
+
+            # Merge failed. Race (head/base moved) → benign, retry next tick.
+            # Still-landable-but-failed, or re-check itself fails → REAL fault, go loud.
+            now=$(gh pr view "$n" --repo "$REPO" --json headRefOid,mergeStateStatus \
+                    --jq '.headRefOid + "\t" + .mergeStateStatus') || {
+              echo "::error::Train: merge of #$n failed AND re-check failed — driver/auth fault"
+              exit 1
+            }
+            IFS=$'\t' read -r now_oid now_state <<<"$now"
+            if [ "$now_oid" != "$oid" ] || [ "$now_state" = BEHIND ] || [ "$now_state" = DIRTY ]; then
+              echo "Train: #$n raced (now sha=${now_oid:0:12} state=$now_state) — benign, retry next tick"
+              exit 0
+            fi
+            echo "::error::Train: merge of #$n failed but it still looks landable (sha=${oid:0:12}, state=$now_state) — real failure"
+            exit 1
+          done
+
+          # ---- Pass 2: bring ONE behind PR up to date (its retest re-fires the train). ----
+          for row in "${rows[@]}"; do
+            IFS=$'\t' read -r n state oid <<<"$row"
+            [ "$state" = BEHIND ] || continue
+            echo "Train: updating #$n onto current main (merge, SHA-pinned)"
+            if gh api -X PUT "repos/$REPO/pulls/$n/update-branch" \
+                 -f expected_head_sha="$oid" >/dev/null; then
+              echo "Train: updated #$n — its retest will re-trigger the train."
+            else
+              echo "Train: update-branch on #$n failed (raced or transient) — retry next tick."
+            fi
+            exit 0
+          done
+
+          echo "Train: nothing actionable this tick."
