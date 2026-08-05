@@ -29,7 +29,10 @@ jobs:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
           set -euo pipefail
-          # Types mirror release-please-config.json's changelog-sections.
+          # Every type release-please-config.json lists, plus the three
+          # conventional-commit types it has no changelog section for
+          # (build, style, revert) — those are still valid subjects, they
+          # simply never appear in a release note.
           pattern='^(feat|fix|perf|a11y|content|docs|chore|ci|test|refactor|build|style|revert)(\([a-z0-9._/-]+\))?!?: .+'
           if [[ ! "$TITLE" =~ $pattern ]]; then
             echo "::error::PR title is not a conventional commit: '$TITLE'"

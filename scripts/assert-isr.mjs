@@ -45,8 +45,14 @@ if (!existsSync(prerenderConfig)) {
 // Every enumerated public route must land on the ISR function, not on
 // `_render` (plain SSR, a Neon cold start in front of a real parent) and not on
 // the filesystem (a static export, a rebuild in front of every typo fix).
+// `continue: true` entries are header/redirect rules that fall through to the
+// next match rather than serving anything, so they are not the route's
+// destination. Matching one would report `served by undefined` and fail a build
+// that is in fact correct.
 for (const { path } of PUBLIC_ROUTES) {
-  const match = routes.find((route) => route.src && new RegExp(route.src).test(path));
+  const match = routes.find(
+    (route) => route.src && route.continue !== true && new RegExp(route.src).test(path),
+  );
   if (!match) {
     problems.push(`No route in the build output matches \`${path}\`.`);
   } else if (!String(match.dest ?? '').includes('_isr')) {

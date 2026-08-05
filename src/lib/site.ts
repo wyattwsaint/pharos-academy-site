@@ -20,3 +20,14 @@ export const SCHOOL_NAME = 'Pharos Academy';
  * `X-Robots-Tag` header both follow it, so the two can never disagree.
  */
 export const INDEXABLE = false;
+
+/**
+ * `Cache-Control` for the machine-readable artefacts — `robots.txt`, the
+ * sitemap and `llms.txt`.
+ *
+ * One value in one place because the three must not drift apart: they describe
+ * the same route list, so a crawler holding a fresh sitemap and a stale
+ * `robots.txt` is a contradiction we would have authored. `max-age=0` keeps
+ * browsers honest; `s-maxage` is what the edge actually holds.
+ */
+export const ARTEFACT_CACHE_CONTROL = 'public, max-age=0, s-maxage=3600';
