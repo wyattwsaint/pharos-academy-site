@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, runMigrations, type Db } from '../db/client.js';
+import { courses as coursesTable } from '../db/schema.js';
 import { CATALOGUE } from './catalogue.js';
 import { getCourse, listCourses } from './store.js';
 
@@ -52,6 +53,14 @@ describe('the seeded catalogue', () => {
     // Which is what the page turns into a 404, rather than rendering an empty
     // class as though the school offered it.
     expect(await getCourse(db, 'underwater-basket-weaving')).toBeUndefined();
+  });
+
+  it('refuses an empty catalogue rather than rendering four empty surfaces', async () => {
+    // "No courses" is not a school with no classes; it is a database the
+    // migration has never been run against. Saying so is the difference
+    // between a loud deploy failure and a parent finding an empty page.
+    await db.delete(coursesTable);
+    await expect(listCourses(db)).rejects.toThrow(/db:migrate/);
   });
 
   it('is idempotent — re-running the migrations changes nothing', async () => {

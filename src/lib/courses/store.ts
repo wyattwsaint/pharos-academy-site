@@ -17,9 +17,20 @@ import type { Course, EnrolmentUnit, RateTier, Stage } from './course.js';
  * nothing outside this module handles a `CourseRow`.
  */
 
-/** Every course, alphabetically by title. */
+/**
+ * Every course, alphabetically by title.
+ *
+ * An empty catalogue is treated as a broken deployment rather than as a school
+ * with no classes, for the same reason `getSchoolDetails` refuses a missing
+ * row: the migration seeds all nineteen, so "none" means the migration has not
+ * been run against this database — and a `/classes` page rendering four empty
+ * surfaces is how that ships to production and is discovered by a parent.
+ */
 export async function listCourses(db: Db): Promise<Course[]> {
   const rows = await db.select().from(coursesTable);
+  if (rows.length === 0) {
+    throw new Error('The course catalogue is empty — run `npm run db:migrate`.');
+  }
   return rows.map(toCourse).sort((a, b) => a.title.localeCompare(b.title));
 }
 

@@ -32,45 +32,35 @@ const dateFormat = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'UTC',
 });
 
-const facts: { term: string; value: string }[] = [
+type Fact = { term: string; value: string };
+
+/** A row the school has not filled in is absent, not "None" invented here. */
+const optional = (term: string, value: string | null): Fact[] =>
+  value ? [{ term, value }] : [];
+
+/** A fee, with the school's own qualifier ("per year") when it gives one. */
+const fee = (term: string, amount: number | null, note: string | null): Fact[] =>
+  amount === null ? [] : [{ term, value: `$${amount}${note ? ` ${note}` : ''}` }];
+
+const facts: Fact[] = [
   { term: 'Meets', value: `${course.days.join(' and ')}, ${timeLabel(course.start, course.end)}` },
   { term: 'Duration', value: durationLabel(course) },
   { term: 'Ages', value: ageLine(course) },
   { term: 'Cost', value: priceLine(course) },
   { term: 'Contact hours', value: `${contactHours(course)} hours` },
-  ...(course.credit ? [{ term: 'Credit', value: course.credit }] : []),
+  ...optional('Credit', course.credit),
   { term: 'Prerequisites', value: course.prerequisites },
-  ...(course.requiredText ? [{ term: 'Required text', value: course.requiredText }] : []),
-  ...(course.optionalText ? [{ term: 'Optional text', value: course.optionalText }] : []),
-  ...(course.materialsToBuy
-    ? [{ term: 'Materials to bring', value: course.materialsToBuy }]
-    : []),
-  ...(course.materialsFee !== null
-    ? [
-        {
-          term: 'Materials fee',
-          value: `$${course.materialsFee}${course.materialsFeeNote ? ` ${course.materialsFeeNote}` : ''}`,
-        },
-      ]
-    : []),
-  ...(course.assessmentFee !== null
-    ? [
-        {
-          term: 'Assessment fee',
-          value: `$${course.assessmentFee}${course.assessmentFeeNote ? ` ${course.assessmentFeeNote}` : ''}`,
-        },
-      ]
-    : []),
-  ...(course.dates.length > 0
-    ? [
-        {
-          term: 'Meeting dates',
-          value: course.dates
-            .map((date) => dateFormat.format(new Date(`${date}T00:00:00Z`)))
-            .join(', '),
-        },
-      ]
-    : []),
+  ...optional('Required text', course.requiredText),
+  ...optional('Optional text', course.optionalText),
+  ...optional('Materials to bring', course.materialsToBuy),
+  ...fee('Materials fee', course.materialsFee, course.materialsFeeNote),
+  ...fee('Assessment fee', course.assessmentFee, course.assessmentFeeNote),
+  ...optional(
+    'Meeting dates',
+    course.dates.length > 0
+      ? course.dates.map((date) => dateFormat.format(new Date(`${date}T00:00:00Z`))).join(', ')
+      : null,
+  ),
   { term: 'Instructor', value: course.instructor },
 ];
 ---

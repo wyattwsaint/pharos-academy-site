@@ -126,23 +126,38 @@ export const MIGRATIONS: readonly Migration[] = [
       // numeric range or publishes none. Half a range — a minimum with no
       // maximum — is the shape that would let a course fall out of every age
       // band, which is the failure #22 AC 5 exists to prevent.
-      ...CATALOGUE.map(insertCourse),
+      insertCourses(CATALOGUE),
     ],
   },
 ];
 
 /**
- * One course as an idempotent insert.
+ * The whole catalogue as one idempotent insert.
  *
  * Generated from `CATALOGUE` rather than written out as SQL: the seed is
  * authored TypeScript that the tests check against the capture of the live
  * site, and a hand-written copy of it in this file would be a nineteen-course
  * transcription nobody would ever diff again.
  *
+ * One statement rather than nineteen because this runs against a fresh
+ * in-process PGlite for **every** integration test — nineteen round trips per
+ * test is a slow suite bought for nothing.
+ *
  * `on conflict do nothing`, like every other statement here, so re-running the
  * migration cannot overwrite an edit made to the store.
  */
-function insertCourse(course: Course): string {
+function insertCourses(courses: readonly Course[]): string {
+  return `insert into courses (
+      slug, title, description, stages, days, start_time, end_time, enrolment, weeks, dates,
+      age_label, age_min, age_max, rate_tier, credit, required_text, optional_text,
+      materials_to_buy, materials_fee, materials_fee_note, assessment_fee, assessment_fee_note,
+      prerequisites, instructor
+    ) values ${courses.map(courseValues).join(', ')}
+    on conflict (slug) do nothing`;
+}
+
+/** One course as a `values` row, in the column order above. */
+function courseValues(course: Course): string {
   const values = [
     literal(course.slug),
     literal(course.title),
@@ -170,13 +185,7 @@ function insertCourse(course: Course): string {
     literal(course.instructor),
   ];
 
-  return `insert into courses (
-      slug, title, description, stages, days, start_time, end_time, enrolment, weeks, dates,
-      age_label, age_min, age_max, rate_tier, credit, required_text, optional_text,
-      materials_to_buy, materials_fee, materials_fee_note, assessment_fee, assessment_fee_note,
-      prerequisites, instructor
-    ) values (${values.join(', ')})
-    on conflict (slug) do nothing`;
+  return `(${values.join(', ')})`;
 }
 
 /** A single-quoted SQL string literal. Only ever called on constants above. */
