@@ -1,0 +1,43 @@
+name: PR title lint
+
+# The train squash-merges, so the PR title becomes the commit subject on main —
+# and release-please reads those subjects to decide the next version. A title
+# that is not a conventional commit is a release that silently does not happen.
+#
+# The merge train names this workflow in its `workflow_run` trigger; renaming it
+# un-hooks that signal (see automerge.yml).
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+    branches: [main]
+
+concurrency:
+  group: pr-title-lint-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Title must be a conventional commit
+        shell: bash
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          # Types mirror release-please-config.json's changelog-sections.
+          pattern='^(feat|fix|perf|a11y|content|docs|chore|ci|test|refactor|build|style|revert)(\([a-z0-9._/-]+\))?!?: .+'
+          if [[ ! "$TITLE" =~ $pattern ]]; then
+            echo "::error::PR title is not a conventional commit: '$TITLE'"
+            echo "Expected e.g. 'feat(classes): render the timetable' or 'fix: correct the Easter Monday date'."
+            exit 1
+          fi
+          if [ "${#TITLE}" -gt 100 ]; then
+            echo "::error::PR title is ${#TITLE} characters; keep the commit subject under 100."
+            exit 1
+          fi
+          echo "OK: $TITLE"

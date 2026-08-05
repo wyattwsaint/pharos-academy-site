@@ -1,0 +1,59 @@
+name: Deployed accessibility
+
+# Runs the same axe suite against the URL Vercel actually deployed, so the
+# acceptance criterion is about the deployed page and not a local
+# approximation. Fires on Vercel's deployment_status event for every preview
+# and for production.
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Deployment URL to audit
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployed-a11y-${{ github.event.deployment_status.target_url || inputs.url }}
+  cancel-in-progress: true
+
+jobs:
+  axe:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Audit the deployed page
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url || inputs.url }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PLAYWRIGHT_BASE_URL:-}" ]; then
+            echo "::error::No deployment URL on the event — nothing to audit."
+            exit 1
+          fi
+          echo "Auditing $PLAYWRIGHT_BASE_URL"
+          npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: deployed-playwright-report
+          path: playwright-report/
+          retention-days: 7

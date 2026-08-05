@@ -1,0 +1,30 @@
+name: Release
+
+# release-please keeps a release PR open against main, accumulating the
+# conventional-commit subjects the train squashes there. Merging that PR bumps
+# package.json, writes CHANGELOG.md and tags the release.
+#
+# Uses AUTOMERGE_TOKEN for the same reason the train does: a push made with the
+# default GITHUB_TOKEN does not trigger downstream workflows.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-please-main
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.AUTOMERGE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

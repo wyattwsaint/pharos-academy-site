@@ -1,14 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "python3 prototypes/src/build_site.py",
-  "outputDirectory": "prototypes/site",
-  "installCommand": "echo no dependencies",
-  "framework": null,
+  "framework": "astro",
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci",
   "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
-    },
     {
       "source": "/assets/(.*)",
       "headers": [
