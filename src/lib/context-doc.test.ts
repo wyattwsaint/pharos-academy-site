@@ -32,10 +32,10 @@ describe('CONTEXT.md', () => {
   });
 
   it('distinguishes clash from possible clash rather than treating them as one term', () => {
-    const clash = CONTEXT.indexOf('\n### clash\n');
-    const possible = CONTEXT.indexOf('\n### possible clash\n');
-    expect(clash).toBeGreaterThan(-1);
-    expect(possible).toBeGreaterThan(-1);
-    expect(possible).not.toBe(clash);
+    // Matched against the parsed headings rather than raw offsets: the raw form
+    // is line-ending sensitive, and this file is CRLF on a Windows checkout.
+    const headings = [...CONTEXT.matchAll(/^###\s+(.+?)\s*$/gm)].map((m) => m[1]);
+    expect(headings).toContain('clash');
+    expect(headings).toContain('possible clash');
   });
 });

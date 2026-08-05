@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+import { bypassHeaders } from './e2e/protection.js';
+
 /**
  * `PLAYWRIGHT_BASE_URL` points the suite at a real deployment — that is how CI
  * runs axe against the *deployed* page rather than a local approximation. With
@@ -30,12 +32,16 @@ const AGENT_ENV_BLANKED = Object.fromEntries(
 
 export default defineConfig({
   testDir: './e2e',
+  // `*.test.ts` under `e2e/` belongs to vitest (see vitest.config.ts); Playwright
+  // takes only the specs, so neither runner picks up the other's files.
+  testMatch: '**/*.spec.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL: baseURL ?? LOCAL_URL,
+    extraHTTPHeaders: bypassHeaders(process.env.VERCEL_AUTOMATION_BYPASS_SECRET),
     trace: 'on-first-retry',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

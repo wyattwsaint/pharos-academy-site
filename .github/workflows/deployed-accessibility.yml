@@ -42,6 +42,10 @@ jobs:
       - name: Audit the deployed page
         env:
           PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url || inputs.url }}
+          # Preview deployments sit behind Vercel's SSO login. Without this the
+          # suite audits that login page, not the site: colour-contrast on
+          # Vercel's own footer links, and a redirect for every artefact.
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           set -euo pipefail
           if [ -z "${PLAYWRIGHT_BASE_URL:-}" ]; then
@@ -49,6 +53,13 @@ jobs:
             exit 1
           fi
           echo "Auditing $PLAYWRIGHT_BASE_URL"
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET:-}" \
+            "$PLAYWRIGHT_BASE_URL/")
+          if [ "$status" != "200" ]; then
+            echo "::error::$PLAYWRIGHT_BASE_URL answered $status, not 200. If it is a 3xx the deployment is still protected — check VERCEL_AUTOMATION_BYPASS_SECRET matches the project's bypass token."
+            exit 1
+          fi
           npm run test:e2e
 
       - uses: actions/upload-artifact@v4
