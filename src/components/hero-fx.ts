@@ -123,23 +123,23 @@ export function heroFx(root: ParentNode = document) {
  * Where the header stops being chrome-less and takes its navy band, as a
  * fraction of the hero's height.
  *
- * Halfway, not at the end, and that is a measured decision rather than a taste
- * one. Over the hero the header's type is navy, because the scrim *lightens*
- * the sky for navy ink. But the dim layer above ramps to 55% navy-deep across
- * the same viewport, so by the far end of the ramp that navy type is sitting on
- * a ground the ramp has been steadily darkening — `docs/hero-contrast.md`
- * caught the nav at 2.83:1 there, against a 4.5:1 need, on 100% of its pixels.
+ * At the end of the hero, which is what #21 asks for: "navy with a gold
+ * hairline once the hero is past."
  *
- * The ramp and the header state now share one trigger: the header is
- * chrome-less exactly while the hero is light enough to carry navy type, and
- * takes its own navy ground the moment it is not. The band arriving as the hero
- * recedes rather than after it has gone reads, if anything, more settled.
+ * An earlier pass had this at 0.5 for a real reason — the dim layer ramps to
+ * 55% navy-deep across the first viewport, and while the header is chrome-less
+ * its type is navy, so a flat dim left that navy nav on a steadily darkening
+ * ground and `docs/hero-contrast.md` caught it at 2.83:1 against a 4.5:1 need.
+ * Moving the trigger was treating the symptom. The dim is now weighted downward
+ * (`.hero-deep`), so the strip under the header stays the lightened sky the
+ * navy type was measured against and the trigger can sit where the spec puts
+ * it. Both ends are in the contrast table.
  */
-const STICK_AT = 0.5;
+const STICK_AT = 1;
 
 /**
  * The fixed header's `stuck` state: chrome-less over the hero, navy band with a
- * gold hairline once the hero is half past.
+ * gold hairline once the hero is past.
  *
  * `offsetHeight` is read live because the hero is `100dvh` and a mobile
  * browser's chrome collapsing changes it mid-scroll.

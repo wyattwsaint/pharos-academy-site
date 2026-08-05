@@ -12,10 +12,13 @@ import { SCHOOL_NAME } from '../../lib/site.js';
  * does, so not one video byte is fetched. Whatever else changes here, the
  * element must not gain a source in the markup.
  *
- * The mark in this lockup is the school's real logo raster, not the redrawn
- * `mark.svg` that runs in the header and the footer. The trace has to inherit a
- * colour to sit on navy; at 200px beside a 62px wordmark its flaws showed. The
- * divergence is deliberate and is recorded on #13.
+ * The mark is `mark.svg` — the same trace the header and the footer run, which
+ * is what #21 names and what #13 signed off. An earlier pass used the raster
+ * (`mark-logo.png`) here on the grounds that the trace's flaws showed at 200px;
+ * that divergence has been reversed on Wyatt's instruction, so one mark now
+ * runs everywhere. The trace's known weakness is the gallery railings, which are
+ * ~1px in the source and JPEG-mangled — if anything ever looks wrong at this
+ * size it is those, and the fix is a better trace rather than a second asset.
  */
 ---
 
@@ -40,7 +43,7 @@ import { SCHOOL_NAME } from '../../lib/site.js';
 
   <div class="hero-inner wide" data-hero-copy>
     <div class="hero-lockup">
-      <img class="hero-mark" src="/mark-logo.png" alt="" width="480" height="542" />
+      <img class="hero-mark" src="/mark.svg" alt="" width="268" height="302" />
       <h1>{SCHOOL_NAME}</h1>
       <p class="hero-sub">{SUB_BRAND}</p>
       <div class="hero-rule" aria-hidden="true">

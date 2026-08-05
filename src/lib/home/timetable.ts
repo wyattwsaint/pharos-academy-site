@@ -34,16 +34,32 @@ export type ClassEntry = {
   description: string;
 };
 
-/** The three mornings, in the order the grid columns run. */
-export const DAYS = ['Monday', 'Wednesday', 'Thursday'] as const;
-export type Day = (typeof DAYS)[number];
+/**
+ * The school's four day tracks, in calendar order (CONTEXT.md, "day track").
+ *
+ * All four, not the three that currently run. A day track with no courses is
+ * **complete, not incomplete** — the Tuesday track is routinely empty, and the
+ * glossary uses exactly that as its worked example. Naming only the occupied
+ * three would make the type narrower than the domain, so a Tuesday course could
+ * not be represented without a type change.
+ *
+ * This is a day track, not a "day of the week": it is the school's own unit of
+ * scheduling, with its own first-class date and its own week numbering.
+ */
+export const DAY_TRACKS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'] as const;
+export type DayTrack = (typeof DAY_TRACKS)[number];
 
-/** One row of the grid: a start time and what is running in each column. */
+/** One row of the grid: a start time and what runs on each day track. */
 export type TimeSlot = {
   /** The row label, e.g. "9:00". */
   time: string;
-  /** One list per day in `DAYS` order; an empty list is a free hour. */
-  classes: readonly (readonly ClassEntry[])[];
+  /**
+   * What runs on each day track that hour. Keyed by track rather than
+   * positional, so a free hour is an absent key rather than an empty slot
+   * counted in from the left — and so adding a Tuesday course is one entry
+   * rather than a re-index of every row.
+   */
+  classes: Partial<Record<DayTrack, readonly ClassEntry[]>>;
 };
 
 // Two courses run twice in the week with identical text. Held once so the two
@@ -67,8 +83,8 @@ const ALGEBRA_1 =
 export const TIMETABLE: readonly TimeSlot[] = [
   {
     time: '9:00',
-    classes: [
-      [
+    classes: {
+      Monday: [
         {
           id: 'latin-beginner',
           title: 'Beginner Latin Immersion',
@@ -98,7 +114,7 @@ export const TIMETABLE: readonly TimeSlot[] = [
             'amphibians, reptiles, mammals, fish, birds, and created in the Image of God.',
         },
       ],
-      [
+      Wednesday: [
         {
           id: 'spanish-basic-5-8',
           title: 'Basic Spanish Conversation',
@@ -121,15 +137,12 @@ export const TIMETABLE: readonly TimeSlot[] = [
             'spring. We will also apply selected verses from Proverbs to build our faith.',
         },
       ],
-      [],
-    ],
+    },
   },
   {
     time: '9:30',
-    classes: [
-      [],
-      [],
-      [
+    classes: {
+      Thursday: [
         {
           id: 'letter-of-the-week',
           title: 'Letter of the Week',
@@ -144,12 +157,12 @@ export const TIMETABLE: readonly TimeSlot[] = [
             'alphabet, or if your child needs a review of these foundational skills.',
         },
       ],
-    ],
+    },
   },
   {
     time: '10:10',
-    classes: [
-      [
+    classes: {
+      Monday: [
         {
           id: 'drawing-principles',
           title: 'Principles of Drawing',
@@ -165,7 +178,7 @@ export const TIMETABLE: readonly TimeSlot[] = [
             'Drawing mediums, subjects and accessories will be provided.',
         },
       ],
-      [
+      Wednesday: [
         {
           id: 'spanish-basic-9-12',
           title: 'Basic Spanish Conversation',
@@ -174,7 +187,7 @@ export const TIMETABLE: readonly TimeSlot[] = [
           description: SPANISH_BASIC,
         },
       ],
-      [
+      Thursday: [
         {
           id: 'poetry-plays-patterns',
           title: 'Poetry, Plays, and Patterns',
@@ -188,12 +201,12 @@ export const TIMETABLE: readonly TimeSlot[] = [
             'and grammar review.',
         },
       ],
-    ],
+    },
   },
   {
     time: '10:40',
-    classes: [
-      [
+    classes: {
+      Monday: [
         {
           id: 'kingdom-math',
           title: 'Kingdom Math',
@@ -220,7 +233,7 @@ export const TIMETABLE: readonly TimeSlot[] = [
             'runs in the fall; a grades 2–4 section runs in the spring at the same hour.',
         },
       ],
-      [
+      Wednesday: [
         {
           id: 'pilgrims-progress',
           title: "The Pilgrim's Progress for Kids",
@@ -252,15 +265,12 @@ export const TIMETABLE: readonly TimeSlot[] = [
             'world flourish.',
         },
       ],
-      [],
-    ],
+    },
   },
   {
     time: '11:10',
-    classes: [
-      [],
-      [],
-      [
+    classes: {
+      Thursday: [
         {
           id: 'backyard-botany',
           title: 'Backyard Botany',
@@ -272,12 +282,12 @@ export const TIMETABLE: readonly TimeSlot[] = [
             "and medicinal qualities. Sketch and paint this beautiful part of God's creation.",
         },
       ],
-    ],
+    },
   },
   {
     time: '11:20',
-    classes: [
-      [
+    classes: {
+      Monday: [
         {
           id: 'algebra-1-monday',
           title: 'Algebra 1',
@@ -286,7 +296,7 @@ export const TIMETABLE: readonly TimeSlot[] = [
           description: ALGEBRA_1,
         },
       ],
-      [
+      Wednesday: [
         {
           id: 'algebra-1-wednesday',
           title: 'Algebra 1',
@@ -295,25 +305,37 @@ export const TIMETABLE: readonly TimeSlot[] = [
           description: ALGEBRA_1,
         },
       ],
-      [],
-    ],
+    },
   },
 ];
 
 /**
- * How many classes run on each morning, for the column headings.
+ * How many classes run on one day track, for the column heading.
  *
  * Counted rather than typed. The prototype's headings said "6 classes" over a
  * column holding five, which is the failure mode a typed count has and a
  * derived one cannot.
  */
-export function classCountsByDay(timetable: readonly TimeSlot[] = TIMETABLE): number[] {
-  return DAYS.map((_day, column) =>
-    timetable.reduce((total, slot) => total + (slot.classes[column]?.length ?? 0), 0),
-  );
+export function classCountOnTrack(
+  track: DayTrack,
+  timetable: readonly TimeSlot[] = TIMETABLE,
+): number {
+  return timetable.reduce((total, slot) => total + (slot.classes[track]?.length ?? 0), 0);
+}
+
+/**
+ * The day tracks the grid actually draws — those running at least one class.
+ *
+ * Derived, not listed. An empty track is complete rather than incomplete
+ * (CONTEXT.md, "day track"), so it is simply not a column: the homepage grid
+ * would otherwise carry a permanently blank Tuesday. Give Tuesday a course and
+ * it becomes a column here with no other edit.
+ */
+export function activeDayTracks(timetable: readonly TimeSlot[] = TIMETABLE): DayTrack[] {
+  return DAY_TRACKS.filter((track) => classCountOnTrack(track, timetable) > 0);
 }
 
 /** Every class in the grid, flattened — used to check ids are unique. */
 export function allClasses(timetable: readonly TimeSlot[] = TIMETABLE): ClassEntry[] {
-  return timetable.flatMap((slot) => slot.classes.flatMap((cell) => [...cell]));
+  return timetable.flatMap((slot) => DAY_TRACKS.flatMap((track) => slot.classes[track] ?? []));
 }

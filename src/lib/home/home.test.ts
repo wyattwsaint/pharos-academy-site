@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { ANNOUNCEMENTS, hasAnnouncements } from './announcements.js';
 import { HOPE, INSTRUCTORS } from './content.js';
 import { NAV_ITEMS, SECTION_ORDER } from './sections.js';
-import { allClasses, classCountsByDay, DAYS, TIMETABLE } from './timetable.js';
+import {
+  activeDayTracks,
+  allClasses,
+  classCountOnTrack,
+  DAY_TRACKS,
+  TIMETABLE,
+} from './timetable.js';
 
 describe('the section order', () => {
   // #9's resolution comment, with its items 2 and 3 merged into the one
@@ -63,18 +69,43 @@ describe('the timetable', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('has one column of classes per day, in every slot', () => {
+  it('files every class under one of the school’s four day tracks', () => {
+    // CONTEXT.md's "day track" — the school's own unit of scheduling, and all
+    // four of them, not the three that happen to be occupied.
+    expect([...DAY_TRACKS]).toEqual(['Monday', 'Tuesday', 'Wednesday', 'Thursday']);
     for (const slot of TIMETABLE) {
-      expect(slot.classes).toHaveLength(DAYS.length);
+      for (const track of Object.keys(slot.classes)) {
+        expect(DAY_TRACKS).toContain(track);
+      }
     }
   });
 
-  it('counts the classes per day rather than trusting a typed number', () => {
+  it('counts the classes per day track rather than trusting a typed number', () => {
     // The prototype's heading said "6 classes" over a column holding five.
     // Deriving the count is the whole fix.
-    const counts = classCountsByDay();
-    expect(counts).toHaveLength(DAYS.length);
-    expect(counts.reduce((total, count) => total + count, 0)).toBe(allClasses().length);
+    const total = DAY_TRACKS.reduce((sum, track) => sum + classCountOnTrack(track), 0);
+    expect(total).toBe(allClasses().length);
+  });
+
+  it('treats an empty day track as complete, and simply does not draw it', () => {
+    // The Tuesday track is routinely empty and that is a complete year, not a
+    // gap (CONTEXT.md). It stays in the domain type and out of the grid.
+    expect(classCountOnTrack('Tuesday')).toBe(0);
+    expect(activeDayTracks()).toEqual(['Monday', 'Wednesday', 'Thursday']);
+  });
+
+  it('draws a Tuesday column the moment a Tuesday course exists', () => {
+    const withTuesday = [
+      {
+        time: '9:00',
+        classes: {
+          Tuesday: [
+            { id: 't', title: 'T', ends: 'ends 10:00 a.m.', meta: 'Ages 5–8', description: 'x' },
+          ],
+        },
+      },
+    ];
+    expect(activeDayTracks(withTuesday)).toEqual(['Tuesday']);
   });
 
   it('keeps the school’s own casing in the times', () => {

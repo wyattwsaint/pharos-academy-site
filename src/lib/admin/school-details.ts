@@ -128,6 +128,18 @@ export function copyrightYear(now = new Date()): number {
 /** Enola, Pennsylvania. */
 export const SCHOOL_TIME_ZONE = 'America/New_York';
 
+/**
+ * The school's phone as a `tel:` target.
+ *
+ * Held here rather than in each template because the phone is displayed the way
+ * Jill types it — "(717) 555-0142" — and dialled stripped, and two surfaces
+ * writing that regex out separately is how one of them ends up keeping the
+ * parentheses. `+` survives so an international prefix still dials.
+ */
+export function telHref(phone: string): string {
+  return `tel:${phone.replace(/[^\d+]/g, '')}`;
+}
+
 /** "Last edited by Jill Kilker on 5 August 2026", or that nothing has been. */
 export function formatStamp(editorName: string | null, editedAt: Date | null): string {
   if (!editorName || !editedAt) return 'Not edited yet';

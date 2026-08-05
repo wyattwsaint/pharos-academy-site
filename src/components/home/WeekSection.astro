@@ -1,5 +1,5 @@
 ---
-import { classCountsByDay, DAYS, TIMETABLE } from '../../lib/home/timetable.js';
+import { activeDayTracks, classCountOnTrack, TIMETABLE } from '../../lib/home/timetable.js';
 
 /**
  * What a week looks like — #9's items 2 and 3 as one section.
@@ -12,8 +12,13 @@ import { classCountsByDay, DAYS, TIMETABLE } from '../../lib/home/timetable.js';
  * implementation as the H.O.P.E. row, which is #21 AC 6. The trigger is a real
  * `<button>` rather than a link with a placeholder `href`: there is no class
  * page to navigate to yet, and the panel is what the interaction is for.
+ *
+ * The columns are the day tracks that actually run, derived rather than listed.
+ * The school has four tracks and the Tuesday one is routinely empty
+ * (CONTEXT.md, "day track"); an empty track is complete, not incomplete, so it
+ * is not drawn as a permanently blank column.
  */
-const counts = classCountsByDay();
+const tracks = activeDayTracks();
 ---
 
 <section class="band" id="week" data-section="week">
@@ -33,10 +38,10 @@ const counts = classCountsByDay();
         <div class="grid">
           <div class="hour"><span class="sr-only">Time</span></div>
           {
-            DAYS.map((day, column) => (
+            tracks.map((track) => (
               <div class="day">
-                <h3>{day}</h3>
-                <small>{counts[column]} classes</small>
+                <h3>{track}</h3>
+                <small>{classCountOnTrack(track)} classes</small>
               </div>
             ))
           }
@@ -45,8 +50,8 @@ const counts = classCountsByDay();
             TIMETABLE.map((slot) => (
               <>
                 <div class="hour">{slot.time}</div>
-                {DAYS.map((_day, column) => {
-                  const cell = slot.classes[column] ?? [];
+                {tracks.map((track) => {
+                  const cell = slot.classes[track] ?? [];
                   return (
                     <div class:list={['cell', { free: cell.length === 0 }]}>
                       {cell.map((entry) => (

@@ -21,6 +21,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
  *
  * #9's plain-fact headline is deliberately unchanged. The image does the
  * emotional work, which is what frees the words to be useful.
+ *
+ * The ornament separates *consecutive light bands* and nothing else, which is
+ * not every gap on the page. `FaithSection` is the navy band and separates
+ * itself — a gold hairline pressed against it reads as an underline on the
+ * band rather than a rule between two sections. And `Announcements` hides when
+ * empty, which is its normal state, so an ornament below it would leave a rule
+ * hanging directly under the hero with nothing above it.
  */
 const description =
   'Christian classical classes in Enola, Pennsylvania, for ages 4 to 18 — mornings on Monday, Wednesday and Thursday.';
@@ -32,6 +39,7 @@ const description =
   <WeekSection />
   <Ornament />
   <TeachersSection />
+  <Ornament />
   <CostsSection />
   <FaithSection />
   <InquirySection />

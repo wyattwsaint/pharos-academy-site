@@ -181,8 +181,16 @@ test.describe('the header', () => {
     const heroHeight = await page
       .locator('[data-section="hero"]')
       .evaluate((el) => (el as HTMLElement).offsetHeight);
-    await scrollTo(page, heroHeight);
 
+    // Pins the threshold rather than just the end state. Asserting only at
+    // `heroHeight` passes for *any* trigger at or below the hero's height,
+    // which is how a band that had quietly moved to halfway went unnoticed:
+    // #21 asks for it "once the hero is past", so most of the way down the
+    // hero it must still be chrome-less.
+    await scrollTo(page, Math.round(heroHeight * 0.8));
+    await expect(header).not.toHaveClass(/\bstuck\b/);
+
+    await scrollTo(page, heroHeight + 2);
     await expect(header).toHaveClass(/\bstuck\b/);
     await expect(page.locator('[data-header-brand]')).toBeVisible();
   });
