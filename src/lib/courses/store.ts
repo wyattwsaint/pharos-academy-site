@@ -1,0 +1,60 @@
+import { eq } from 'drizzle-orm';
+
+import type { Db } from '../db/client.js';
+import { courses as coursesTable, type CourseRow } from '../db/schema.js';
+import type { Course, EnrolmentUnit, RateTier, Stage } from './course.js';
+
+/**
+ * The catalogue, read.
+ *
+ * Every public surface goes through here, which is the point of #22: By Age, By
+ * Day, the full descriptions and each class's own page all render the same
+ * nineteen rows, so they cannot disagree with one another the way the live
+ * site's nine artefacts do.
+ *
+ * The row and the domain type are close but not identical — the row is columns,
+ * the domain type is the vocabulary — so the mapping is written once, here, and
+ * nothing outside this module handles a `CourseRow`.
+ */
+
+/** Every course, alphabetically by title. */
+export async function listCourses(db: Db): Promise<Course[]> {
+  const rows = await db.select().from(coursesTable);
+  return rows.map(toCourse).sort((a, b) => a.title.localeCompare(b.title));
+}
+
+/** One course by its URL segment, or undefined — which the page turns into a 404. */
+export async function getCourse(db: Db, slug: string): Promise<Course | undefined> {
+  const rows = await db.select().from(coursesTable).where(eq(coursesTable.slug, slug)).limit(1);
+  const row = rows[0];
+  return row ? toCourse(row) : undefined;
+}
+
+function toCourse(row: CourseRow): Course {
+  return {
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    stages: row.stages as Stage[],
+    days: row.days as Course['days'],
+    start: row.startTime,
+    end: row.endTime,
+    enrolment: row.enrolment as EnrolmentUnit,
+    weeks: row.weeks,
+    dates: row.dates,
+    ageLabel: row.ageLabel,
+    ageMin: row.ageMin,
+    ageMax: row.ageMax,
+    rateTier: row.rateTier as RateTier,
+    credit: row.credit,
+    requiredText: row.requiredText,
+    optionalText: row.optionalText,
+    materialsToBuy: row.materialsToBuy,
+    materialsFee: row.materialsFee,
+    materialsFeeNote: row.materialsFeeNote,
+    assessmentFee: row.assessmentFee,
+    assessmentFeeNote: row.assessmentFeeNote,
+    prerequisites: row.prerequisites,
+    instructor: row.instructor,
+  };
+}

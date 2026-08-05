@@ -23,7 +23,7 @@ const { overHero = false } = Astro.props;
       <img src="/mark.svg" alt="" width="25" height="28" />
       <b>{SCHOOL_NAME}</b>
     </a>
-    <nav class="site-nav" aria-label="Sections of this page">
+    <nav class="site-nav" aria-label="Main">
       {NAV_ITEMS.map((item) => <a href={item.href}>{item.label}</a>)}
     </nav>
     <a class="btn on-dark" href={INQUIRY_HREF}>Ask us about Pharos</a>

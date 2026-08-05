@@ -7,12 +7,18 @@ import { expect, test, type Page } from '@playwright/test';
  * and no horizontal overflow at each of these widths. The prototype achieved
  * it; the build is not allowed to regress it.
  *
- * Both are checked twice — once with the page as it loads, and once with a
- * H.O.P.E. card open (#21 AC 1). The open state is the one that can actually
- * fail: the card is a light panel on the navy band, it floats over its
- * neighbours on desktop, and below 620px it spans two columns and is anchored
- * to its own side of the row. That last arrangement is precisely how a panel
- * ends up hanging off the viewport, so it is measured rather than assumed.
+ * The homepage is checked in three states — as it loads, with a H.O.P.E. card
+ * open, and with a class description open (#21 AC 1) — because the open state
+ * is the one that can actually fail: the card is a light panel on the navy
+ * band, it floats over its neighbours on desktop, and below 620px it spans two
+ * columns and is anchored to its own side of the row. That last arrangement is
+ * precisely how a panel ends up hanging off the viewport.
+ *
+ * All four catalogue surfaces are measured too (#22's last acceptance
+ * criterion). The timetable is the interesting one: on a phone it scrolls
+ * sideways inside its own box rather than squeezing its lanes, so what is
+ * asserted is that the *document* does not overflow — which is what a parent
+ * actually experiences — while the grid's own box may.
  */
 const WIDTHS = [390, 768, 834, 1024, 1440];
 
@@ -32,39 +38,87 @@ async function openClassPanel(page: Page) {
   await expect(cell.locator('[data-disclosure-panel]')).toBeVisible();
 }
 
-const STATES = [
-  { name: 'closed', open: async (_page: Page) => {} },
-  { name: 'with a H.O.P.E. card open', open: openHopeCard },
-  { name: 'with a class description open', open: openClassPanel },
+/** Open the first card on the By Age surface. */
+async function openCatalogueCard(page: Page) {
+  const cell = page.locator('.classcard').first();
+  await cell.locator('[data-disclosure-trigger]').click();
+  await expect(cell.locator('[data-disclosure-panel]')).toBeVisible();
+}
+
+const noop = async (_page: Page) => {};
+
+/**
+ * Every public surface, in every state worth measuring.
+ *
+ * One list, so a page added to it is measured at all five widths by
+ * construction rather than by somebody remembering to copy a block.
+ */
+const SURFACES = [
+  { name: 'the home page', path: '/', state: 'closed', open: noop },
+  { name: 'the home page', path: '/', state: 'with a H.O.P.E. card open', open: openHopeCard },
+  {
+    name: 'the home page',
+    path: '/',
+    state: 'with a class description open',
+    open: openClassPanel,
+  },
+  { name: 'classes by age', path: '/classes', state: 'closed', open: noop },
+  {
+    name: 'classes by age',
+    path: '/classes',
+    state: 'with a description open',
+    open: openCatalogueCard,
+  },
+  { name: 'classes by day', path: '/classes/by-day', state: 'closed', open: noop },
+  {
+    name: 'the full descriptions',
+    path: '/classes/full-descriptions',
+    state: 'closed',
+    open: noop,
+  },
+  { name: 'a class page', path: '/classes/algebra-1', state: 'closed', open: noop },
 ];
 
-test.describe('the home page', () => {
-  for (const width of WIDTHS) {
-    for (const state of STATES) {
-      test(`has zero axe violations at ${width}px, ${state.name}`, async ({ page }) => {
+for (const surface of SURFACES) {
+  test.describe(`${surface.name} (${surface.path}), ${surface.state}`, () => {
+    for (const width of WIDTHS) {
+      test(`has zero axe violations at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
-        await page.goto('/');
-        await state.open(page);
+        await page.goto(surface.path);
+        await surface.open(page);
 
         const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
 
         expect(violations.map(describeViolation)).toEqual([]);
       });
 
-      test(`does not overflow horizontally at ${width}px, ${state.name}`, async ({ page }) => {
+      test(`does not overflow horizontally at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
-        await page.goto('/');
-        await state.open(page);
+        await page.goto(surface.path);
+        await surface.open(page);
 
         const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
         expect(scrollWidth).toBeLessThanOrEqual(width);
       });
     }
+  });
+}
+
+/**
+ * One h1 per page, checked once per page rather than once per state — a state
+ * cannot add a heading, and the homepage is expensive enough to load that
+ * asserting it three times only buys flakiness.
+ */
+test.describe('every page', () => {
+  for (const path of [...new Set(SURFACES.map((surface) => surface.path))]) {
+    test(`${path} has exactly one h1`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.locator('h1')).toHaveCount(1);
+    });
   }
 
-  test('sets the school as the single h1', async ({ page }) => {
+  test('sets the school as the home page’s h1', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('h1')).toContainText('Pharos Academy');
   });
 });

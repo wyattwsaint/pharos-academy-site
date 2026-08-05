@@ -10,6 +10,11 @@ import { SCHOOL_NAME } from './site.js';
  */
 const SUMMARIES: Record<string, string> = {
   '/': 'What Pharos Academy is, which mornings classes run, which ages, and what it costs.',
+  '/classes': 'Every class for 2026–2027, grouped by the ages it is open to.',
+  '/classes/by-day':
+    'The timetable, drawn to scale — which classes run when, and which of them overlap.',
+  '/classes/full-descriptions':
+    'The full description, texts, prerequisites and fees for all nineteen classes.',
 };
 
 /**

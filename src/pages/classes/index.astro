@@ -1,0 +1,89 @@
+---
+import ClassCard from '../../components/classes/ClassCard.astro';
+import ClassesHeader from '../../components/classes/ClassesHeader.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { ageLine, coursesByBand, hasNumericAges } from '../../lib/courses/ages.js';
+import { listCourses } from '../../lib/courses/store.js';
+import { viewFor } from '../../lib/courses/views.js';
+import { getDb } from '../../lib/db/client.js';
+
+/**
+ * By Age — the default landing view for `/classes` (#22).
+ *
+ * Not a redirect to `/classes/by-age`: ages are the primary axis, and the
+ * primary axis should not be the one view without an address of its own.
+ *
+ * Grouping, not filtering. Every band is on the page, so the whole catalogue is
+ * one Ctrl-F away and works with no script at all; the band links jump. A
+ * course appears under every band its range touches, which is why a class shows
+ * up more than once and why the panel ids are prefixed with the band.
+ *
+ * Algebra 1 is in every band. It publishes no numeric age range — its gate is a
+ * prerequisite — and the rule that a course with no range is shown to everyone
+ * rather than to nobody is `ages.ts`'s, tested there against the real
+ * catalogue.
+ */
+const view = viewFor('by-age');
+const courses = await listCourses(await getDb());
+const bands = coursesByBand(courses);
+---
+
+<BaseLayout title={view.title} description={view.description}>
+  <ClassesHeader
+    current="by-age"
+    heading="Nineteen classes, by the age they are written for"
+    lede="Ages first, because that is how the school writes them — the grade equivalents on each class are approximations. A class appears under every age it is open to."
+  />
+
+  <section class="band" data-section="by-age">
+    <div class="wide">
+      <nav class="bandjump" aria-label="Jump to an age band">
+        {bands.map(({ band }) => <a href={`#${band.id}`}>{band.label}</a>)}
+      </nav>
+
+      {
+        bands.map(({ band, courses: inBand }) => (
+          <div class="ageband">
+            <h2 id={band.id}>{band.label}</h2>
+            <p class="ageband-count">
+              {inBand.length} classes are open to this age.
+            </p>
+
+            <disclosure-group data-disclosure-group={`classes-${band.id}`}>
+              <div class="classcards">
+                {inBand.map((course) => (
+                  <ClassCard course={course} idPrefix={band.id} />
+                ))}
+              </div>
+            </disclosure-group>
+          </div>
+        ))
+      }
+
+      <p class="mt-9 text-ink-2">
+        {
+          /*
+            Named rather than left to be inferred from a card. A parent whose
+            child is eight and strong at maths needs to be told why the algebra
+            class is in their band, not left to wonder whether it is a bug.
+          */
+        }
+        {
+          courses
+            .filter((course) => !hasNumericAges(course))
+            .map((course) => (
+              <span class="block">
+                <strong>{course.title}</strong> appears in every band: {ageLine(course)}.
+              </span>
+            ))
+        }
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // The only script this page loads. There is no hero here, so nothing from
+  // `hero-fx.ts` applies: the header ships stuck and stays stuck.
+  import '../../components/disclosure-group.js';
+</script>

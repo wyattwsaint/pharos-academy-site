@@ -13,6 +13,7 @@
 @import '@fontsource/cormorant-garamond/latin-600-italic.css';
 
 @import './beacon.css';
+@import './classes.css';
 
 /*
  * The "Beacon, warmed" palette, corrected against the school's own raster on

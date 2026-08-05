@@ -1,0 +1,87 @@
+---
+import { ageLine } from '../../lib/courses/ages.js';
+import { durationLabel, type Course } from '../../lib/courses/course.js';
+import { priceLine } from '../../lib/courses/pricing.js';
+import { contactHours, timeLabel } from '../../lib/courses/schedule.js';
+
+/**
+ * Everything the school publishes about one class, as a description list.
+ *
+ * Shared by the full-descriptions surface and by each class's own page, because
+ * the two must not answer the same question differently — that is the failure
+ * #22 exists to end, and it is already live: the school's three course pages
+ * disagree about ages, days and texts.
+ *
+ * A field the school has not filled in is **absent**, not "None" invented here.
+ * The two places "None" does appear — prerequisites, and a required text — are
+ * the school's own word.
+ *
+ * Contact hours are printed because they are what the price is computed from.
+ * A parent who wants to check the arithmetic can: hours × rate, and the rate is
+ * in the cost line.
+ */
+interface Props {
+  course: Course;
+}
+
+const { course } = Astro.props;
+
+const dateFormat = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'UTC',
+});
+
+const facts: { term: string; value: string }[] = [
+  { term: 'Meets', value: `${course.days.join(' and ')}, ${timeLabel(course.start, course.end)}` },
+  { term: 'Duration', value: durationLabel(course) },
+  { term: 'Ages', value: ageLine(course) },
+  { term: 'Cost', value: priceLine(course) },
+  { term: 'Contact hours', value: `${contactHours(course)} hours` },
+  ...(course.credit ? [{ term: 'Credit', value: course.credit }] : []),
+  { term: 'Prerequisites', value: course.prerequisites },
+  ...(course.requiredText ? [{ term: 'Required text', value: course.requiredText }] : []),
+  ...(course.optionalText ? [{ term: 'Optional text', value: course.optionalText }] : []),
+  ...(course.materialsToBuy
+    ? [{ term: 'Materials to bring', value: course.materialsToBuy }]
+    : []),
+  ...(course.materialsFee !== null
+    ? [
+        {
+          term: 'Materials fee',
+          value: `$${course.materialsFee}${course.materialsFeeNote ? ` ${course.materialsFeeNote}` : ''}`,
+        },
+      ]
+    : []),
+  ...(course.assessmentFee !== null
+    ? [
+        {
+          term: 'Assessment fee',
+          value: `$${course.assessmentFee}${course.assessmentFeeNote ? ` ${course.assessmentFeeNote}` : ''}`,
+        },
+      ]
+    : []),
+  ...(course.dates.length > 0
+    ? [
+        {
+          term: 'Meeting dates',
+          value: course.dates
+            .map((date) => dateFormat.format(new Date(`${date}T00:00:00Z`)))
+            .join(', '),
+        },
+      ]
+    : []),
+  { term: 'Instructor', value: course.instructor },
+];
+---
+
+<dl class="coursefacts">
+  {
+    facts.map((fact) => (
+      <div class="coursefact">
+        <dt>{fact.term}</dt>
+        <dd>{fact.value}</dd>
+      </div>
+    ))
+  }
+</dl>

@@ -71,7 +71,14 @@ export class DisclosureGroup extends HTMLElement {
       trigger.addEventListener('focus', () => {
         if (!this.#stuck) this.#show(cell, false);
       });
-      trigger.addEventListener('blur', () => {
+      // `focusout` on the cell rather than `blur` on the trigger, because a
+      // panel may itself hold a link — the class descriptions on `/classes`
+      // each carry one to that class's own page. Closing on the trigger's blur
+      // would hide that link at the exact moment Tab reached it, and focus
+      // would fall on the floor. Focus leaving the *cell* is the real signal.
+      cell.addEventListener('focusout', (event) => {
+        const next = (event as FocusEvent).relatedTarget;
+        if (next instanceof Node && cell.contains(next)) return;
         if (this.#open === cell && !this.#stuck) this.#close();
       });
 

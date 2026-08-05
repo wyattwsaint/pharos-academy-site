@@ -3,6 +3,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { CATALOGUE } from './courses/catalogue.js';
 import { PUBLIC_ROUTES, absoluteUrl, publicPaths, renderSitemap } from './routes.js';
 
 const SITE = 'https://www.pharosacademy.net';
@@ -38,6 +39,19 @@ describe('the public route list', () => {
   it('accounts for every rendered page under src/pages', () => {
     const paths = new Set(publicPaths());
     for (const route of pageRoutes()) {
+      if (route.includes('[')) {
+        // A dynamic page is accounted for by the routes it actually renders —
+        // `/classes/[slug]` by the nineteen class paths generated from the
+        // catalogue. What must not happen is a dynamic page with *no*
+        // enumerated route behind it, which is a whole page family missing
+        // from the sitemap and from republishing.
+        const pattern = new RegExp(`^${route.replace(/\[[^\]]+\]/g, '[^/]+')}$`);
+        expect(
+          publicPaths().some((path) => pattern.test(path)),
+          `src/pages has ${route} but no enumerated route matches it`,
+        ).toBe(true);
+        continue;
+      }
       expect(paths, `src/pages has a page for ${route} that is not enumerated`).toContain(route);
     }
   });
@@ -45,6 +59,18 @@ describe('the public route list', () => {
   // The admin is not public and must never be revalidated, sitemapped or warmed
   // as though it were. Its pages are excluded from the walk above by path; this
   // asserts the exclusion is not silently hiding a real public page.
+  it('enumerates an address for every class, and the three ways of listing them', () => {
+    // The class pages are the links Jill sends when she means one class (#22),
+    // so they belong in the sitemap and in whole-site republishing both.
+    const paths = new Set(publicPaths());
+    expect(paths).toContain('/classes');
+    expect(paths).toContain('/classes/by-day');
+    expect(paths).toContain('/classes/full-descriptions');
+    for (const course of CATALOGUE) {
+      expect(paths, course.title).toContain(`/classes/${course.slug}`);
+    }
+  });
+
   it('never enumerates an admin path', () => {
     for (const path of publicPaths()) {
       expect(path.startsWith('/admin')).toBe(false);

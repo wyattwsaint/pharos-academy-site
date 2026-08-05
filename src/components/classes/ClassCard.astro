@@ -1,0 +1,52 @@
+---
+import { ageLine } from '../../lib/courses/ages.js';
+import type { Course } from '../../lib/courses/course.js';
+import { priceSummary } from '../../lib/courses/pricing.js';
+import { timeLabel } from '../../lib/courses/schedule.js';
+import { classPath } from '../../lib/courses/views.js';
+
+/**
+ * One class, as a card that opens its description.
+ *
+ * The interaction is `<disclosure-group>` — the same implementation as the
+ * H.O.P.E. cards on the homepage and the same contract: hover opens, click
+ * sticks, Escape or an outside click closes, one panel at a time (#22, #21
+ * AC 6). Two behaviours that are *almost* the same on one site is how a client
+ * finds the inconsistent one.
+ *
+ * The panel ends in the link to the class's own page, and that link is the
+ * reason `disclosure-group.ts` closes on the cell losing focus rather than on
+ * the trigger losing it: Tab from the trigger has to be able to reach it.
+ *
+ * `idPrefix` exists because a course appears in more than one age band on the
+ * By Age surface, and a panel id has to be unique on the page.
+ */
+interface Props {
+  course: Course;
+  idPrefix: string;
+}
+
+const { course, idPrefix } = Astro.props;
+const panelId = `${idPrefix}-${course.slug}`;
+---
+
+<div class="classcard" data-disclosure-cell data-course={course.slug}>
+  <button
+    class="classcard-trigger"
+    type="button"
+    data-disclosure-trigger
+    aria-expanded="false"
+    aria-controls={panelId}
+  >
+    <span class="title">{course.title}</span>
+    <span class="when">{course.days.join(' & ')} · {timeLabel(course.start, course.end)}</span>
+    <span class="meta">{ageLine(course)} · {priceSummary(course)}</span>
+  </button>
+
+  <div class="classcard-panel" id={panelId} data-disclosure-panel>
+    <p>{course.description}</p>
+    <a class="classcard-more" href={classPath(course.slug)}>
+      Everything about {course.title}
+    </a>
+  </div>
+</div>
