@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+
+/*
+ * The "Beacon, warmed" palette, corrected against the school's own raster on
+ * #13. The surface work itself lands with the homepage slice; these are here so
+ * that when it does, the tokens already have one home.
+ */
+@theme {
+  --color-navy: #123a5a;
+  --color-light-blue: #59a6d0;
+  --color-deep-blue: #4d82a1;
+  --color-gold: #fbb03b;
+  --color-cream: #faf6ee;
+  --color-parchment: #f2e9d8;
+
+  /*
+   * Body copy. #13 reserves navy for grounds and headings and never sets body
+   * copy in it, and the three brand blues are all pigments rather than text
+   * colours — `deep-blue` on cream measures 3.4:1, which axe fails. `ink` is
+   * the reading colour: 10:1 on cream, comfortably WCAG 2.2 AA.
+   */
+  --color-ink: #2a3f52;
+}

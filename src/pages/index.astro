@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SCHOOL_NAME } from '../lib/site.js';
+
+// Deliberately a placeholder. #19 exists to give every later slice a working
+// floor — the real homepage (hero, the seven sections, the inquiry) is its own
+// ticket. What is load-bearing here is that this page is served through the
+// adapter's ISR path, so the delivery model is exercised from the first commit
+// rather than retrofitted.
+const description =
+  'Christian classical classes in Enola, Pennsylvania, for ages 4 to 18 — mornings on Monday, Wednesday and Thursday.';
+---
+
+<BaseLayout title="Home" description={description}>
+  <section class="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-6 px-6 py-24">
+    <p class="text-sm tracking-[0.2em] text-ink uppercase">A Christian classical hybrid microschool</p>
+    <h1 class="text-5xl font-semibold text-balance text-navy">{SCHOOL_NAME}</h1>
+    <p class="text-lg text-pretty">{description}</p>
+    <p class="text-base">
+      The new site is being built. Classes, admissions and the school calendar are on their way here.
+    </p>
+  </section>
+</BaseLayout>

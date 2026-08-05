@@ -1,0 +1,60 @@
+name: PR tests
+
+# The merge train names this workflow in its `workflow_run` trigger — renaming
+# it silently un-hooks the retest-done signal (see automerge.yml).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: pr-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Types
+        run: npm run check
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # "ISR, not a static export" is a property of the build output, so it is
+      # asserted against the build output rather than trusted from the config.
+      - name: Verify the ISR delivery model
+        run: npm run verify:isr
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # Runs against a local dev server. The same suite runs against the real
+      # deployment in `deployed-accessibility.yml`; this copy is what catches an
+      # axe regression before it is ever deployed.
+      - name: Browser tests (axe)
+        run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

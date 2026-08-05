@@ -1,0 +1,10 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [".astro/types.d.ts", "**/*.ts", "**/*.astro"],
+  "exclude": ["dist", "node_modules", "prototypes"],
+  "compilerOptions": {
+    "types": ["astro/client", "node"],
+    "strictNullChecks": true,
+    "allowJs": true
+  }
+}
