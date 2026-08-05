@@ -1,0 +1,33 @@
+---
+import { INSTRUCTORS } from '../../lib/home/content.js';
+---
+
+<section class="band band-quiet" id="teachers" data-section="teachers">
+  <div class="wide">
+    <div class="accent">
+      <div>
+        <p class="label">Who teaches</p>
+        <h2 class="mt-4">Nine instructors.</h2>
+      </div>
+      <figure class="plate">
+        <img src="/imagery/vista-path.webp" alt="" width="1400" height="933" loading="lazy" />
+      </figure>
+    </div>
+
+    <div class="people">
+      {
+        INSTRUCTORS.map((person) => (
+          <article>
+            {/* Empty until Jill supplies photographs of real consenting adults
+                (#13). A generated painting standing in for a named member of
+                staff is the one substitution that would be dishonest. */}
+            <div class="portrait" aria-hidden="true" />
+            <h3>{person.name}</h3>
+            <p class="role label">{person.role}</p>
+            <p>{person.credentials}</p>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>

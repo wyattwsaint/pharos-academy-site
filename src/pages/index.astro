@@ -1,23 +1,54 @@
 ---
+import Ornament from '../components/Ornament.astro';
+import Announcements from '../components/home/Announcements.astro';
+import CostsSection from '../components/home/CostsSection.astro';
+import FaithSection from '../components/home/FaithSection.astro';
+import HomeHero from '../components/home/HomeHero.astro';
+import InquirySection from '../components/home/InquirySection.astro';
+import TeachersSection from '../components/home/TeachersSection.astro';
+import WeekSection from '../components/home/WeekSection.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { SCHOOL_NAME } from '../lib/site.js';
 
-// Deliberately a placeholder. #19 exists to give every later slice a working
-// floor — the real homepage (hero, the seven sections, the inquiry) is its own
-// ticket. What is load-bearing here is that this page is served through the
-// adapter's ISR path, so the delivery model is exercised from the first commit
-// rather than retrofitted.
+/**
+ * The homepage, in "Beacon, warmed" — variant E, approved by George and Jill
+ * on #13.
+ *
+ * The section order is #9's and is not open to revision here. It lives in
+ * `src/lib/home/sections.ts` as a list, is stamped onto each section as
+ * `data-section`, and the browser suite asserts the rendered sequence equals
+ * that list — so a section moved in this file alone fails rather than quietly
+ * re-ordering what two people signed off on.
+ *
+ * #9's plain-fact headline is deliberately unchanged. The image does the
+ * emotional work, which is what frees the words to be useful.
+ *
+ * The ornament separates *consecutive light bands* and nothing else, which is
+ * not every gap on the page. `FaithSection` is the navy band and separates
+ * itself — a gold hairline pressed against it reads as an underline on the
+ * band rather than a rule between two sections. And `Announcements` hides when
+ * empty, which is its normal state, so an ornament below it would leave a rule
+ * hanging directly under the hero with nothing above it.
+ */
 const description =
   'Christian classical classes in Enola, Pennsylvania, for ages 4 to 18 — mornings on Monday, Wednesday and Thursday.';
 ---
 
-<BaseLayout title="Home" description={description}>
-  <section class="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-6 px-6 py-24">
-    <p class="text-sm tracking-[0.2em] text-ink uppercase">A Christian classical hybrid microschool</p>
-    <h1 class="text-5xl font-semibold text-balance text-navy">{SCHOOL_NAME}</h1>
-    <p class="text-lg text-pretty">{description}</p>
-    <p class="text-base">
-      The new site is being built. Classes, admissions and the school calendar are on their way here.
-    </p>
-  </section>
+<BaseLayout title="Home" description={description} overHero>
+  <HomeHero />
+  <Announcements />
+  <WeekSection />
+  <Ornament />
+  <TeachersSection />
+  <Ornament />
+  <CostsSection />
+  <FaithSection />
+  <InquirySection />
 </BaseLayout>
+
+<script>
+  import '../components/disclosure-group.js';
+  import { heroFx, stickyHeader } from '../components/hero-fx.js';
+
+  heroFx();
+  stickyHeader();
+</script>

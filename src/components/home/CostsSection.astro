@@ -1,0 +1,36 @@
+---
+import { FIGURES } from '../../lib/home/content.js';
+
+/**
+ * What it costs, in full, before anyone asks.
+ *
+ * The three gold marks are decorative and carry no information the numerals do
+ * not — hence `aria-hidden`. The numerals themselves are sans and tabular:
+ * these are the working parts of the page, not the ceremonial ones.
+ */
+const MARKS = [
+  'M12 2 L22 12 L12 22 L2 12 Z M12 8.6 A3.4 3.4 0 1 0 12 15.4 A3.4 3.4 0 1 0 12 8.6',
+  'M12 2.5 A9.5 9.5 0 1 0 12 21.5 A9.5 9.5 0 1 0 12 2.5 M12 5.5 L14 12 L12 18.5 L10 12 Z',
+  'M2.5 5.5 H21.5 V18.5 H2.5 Z M2.5 5.5 L12 13 L21.5 5.5',
+];
+---
+
+<section class="band" id="costs" data-section="costs">
+  <div class="wide">
+    <p class="label">What it costs</p>
+    <h2 class="mt-4">Everything, before you ask.</h2>
+    <div class="figures">
+      {
+        FIGURES.map((figure, index) => (
+          <div class="figure">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+              <path d={MARKS[index]} />
+            </svg>
+            <b>{figure.amount}</b>
+            <span>{figure.note}</span>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>

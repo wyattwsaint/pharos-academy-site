@@ -1,0 +1,31 @@
+---
+import { INQUIRY_HREF, NAV_ITEMS } from '../lib/home/sections.js';
+import { SCHOOL_NAME } from '../lib/site.js';
+
+interface Props {
+  /**
+   * Whether this page opens on the full-bleed video hero.
+   *
+   * On the homepage the header starts chrome-less and takes its navy band only
+   * once the hero is past — `hero-fx.ts` toggles `.stuck` on scroll. Every
+   * other page has no hero for it to float over, so it ships stuck and the
+   * script leaves it alone.
+   */
+  overHero?: boolean;
+}
+
+const { overHero = false } = Astro.props;
+---
+
+<header class:list={['site-header', { stuck: !overHero }]} data-site-header>
+  <div class="wide">
+    <a class="site-brand" href="/" data-header-brand>
+      <img src="/mark.svg" alt="" width="25" height="28" />
+      <b>{SCHOOL_NAME}</b>
+    </a>
+    <nav class="site-nav" aria-label="Sections of this page">
+      {NAV_ITEMS.map((item) => <a href={item.href}>{item.label}</a>)}
+    </nav>
+    <a class="btn on-dark" href={INQUIRY_HREF}>Ask us about Pharos</a>
+  </div>
+</header>

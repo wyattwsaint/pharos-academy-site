@@ -1,23 +1,75 @@
 @import 'tailwindcss';
 
+/* The four faces the design language uses, latin subsets only.
+ *
+ * Cormorant Garamond is fetched at 600 italic as a REAL face and not
+ * synthesised: the hero's gold tagline is the lockup's weakest line, its weight
+ * was raised specifically to buy legibility on the least-washed part of the
+ * scrim, and a faux bold smears the stroke and gives exactly that back. */
+@import '@fontsource-variable/public-sans/wght.css';
+@import '@fontsource/instrument-serif/latin-400.css';
+@import '@fontsource/instrument-serif/latin-400-italic.css';
+@import '@fontsource-variable/fraunces/wght.css';
+@import '@fontsource/cormorant-garamond/latin-600-italic.css';
+
+@import './beacon.css';
+
 /*
  * The "Beacon, warmed" palette, corrected against the school's own raster on
- * #13. The surface work itself lands with the homepage slice; these are here so
- * that when it does, the tokens already have one home.
+ * #13.
+ *
+ * Four of these values moved when the surface work landed (#21). What was here
+ * came off the brand raster before variant E's own set was tuned; E's are the
+ * values every contrast measurement in the prototype was taken against, so E's
+ * are the ones that ship. The differences, deliberately:
+ *
+ *   navy       #123a5a -> #17365c   E's ground, cooler and a step deeper
+ *   cream      #faf6ee -> #fbf7ef   E's --paper
+ *   parchment  #f2e9d8 -> #f3e9d6   E's --quiet
+ *   ink        #2a3f52 -> #14202a   E's body copy, near-black rather than blued
+ *
+ * The gold is the one place several values are all correct and all needed, so
+ * each is named for its job. `gold` is the brand gold off the mark. `gold-orn`
+ * is that hue muted for rules and icons — it measures 2.8:1, which is fine for
+ * a line and is never allowed to carry a word. `gold-ink` is the same hue taken
+ * to AA on all three light grounds and is what gold TEXT uses. `gold-lit` is
+ * the version that survives a navy ground, where the deep golds go muddy.
  */
 @theme {
-  --color-navy: #123a5a;
+  --color-navy: #17365c;
+  --color-navy-deep: #102647;
+  --color-cream: #fbf7ef;
+  --color-parchment: #f3e9d6;
+  --color-rule: #e4d9c4;
+
   --color-light-blue: #59a6d0;
   --color-deep-blue: #4d82a1;
+
   --color-gold: #fbb03b;
-  --color-cream: #faf6ee;
-  --color-parchment: #f2e9d8;
+  --color-gold-orn: #c08a2e;
+  --color-gold-ink: #896221;
+  --color-gold-lit: #e0ac4e;
 
   /*
    * Body copy. #13 reserves navy for grounds and headings and never sets body
    * copy in it, and the three brand blues are all pigments rather than text
    * colours — `deep-blue` on cream measures 3.4:1, which axe fails. `ink` is
-   * the reading colour: 10:1 on cream, comfortably WCAG 2.2 AA.
+   * the reading colour; `ink-2` is the quieter one for captions and sub-copy,
+   * still comfortably AA on all three light grounds.
    */
-  --color-ink: #2a3f52;
+  --color-ink: #14202a;
+  --color-ink-2: #5c6b76;
+
+  /*
+   * The ceremonial parts are serif and the working parts are sans: headings,
+   * eyebrows, the verse and the footer take Instrument Serif; body paragraphs,
+   * the timetable, prices, the nav and the form stay Public Sans. Fraunces is
+   * the hero lockup alone — Instrument is the more elegant face but too light
+   * to carry a wordmark at 62px, and set beside the school's own reference it
+   * read airy where the reference reads solid.
+   */
+  --font-sans: 'Public Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-display: 'Fraunces Variable', ui-serif, Georgia, serif;
+  --font-tagline: 'Cormorant Garamond', ui-serif, Georgia, serif;
 }

@@ -1,14 +1,23 @@
 ---
 import '../styles/global.css';
 import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
 import { SCHOOL_NAME } from '../lib/site.js';
 
 interface Props {
   title: string;
   description: string;
+  /**
+   * Whether this page opens on the full-bleed video hero.
+   *
+   * Only the homepage does. It changes two things: the fixed header starts
+   * chrome-less rather than navy, and `<main>` is not padded down past it,
+   * because the hero is meant to run underneath.
+   */
+  overHero?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, overHero = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 
@@ -21,15 +30,25 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="sitemap" href="/sitemap.xml" />
+    {
+      /*
+        The hero's poster is the largest thing above the fold, and under
+        `prefers-reduced-motion` it is the *only* thing there — the video never
+        loads at all. Preloaded so the first paint is the painting rather than
+        the flat backstop colour behind it.
+      */
+      overHero && <link rel="preload" as="image" href="/hero/hope-poster.webp" />
+    }
   </head>
-  <body class="bg-cream text-ink">
+  <body>
     <a
       href="#main"
-      class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:bg-navy focus:px-4 focus:py-2 focus:text-cream"
+      class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-navy focus:px-4 focus:py-2 focus:text-cream"
     >
       Skip to content
     </a>
-    <main id="main">
+    <SiteHeader overHero={overHero} />
+    <main id="main" class:list={[{ 'pt-24': !overHero }]}>
       <slot />
     </main>
     <SiteFooter />

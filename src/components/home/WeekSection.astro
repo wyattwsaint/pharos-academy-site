@@ -1,0 +1,90 @@
+---
+import { activeDayTracks, classCountOnTrack, TIMETABLE } from '../../lib/home/timetable.js';
+
+/**
+ * What a week looks like — #9's items 2 and 3 as one section.
+ *
+ * The merge is variant E's and is what was signed off on #13: a timetable of
+ * real classes with real ages and prices *is* what a week looks like, and
+ * splitting the two puts the same information on the page twice.
+ *
+ * Each class is a `<disclosure-group>` cell — the same interaction
+ * implementation as the H.O.P.E. row, which is #21 AC 6. The trigger is a real
+ * `<button>` rather than a link with a placeholder `href`: there is no class
+ * page to navigate to yet, and the panel is what the interaction is for.
+ *
+ * The columns are the day tracks that actually run, derived rather than listed.
+ * The school has four tracks and the Tuesday one is routinely empty
+ * (CONTEXT.md, "day track"); an empty track is complete, not incomplete, so it
+ * is not drawn as a permanently blank column.
+ */
+const tracks = activeDayTracks();
+---
+
+<section class="band" id="week" data-section="week">
+  <div class="wide">
+    <div class="accent">
+      <div>
+        <p class="label">What a week looks like</p>
+        <h2 class="mt-4">Mornings here. Afternoons yours.</h2>
+      </div>
+      <figure class="plate">
+        <img src="/imagery/still-desk.webp" alt="" width="1400" height="933" loading="lazy" />
+      </figure>
+    </div>
+
+    <disclosure-group data-disclosure-group="classes">
+      <div class="gridscroll">
+        <div class="grid">
+          <div class="hour"><span class="sr-only">Time</span></div>
+          {
+            tracks.map((track) => (
+              <div class="day">
+                <h3>{track}</h3>
+                <small>{classCountOnTrack(track)} classes</small>
+              </div>
+            ))
+          }
+
+          {
+            TIMETABLE.map((slot) => (
+              <>
+                <div class="hour">{slot.time}</div>
+                {tracks.map((track) => {
+                  const cell = slot.classes[track] ?? [];
+                  return (
+                    <div class:list={['cell', { free: cell.length === 0 }]}>
+                      {cell.map((entry) => (
+                        <div data-disclosure-cell>
+                          <button
+                            class="class"
+                            type="button"
+                            data-disclosure-trigger
+                            aria-expanded="false"
+                            aria-controls={`class-${entry.id}`}
+                          >
+                            <span class="title">{entry.title}</span>
+                            <span class="ends">{entry.ends}</span>
+                            <span class="meta">{entry.meta}</span>
+                          </button>
+                          <div class="class-panel" id={`class-${entry.id}`} data-disclosure-panel>
+                            {entry.description}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </>
+            ))
+          }
+        </div>
+      </div>
+    </disclosure-group>
+
+    <p class="mt-7 text-ink-2">
+      A selection. Nineteen classes run across the three mornings, and the full list arrives
+      with the classes page.
+    </p>
+  </div>
+</section>
