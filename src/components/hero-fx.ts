@@ -123,23 +123,40 @@ export function heroFx(root: ParentNode = document) {
  * Where the header stops being chrome-less and takes its navy band, as a
  * fraction of the hero's height.
  *
- * At the end of the hero, which is what #21 asks for: "navy with a gold
- * hairline once the hero is past."
+ * **Halfway, and #21's prose asks for the end.** That gap is deliberate, it is
+ * the one place this build knowingly diverges from the ticket's wording, and it
+ * is a measured floor rather than a preference — so it wants a decision from
+ * whoever owns #13 rather than a quiet edit either way.
  *
- * An earlier pass had this at 0.5 for a real reason — the dim layer ramps to
- * 55% navy-deep across the first viewport, and while the header is chrome-less
- * its type is navy, so a flat dim left that navy nav on a steadily darkening
- * ground and `docs/hero-contrast.md` caught it at 2.83:1 against a 4.5:1 need.
- * Moving the trigger was treating the symptom. The dim is now weighted downward
- * (`.hero-deep`), so the strip under the header stays the lightened sky the
- * navy type was measured against and the trigger can sit where the spec puts
- * it. Both ends are in the contrast table.
+ * The bind: while the header is chrome-less its type is navy, because the scrim
+ * *lightens* the sunrise sky for navy ink. The dim layer ramps to 55%
+ * navy-deep across that same viewport, so the further the ramp runs the darker
+ * the ground under that navy type gets. `docs/hero-contrast.md` caught the nav
+ * at 2.83:1 against a 4.5:1 need at the far end.
+ *
+ * Two ways out were tried and measured, not argued:
+ *
+ * - **Spare the top of the hero from the dim** so the header keeps a light
+ *   strip. It cannot work. `.hero-deep` is positioned inside the hero and the
+ *   header is fixed to the viewport, so near the end of the ramp the header is
+ *   over the hero's lower region and a top-anchored exemption is nowhere near
+ *   it. Measured at ramp 0.85: nav 2.95:1, CTA 2.15:1, both worse than the
+ *   thing being fixed.
+ * - **Ramp the type navy → white as the dim arrives.** Already ruled out, for
+ *   its own reason, in the `.site-header` comment: the crossover is mid-grey on
+ *   half-navy, which is worse than either end.
+ *
+ * So the trigger and the ramp share one moment: the header is chrome-less
+ * exactly while the hero is light enough to carry navy type, and takes its own
+ * navy ground the moment it is not. Honouring the prose instead means either a
+ * second scrim behind the header — a light band on a darkened hero, immediately
+ * before it flips to a navy one — or navy type below AA for half a viewport.
  */
-const STICK_AT = 1;
+const STICK_AT = 0.5;
 
 /**
  * The fixed header's `stuck` state: chrome-less over the hero, navy band with a
- * gold hairline once the hero is past.
+ * gold hairline once the hero is half past.
  *
  * `offsetHeight` is read live because the hero is `100dvh` and a mobile
  * browser's chrome collapsing changes it mid-scroll.

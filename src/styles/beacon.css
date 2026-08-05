@@ -523,26 +523,19 @@ h3 {
 
 /* The dim that ramps in with the blur, handing the hero off to the band below.
 
-   It is weighted downward rather than flat, and that is what lets the header
-   keep its navy type all the way to the end of the hero. A flat dim darkens the
-   strip under the fixed header too, and the header's own type is navy while it
-   is chrome-less — `docs/hero-contrast.md` caught the nav at 2.83:1 once that
-   strip had gone to a mid grey. Handing off to the band *below* is what the dim
-   is for, so having it arrive from below is not a compromise: the top 96px stay
-   the lightened sky the navy type was measured against, and the ramp is soft
-   enough over the next 150px that there is no visible edge. */
+   Flat, and it has to be. Sparing the top of the hero so the fixed header keeps
+   a light strip to carry its navy type does not work: this layer is positioned
+   inside the hero, and the header is fixed to the viewport, so by the time the
+   ramp is anywhere near its end the header is floating over the hero's *lower*
+   region — which any top-anchored exemption has long since stopped covering.
+   Measured, not reasoned: a downward-weighted version of this gradient put the
+   nav at 2.95:1 and the CTA at 2.15:1 at ramp 0.85. See `STICK_AT`. */
 .hero-deep {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    rgb(16 38 71 / 0) 0,
-    rgb(16 38 71 / 0) 96px,
-    var(--color-navy-deep) 246px,
-    var(--color-navy-deep) 100%
-  );
+  background: var(--color-navy-deep);
   opacity: 0;
 }
 

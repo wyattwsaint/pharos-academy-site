@@ -182,15 +182,16 @@ test.describe('the header', () => {
       .locator('[data-section="hero"]')
       .evaluate((el) => (el as HTMLElement).offsetHeight);
 
-    // Pins the threshold rather than just the end state. Asserting only at
-    // `heroHeight` passes for *any* trigger at or below the hero's height,
-    // which is how a band that had quietly moved to halfway went unnoticed:
-    // #21 asks for it "once the hero is past", so most of the way down the
-    // hero it must still be chrome-less.
-    await scrollTo(page, Math.round(heroHeight * 0.8));
+    // Pins the threshold in both directions, not just the end state. Asserting
+    // only at `heroHeight` passes for *any* trigger at or below the hero's
+    // height, so the halfway trigger this build actually uses was invisible to
+    // it — and halfway is a knowing divergence from #21's "once the hero is
+    // past" (see `STICK_AT`), which is exactly the kind of thing that must fail
+    // loudly if someone moves it without re-measuring the contrast.
+    await scrollTo(page, Math.round(heroHeight * 0.4));
     await expect(header).not.toHaveClass(/\bstuck\b/);
 
-    await scrollTo(page, heroHeight + 2);
+    await scrollTo(page, Math.round(heroHeight * 0.6));
     await expect(header).toHaveClass(/\bstuck\b/);
     await expect(page.locator('[data-header-brand]')).toBeVisible();
   });
