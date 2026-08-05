@@ -41,17 +41,18 @@ export function getDb(): Promise<Db> {
   return handle;
 }
 
-/**
- * Whether this process is running on the ephemeral database.
- *
- * Callers use it to decide whether seeding test accounts is legitimate. It is
- * never true in production, because `open()` throws there instead.
- */
-export function isEphemeralDatabase(): boolean {
-  return !connectionString();
-}
-
 async function open(): Promise<Db> {
+  const suite = suiteAdmin();
+  if (suite) {
+    // Suite mode, and it is deliberately all-or-nothing: an ephemeral database
+    // *and* an account to sign into it with, never one without the other. It
+    // wins over `DATABASE_URL` so a developer with `.env.local` runs the browser
+    // suite against a throwaway database rather than against the school's.
+    const db = await createEphemeralDatabase();
+    await seedSuiteAdmin(db, suite);
+    return db;
+  }
+
   const url = connectionString();
   if (url) {
     return drizzleNeon(url, { schema });
@@ -109,6 +110,42 @@ export async function runMigrations(db: Db): Promise<string[]> {
     ran.push(migration.id);
   }
   return ran;
+}
+
+/**
+ * The account the browser suite signs in as, if this process is serving it.
+ *
+ * Both variables or neither — a username with no password would be an account
+ * nobody can use, and a password with no username would be a credential with
+ * nowhere to go. Absent, which is every real deployment and every ordinary
+ * `astro dev`, this is undefined and nothing below it happens.
+ */
+function suiteAdmin(): { username: string; password: string } | undefined {
+  const username = process.env.E2E_ADMIN_USERNAME?.trim();
+  const password = process.env.E2E_ADMIN_PASSWORD?.trim();
+  if (!username || !password) return undefined;
+
+  if (isProduction()) {
+    // Refusing is the whole safety story. Left to run, this would replace the
+    // school's database with an empty one and open it with a password that is
+    // written down in `playwright.config.ts`.
+    throw new Error(
+      'E2E_ADMIN_USERNAME / E2E_ADMIN_PASSWORD are set on a deployed environment. They exist only so the browser suite has a throwaway database to sign into — refusing to start.',
+    );
+  }
+  return { username, password };
+}
+
+/**
+ * Put the suite's account in the ephemeral database.
+ *
+ * Imported lazily so that `users.js` — and the scrypt work its module body does
+ * to build a decoy hash — is never loaded by a process that is not running the
+ * suite.
+ */
+async function seedSuiteAdmin(db: Db, admin: { username: string; password: string }): Promise<void> {
+  const { createUser } = await import('../admin/users.js');
+  await createUser(db, { ...admin, displayName: 'Suite Admin' });
 }
 
 function connectionString(): string | undefined {

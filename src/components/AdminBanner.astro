@@ -1,0 +1,33 @@
+---
+/**
+ * What an admin screen says out loud after an action.
+ *
+ * One component because there is one voice: `role="status"` so a screen reader
+ * hears the outcome without moving focus, `data-ok` so the browser suite can
+ * assert the outcome rather than the wording, and the same parchment block with
+ * a deep-blue or gold edge either way. A failure is not styled as an alarm —
+ * "saved, but the live site hasn't updated yet" is a thing to retry, not a
+ * thing to panic about.
+ *
+ * The slot is for whatever a particular failure offers next, e.g. a Retry
+ * button. Nothing is rendered around it when it is empty.
+ */
+interface Props {
+  ok: boolean;
+  message: string;
+  /** What the browser suite finds this banner by. */
+  testId: string;
+}
+
+const { ok, message, testId } = Astro.props;
+---
+
+<div
+  role="status"
+  data-testid={testId}
+  data-ok={String(ok)}
+  class:list={['mt-6 border-l-4 bg-parchment px-4 py-3', ok ? 'border-deep-blue' : 'border-gold']}
+>
+  <p>{message}</p>
+  <slot />
+</div>

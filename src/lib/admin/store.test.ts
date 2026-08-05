@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import { attemptLogin } from './login.js';
+import { matchesBreakGlass } from './passwords.js';
 import {
   formatStamp,
   getSchoolDetails,
@@ -100,19 +101,33 @@ describe('named accounts', () => {
   });
 });
 
+/**
+ * Break-glass is asserted at `matchesBreakGlass`, never by logging in through
+ * it: the ticket's binding requirement is that this path stays cold, and a test
+ * that opens the door is a test that has been through it. What the login path
+ * owes break-glass is that it *keeps it shut* — that it is only ever consulted
+ * after a named account has said no, and that an absent value is a closed door
+ * — and those are the facts driven through `attemptLogin` below.
+ */
 describe('break-glass', () => {
-  it('opens the door when no account works', async () => {
+  it('recognises the value the environment holds', () => {
     process.env.BREAK_GLASS_PASSWORD = 'the-break-glass-value';
-    await jill();
 
-    const outcome = await attemptLogin(db, 'anyone', 'the-break-glass-value');
-
-    expect(outcome).toEqual({ userId: null, breakGlass: true });
+    expect(matchesBreakGlass('the-break-glass-value')).toBe(true);
+    expect(matchesBreakGlass('not-the-break-glass-value')).toBe(false);
   });
 
   it('is a closed door when the environment does not hold one', async () => {
     delete process.env.BREAK_GLASS_PASSWORD;
     await jill();
+
+    // Absent, and blank, are both refusals — never "anything matches".
+    expect(matchesBreakGlass('')).toBe(false);
+    expect(matchesBreakGlass('anything-at-all')).toBe(false);
+
+    process.env.BREAK_GLASS_PASSWORD = '   ';
+    expect(matchesBreakGlass('   ')).toBe(false);
+    delete process.env.BREAK_GLASS_PASSWORD;
 
     expect(await attemptLogin(db, 'jill', '')).toBeNull();
     expect(await attemptLogin(db, 'anyone', 'anything-at-all')).toBeNull();
@@ -128,7 +143,6 @@ describe('break-glass', () => {
   });
 
   it('stamps edits as break-glass access rather than as a person', async () => {
-    process.env.BREAK_GLASS_PASSWORD = 'the-break-glass-value';
     const { token } = await startSession(db, { userId: null, breakGlass: true });
 
     const actor = await resolveSession(db, token);

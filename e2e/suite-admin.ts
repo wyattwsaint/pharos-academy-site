@@ -1,0 +1,32 @@
+import { expect, type Page } from '@playwright/test';
+
+/**
+ * The account the admin specs sign in as, and the act of signing in.
+ *
+ * Not a secret and not meant to be. Setting `E2E_ADMIN_USERNAME` and
+ * `E2E_ADMIN_PASSWORD` makes the server open a throwaway in-process database
+ * and put exactly this account in it (`src/lib/db/client.ts`), and it refuses
+ * to do that on a deployed environment — so these specs only ever run against a
+ * server `playwright.config.ts` started.
+ *
+ * The password clears `MIN_PASSWORD_LENGTH`, because it is created through the
+ * same `createUser` a real account is.
+ */
+export const SUITE_ADMIN = {
+  username: 'suite-admin',
+  password: 'a-long-enough-suite-passphrase',
+};
+
+/** Sign in and land on `next`. Fails loudly rather than leaving a spec adrift. */
+export async function signIn(page: Page, next = '/admin/school-details'): Promise<void> {
+  await page.goto(`/admin/login?next=${encodeURIComponent(next)}`);
+  await page.getByLabel('Username').fill(SUITE_ADMIN.username);
+  await page.getByLabel('Password').fill(SUITE_ADMIN.password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+
+  await expect(page).toHaveURL(new RegExp(`${escapeForRegExp(next)}$`));
+}
+
+function escapeForRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

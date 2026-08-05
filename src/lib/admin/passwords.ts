@@ -1,4 +1,4 @@
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
 /**
  * Passwords, hashed with scrypt from `node:crypto`.
@@ -79,21 +79,23 @@ export function matchesBreakGlass(password: string): boolean {
   return constantTimeEquals(password, secret);
 }
 
-/** Equality that does not leak the length of the shared prefix through timing. */
+/**
+ * Equality that does not leak the length of the shared prefix through timing.
+ *
+ * `timingSafeEqual` throws on a length mismatch, which would itself leak the
+ * length, so both sides are hashed to a fixed 32 bytes first. SHA-256 and not
+ * scrypt: neither side is ever stored, so there is nothing here for an offline
+ * attacker to grind, and the memory-hard version cost ~100 ms of the login
+ * request for no gain. This is the same digest `sessions.ts` compares tokens
+ * with.
+ */
 export function constantTimeEquals(a: string, b: string): boolean {
-  // `timingSafeEqual` throws on a length mismatch, which would leak the length.
-  // Hashing both to a fixed width first keeps the comparison uniform.
-  const left = derive(a, FIXED_SALT, 32);
-  const right = derive(b, FIXED_SALT, 32);
-  return timingSafeEqual(left, right);
+  return timingSafeEqual(digest(a), digest(b));
 }
 
-/**
- * A constant salt, on purpose: `constantTimeEquals` compares two values in one
- * process, so both sides must derive identically. Nothing derived with it is
- * ever stored.
- */
-const FIXED_SALT = Buffer.from('pharos-constant-time-compare');
+function digest(value: string): Buffer {
+  return createHash('sha256').update(value, 'utf8').digest();
+}
 
 function derive(password: string, salt: Buffer, length: number): Buffer {
   return scryptSync(password, salt, length, {

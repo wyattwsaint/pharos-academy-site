@@ -1,8 +1,16 @@
 ---
 export const prerender = false;
 
+import AdminBanner from '../../components/AdminBanner.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { MIN_PASSWORD_LENGTH, createUser, deleteUser, listUsers, setPassword } from '../../lib/admin/users.js';
+import type { Banner } from '../../lib/admin/banner.js';
+import {
+  MIN_PASSWORD_LENGTH,
+  applyUserAction,
+  humanErrorMessage,
+  listUsers,
+  parseUserAction,
+} from '../../lib/admin/users.js';
 import { getDb } from '../../lib/db/client.js';
 
 /**
@@ -14,53 +22,33 @@ import { getDb } from '../../lib/db/client.js';
  * answered by the break-glass value in the Vercel environment, not by this
  * screen.
  *
+ * Accounts are not created here. They are seeded by `npm run db:seed` from
+ * passwords held in the environment, and the developer's build-time account is
+ * deleted from this screen at handoff — which is the one thing #18 §4 asks this
+ * screen to be able to do besides resetting.
+ *
  * Permissions are flat, so this screen is not gated: whoever is signed in can
- * add, reset and delete. Attribution is the control, which is why it exists.
+ * reset and delete. Attribution is the control, which is why it exists.
  */
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
-type Banner = { ok: boolean; message: string };
 let banner: Banner | null = null;
 
 if (Astro.request.method === 'POST') {
-  const form = await Astro.request.formData();
-  const intent = String(form.get('intent') ?? '');
-  try {
-    if (intent === 'add') {
-      const created = await createUser(db, {
-        username: String(form.get('username') ?? ''),
-        displayName: String(form.get('displayName') ?? ''),
-        password: String(form.get('password') ?? ''),
-      });
-      banner = { ok: true, message: `Added ${created.displayName}.` };
-    } else if (intent === 'reset') {
-      await setPassword(db, String(form.get('userId') ?? ''), String(form.get('password') ?? ''));
-      banner = {
-        ok: true,
-        message: `Password changed for ${String(form.get('displayName') ?? 'that account')}. They are signed out everywhere.`,
-      };
-    } else if (intent === 'delete') {
-      await deleteUser(db, String(form.get('userId') ?? ''));
-      banner = { ok: true, message: `Deleted ${String(form.get('displayName') ?? 'that account')}.` };
-    } else {
-      banner = { ok: false, message: 'Nothing happened — that form did not say what it wanted.' };
+  const action = parseUserAction(await Astro.request.formData());
+  if (!action) {
+    banner = { ok: false, message: 'Nothing happened — that form did not say what it wanted.' };
+  } else {
+    try {
+      banner = { ok: true, message: await applyUserAction(db, action) };
+    } catch (error) {
+      banner = { ok: false, message: humanErrorMessage(error) };
     }
-  } catch (error) {
-    // The library's messages are already written for Jill ("A password needs at
-    // least 12 characters."), so they are shown rather than replaced.
-    banner = { ok: false, message: messageOf(error) };
   }
 }
 
 const users = await listUsers(db);
-
-/** A duplicate username surfaces as a driver error; say what it means instead. */
-function messageOf(error: unknown): string {
-  const raw = error instanceof Error ? error.message : String(error);
-  if (/unique|duplicate/i.test(raw)) return 'That username is already taken.';
-  return raw;
-}
 ---
 
 <AdminLayout title="Users" actor={actor}>
@@ -69,21 +57,7 @@ function messageOf(error: unknown): string {
     Everyone with a login. If one of you is locked out, the other resets the password here.
   </p>
 
-  {
-    banner && (
-      <p
-        role="status"
-        data-testid="users-banner"
-        data-ok={String(banner.ok)}
-        class:list={[
-          'mt-6 border-l-4 bg-parchment px-4 py-3',
-          banner.ok ? 'border-deep-blue' : 'border-gold',
-        ]}
-      >
-        {banner.message}
-      </p>
-    )
-  }
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="users-banner" />}
 
   <ul class="mt-8 flex flex-col gap-6">
     {
@@ -133,60 +107,8 @@ function messageOf(error: unknown): string {
     }
   </ul>
 
-  <section class="mt-10 border-t border-navy/15 pt-6">
-    <h2 class="text-xl font-semibold text-navy">Add someone</h2>
-    <form method="post" class="mt-4 flex max-w-sm flex-col gap-5">
-      <input type="hidden" name="intent" value="add" />
-
-      <div class="flex flex-col gap-2">
-        <label for="new-displayName" class="font-semibold">Name</label>
-        <p id="new-displayName-hint" class="text-sm">Shown as "last edited by".</p>
-        <input
-          id="new-displayName"
-          name="displayName"
-          type="text"
-          required
-          aria-describedby="new-displayName-hint"
-          class="rounded border border-navy/40 bg-white px-3 py-2"
-        />
-      </div>
-
-      <div class="flex flex-col gap-2">
-        <label for="new-username" class="font-semibold">Username</label>
-        <input
-          id="new-username"
-          name="username"
-          type="text"
-          autocomplete="username"
-          required
-          class="rounded border border-navy/40 bg-white px-3 py-2"
-        />
-      </div>
-
-      <div class="flex flex-col gap-2">
-        <label for="new-password" class="font-semibold">Password</label>
-        <p id="new-password-hint" class="text-sm">
-          At least {MIN_PASSWORD_LENGTH} characters. A phrase you can remember beats a puzzle you
-          write down.
-        </p>
-        <input
-          id="new-password"
-          name="password"
-          type="password"
-          autocomplete="new-password"
-          minlength={MIN_PASSWORD_LENGTH}
-          required
-          aria-describedby="new-password-hint"
-          class="rounded border border-navy/40 bg-white px-3 py-2"
-        />
-      </div>
-
-      <button
-        type="submit"
-        class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
-      >
-        Add account
-      </button>
-    </form>
-  </section>
+  <p class="mt-10 border-t border-navy/15 pt-6">
+    Accounts are set up when the site is installed. If someone new needs one, that is a job for
+    whoever installed the site.
+  </p>
 </AdminLayout>

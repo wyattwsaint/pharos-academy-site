@@ -46,11 +46,20 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      # Runs against a local dev server. The same suite runs against the real
-      # deployment in `deployed-accessibility.yml`; this copy is what catches an
-      # axe regression before it is ever deployed.
-      - name: Browser tests (axe)
+      # Runs against a local dev server. The public half of this suite also runs
+      # against the real deployment in `deployed-accessibility.yml`; this copy is
+      # what catches an axe regression before it is ever deployed, and it is the
+      # only place the admin screens are exercised at all — they need the
+      # throwaway database a local server opens (`src/lib/db/client.ts`), and
+      # signing into a deployment is not a thing this suite may do.
+      - name: Browser tests (axe, admin)
         run: npm run test:e2e
+
+      # Separate run, not a separate project: this one's dev server revalidates
+      # a dead origin so the failure is real, and Astro allows one dev server per
+      # project directory.
+      - name: Browser tests (forced revalidation failure)
+        run: npm run test:e2e:revalidation
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

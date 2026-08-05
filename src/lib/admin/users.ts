@@ -151,3 +151,61 @@ export function assertPasswordAcceptable(password: string): void {
  * scrypt work as a known one.
  */
 const DECOY_HASH = hashPassword('decoy-so-an-unknown-username-costs-the-same');
+
+/**
+ * What the Users screen can ask for.
+ *
+ * Reset and delete, and nothing else: accounts are created by `db:seed` from
+ * passwords held in the environment (#18 §4), so there is no add-an-account
+ * form to parse. `displayName` rides along on the form only so the confirmation
+ * can name the person without a second read.
+ */
+export type UserAction =
+  | { intent: 'reset'; userId: string; displayName: string; password: string }
+  | { intent: 'delete'; userId: string; displayName: string };
+
+/** A submitted form as one of the two things it can be, or null for neither. */
+export function parseUserAction(form: FormData): UserAction | null {
+  const userId = String(form.get('userId') ?? '').trim();
+  const displayName = String(form.get('displayName') ?? '').trim() || 'that account';
+
+  switch (String(form.get('intent') ?? '')) {
+    case 'reset':
+      // Not trimmed: a leading or trailing space is part of a password.
+      return { intent: 'reset', userId, displayName, password: String(form.get('password') ?? '') };
+    case 'delete':
+      return { intent: 'delete', userId, displayName };
+    default:
+      return null;
+  }
+}
+
+/**
+ * Carry out an action and return what to tell Jill she just did.
+ *
+ * Throws on refusal — the messages from this module are already written for her
+ * ("A password needs at least 12 characters."), so the screen shows them rather
+ * than replacing them.
+ */
+export async function applyUserAction(db: Db, action: UserAction): Promise<string> {
+  switch (action.intent) {
+    case 'reset':
+      await setPassword(db, action.userId, action.password);
+      return `Password changed for ${action.displayName}. They are signed out everywhere.`;
+    case 'delete':
+      await deleteUser(db, action.userId);
+      return `Deleted ${action.displayName}.`;
+  }
+}
+
+/**
+ * A refusal in the words Jill needs.
+ *
+ * Only one case needs translating: a database-level constraint surfaces as a
+ * driver error whose text is about columns, not about accounts.
+ */
+export function humanErrorMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  if (/unique|duplicate/i.test(raw)) return 'That username is already taken.';
+  return raw;
+}

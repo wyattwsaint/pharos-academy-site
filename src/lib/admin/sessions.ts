@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 
-import { and, eq, gt, isNull, lt } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 
 import type { Db } from '../db/client.js';
 import { adminSessions, adminUsers } from '../db/schema.js';
@@ -16,7 +16,8 @@ import { adminSessions, adminUsers } from '../db/schema.js';
  *
  * The cookie carries a 256-bit random token and the row holds only its SHA-256.
  * #18 §4 says "signed HttpOnly cookie"; a hashed random token is the same
- * promise kept differently and kept better — see `docs/adr/0002`.
+ * promise kept differently and kept better — see
+ * `docs/adr/0002-hashed-session-token-not-signed-cookie.md`.
  */
 
 export const SESSION_COOKIE = 'pharos_admin_session';
@@ -155,14 +156,4 @@ export async function endSession(db: Db, token: string | undefined): Promise<voi
  */
 export async function endSessionsForUser(db: Db, userId: string): Promise<void> {
   await db.delete(adminSessions).where(eq(adminSessions.userId, userId));
-}
-
-/** End every break-glass session. Used when break-glass has done its job. */
-export async function endBreakGlassSessions(db: Db): Promise<void> {
-  await db.delete(adminSessions).where(isNull(adminSessions.userId));
-}
-
-/** Drop expired rows. Cheap, and keeps the table from growing without bound. */
-export async function purgeExpiredSessions(db: Db, now = new Date()): Promise<void> {
-  await db.delete(adminSessions).where(lt(adminSessions.expiresAt, now));
 }
