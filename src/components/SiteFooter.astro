@@ -1,0 +1,54 @@
+---
+import { copyrightYear, getSchoolDetails } from '../lib/admin/school-details.js';
+import { getDb } from '../lib/db/client.js';
+import { SCHOOL_NAME } from '../lib/site.js';
+
+/**
+ * The public footer: the school's own details, straight out of the one row
+ * Jill edits (#18 §10).
+ *
+ * Every value here is read, never typed. On the live Wix site the address and
+ * phone are hand-entered in 22 places and have already drifted apart; the
+ * footer's whole job in this ticket is to prove that the admin actually reaches
+ * the public page.
+ *
+ * The Give link is the same value the admin holds, rendered — not pasted a
+ * second time (#18 §12). Anywhere else giving is linked reads `giveUrl` too.
+ */
+const details = await getSchoolDetails(await getDb());
+
+// Computed at render, never stored (#18 §10) — a stored year is the only way a
+// site ends up reading "© 2025" in August 2026, which this one does today.
+const year = copyrightYear();
+
+const addressLines = details.address.split('\n').filter(Boolean);
+---
+
+<footer class="border-t border-navy/15 bg-parchment">
+  <div class="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10 sm:flex-row sm:justify-between">
+    <div>
+      <h2 class="font-semibold text-navy">{SCHOOL_NAME}</h2>
+      <address class="mt-2 not-italic">
+        {addressLines.map((line) => <span class="block">{line}</span>)}
+        <span class="mt-2 block">
+          <a href={`tel:${details.phone.replace(/[^\d+]/g, '')}`} class="underline underline-offset-4">
+            {details.phone}
+          </a>
+        </span>
+        <span class="block">
+          <a href={`mailto:${details.email}`} class="underline underline-offset-4">{details.email}</a>
+        </span>
+      </address>
+    </div>
+
+    <div class="sm:text-right">
+      <a
+        href={details.giveUrl}
+        class="inline-block rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+      >
+        Give
+      </a>
+      <p class="mt-6 text-sm">© {year} {SCHOOL_NAME}</p>
+    </div>
+  </div>
+</footer>

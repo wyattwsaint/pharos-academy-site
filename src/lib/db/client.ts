@@ -66,6 +66,17 @@ async function open(): Promise<Db> {
     );
   }
 
+  return createEphemeralDatabase();
+}
+
+/**
+ * A fresh in-process Postgres with the migrations applied.
+ *
+ * Also what the integration tests open, one per test, so each of them starts
+ * from the same DDL production runs rather than from a fixture nobody keeps up
+ * to date.
+ */
+export async function createEphemeralDatabase(): Promise<Db> {
   // A variable specifier keeps the bundler from tracing PGlite into the
   // deployed function. It is a devDependency: present for `astro dev`, the
   // tests and CI, absent from the lambda, and unreachable there anyway.

@@ -13,6 +13,8 @@
     "preview": "astro preview",
     "check": "astro check",
     "verify:isr": "node scripts/assert-isr.mjs",
+    "db:migrate": "node --import ./scripts/ts-resolve.mjs scripts/db.mjs migrate",
+    "db:seed": "node --import ./scripts/ts-resolve.mjs scripts/db.mjs seed",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

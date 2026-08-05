@@ -1,0 +1,94 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../lib/db/client.js';
+import { attemptLogin, LOGIN_FAILED } from '../../lib/admin/login.js';
+import { setSessionCookie } from '../../lib/admin/session-cookie.js';
+import { startSession } from '../../lib/admin/sessions.js';
+
+/**
+ * The way in. A named account, or — when neither account works at all — the
+ * break-glass value from the Vercel environment (#18 §4).
+ *
+ * `next` carries the page the guard bounced away from, so signing in lands on
+ * the thing that was actually being opened.
+ */
+const next = safeNext(Astro.url.searchParams.get('next'));
+
+let username = '';
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  username = String(form.get('username') ?? '').trim();
+  const password = String(form.get('password') ?? '');
+
+  const outcome =
+    username || password ? await attemptLogin(await getDb(), username, password) : null;
+  if (outcome) {
+    const { token, expiresAt } = await startSession(await getDb(), outcome);
+    setSessionCookie(Astro.cookies, token, expiresAt);
+    return Astro.redirect(safeNext(String(form.get('next') ?? '')), 303);
+  }
+  error = LOGIN_FAILED;
+}
+
+/**
+ * Only ever redirect to a path on this site. An open redirect on the login page
+ * is how a phishing link borrows the school's own domain.
+ */
+function safeNext(value: string | null): string {
+  const fallback = '/admin/school-details';
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return fallback;
+  return value;
+}
+---
+
+<AdminLayout title="Sign in">
+  <h1 class="text-3xl font-semibold text-navy">Sign in</h1>
+
+  {
+    error && (
+      <p role="alert" class="mt-6 border-l-4 border-navy bg-parchment px-4 py-3">
+        {error}
+      </p>
+    )
+  }
+
+  <form method="post" class="mt-8 flex max-w-sm flex-col gap-5">
+    <input type="hidden" name="next" value={next} />
+
+    <div class="flex flex-col gap-2">
+      <label for="username" class="font-semibold">Username</label>
+      <input
+        id="username"
+        name="username"
+        type="text"
+        autocomplete="username"
+        required
+        value={username}
+        class="rounded border border-navy/40 bg-white px-3 py-2"
+      />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="password" class="font-semibold">Password</label>
+      <input
+        id="password"
+        name="password"
+        type="password"
+        autocomplete="current-password"
+        required
+        class="rounded border border-navy/40 bg-white px-3 py-2"
+      />
+    </div>
+
+    <button
+      type="submit"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+    >
+      Sign in
+    </button>
+  </form>
+</AdminLayout>

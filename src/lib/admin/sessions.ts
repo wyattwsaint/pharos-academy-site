@@ -37,6 +37,14 @@ export type Actor = {
   /** What "last edited by" prints. */
   name: string;
   breakGlass: boolean;
+  /**
+   * When this session now runs out, after any slide.
+   *
+   * Returned so the caller can re-stamp the cookie's own expiry to match the
+   * row's. A sliding session whose cookie kept the original deadline would slide
+   * in the database and still be thrown away by the browser on day 30.
+   */
+  expiresAt: Date;
 };
 
 export const BREAK_GLASS_ACTOR_NAME = 'Break-glass access';
@@ -115,10 +123,12 @@ export async function resolveSession(
   // Only break-glass is legitimately person-less.
   if (!row.breakGlass && !row.displayName) return null;
 
-  if (needsSlide(row.expiresAt, now)) {
+  let expiresAt = row.expiresAt;
+  if (needsSlide(expiresAt, now)) {
+    expiresAt = nextExpiry(now);
     await db
       .update(adminSessions)
-      .set({ expiresAt: nextExpiry(now) })
+      .set({ expiresAt })
       .where(eq(adminSessions.tokenHash, tokenHash));
   }
 
@@ -126,6 +136,7 @@ export async function resolveSession(
     userId: row.userId,
     name: row.breakGlass ? BREAK_GLASS_ACTOR_NAME : (row.displayName ?? BREAK_GLASS_ACTOR_NAME),
     breakGlass: row.breakGlass,
+    expiresAt,
   };
 }
 

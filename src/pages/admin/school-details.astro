@@ -1,0 +1,205 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { isrBypassToken } from '../../lib/admin/isr-token.js';
+import {
+  describeRevalidation,
+  revalidateAll,
+  revalidationOrigin,
+} from '../../lib/admin/revalidate.js';
+import {
+  formatStamp,
+  getSchoolDetails,
+  LABELS,
+  parseSchoolDetails,
+  saveSchoolDetails,
+  type SchoolDetailsErrors,
+  type SchoolDetailsFields,
+} from '../../lib/admin/school-details.js';
+import { getDb } from '../../lib/db/client.js';
+
+/**
+ * The one small form this whole ticket exists to prove (#18 §10).
+ *
+ * Save writes the row, stamps it, then revalidates *every* public path and
+ * waits for the answer. What Jill is told afterwards is the answer, not an
+ * assumption — a save that failed to revalidate looks exactly like an edit that
+ * vanished, and that is the thing most likely to make her stop trusting this.
+ */
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+/** How the page speaks after an action. `ok: false` also offers a Retry. */
+type Banner = { ok: boolean; message: string };
+
+let row = await getSchoolDetails(db);
+let values: SchoolDetailsFields = fieldsOf(row);
+let errors: SchoolDetailsErrors = {};
+let banner: Banner | null = republishBanner(Astro.url.searchParams.get('republished'));
+
+if (Astro.request.method === 'POST') {
+  const parsed = parseSchoolDetails(await Astro.request.formData());
+  values = parsed.values;
+  errors = parsed.errors;
+
+  if (Object.keys(errors).length > 0) {
+    banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+  } else {
+    row = await saveSchoolDetails(db, values, actor.name);
+    values = fieldsOf(row);
+    const result = await revalidateAll({
+      origin: revalidationOrigin(Astro.url),
+      bypassToken: isrBypassToken(),
+    });
+    banner = { ok: result.ok, message: describeRevalidation(result) };
+  }
+}
+
+const stamp = formatStamp(row.lastEditedBy, row.lastEditedAt);
+
+/** The form's shape. Type decides the control; nothing else varies. */
+const FIELDS: { name: keyof SchoolDetailsFields; type: 'text' | 'tel' | 'email' | 'date' | 'url' | 'multiline'; hint?: string }[] = [
+  { name: 'address', type: 'multiline', hint: 'One line per line, as it should appear.' },
+  { name: 'phone', type: 'tel' },
+  { name: 'email', type: 'email' },
+  { name: 'schoolYearStart', type: 'date', hint: 'The first day of classes.' },
+  { name: 'mission', type: 'multiline' },
+  { name: 'vision', type: 'multiline' },
+  {
+    name: 'giveUrl',
+    type: 'url',
+    hint: 'Where the Give button goes. Changed here, it changes everywhere.',
+  },
+];
+
+function fieldsOf(details: typeof row): SchoolDetailsFields {
+  return {
+    address: details.address,
+    phone: details.phone,
+    email: details.email,
+    schoolYearStart: details.schoolYearStart,
+    mission: details.mission,
+    vision: details.vision,
+    giveUrl: details.giveUrl,
+  };
+}
+
+function republishBanner(published: string | null): Banner | null {
+  if (published === 'live') return { ok: true, message: 'Republished — the live site is up to date.' };
+  if (published === 'stale') {
+    return { ok: false, message: "Republishing didn't reach the live site — Retry." };
+  }
+  return null;
+}
+---
+
+<AdminLayout title="School details" actor={actor}>
+  <h1 class="text-3xl font-semibold text-navy">School details</h1>
+  <p class="mt-2">Entered once here, and rendered everywhere the school's details appear.</p>
+
+  {
+    banner && (
+      <div
+        role="status"
+        data-testid="save-banner"
+        data-ok={String(banner.ok)}
+        class:list={[
+          'mt-6 border-l-4 px-4 py-3',
+          banner.ok ? 'border-deep-blue bg-parchment' : 'border-gold bg-parchment',
+        ]}
+      >
+        <p>{banner.message}</p>
+        {!banner.ok && (
+          <form method="post" action="/admin/republish" class="mt-3">
+            <button
+              type="submit"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+            >
+              Retry
+            </button>
+          </form>
+        )}
+      </div>
+    )
+  }
+
+  <form method="post" class="mt-8 flex flex-col gap-6">
+    {
+      FIELDS.map((field) => {
+        const invalid = Boolean(errors[field.name]);
+        const describedBy =
+          [field.hint ? `${field.name}-hint` : null, invalid ? `${field.name}-error` : null]
+            .filter(Boolean)
+            .join(' ') || undefined;
+        const control =
+          'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
+
+        return (
+          <div class="flex flex-col gap-2">
+            <label for={field.name} class="font-semibold">
+              {LABELS[field.name]}
+            </label>
+            {field.hint && (
+              <p id={`${field.name}-hint`} class="text-sm">
+                {field.hint}
+              </p>
+            )}
+            {field.type === 'multiline' ? (
+              <textarea
+                id={field.name}
+                name={field.name}
+                rows={field.name === 'address' ? 3 : 5}
+                required
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={describedBy}
+                class={control}
+              >
+                {values[field.name]}
+              </textarea>
+            ) : (
+              <input
+                id={field.name}
+                name={field.name}
+                type={field.type}
+                value={values[field.name]}
+                required
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={describedBy}
+                class={control}
+              />
+            )}
+            {invalid && (
+              <p id={`${field.name}-error`} class="font-semibold">
+                {errors[field.name]}
+              </p>
+            )}
+          </div>
+        );
+      })
+    }
+
+    <button
+      type="submit"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+    >
+      Save
+    </button>
+  </form>
+
+  <section class="mt-10 border-t border-navy/15 pt-6">
+    <h2 class="text-xl font-semibold text-navy">Publishing</h2>
+    <p class="mt-2" data-testid="stamp">{stamp}</p>
+    <p class="mt-2">
+      Saving republishes the whole site. Use this if the site ever looks out of date anyway.
+    </p>
+    <form method="post" action="/admin/republish" class="mt-4">
+      <button
+        type="submit"
+        class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
+      >
+        Republish
+      </button>
+    </form>
+  </section>
+</AdminLayout>

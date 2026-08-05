@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import SiteFooter from '../components/SiteFooter.astro';
 import { SCHOOL_NAME } from '../lib/site.js';
 
 interface Props {
@@ -31,5 +32,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <main id="main">
       <slot />
     </main>
+    <SiteFooter />
   </body>
 </html>

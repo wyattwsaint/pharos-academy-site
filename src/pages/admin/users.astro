@@ -1,0 +1,192 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { MIN_PASSWORD_LENGTH, createUser, deleteUser, listUsers, setPassword } from '../../lib/admin/users.js';
+import { getDb } from '../../lib/db/client.js';
+
+/**
+ * Named accounts, and the recovery story (#18 §4).
+ *
+ * Recovery is **mutual reset**: either admin resets the other from this screen.
+ * There are no reset links and no transactional email, because there is no
+ * mail sender to own and nothing here is worth one. Both locked out at once is
+ * answered by the break-glass value in the Vercel environment, not by this
+ * screen.
+ *
+ * Permissions are flat, so this screen is not gated: whoever is signed in can
+ * add, reset and delete. Attribution is the control, which is why it exists.
+ */
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+type Banner = { ok: boolean; message: string };
+let banner: Banner | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const intent = String(form.get('intent') ?? '');
+  try {
+    if (intent === 'add') {
+      const created = await createUser(db, {
+        username: String(form.get('username') ?? ''),
+        displayName: String(form.get('displayName') ?? ''),
+        password: String(form.get('password') ?? ''),
+      });
+      banner = { ok: true, message: `Added ${created.displayName}.` };
+    } else if (intent === 'reset') {
+      await setPassword(db, String(form.get('userId') ?? ''), String(form.get('password') ?? ''));
+      banner = {
+        ok: true,
+        message: `Password changed for ${String(form.get('displayName') ?? 'that account')}. They are signed out everywhere.`,
+      };
+    } else if (intent === 'delete') {
+      await deleteUser(db, String(form.get('userId') ?? ''));
+      banner = { ok: true, message: `Deleted ${String(form.get('displayName') ?? 'that account')}.` };
+    } else {
+      banner = { ok: false, message: 'Nothing happened — that form did not say what it wanted.' };
+    }
+  } catch (error) {
+    // The library's messages are already written for Jill ("A password needs at
+    // least 12 characters."), so they are shown rather than replaced.
+    banner = { ok: false, message: messageOf(error) };
+  }
+}
+
+const users = await listUsers(db);
+
+/** A duplicate username surfaces as a driver error; say what it means instead. */
+function messageOf(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  if (/unique|duplicate/i.test(raw)) return 'That username is already taken.';
+  return raw;
+}
+---
+
+<AdminLayout title="Users" actor={actor}>
+  <h1 class="text-3xl font-semibold text-navy">Users</h1>
+  <p class="mt-2">
+    Everyone with a login. If one of you is locked out, the other resets the password here.
+  </p>
+
+  {
+    banner && (
+      <p
+        role="status"
+        data-testid="users-banner"
+        data-ok={String(banner.ok)}
+        class:list={[
+          'mt-6 border-l-4 bg-parchment px-4 py-3',
+          banner.ok ? 'border-deep-blue' : 'border-gold',
+        ]}
+      >
+        {banner.message}
+      </p>
+    )
+  }
+
+  <ul class="mt-8 flex flex-col gap-6">
+    {
+      users.map((user) => (
+        <li class="border-t border-navy/15 pt-6">
+          <h2 class="text-xl font-semibold text-navy">{user.displayName}</h2>
+          <p class="mt-1">
+            Signs in as <span class="font-semibold">{user.username}</span>
+          </p>
+
+          <form method="post" class="mt-4 flex flex-wrap items-end gap-3">
+            <input type="hidden" name="intent" value="reset" />
+            <input type="hidden" name="userId" value={user.id} />
+            <input type="hidden" name="displayName" value={user.displayName} />
+            <div class="flex flex-col gap-2">
+              <label for={`password-${user.id}`} class="font-semibold">
+                New password for {user.displayName}
+              </label>
+              <input
+                id={`password-${user.id}`}
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                minlength={MIN_PASSWORD_LENGTH}
+                required
+                class="rounded border border-navy/40 bg-white px-3 py-2"
+              />
+            </div>
+            <button
+              type="submit"
+              class="rounded bg-navy px-4 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+            >
+              Reset password
+            </button>
+          </form>
+
+          <form method="post" class="mt-3">
+            <input type="hidden" name="intent" value="delete" />
+            <input type="hidden" name="userId" value={user.id} />
+            <input type="hidden" name="displayName" value={user.displayName} />
+            <button type="submit" class="underline underline-offset-4">
+              Delete {user.displayName}
+            </button>
+          </form>
+        </li>
+      ))
+    }
+  </ul>
+
+  <section class="mt-10 border-t border-navy/15 pt-6">
+    <h2 class="text-xl font-semibold text-navy">Add someone</h2>
+    <form method="post" class="mt-4 flex max-w-sm flex-col gap-5">
+      <input type="hidden" name="intent" value="add" />
+
+      <div class="flex flex-col gap-2">
+        <label for="new-displayName" class="font-semibold">Name</label>
+        <p id="new-displayName-hint" class="text-sm">Shown as "last edited by".</p>
+        <input
+          id="new-displayName"
+          name="displayName"
+          type="text"
+          required
+          aria-describedby="new-displayName-hint"
+          class="rounded border border-navy/40 bg-white px-3 py-2"
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="new-username" class="font-semibold">Username</label>
+        <input
+          id="new-username"
+          name="username"
+          type="text"
+          autocomplete="username"
+          required
+          class="rounded border border-navy/40 bg-white px-3 py-2"
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="new-password" class="font-semibold">Password</label>
+        <p id="new-password-hint" class="text-sm">
+          At least {MIN_PASSWORD_LENGTH} characters. A phrase you can remember beats a puzzle you
+          write down.
+        </p>
+        <input
+          id="new-password"
+          name="password"
+          type="password"
+          autocomplete="new-password"
+          minlength={MIN_PASSWORD_LENGTH}
+          required
+          aria-describedby="new-password-hint"
+          class="rounded border border-navy/40 bg-white px-3 py-2"
+        />
+      </div>
+
+      <button
+        type="submit"
+        class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+      >
+        Add account
+      </button>
+    </form>
+  </section>
+</AdminLayout>

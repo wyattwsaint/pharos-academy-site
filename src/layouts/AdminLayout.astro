@@ -1,0 +1,77 @@
+---
+import '../styles/global.css';
+import { SCHOOL_NAME } from '../lib/site.js';
+import type { Actor } from '../lib/admin/sessions.js';
+
+interface Props {
+  title: string;
+  /** Null on the login page — the only admin screen with nobody signed in. */
+  actor?: Actor | null;
+}
+
+const { title, actor = null } = Astro.props;
+const current = Astro.url.pathname;
+
+/**
+ * The admin's whole navigation. Flat, because permissions are flat (#16):
+ * everything either admin can do is on this list, and neither of them sees a
+ * screen the other does not.
+ */
+const NAV = [
+  { href: '/admin/school-details', label: 'School details' },
+  { href: '/admin/users', label: 'Users' },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — {SCHOOL_NAME} admin</title>
+    <!--
+      Belt and braces with the `X-Robots-Tag` the middleware forces on every
+      `/admin` response. The admin is never indexable, before or after launch.
+    -->
+    <meta name="robots" content="noindex, nofollow" />
+  </head>
+  <body class="min-h-screen bg-cream text-ink">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:bg-navy focus:px-4 focus:py-2 focus:text-cream"
+    >
+      Skip to content
+    </a>
+
+    {
+      actor && (
+        <header class="border-b border-navy/15 bg-parchment">
+          <div class="mx-auto flex max-w-3xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
+            <p class="font-semibold text-navy">{SCHOOL_NAME} admin</p>
+            <nav aria-label="Admin" class="flex gap-4">
+              {NAV.map((item) => (
+                <a
+                  href={item.href}
+                  aria-current={current === item.href ? 'page' : undefined}
+                  class="underline underline-offset-4 aria-[current=page]:font-semibold"
+                >
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+            <form method="post" action="/admin/logout" class="ml-auto flex items-center gap-3">
+              <p>
+                Signed in as <span class="font-semibold">{actor.name}</span>
+              </p>
+              <button type="submit" class="underline underline-offset-4">Sign out</button>
+            </form>
+          </div>
+        </header>
+      )
+    }
+
+    <main id="main" class="mx-auto max-w-3xl px-6 py-10">
+      <slot />
+    </main>
+  </body>
+</html>
