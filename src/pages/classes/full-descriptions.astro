@@ -1,0 +1,49 @@
+---
+import ClassesHeader from '../../components/classes/ClassesHeader.astro';
+import CourseFacts from '../../components/classes/CourseFacts.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { listCourses } from '../../lib/courses/store.js';
+import { classPath, viewFor } from '../../lib/courses/views.js';
+import { getDb } from '../../lib/db/client.js';
+
+/**
+ * Full Descriptions — the whole catalogue on one page, in the school's own
+ * words, alphabetically.
+ *
+ * The live site's equivalent is a PDF and a page that disagree with each other.
+ * This is the same nineteen rows the other three surfaces read, so it cannot
+ * disagree with them; what makes it a distinct surface is that everything is
+ * open at once, for the parent who would rather read than click.
+ */
+const view = viewFor('full-descriptions');
+const courses = await listCourses(await getDb());
+---
+
+<BaseLayout title={view.title} description={view.description}>
+  <ClassesHeader
+    current="full-descriptions"
+    heading="Every class, in full"
+    lede="All nineteen, alphabetically, with the description, texts, prerequisites and fees the school publishes for each."
+  />
+
+  <section class="band" data-section="full-descriptions">
+    <div class="wide">
+      <nav class="bandjump" aria-label="Jump to a class">
+        {courses.map((course) => <a href={`#${course.slug}`}>{course.title}</a>)}
+      </nav>
+
+      {
+        courses.map((course) => (
+          <article class="coursefull" data-course={course.slug}>
+            <h2 id={course.slug}>{course.title}</h2>
+            <p class="coursefull-lede">{course.description}</p>
+            <CourseFacts course={course} />
+            <a class="btn" href={classPath(course.slug)}>
+              This class on its own page
+            </a>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+</BaseLayout>

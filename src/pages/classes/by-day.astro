@@ -1,0 +1,43 @@
+---
+import ClassesHeader from '../../components/classes/ClassesHeader.astro';
+import DayTimetable from '../../components/classes/DayTimetable.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { layoutWeek } from '../../lib/courses/schedule.js';
+import { listCourses } from '../../lib/courses/store.js';
+import { viewFor } from '../../lib/courses/views.js';
+import { getDb } from '../../lib/db/client.js';
+
+/**
+ * By Day — the timetable, drawn to scale.
+ *
+ * One section per day track that actually runs a class. Tuesday is not drawn:
+ * an empty day track is complete, not incomplete (CONTEXT.md, "day track"), and
+ * a permanently blank column says the opposite.
+ *
+ * The morning is drawn as time rather than as a list of rows, which is the one
+ * thing the live site's timetable gets wrong about the school's own schedule.
+ * See `DayTimetable.astro` for what that costs and why it is worth it.
+ */
+const view = viewFor('by-day');
+const week = layoutWeek(await listCourses(await getDb()));
+---
+
+<BaseLayout title={view.title} description={view.description}>
+  <ClassesHeader
+    current="by-day"
+    heading="The week, drawn to the clock"
+    lede="Three mornings, drawn to scale. Classes side by side run at the same time — some of the school’s classes really do overlap, and this is where you can see by how much."
+  />
+
+  <section class="band" data-section="by-day">
+    <div class="wide">
+      {week.map((layout) => <DayTimetable layout={layout} />)}
+
+      <p class="mt-9 text-ink-2">
+        Wednesday’s 10:40 hour carries several short electives on purpose — they run in different
+        parts of the year, so the column is busy by design rather than by mistake. Every class
+        links to its own page, with texts, prerequisites and fees.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { ANNOUNCEMENTS, hasAnnouncements } from './announcements.js';
 import { HOPE, INSTRUCTORS } from './content.js';
-import { NAV_ITEMS, SECTION_ORDER } from './sections.js';
+import { publicPaths } from '../routes.js';
+import { INQUIRY_HREF, NAV_ITEMS, SECTION_ORDER } from './sections.js';
 import {
   activeDayTracks,
   allClasses,
@@ -33,14 +34,28 @@ describe('the section order', () => {
 });
 
 describe('the nav', () => {
-  // `PUBLIC_ROUTES` still holds only `/`. Until the pages behind About and
-  // Classes exist, every nav item is an on-page anchor — a nav pointing at a
-  // 404 is worse than one pointing at the section that answers the question.
-  it('points only at sections this page actually renders', () => {
+  // A nav pointing at a 404 is worse than one pointing at the section that
+  // answers the question, so every item is either an enumerated public route or
+  // a section this page actually renders. About and Admissions are absent
+  // because their pages are.
+  it('points only at real routes and sections this page renders', () => {
+    const routes = new Set(publicPaths());
     for (const item of NAV_ITEMS) {
-      expect(item.href.startsWith('#')).toBe(true);
-      expect(SECTION_ORDER).toContain(item.href.slice(1));
+      if (item.href.includes('#')) {
+        expect(SECTION_ORDER, item.label).toContain(item.href.split('#')[1]);
+      } else {
+        expect(routes, item.label).toContain(item.href);
+      }
     }
+  });
+
+  // Rooted, not bare: the header is on the class pages too now, where a bare
+  // fragment silently does nothing.
+  it('roots every anchor at the home page', () => {
+    for (const item of NAV_ITEMS) {
+      expect(item.href.startsWith('/'), item.label).toBe(true);
+    }
+    expect(INQUIRY_HREF).toBe('/#inquiry');
   });
 });
 

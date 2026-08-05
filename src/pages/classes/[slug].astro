@@ -1,0 +1,90 @@
+---
+import CourseFacts from '../../components/classes/CourseFacts.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { ageLine } from '../../lib/courses/ages.js';
+import { priceSummary } from '../../lib/courses/pricing.js';
+import { coursesOnTrack, timeLabel } from '../../lib/courses/schedule.js';
+import { getCourse, listCourses } from '../../lib/courses/store.js';
+import { classPath, CLASS_VIEWS } from '../../lib/courses/views.js';
+import { getDb } from '../../lib/db/client.js';
+import { INQUIRY_HREF } from '../../lib/home/sections.js';
+
+/**
+ * One class, at its own address (#22).
+ *
+ * The reason this page exists is a sentence in the brief: Jill sends a link to
+ * a single class. So the page has to stand alone — it carries the required
+ * text, the prerequisites, the instructor, the contact hours and both fees,
+ * because the parent who lands here arrived from a message and not from the
+ * list.
+ *
+ * A slug that is not a class is a 404, not an empty page. Rendering a blank
+ * course would be the site claiming the school offers something it does not.
+ */
+const { slug } = Astro.params;
+const db = await getDb();
+const course = slug ? await getCourse(db, slug) : undefined;
+
+if (!course) {
+  return new Response(null, { status: 404, statusText: 'Not found' });
+}
+
+// The other classes running on the same morning. A parent reading one class is
+// usually working out what else that trip can carry — and the ones that
+// overlap are exactly what they need to see, so they are shown rather than
+// filtered out, with their times attached.
+const everyCourse = await listCourses(db);
+const seen = new Set<string>([course.slug]);
+const alongside = course.days
+  .flatMap((day) => coursesOnTrack(everyCourse, day))
+  .filter((other) => (seen.has(other.slug) ? false : seen.add(other.slug)));
+
+const description = `${course.title} at Pharos Academy — ${ageLine(course)}, ${course.days.join(
+  ' and ',
+)} ${timeLabel(course.start, course.end)}, ${priceSummary(course)}.`;
+---
+
+<BaseLayout title={course.title} description={description}>
+  <section class="band band-quiet" data-section="class-header">
+    <div class="wide">
+      <p class="label">
+        <a href={CLASS_VIEWS[0]?.path}>Classes</a> · {course.stages.join(' · ')}
+      </p>
+      <h1 class="mt-4">{course.title}</h1>
+      <p class="sub mt-5">
+        {course.days.join(' and ')} · {timeLabel(course.start, course.end)} · {ageLine(course)}
+      </p>
+    </div>
+  </section>
+
+  <section class="band" data-section="class-detail">
+    <div class="wide">
+      <div class="classdetail">
+        <div>
+          <p class="classdetail-lede">{course.description}</p>
+          <a class="btn solid" href={INQUIRY_HREF}>Ask us about this class</a>
+        </div>
+        <CourseFacts course={course} />
+      </div>
+
+      <h2 class="mt-9">Also on {course.days.join(' and ')}</h2>
+      <ul class="alongside">
+        {
+          alongside.map((other) => (
+            <li>
+              <a href={classPath(other.slug)}>{other.title}</a>
+              <span>
+                {timeLabel(other.start, other.end)} · {ageLine(other)}
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+
+      <p class="mt-7 text-ink-2">
+        Times are the school’s own. Two classes listed here can run at the same time —
+        <a href="/classes/by-day">the week drawn to the clock</a> shows exactly where they overlap.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

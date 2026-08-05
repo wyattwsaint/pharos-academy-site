@@ -1,0 +1,77 @@
+---
+import { ageLine } from '../../lib/courses/ages.js';
+import { durationLabel, type Course } from '../../lib/courses/course.js';
+import { priceLine } from '../../lib/courses/pricing.js';
+import { contactHours, timeLabel } from '../../lib/courses/schedule.js';
+
+/**
+ * Everything the school publishes about one class, as a description list.
+ *
+ * Shared by the full-descriptions surface and by each class's own page, because
+ * the two must not answer the same question differently — that is the failure
+ * #22 exists to end, and it is already live: the school's three course pages
+ * disagree about ages, days and texts.
+ *
+ * A field the school has not filled in is **absent**, not "None" invented here.
+ * The two places "None" does appear — prerequisites, and a required text — are
+ * the school's own word.
+ *
+ * Contact hours are printed because they are what the price is computed from.
+ * A parent who wants to check the arithmetic can: hours × rate, and the rate is
+ * in the cost line.
+ */
+interface Props {
+  course: Course;
+}
+
+const { course } = Astro.props;
+
+const dateFormat = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'UTC',
+});
+
+type Fact = { term: string; value: string };
+
+/** A row the school has not filled in is absent, not "None" invented here. */
+const optional = (term: string, value: string | null): Fact[] =>
+  value ? [{ term, value }] : [];
+
+/** A fee, with the school's own qualifier ("per year") when it gives one. */
+const fee = (term: string, amount: number | null, note: string | null): Fact[] =>
+  amount === null ? [] : [{ term, value: `$${amount}${note ? ` ${note}` : ''}` }];
+
+const facts: Fact[] = [
+  { term: 'Meets', value: `${course.days.join(' and ')}, ${timeLabel(course.start, course.end)}` },
+  { term: 'Duration', value: durationLabel(course) },
+  { term: 'Ages', value: ageLine(course) },
+  { term: 'Cost', value: priceLine(course) },
+  { term: 'Contact hours', value: `${contactHours(course)} hours` },
+  ...optional('Credit', course.credit),
+  { term: 'Prerequisites', value: course.prerequisites },
+  ...optional('Required text', course.requiredText),
+  ...optional('Optional text', course.optionalText),
+  ...optional('Materials to bring', course.materialsToBuy),
+  ...fee('Materials fee', course.materialsFee, course.materialsFeeNote),
+  ...fee('Assessment fee', course.assessmentFee, course.assessmentFeeNote),
+  ...optional(
+    'Meeting dates',
+    course.dates.length > 0
+      ? course.dates.map((date) => dateFormat.format(new Date(`${date}T00:00:00Z`))).join(', ')
+      : null,
+  ),
+  { term: 'Instructor', value: course.instructor },
+];
+---
+
+<dl class="coursefacts">
+  {
+    facts.map((fact) => (
+      <div class="coursefact">
+        <dt>{fact.term}</dt>
+        <dd>{fact.value}</dd>
+      </div>
+    ))
+  }
+</dl>

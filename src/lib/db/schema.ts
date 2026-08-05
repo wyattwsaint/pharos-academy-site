@@ -76,6 +76,60 @@ export const schoolDetails = pgTable('school_details', {
   lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
 });
 
+/**
+ * The catalogue — the nineteen courses, and the one place they exist (#22).
+ *
+ * The live site publishes these across nine hand-maintained artefacts that
+ * already disagree with one another. This table is the answer to that: a parent
+ * can find a class four ways and every one of them agrees, because all four
+ * surfaces read these rows.
+ *
+ * Two columns are conspicuously missing. There is **no price** and **no contact
+ * hours**: both are computed from `weeks`, the meeting times and the rate tier
+ * (`courses/pricing.ts`). A stored price is exactly how nine artefacts drift.
+ *
+ * `age_min` and `age_max` are nullable together, and Algebra 1 is why — "8th
+ * Grade and older (or younger students who demonstrate proficiency)" is a
+ * prerequisite wearing an age's clothes. A null range means *shown to
+ * everyone*, never *shown to nobody* (`courses/ages.ts`).
+ */
+export const courses = pgTable('courses', {
+  /** The URL segment, and the key: `/classes/<slug>`. */
+  slug: text('slug').primaryKey(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  /** The classical stages it is filed under; Algebra 1 is filed under two. */
+  stages: text('stages').array().notNull(),
+  /** Day tracks (CONTEXT.md). Algebra 1 meets on two of them. */
+  days: text('days').array().notNull(),
+  /** `HH:MM`, 24-hour. The published "9:00-10:30 a.m." is derived from the pair. */
+  startTime: text('start_time').notNull(),
+  endTime: text('end_time').notNull(),
+  /** `year` | `fall` | `spring` | `block` (CONTEXT.md, "enrolment unit"). */
+  enrolment: text('enrolment').notNull(),
+  /** Meeting weeks per day track. */
+  weeks: integer('weeks').notNull(),
+  /** A block's published meeting dates, `YYYY-MM-DD`. Empty for anything else. */
+  dates: text('dates').array().notNull(),
+  /** The school's own age wording, which is not always a numeric range. */
+  ageLabel: text('age_label').notNull(),
+  ageMin: integer('age_min'),
+  ageMax: integer('age_max'),
+  /** `standard` | `highSchoolCredit` — a name, so the rates live in one module. */
+  rateTier: text('rate_tier').notNull(),
+  credit: text('credit'),
+  requiredText: text('required_text'),
+  optionalText: text('optional_text'),
+  materialsToBuy: text('materials_to_buy'),
+  materialsFee: integer('materials_fee'),
+  materialsFeeNote: text('materials_fee_note'),
+  assessmentFee: integer('assessment_fee'),
+  assessmentFeeNote: text('assessment_fee_note'),
+  prerequisites: text('prerequisites').notNull(),
+  instructor: text('instructor').notNull(),
+});
+
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type AdminSession = typeof adminSessions.$inferSelect;
 export type SchoolDetails = typeof schoolDetails.$inferSelect;
+export type CourseRow = typeof courses.$inferSelect;

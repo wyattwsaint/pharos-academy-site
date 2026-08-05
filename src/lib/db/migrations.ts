@@ -12,6 +12,9 @@
  * because a half-applied migration is otherwise unrecoverable without hands on
  * the database.
  */
+import { CATALOGUE } from '../courses/catalogue.js';
+import type { Course } from '../courses/course.js';
+
 export type Migration = {
   /** Stable, unique, ordered by string comparison. */
   id: string;
@@ -87,11 +90,119 @@ export const MIGRATIONS: readonly Migration[] = [
        on conflict (id) do nothing`,
     ],
   },
+  {
+    id: '0002-courses',
+    statements: [
+      `create table if not exists courses (
+         slug text primary key,
+         title text not null,
+         description text not null,
+         stages text[] not null,
+         days text[] not null,
+         start_time text not null,
+         end_time text not null,
+         enrolment text not null,
+         weeks integer not null,
+         dates text[] not null,
+         age_label text not null,
+         age_min integer,
+         age_max integer,
+         rate_tier text not null,
+         credit text,
+         required_text text,
+         optional_text text,
+         materials_to_buy text,
+         materials_fee integer,
+         materials_fee_note text,
+         assessment_fee integer,
+         assessment_fee_note text,
+         prerequisites text not null,
+         instructor text not null,
+         constraint courses_age_range_is_whole check (
+           (age_min is null) = (age_max is null) and (age_min is null or age_min <= age_max)
+         )
+       )`,
+      // Note what the check constraint says: a course either publishes a whole
+      // numeric range or publishes none. Half a range — a minimum with no
+      // maximum — is the shape that would let a course fall out of every age
+      // band, which is the failure #22 AC 5 exists to prevent.
+      insertCourses(CATALOGUE),
+    ],
+  },
 ];
+
+/**
+ * The whole catalogue as one idempotent insert.
+ *
+ * Generated from `CATALOGUE` rather than written out as SQL: the seed is
+ * authored TypeScript that the tests check against the capture of the live
+ * site, and a hand-written copy of it in this file would be a nineteen-course
+ * transcription nobody would ever diff again.
+ *
+ * One statement rather than nineteen because this runs against a fresh
+ * in-process PGlite for **every** integration test — nineteen round trips per
+ * test is a slow suite bought for nothing.
+ *
+ * `on conflict do nothing`, like every other statement here, so re-running the
+ * migration cannot overwrite an edit made to the store.
+ */
+function insertCourses(courses: readonly Course[]): string {
+  return `insert into courses (
+      slug, title, description, stages, days, start_time, end_time, enrolment, weeks, dates,
+      age_label, age_min, age_max, rate_tier, credit, required_text, optional_text,
+      materials_to_buy, materials_fee, materials_fee_note, assessment_fee, assessment_fee_note,
+      prerequisites, instructor
+    ) values ${courses.map(courseValues).join(', ')}
+    on conflict (slug) do nothing`;
+}
+
+/** One course as a `values` row, in the column order above. */
+function courseValues(course: Course): string {
+  const values = [
+    literal(course.slug),
+    literal(course.title),
+    literal(course.description),
+    textArray(course.stages),
+    textArray(course.days),
+    literal(course.start),
+    literal(course.end),
+    literal(course.enrolment),
+    String(course.weeks),
+    textArray(course.dates),
+    literal(course.ageLabel),
+    number(course.ageMin),
+    number(course.ageMax),
+    literal(course.rateTier),
+    nullable(course.credit),
+    nullable(course.requiredText),
+    nullable(course.optionalText),
+    nullable(course.materialsToBuy),
+    number(course.materialsFee),
+    nullable(course.materialsFeeNote),
+    number(course.assessmentFee),
+    nullable(course.assessmentFeeNote),
+    literal(course.prerequisites),
+    literal(course.instructor),
+  ];
+
+  return `(${values.join(', ')})`;
+}
 
 /** A single-quoted SQL string literal. Only ever called on constants above. */
 function literal(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
+}
+
+function nullable(value: string | null): string {
+  return value === null ? 'null' : literal(value);
+}
+
+function number(value: number | null): string {
+  return value === null ? 'null' : String(value);
+}
+
+function textArray(values: readonly string[]): string {
+  return values.length === 0 ? `array[]::text[]` : `array[${values.map(literal).join(', ')}]::text[]`;
 }
 
 /** The bookkeeping table the runner uses to decide what still needs applying. */

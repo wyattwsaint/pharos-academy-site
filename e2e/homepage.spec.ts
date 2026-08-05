@@ -318,7 +318,9 @@ test.describe('the page', () => {
   test('carries the inquiry CTA in both the header and the footer', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await page.goto('/');
-    await expect(page.locator('[data-site-header] a[href="#inquiry"]')).toHaveCount(1);
-    await expect(page.locator('footer a[href="#inquiry"]')).toHaveCount(1);
+    // Rooted rather than bare: the header and footer are on the class pages
+    // too now (#22), where `#inquiry` would be a link that does nothing.
+    await expect(page.locator('[data-site-header] a[href="/#inquiry"]')).toHaveCount(1);
+    await expect(page.locator('footer a[href="/#inquiry"]')).toHaveCount(1);
   });
 });

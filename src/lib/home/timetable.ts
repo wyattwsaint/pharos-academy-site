@@ -37,17 +37,14 @@ export type ClassEntry = {
 /**
  * The school's four day tracks, in calendar order (CONTEXT.md, "day track").
  *
- * All four, not the three that currently run. A day track with no courses is
- * **complete, not incomplete** — the Tuesday track is routinely empty, and the
- * glossary uses exactly that as its worked example. Naming only the occupied
- * three would make the type narrower than the domain, so a Tuesday course could
- * not be represented without a type change.
- *
- * This is a day track, not a "day of the week": it is the school's own unit of
- * scheduling, with its own first-class date and its own week numbering.
+ * Re-exported rather than re-declared: the catalogue owns the list now that
+ * courses are rows (#22), and two copies of a glossary term is how the two
+ * drift. The homepage's selection of classes still lives in this file, but the
+ * days they run on are the same days `/classes` draws.
  */
-export const DAY_TRACKS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'] as const;
-export type DayTrack = (typeof DAY_TRACKS)[number];
+export { DAY_TRACKS, type DayTrack } from '../courses/schedule.js';
+
+import { DAY_TRACKS, type DayTrack } from '../courses/schedule.js';
 
 /** One row of the grid: a start time and what runs on each day track. */
 export type TimeSlot = {

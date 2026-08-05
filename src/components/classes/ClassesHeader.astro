@@ -1,0 +1,42 @@
+---
+import { CLASS_VIEWS, type ClassView } from '../../lib/courses/views.js';
+
+/**
+ * The head of every catalogue surface: one h1, one lede, and the switcher
+ * between the three ways of reading the same nineteen courses.
+ *
+ * The switcher is a nav of real links, not a tab widget: each view has its own
+ * address, works without script, and is a page a parent can send to another
+ * parent. `aria-current="page"` is what says which one you are on — a class on
+ * the active link would say it only to people who can see it.
+ */
+interface Props {
+  current: ClassView['id'];
+  heading: string;
+  lede: string;
+}
+
+const { current, heading, lede } = Astro.props;
+---
+
+<section class="band band-quiet" data-section="classes-header">
+  <div class="wide">
+    <p class="label">Classes · 2026–2027</p>
+    <h1 class="mt-4">{heading}</h1>
+    <p class="sub mt-5">{lede}</p>
+
+    <nav class="viewnav" aria-label="Ways to read the class list">
+      {
+        CLASS_VIEWS.map((view) => (
+          <a
+            href={view.path}
+            class:list={['viewnav-link', { current: view.id === current }]}
+            aria-current={view.id === current ? 'page' : undefined}
+          >
+            {view.label}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</section>

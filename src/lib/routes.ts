@@ -1,3 +1,6 @@
+import { CATALOGUE } from './courses/catalogue.js';
+import { classPath, CLASS_VIEWS } from './courses/views.js';
+
 /**
  * The enumerated public route list.
  *
@@ -33,6 +36,24 @@ export type ChangeFreq =
 
 export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   { path: '/', priority: 1.0, changefreq: 'weekly' },
+  ...CLASS_VIEWS.map((view) => ({
+    path: view.path,
+    priority: view.id === 'by-age' ? 0.9 : 0.8,
+    changefreq: 'monthly' as const,
+  })),
+  /*
+   * One route per class, generated from the catalogue rather than listed.
+   *
+   * These are the addresses Jill sends when she means one class, so they have
+   * to be in the sitemap and in whole-site republishing both. Generated from
+   * the same constant the store is seeded from, because a hand-kept second list
+   * of nineteen slugs would be a sitemap advertising a 404 within a term.
+   */
+  ...CATALOGUE.map((course) => ({
+    path: classPath(course.slug),
+    priority: 0.7,
+    changefreq: 'monthly' as const,
+  })),
 ] as const;
 
 /** Every public path, in list order. */

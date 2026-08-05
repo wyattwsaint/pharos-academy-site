@@ -32,20 +32,31 @@ export const SECTION_ORDER = [
 export type SectionId = (typeof SECTION_ORDER)[number];
 
 /**
- * The header nav.
+ * The header nav, which is now on more than one page.
  *
- * Every entry is an on-page anchor, because on-page is where the content
- * actually is: `/classes`, `/about` and `/admissions` are later slices and
- * `PUBLIC_ROUTES` still holds only `/`. A nav item pointing at a 404 is worse
- * than one pointing at the section that answers the same question, so these
- * become real hrefs when the pages behind them exist.
+ * Every anchor is written as `/#section` rather than `#section`. On the
+ * homepage that is still a same-document jump; on `/classes` it is a link back
+ * to the section that answers the question, which a bare fragment would not be
+ * — it would silently do nothing. About and Admissions are still absent because
+ * their pages are, and a nav item pointing at a 404 is worse than one pointing
+ * at the section that answers the same question.
+ *
+ * Classes is a real route now (#22) and leads with the By Age view, which is
+ * `/classes` itself.
  */
 export const NAV_ITEMS = [
-  { label: 'A week here', href: '#week' },
-  { label: 'Who teaches', href: '#teachers' },
-  { label: 'What it costs', href: '#costs' },
-  { label: 'Why we do this', href: '#faith' },
+  { label: 'Classes', href: '/classes' },
+  { label: 'A week here', href: '/#week' },
+  { label: 'Who teaches', href: '/#teachers' },
+  { label: 'What it costs', href: '/#costs' },
+  { label: 'Why we do this', href: '/#faith' },
 ] as const;
 
-/** The persistent CTA target, in the header and again in the footer (#9). */
-export const INQUIRY_HREF = '#inquiry';
+/**
+ * The persistent CTA target, in the header and again in the footer (#9).
+ *
+ * Rooted for the same reason the nav anchors are: the header and footer are on
+ * every page now, and a bare `#inquiry` on `/classes` is a link that does
+ * nothing at all.
+ */
+export const INQUIRY_HREF = '/#inquiry';

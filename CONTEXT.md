@@ -26,6 +26,36 @@ no courses is complete, not incomplete**. The Tuesday track is routinely empty.
 
 Not: "cohort", "stream", "class day".
 
+### age band
+
+One of the four ranges the catalogue's default view groups by — **4–6, 7–9, 10–13,
+14–18**. A course appears under **every** band its published range touches, so
+*Backyard Botany* (5–10) is findable under six, under eight and under ten.
+
+Ages are the primary axis and grades are approximations; the school writes them
+that way itself ("10-14, approximately 5th-8th grades"), and a band is never
+labelled with a grade.
+
+A course that publishes **no numeric range** is in **every** band. *Algebra 1* —
+"8th Grade and older (or younger students who demonstrate proficiency)" — is the
+one, and its real gate is a prerequisite. A course with no range is shown to
+everyone, never to nobody.
+
+Not: "grade level", "year group".
+
+### rate tier
+
+Which of the school's two hourly rates a course is priced at — **standard**
+($10/hour) or **high-school credit** ($15/hour). It is what a course *stores*; the
+price itself is computed from it and the contact hours, and never typed
+(ADR-0003).
+
+Note that the tier is not the same as carrying credit: *Basic Spanish (Grades
+9-12)* is priced at the high-school rate and carries no credit. That is recorded
+as published and flagged for the school, not normalised away.
+
+Not: "price", "tuition", "hourly rate" on its own.
+
 ### enrolment unit
 
 What a course actually sells. One of four:

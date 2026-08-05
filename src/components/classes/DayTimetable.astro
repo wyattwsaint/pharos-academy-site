@@ -1,0 +1,105 @@
+---
+import { ageLine } from '../../lib/courses/ages.js';
+import { priceSummary } from '../../lib/courses/pricing.js';
+import { markLabel, timeLabel, type DayLayout } from '../../lib/courses/schedule.js';
+import { classPath } from '../../lib/courses/views.js';
+
+/**
+ * One day track, drawn to scale.
+ *
+ * This is the fix #22 was written for. The live site lists a day as consecutive
+ * rows, and consecutive rows say "these run one after another" — which is false
+ * twice on Monday: *God Made Everything* (9:00–10:30) runs into *Principles of
+ * Drawing* (10:10–11:10), and *Kingdom Math* (10:40–12:10) runs into *Algebra 1*
+ * (11:20–12:20). A parent can plan around that and be wrong.
+ *
+ * So the row is time itself. The grid has one row per ten minutes of the
+ * morning; a class spans as many rows as it lasts, and starts in the row its
+ * clock time lands on. Overlapping classes are packed into lanes by
+ * `layoutDay`, which never gives two of them the same lane — so the geometry
+ * carries the fact and no warning string has to.
+ *
+ * Nothing here is flagged. The Wednesday 10:40 slot carries five electives by
+ * design (CONTEXT.md, "clash"); oversubscription is not an error, and there is
+ * no error state in this component to accidentally give it one.
+ *
+ * The grid keeps a minimum lane width and scrolls sideways inside its own box
+ * rather than squeezing six lanes into a phone. Squeezing is how a 90-minute
+ * class ends up shorter on screen than a 60-minute one, and the whole claim
+ * here is that the drawing is true to the clock.
+ */
+interface Props {
+  layout: DayLayout;
+}
+
+const { layout } = Astro.props;
+
+/** One grid row per ten minutes. Every published time lands on a ten. */
+const STEP = 10;
+const rowFor = (minutes: number) => (minutes - layout.startMinutes) / STEP + 1;
+const rows = (layout.endMinutes - layout.startMinutes) / STEP;
+---
+
+<section class="day" aria-labelledby={`day-${layout.track}`}>
+  <div class="day-head">
+    <h2 id={`day-${layout.track}`}>{layout.track}</h2>
+    <p>
+      {layout.placed.length} classes · {markLabel(layout.startMinutes)} to {
+        markLabel(layout.endMinutes)
+      }
+    </p>
+  </div>
+
+  <div class="daygrid-scroll">
+    <div
+      class="daygrid"
+      style={`--lanes:${layout.laneCount}; --rows:${rows}`}
+      data-day={layout.track}
+      data-lanes={layout.laneCount}
+    >
+      {
+        /*
+          The axis. Each half-hour mark labels the row its clock time lands on,
+          and the closing mark is the end of the morning rather than the start
+          of a half hour, so it takes a single row at the foot of the grid.
+        */
+        layout.marks.map((mark, index) => (
+          <div
+            class="daygrid-mark"
+            style={`grid-row:${rowFor(mark)} / span ${index === layout.marks.length - 1 ? 1 : 3}`}
+          >
+            <span>{markLabel(mark)}</span>
+          </div>
+        ))
+      }
+
+      {
+        layout.marks.slice(0, -1).map((mark) => (
+          <div class="daygrid-rule" style={`grid-row:${rowFor(mark)} / span 3`} />
+        ))
+      }
+
+      {
+        layout.placed.map(({ course, startMinutes, endMinutes, lane }) => (
+          <a
+            class="slot"
+            href={classPath(course.slug)}
+            data-course={course.slug}
+            data-lane={lane}
+            data-start={startMinutes}
+            data-end={endMinutes}
+            style={`grid-column:${lane + 2}; grid-row:${rowFor(startMinutes)} / span ${
+              (endMinutes - startMinutes) / STEP
+            }`}
+          >
+            <span class="slot-title">{course.title}</span>
+            <span class="slot-time">{timeLabel(course.start, course.end)}</span>
+            <span class="slot-meta">
+              {ageLine(course)} · {priceSummary(course)}
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </div>
+</section>
