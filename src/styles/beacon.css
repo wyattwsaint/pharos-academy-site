@@ -1,0 +1,1233 @@
+/*
+ * "Beacon, warmed" — the design language itself.
+ *
+ * Variant E of the prototype, approved by George and Jill on #13, rebuilt as
+ * the site's own stylesheet rather than ported: the prototype is a reference
+ * for what the page looks like, not a codebase. What IS carried over verbatim,
+ * and must stay verbatim, is the hero scrim's gradients — see the note above
+ * `[data-hero-scrim]`.
+ *
+ * Cream and parchment bands alternate with navy. Navy is a ground and a heading
+ * colour and never body copy. The gold rule with a centre diamond is the
+ * repeated ornament between sections.
+ *
+ * Layout utilities in this file are deliberately plain classes rather than
+ * Tailwind utilities: they are used identically in a dozen places and the
+ * design vocabulary is the thing later pages are meant to build *in*.
+ */
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 1.65;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -0.005em;
+  margin: 0;
+  text-wrap: balance;
+  color: var(--color-navy);
+}
+
+/* ---------- measures ---------- */
+
+.wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 26px;
+}
+
+.wide {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 26px;
+}
+
+/* ---------- the small ceremonial pieces ---------- */
+
+/* The eyebrow over every section heading. Gold that carries WORDS is
+   --color-gold-ink, never --color-gold-orn: the ornament gold measures 2.8:1,
+   which is fine for a hairline and fails for a line of text. */
+.label {
+  font: 400 13px/1 var(--font-serif);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-gold-ink);
+}
+
+.tagline {
+  font: italic 400 clamp(17px, 1.7vw, 21px) / 1.3 var(--font-serif);
+  color: var(--color-gold-ink);
+}
+
+/* the repeated ornament between sections: a gold hairline with a centre diamond */
+.ornament {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 26px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ornament::before,
+.ornament::after {
+  content: '';
+  flex: 1 1 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-rule) 18%, var(--color-gold-orn));
+}
+
+.ornament::after {
+  background: linear-gradient(270deg, transparent, var(--color-rule) 18%, var(--color-gold-orn));
+}
+
+.ornament i {
+  width: 7px;
+  height: 7px;
+  background: var(--color-gold-orn);
+  transform: rotate(45deg);
+  flex: 0 0 auto;
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+  display: inline-block;
+  border: 1px solid var(--color-navy);
+  color: var(--color-navy);
+  background: none;
+  font: 600 13.5px/1 var(--font-sans);
+  text-decoration: none;
+  padding: 12px 18px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition:
+    background 0.3s cubic-bezier(0.2, 0.7, 0.3, 1),
+    color 0.3s,
+    border-color 0.3s;
+}
+
+.btn:hover {
+  background: var(--color-navy);
+  color: var(--color-cream);
+}
+
+.btn.solid {
+  background: var(--color-navy);
+  color: var(--color-cream);
+  border-color: var(--color-navy);
+}
+
+.btn.solid:hover {
+  background: var(--color-gold-orn);
+  border-color: var(--color-gold-orn);
+  color: #1b1206;
+}
+
+.btn.on-dark {
+  border-color: rgb(255 255 255 / 0.6);
+  color: #fff;
+}
+
+.btn.on-dark:hover {
+  background: #fff;
+  border-color: #fff;
+  color: var(--color-navy);
+}
+
+.btn.on-dark.solid {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  color: #21170a;
+}
+
+/* ---------- the alternating bands ---------- */
+
+.band {
+  padding: clamp(56px, 9vw, 108px) 0;
+}
+
+.band h2 {
+  font-size: clamp(31px, 4.4vw, 52px);
+  margin-bottom: 10px;
+}
+
+.band .sub {
+  color: var(--color-ink-2);
+}
+
+.band-quiet {
+  background: var(--color-parchment);
+}
+
+.band-dark {
+  background: var(--color-navy);
+  color: #efe7d8;
+}
+
+.band-dark h2,
+.band-dark h3 {
+  color: #fff;
+}
+
+.band-dark .label {
+  color: var(--color-gold-lit);
+}
+
+.band-dark p {
+  color: #dcd3c4;
+}
+
+.band-dark a {
+  color: var(--color-gold-lit);
+}
+
+/* Images are accent, not centrepiece: a plate never gets a row to itself. Each
+   pairs with its section's eyebrow and heading — heading left, picture in a
+   ~38% column. */
+.accent {
+  display: grid;
+  grid-template-columns: 1fr 38%;
+  gap: clamp(24px, 4vw, 56px);
+  align-items: center;
+}
+
+.accent > figure {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .accent {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .accent > figure {
+    max-width: 420px;
+  }
+}
+
+/* The still-lifes are paintings, so they are treated as illustration rather
+   than photography: no frame anywhere, every plate's edges dissolving into
+   whichever band it sits on.
+
+   Dissolved by painting the BAND COLOUR over the edges, not by masking to
+   transparency — the paintings' grounds are warm and a transparent edge just
+   exposes the join. Hence a per-band --fill rather than one shared rule.
+
+   The ramp is on all four edges and is linear, NOT radial: an ellipse is
+   radius-based, so on a 3:2 plate it cuts the corners off and reads as a
+   Victorian cameo. An edge ramp dissolves the frame without touching the
+   middle, which is what the treatment is for. */
+.plate {
+  position: relative;
+  --fill: 251 247 239;
+}
+
+.band-quiet .plate {
+  --fill: 243 233 214;
+}
+
+.plate img {
+  width: 100%;
+  display: block;
+}
+
+.plate::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to right,
+      rgb(var(--fill)) 0,
+      rgb(var(--fill) / 0) 9%,
+      rgb(var(--fill) / 0) 91%,
+      rgb(var(--fill)) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(var(--fill)) 0,
+      rgb(var(--fill) / 0) 11%,
+      rgb(var(--fill) / 0) 89%,
+      rgb(var(--fill)) 100%
+    );
+}
+
+/* ---------- the fixed header ---------- */
+
+/* FIXED, not absolute: it rides the whole page, not just the hero. Over the
+   hero it is chrome-less — the video is the surface and the nav floats on it.
+   Once the hero is past it takes the navy band and the gold hairline, which is
+   the design's existing ceremonial surface rather than a new one. */
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  padding: 24px 0;
+  /*
+   * The background is NOT transitioned, and that is an accessibility fix rather
+   * than an oversight.
+   *
+   * `stuck` swaps the header's type between navy (over the hero's lightened
+   * sky) and white (over the navy band), and a class toggle does that
+   * instantly. Easing the band in over 350ms therefore put white type on a
+   * transparent header over cream for 350ms — a real, if brief, contrast
+   * failure that axe catches the moment anything scrolls the page. Fading the
+   * type on the same curve does not help: the crossover is mid-grey on
+   * half-navy, which is worse than either end.
+   *
+   * The padding, the shadow and the gold hairline still ease, and they are what
+   * actually reads as the header settling. The band arriving on the same frame
+   * as the type it is the ground for is correct, not abrupt.
+   */
+  transition:
+    padding 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.site-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--color-gold);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.site-header.stuck {
+  background: var(--color-navy-deep);
+  padding: 13px 0;
+  box-shadow: 0 6px 24px rgb(6 16 30 / 0.22);
+}
+
+.site-header.stuck::after {
+  opacity: 0.55;
+}
+
+.site-header .wide {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+/* The brand is the hero's own lockup while the hero is on screen — repeating it
+   in the corner at 25px would put the mark on screen twice, three inches apart.
+   It fades in only once the header has stuck and the hero lockup has scrolled
+   away, which is the moment the page stops identifying itself. */
+.site-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-right: auto;
+  text-decoration: none;
+  color: #fff;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease,
+    visibility 0.35s;
+}
+
+.site-header.stuck .site-brand {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.site-brand img {
+  width: 25px;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.4));
+}
+
+.site-brand b {
+  font: 400 17px/1 var(--font-serif);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site-nav {
+  display: flex;
+  gap: 22px;
+}
+
+.site-nav a {
+  color: rgb(255 255 255 / 0.9);
+  text-decoration: none;
+  font: 400 14.5px/1 var(--font-sans);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
+
+.site-nav a:hover {
+  color: var(--color-gold);
+}
+
+/* Consequence of the inverted scrim below: white nav links on a LIGHTENED
+   sunrise sky are unreadable. Over the hero the header's own type is navy; the
+   moment it sticks it has a navy band underneath and goes back to white. */
+.site-header:not(.stuck) .site-nav a {
+  color: var(--color-navy);
+  text-shadow: 0 1px 8px rgb(255 252 244 / 0.85);
+}
+
+.site-header:not(.stuck) .site-nav a:hover {
+  color: var(--color-gold-ink);
+}
+
+.site-header:not(.stuck) .btn.on-dark {
+  border-color: rgb(23 54 92 / 0.55);
+  color: var(--color-navy);
+  text-shadow: none;
+}
+
+.site-header:not(.stuck) .btn.on-dark:hover {
+  background: var(--color-navy);
+  border-color: var(--color-navy);
+  color: var(--color-cream);
+}
+
+@media (max-width: 860px) {
+  .site-nav {
+    display: none;
+  }
+}
+
+/* ---------- the hero ---------- */
+
+.hero {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+  background: #0e1b23;
+}
+
+@supports (height: 100dvh) {
+  .hero {
+    height: 100dvh;
+  }
+}
+
+.hero-media {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.hero-media > video,
+.hero-media > .hero-still {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 22% 50%;
+}
+
+/* The poster still is the reduced-motion surface and is otherwise behind the
+   video, so it also covers the moment before the first frame decodes. */
+.hero-poster {
+  display: none;
+}
+
+/* AC 4: the blur is THIS — a pre-blurred still crossfaded over the playing
+   video — and never `filter: blur()` on the video itself. Re-blurring 24 frames
+   a second is what turns this from premium into janky on the mid-range Android
+   many of these families are holding. */
+.hero-blur {
+  opacity: 0;
+}
+
+/*
+ * The scrim is INVERTED: it does not darken a ground for white type, it lightens
+ * one for navy type, because the lockup is navy ink from the school's own
+ * reference.
+ *
+ * COPY THESE GRADIENTS VERBATIM. They are the output of three tuning passes and
+ * the numbers are measurements, not taste: foreground is the declared CSS colour
+ * and ground is the 40th-percentile luminance pixel of each text box, sampled
+ * across the whole 8s loop. Worst line is 4.88:1 on desktop (the nav) and 5.29:1
+ * on the phone (the gold italic), against a 4.5:1 need.
+ *
+ * What each pass learned, so a fourth does not relearn it:
+ *
+ *   - It began as three washes — right half, top band, bottom band. Only one
+ *     ever had type on it. The bottom band cost the meadow for nothing; the top
+ *     band was doing work the nav's own text-shadow already did, and was what
+ *     made the sky read as haze rather than sky.
+ *   - The fix for "it flattens the painting" is a SMALLER wash, never a fainter
+ *     one. A fainter wash over the same area loses contrast everywhere; a
+ *     smaller one loses none where the type is.
+ *   - Desktop is limited by almost nothing: the nav moves 5.01 -> 4.88 across
+ *     the whole range tested, so the ellipse's skirt was pure cost.
+ *   - PHONE is limited by GEOMETRY. At 78% wide by 40% tall over a five-line
+ *     stacked lockup, the bottom two lines were living on the skirt, not the
+ *     core — which is why every straightforward reduction broke those two and
+ *     only those two (the gold italic went 5.77 -> 3.24 on a faster falloff
+ *     alone). Re-proportioning to 58% wide by 60% tall — TALLER RELATIVE TO THE
+ *     VIEWPORT THAN IT IS WIDE — put all five lines on the core.
+ *
+ * Widening the phone ellipse back out is the specific mistake this shape exists
+ * to avoid. Re-measure with `npm run hero:contrast` after any change here.
+ */
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(
+    40% 56% at 71% 50%,
+    rgba(255, 251, 241, 0.9) 0%,
+    rgba(255, 251, 241, 0.7) 34%,
+    rgba(255, 251, 241, 0.1) 60%,
+    rgba(255, 251, 241, 0) 100%
+  );
+}
+
+/* Below 1000px the lockup centres, so a right-weighted wash washes the wrong
+   half — and the crop puts the tower and the treeline directly under the type. */
+@media (max-width: 1000px) {
+  .hero-scrim {
+    background: radial-gradient(
+      58% 60% at 50% 46%,
+      rgba(255, 251, 241, 0.93) 0%,
+      rgba(255, 251, 241, 0.86) 52%,
+      rgba(255, 251, 241, 0.18) 76%,
+      rgba(255, 251, 241, 0) 100%
+    );
+  }
+}
+
+/* The dim that ramps in with the blur, handing the hero off to the band below. */
+.hero-deep {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--color-navy-deep);
+  opacity: 0;
+}
+
+/* ONE centred block in the right half, and the same block at every width: a
+   lockup that re-composes on a phone stops being a lockup. Centring is not a
+   preference — it is what the rule-with-cross requires, since a cross hung off
+   a left-aligned rule reads as a bullet. */
+.hero-inner {
+  position: relative;
+  z-index: 3;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.hero-lockup {
+  width: min(54%, 640px);
+  text-align: center;
+  color: var(--color-navy);
+}
+
+.hero-mark {
+  width: var(--lockup-mark, 200px);
+  height: auto;
+  display: block;
+  margin: 0 auto 20px;
+  filter: drop-shadow(0 2px 14px rgb(255 250 238 / 0.75));
+}
+
+.hero-lockup h1 {
+  font: 600 clamp(34px, 4.4vw, 62px) / 1.02 var(--font-display);
+  letter-spacing: -0.012em;
+  color: var(--color-navy);
+  margin: 0;
+}
+
+/* Not the mark's own deep blue (#4D82A1): that measured 3.29:1 on the washed
+   sky, which is a decorative value carrying words. Same hue, taken to AA. */
+.hero-sub {
+  font: 400 clamp(15px, 1.5vw, 21px) / 1.3 var(--font-display);
+  color: #2a6086;
+  margin: 9px 0 0;
+}
+
+/* A variant of the section ornament rather than an edit of it: here the centre
+   mark is a cross, on instruction, and the rule runs out both sides of it. */
+.hero-rule {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin: 18px auto 16px;
+  width: min(560px, 100%);
+}
+
+.hero-rule::before,
+.hero-rule::after {
+  content: '';
+  flex: 1 1 0;
+  height: 1px;
+  background: var(--color-deep-blue);
+  opacity: 0.5;
+}
+
+.hero-rule svg {
+  width: 15px;
+  height: auto;
+  display: block;
+  flex: 0 0 auto;
+  color: var(--color-gold-ink);
+}
+
+/* The hierarchy is inverted from where it started: "Pharos Academy" is the
+   display line and H.O.P.E. is secondary. The h1 was always the school's name —
+   the difference is that heading level and visual weight now agree instead of
+   disagreeing on purpose. */
+.hero-display {
+  font: 400 clamp(25px, 3.1vw, 42px) / 1.1 var(--font-display);
+  margin: 0;
+  color: var(--color-navy);
+}
+
+/* --color-gold-ink is AA on paper and parchment; the sunlit sky is brighter
+   than both and it measured 2.18:1 there, so this goes darker again. The weight
+   is 600 for the same reason the face is loaded at 600: this and the caps line
+   sit on the least wash, and stroke weight buys legibility that neither a
+   darker ink nor a bigger scrim was going to. */
+.hero-display-tag {
+  display: block;
+  margin-top: 5px;
+  color: #6b4a15;
+  font: italic 600 clamp(18px, 2vw, 29px) / 1.25 var(--font-tagline);
+}
+
+.hero-caps {
+  font: 600 clamp(11.5px, 1.05vw, 14px) / 1.7 var(--font-sans);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-navy);
+  margin: 15px 0 0;
+}
+
+@media (max-width: 1000px) {
+  .hero-inner {
+    justify-content: center;
+  }
+
+  .hero-lockup {
+    width: 100%;
+    max-width: 520px;
+    --lockup-mark: 150px;
+  }
+}
+
+@media (max-width: 760px) {
+  .wide,
+  .wrap {
+    padding: 0 20px;
+  }
+
+  .site-header {
+    padding: 14px 0;
+  }
+
+  .site-header.stuck {
+    padding: 10px 0;
+  }
+
+  .hero-lockup {
+    --lockup-mark: 112px;
+  }
+
+  .hero-lockup h1 {
+    font-size: clamp(30px, 8.6vw, 44px);
+  }
+
+  .hero-rule {
+    margin: 15px auto 13px;
+  }
+}
+
+/* ---------- the timetable ---------- */
+
+.gridscroll {
+  overflow-x: auto;
+  margin-top: 38px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 62px repeat(3, minmax(190px, 1fr));
+  gap: 1px;
+  background: var(--color-rule);
+  border: 1px solid var(--color-rule);
+  min-width: 660px;
+}
+
+.grid > * {
+  background: #fefcf8;
+  padding: 13px;
+}
+
+.grid .day {
+  background: var(--color-navy);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.grid .day h3 {
+  font-size: 21px;
+  color: #fff;
+}
+
+.grid .day small {
+  font-size: 11px;
+  color: var(--color-gold-lit);
+  font-family: var(--font-serif);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.grid .hour {
+  background: var(--color-parchment);
+  color: #6c5b3c;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.grid .free {
+  background: #f8f3e9;
+}
+
+/* One class. A real <button>, not a link with a placeholder href: the panel is
+   what the interaction is for, and there is no class page to go to yet. */
+.class {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.class + .class {
+  margin-top: 11px;
+}
+
+.class .title {
+  display: block;
+  font: 500 15.5px/1.3 var(--font-sans);
+  color: var(--color-ink);
+}
+
+/* End times on their own line above the ages and price. No text-transform on
+   either — the strings are typed the way the school types them ("a.m."), and
+   upper-casing them loses that. */
+.class .ends {
+  display: block;
+  font-size: 12.5px;
+  color: #6c5b3c;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.class .meta {
+  display: block;
+  font-size: 12.5px;
+  color: var(--color-ink-2);
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.class:hover .title,
+.class:focus-visible .title {
+  color: var(--color-gold-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.class:focus-visible {
+  outline: 2px solid var(--color-gold-ink);
+  outline-offset: 3px;
+}
+
+/* The description panel expands INSIDE its cell rather than floating over the
+   grid: .gridscroll is overflow-x:auto, which clips on both axes, so an
+   absolutely positioned popover would be cut off exactly where the grid starts
+   scrolling — on a phone, which is where the client opens this. */
+.class-panel {
+  display: none;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-gold-orn);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-ink-2);
+}
+
+[data-disclosure-cell][data-open] .class-panel {
+  display: block;
+}
+
+[data-disclosure-cell][data-open] .class .title {
+  color: var(--color-gold-ink);
+}
+
+/* ---------- who teaches ---------- */
+
+.people {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+  margin-top: 40px;
+}
+
+/* Left as an empty tint on purpose: real photographs of real consenting adults
+   are Jill's to supply (#13), and a generated painting standing in for a named
+   member of staff is the one substitution that would be dishonest. */
+.portrait {
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: #e9dec8;
+  width: 100%;
+  max-width: 150px;
+  box-shadow: 0 0 0 1px var(--color-rule);
+}
+
+.people h3 {
+  font-size: 22px;
+  margin-top: 18px;
+}
+
+.people .role {
+  margin: 6px 0 8px;
+}
+
+.people p {
+  font-size: 14.5px;
+  margin: 0;
+  color: var(--color-ink-2);
+}
+
+@media (max-width: 720px) {
+  .people {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- what it costs ---------- */
+
+/* The numerals stay sans and tabular, each under a gold mark. */
+.figures {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(26px, 5vw, 64px);
+  margin-top: 40px;
+}
+
+.figure svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+  color: var(--color-gold-orn);
+}
+
+.figure b {
+  display: block;
+  font: 300 clamp(34px, 4.4vw, 50px) / 1 var(--font-sans);
+  color: var(--color-navy);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  margin-top: 14px;
+}
+
+.figure span {
+  display: block;
+  color: var(--color-ink-2);
+  font-size: 14.5px;
+  margin-top: 8px;
+  max-width: 24ch;
+}
+
+@media (max-width: 720px) {
+  .figures {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}
+
+/* ---------- H.O.P.E. ---------- */
+
+.hope {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 44px;
+  border-top: 1px solid rgb(224 172 78 / 0.34);
+}
+
+.hope-cell {
+  position: relative;
+  border-left: 1px solid rgb(224 172 78 / 0.34);
+}
+
+.hope-cell:first-child {
+  border-left: 0;
+}
+
+.hope-btn {
+  display: block;
+  width: 100%;
+  padding: 30px 18px 8px;
+  text-align: center;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.hope-btn b {
+  display: block;
+  font: 400 clamp(48px, 6.4vw, 84px) / 1 var(--font-serif);
+  color: var(--color-gold-lit);
+  transition:
+    color 0.25s ease,
+    transform 0.25s ease;
+}
+
+.hope-btn span {
+  display: block;
+  margin-top: 14px;
+  font: 400 13px/1 var(--font-serif);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #efe7d8;
+}
+
+.hope-btn:hover b,
+.hope-cell[data-open] .hope-btn b {
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.hope-btn:focus-visible {
+  outline: 2px solid var(--color-gold-lit);
+  outline-offset: -4px;
+}
+
+/* Unlike the class descriptions this panel really can float: the navy band has
+   no overflow clip, so nothing cuts it off. It is a LIGHT card on a navy ground
+   on purpose — a navy card on navy needs a border to exist at all, and the
+   gold-on-navy contrast risk is the one #12 flagged.
+
+   It opens UPWARD. Downward it cleared the row fine but finished ~180px onto
+   the cream section below, which read as the card having escaped rather than
+   opened. Upward it covers the verse — already read by the time you are at the
+   letters — and stays wholly on its own ground. */
+.hope-card {
+  display: none;
+  position: absolute;
+  z-index: 6;
+  bottom: calc(100% - 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 380px;
+  background: var(--color-cream);
+  border-radius: 3px;
+  text-align: left;
+  box-shadow: 0 18px 44px rgb(4 12 26 / 0.45);
+  overflow: hidden;
+}
+
+.hope-cell[data-open] .hope-card {
+  display: block;
+}
+
+/* The outer cells would hang off the container, so they anchor to their own
+   edge instead of centring. Deterministic — no measuring, no reflow. */
+.hope-cell:first-child .hope-card {
+  left: 0;
+  transform: none;
+}
+
+.hope-cell:last-child .hope-card {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.hope-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+}
+
+.hope-card .t {
+  margin: 0;
+  padding: 16px 20px 0;
+  font: 400 21px/1 var(--font-serif);
+  color: var(--color-navy);
+}
+
+.hope-card .d {
+  margin: 8px 0 0;
+  padding: 0 20px 18px;
+  font: 400 14px/1.55 var(--font-sans);
+  color: var(--color-ink);
+}
+
+@media (max-width: 1000px) {
+  /* Below the desktop composition the card stops floating and expands inside
+     its own cell — the same answer the class grid arrived at, for the same
+     reason: a floating panel anchored to a 2-up cell is wider than the cell and
+     taller than the row, and there is no hover to dismiss it with. */
+  .hope-card {
+    position: static;
+    transform: none;
+    width: auto;
+    bottom: auto;
+    margin: 14px 12px 4px;
+    box-shadow: 0 10px 26px rgb(4 12 26 / 0.35);
+  }
+
+  .hope-cell:first-child .hope-card,
+  .hope-cell:last-child .hope-card {
+    left: auto;
+    right: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .hope {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hope-cell:nth-child(3) {
+    border-left: 0;
+  }
+
+  .hope-cell:nth-child(n + 3) {
+    border-top: 1px solid rgb(224 172 78 / 0.34);
+  }
+
+  /* 2-up, a cell is ~150px and the sentence wrapped to five lines of three
+     words. The card floats again here but spans BOTH columns — anchored to its
+     own side so it never leaves the row — and covers the pair below it. */
+  .hope-card {
+    position: absolute;
+    z-index: 8;
+    top: calc(100% - 6px);
+    bottom: auto;
+    left: 0;
+    right: auto;
+    transform: none;
+    width: calc(200% + 1px);
+    margin: 0;
+  }
+
+  .hope-cell:nth-child(even) .hope-card {
+    left: auto;
+    right: 0;
+  }
+}
+
+.verse {
+  font: 400 italic clamp(23px, 3.2vw, 38px) / 1.36 var(--font-serif);
+  max-width: 24ch;
+  color: #fff;
+}
+
+.verse cite {
+  display: block;
+  font: 400 12px/1 var(--font-serif);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-gold-lit);
+  font-style: normal;
+  margin-top: 22px;
+}
+
+.verse-mark {
+  width: 30px;
+  height: 30px;
+  color: var(--color-gold-lit);
+}
+
+/* ---------- the inquiry form ---------- */
+
+.form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 34px;
+}
+
+.form .full {
+  grid-column: 1 / -1;
+}
+
+.form label {
+  display: block;
+  margin-bottom: 8px;
+  font: 600 11px/1 var(--font-sans);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+}
+
+.form input,
+.form textarea {
+  width: 100%;
+  background: #fefcf8;
+  border: 1px solid var(--color-rule);
+  color: var(--color-ink);
+  font: 400 17px/1.4 var(--font-sans);
+  padding: 12px 13px;
+  border-radius: 2px;
+}
+
+.form input:focus,
+.form textarea:focus {
+  outline: 2px solid var(--color-gold-ink);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.form textarea {
+  min-height: 74px;
+  resize: vertical;
+}
+
+@media (max-width: 700px) {
+  .form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- the ceremonial footer ---------- */
+
+.site-footer {
+  background: var(--color-navy);
+  color: #c9d3e1;
+  padding: 60px 0 48px;
+  font: 400 14.5px/1.7 var(--font-sans);
+}
+
+.site-footer-mark {
+  text-align: center;
+  padding-bottom: 40px;
+}
+
+.site-footer-mark img {
+  width: 40px;
+  height: auto;
+  margin: 0 auto 16px;
+  display: block;
+}
+
+.site-footer-mark b {
+  font: 400 19px/1 var(--font-serif);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #fff;
+  display: block;
+}
+
+.site-footer-mark .tagline {
+  display: block;
+  margin-top: 11px;
+  color: var(--color-gold-lit);
+}
+
+.site-footer-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  justify-content: space-between;
+  border-top: 1px solid rgb(224 172 78 / 0.28);
+  padding-top: 34px;
+}
+
+.site-footer-cols b {
+  font: 400 16px/1.5 var(--font-serif);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.site-footer a {
+  color: var(--color-gold-lit);
+}
+
+.site-footer address {
+  font-style: normal;
+}
+
+/* ---------- reduced motion ---------- */
+
+/*
+ * A hard stop, not a gentler ramp.
+ *
+ * The `<video>` is hidden and the poster still takes the hero. The other half
+ * of this — and the half that actually matters — is in `hero-fx.ts`: the video
+ * element ships with no `src` and no `<source>` children and the script never
+ * assigns one under reduced motion, so no video bytes are fetched at all. CSS
+ * alone would hide a file the browser had already downloaded.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .hero-media > video {
+    display: none !important;
+  }
+
+  .hero-media > .hero-poster {
+    display: block !important;
+  }
+
+  .hero-media {
+    transform: none !important;
+  }
+
+  .hero-blur,
+  .hero-deep {
+    opacity: 0 !important;
+  }
+}

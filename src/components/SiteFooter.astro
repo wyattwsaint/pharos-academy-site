@@ -1,19 +1,25 @@
 ---
 import { copyrightYear, getSchoolDetails } from '../lib/admin/school-details.js';
 import { getDb } from '../lib/db/client.js';
+import { INQUIRY_HREF } from '../lib/home/sections.js';
 import { SCHOOL_NAME } from '../lib/site.js';
 
 /**
  * The public footer: the school's own details, straight out of the one row
- * Jill edits (#18 §10).
+ * Jill edits (#18 §10), now set on the ceremonial navy band.
  *
  * Every value here is read, never typed. On the live Wix site the address and
- * phone are hand-entered in 22 places and have already drifted apart; the
- * footer's whole job in this ticket is to prove that the admin actually reaches
- * the public page.
+ * phone are hand-entered in 22 places and have already drifted apart; proving
+ * the admin actually reaches the public page was the footer's whole job in the
+ * delivery slice, and the surface work does not change it.
  *
  * The Give link is the same value the admin holds, rendered — not pasted a
  * second time (#18 §12). Anywhere else giving is linked reads `giveUrl` too.
+ *
+ * The inquiry CTA appears here as well as in the fixed header. #9 item 1 asks
+ * for the form to be present immediately; the hero lockup signed off on #13 has
+ * no button in it at all, so what is honoured is #9's IA-level wording — a
+ * persistent CTA in the header and the footer — at both ends of the page.
  */
 const details = await getSchoolDetails(await getDb());
 
@@ -22,33 +28,39 @@ const details = await getSchoolDetails(await getDb());
 const year = copyrightYear();
 
 const addressLines = details.address.split('\n').filter(Boolean);
+const telHref = `tel:${details.phone.replace(/[^\d+]/g, '')}`;
 ---
 
-<footer class="border-t border-navy/15 bg-parchment">
-  <div class="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10 sm:flex-row sm:justify-between">
-    <div>
-      <h2 class="font-semibold text-navy">{SCHOOL_NAME}</h2>
-      <address class="mt-2 not-italic">
-        {addressLines.map((line) => <span class="block">{line}</span>)}
-        <span class="mt-2 block">
-          <a href={`tel:${details.phone.replace(/[^\d+]/g, '')}`} class="underline underline-offset-4">
-            {details.phone}
-          </a>
-        </span>
-        <span class="block">
-          <a href={`mailto:${details.email}`} class="underline underline-offset-4">{details.email}</a>
-        </span>
-      </address>
+<footer class="site-footer">
+  <div class="wide">
+    <div class="site-footer-mark">
+      <img src="/mark.svg" alt="" width="40" height="45" />
+      <b>{SCHOOL_NAME}</b>
+      <em class="tagline">Helping Our Parents Educate</em>
     </div>
 
-    <div class="sm:text-right">
-      <a
-        href={details.giveUrl}
-        class="inline-block rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
-      >
-        Give
-      </a>
-      <p class="mt-6 text-sm">© {year} {SCHOOL_NAME}</p>
+    <div class="site-footer-cols">
+      <div>
+        <b>{SCHOOL_NAME}</b>
+        <address>
+          {addressLines.map((line) => <span class="block">{line}</span>)}
+        </address>
+      </div>
+
+      <div>
+        <b>Get in touch</b>
+        <a href={telHref}>{details.phone}</a><br />
+        <a href={`mailto:${details.email}`}>{details.email}</a>
+      </div>
+
+      <div>
+        <b>More</b>
+        <a href={INQUIRY_HREF}>Ask us about Pharos</a><br />
+        <a href="/statement-of-faith">Statement of Faith</a><br />
+        <a href={details.giveUrl}>Give</a>
+      </div>
     </div>
+
+    <p class="mt-9 text-sm">© {year} {SCHOOL_NAME}</p>
   </div>
 </footer>

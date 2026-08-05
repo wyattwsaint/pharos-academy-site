@@ -1,0 +1,63 @@
+---
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
+import { getDb } from '../../lib/db/client.js';
+
+/**
+ * The inquiry, at the foot of the page and again from the header's persistent
+ * CTA (#9 item 1 and item 7).
+ *
+ * There is no submit handler yet: routing an inquiry somewhere — an inbox, a
+ * table, a notification — is its own slice, and a form that silently swallows a
+ * parent's question is worse than one that hands them the school's address
+ * book. Until then the form posts nowhere and the school's real email and phone
+ * sit directly under it, read from the one row Jill edits rather than typed
+ * here.
+ */
+const details = await getSchoolDetails(await getDb());
+---
+
+<section class="band" id="inquiry" data-section="inquiry">
+  <div class="wrap">
+    <p class="label">Ask us about Pharos</p>
+    <h2 class="mt-4">Tell us your children's ages.</h2>
+    <p class="sub mt-3">
+      We'll tell you honestly whether Pharos fits. No commitment, and no application yet.
+    </p>
+
+    <form class="form" method="post" action={`mailto:${details.email}`} enctype="text/plain">
+      <div>
+        <label for="inquiry-name">Your name</label>
+        <input id="inquiry-name" name="name" autocomplete="name" required />
+      </div>
+      <div>
+        <label for="inquiry-email">Email</label>
+        <input id="inquiry-email" name="email" type="email" autocomplete="email" required />
+      </div>
+      <div class="full">
+        <label for="inquiry-ages">Children's ages</label>
+        <input id="inquiry-ages" name="ages" placeholder="e.g. 6, 9 and 13" />
+      </div>
+      <div class="full">
+        <label for="inquiry-message">Anything you'd like to ask (optional)</label>
+        <textarea id="inquiry-message" name="message"></textarea>
+      </div>
+      <div class="full">
+        <button class="btn solid" type="submit">Send my question</button>
+      </div>
+    </form>
+
+    <p class="sub mt-6 text-sm">
+      Or reach us directly:
+      <a class="text-gold-ink underline underline-offset-4" href={`mailto:${details.email}`}>
+        {details.email}
+      </a>
+      {' · '}
+      <a
+        class="text-gold-ink underline underline-offset-4"
+        href={`tel:${details.phone.replace(/[^\d+]/g, '')}`}
+      >
+        {details.phone}
+      </a>
+    </p>
+  </div>
+</section>

@@ -1,0 +1,87 @@
+---
+import { HOPE, VERSE } from '../../lib/home/content.js';
+
+/**
+ * The faith band: the navy one, and the ceremonial one.
+ *
+ * It carries no plate. It briefly held a still-life that turned out to be the
+ * same painting as the week section's in a night key — same Bible, same
+ * journal, same jug of daisies, two screens apart — and it was removed rather
+ * than replaced. The verse set large, the cross mark, the gold H O P E row and
+ * the navy ground already carry the band. Scripture set as type is the image.
+ *
+ * The four letters are the second `<disclosure-group>` on this page and share
+ * the H.O.P.E. cards' interaction with the class descriptions exactly — one
+ * implementation, used twice (#21 AC 6). Two different answers to "how does a
+ * panel open" on one page is how a client finds the inconsistent one.
+ */
+---
+
+<section class="band band-dark" id="faith" data-section="faith">
+  <div class="wide text-center">
+    <p class="label">Why we do this</p>
+
+    <svg
+      class="verse-mark mx-auto mt-7"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.1"
+      aria-hidden="true"
+    >
+      <path d="M12 2 L12 22 M5 8 L19 8"></path>
+      <path d="M12 2 L15 5 L12 8 L9 5 Z" fill="currentColor" stroke="none"></path>
+    </svg>
+
+    <blockquote class="verse mx-auto mt-6">
+      &ldquo;{VERSE.text}&rdquo;
+      <cite>{VERSE.citation}</cite>
+    </blockquote>
+
+    <disclosure-group data-disclosure-group="hope">
+      <div class="hope">
+        {
+          HOPE.map((entry) => (
+            <div class="hope-cell" data-disclosure-cell>
+              <button
+                class="hope-btn"
+                type="button"
+                data-disclosure-trigger
+                aria-expanded="false"
+                aria-controls={`hope-${entry.letter.toLowerCase()}`}
+              >
+                <b aria-hidden="true">{entry.letter}</b>
+                <span>{entry.word}</span>
+              </button>
+              <div
+                class="hope-card"
+                id={`hope-${entry.letter.toLowerCase()}`}
+                data-disclosure-panel
+              >
+                <img src={entry.image} alt="" width="800" height="533" loading="lazy" />
+                <p class="t">{entry.word}</p>
+                {/* NOT the school's words — the prototype's drafts, standing in
+                    until George and Jill approve or replace them (#13). */}
+                <p class="d">{entry.gloss}</p>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </disclosure-group>
+
+    <p class="mx-auto mt-10 max-w-[46ch]">We partner with parents rather than replace them.</p>
+
+    {/*
+      #9 item 6 requires the Statement of Faith link, and this is the path the
+      school's own site already serves it at — `docs/mirror/data/pages.json`
+      records `/statement-of-faith` on this exact origin. So the href is correct
+      the moment the domain points here, and it is the URL any parent who
+      bookmarked it already holds. It 404s on a preview deployment until the
+      page itself is built, which is a later slice.
+    */}
+    <p class="mt-5">
+      <a href="/statement-of-faith">Read our Statement of Faith →</a>
+    </p>
+  </div>
+</section>

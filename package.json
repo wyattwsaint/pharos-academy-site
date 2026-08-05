@@ -13,6 +13,7 @@
     "preview": "astro preview",
     "check": "astro check",
     "verify:isr": "node scripts/assert-isr.mjs",
+    "hero:contrast": "node scripts/hero-contrast.mjs",
     "db:migrate": "node --import ./scripts/ts-resolve.mjs scripts/db.mjs migrate",
     "db:seed": "node --import ./scripts/ts-resolve.mjs scripts/db.mjs seed",
     "test": "vitest run",
@@ -23,6 +24,10 @@
   },
   "dependencies": {
     "@astrojs/vercel": "11.0.4",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/public-sans": "^5.3.0",
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/instrument-serif": "^5.3.0",
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/vite": "4.3.3",
     "astro": "7.1.6",

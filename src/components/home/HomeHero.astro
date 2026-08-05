@@ -1,0 +1,57 @@
+---
+import { HERO_CAPS, SUB_BRAND } from '../../lib/home/content.js';
+import { SCHOOL_NAME } from '../../lib/site.js';
+
+/**
+ * The hero: a silent looping clip of the lighthouse at sunrise, with the
+ * school's lockup set over it in navy ink.
+ *
+ * The `<video>` has NO `src` and NO `<source>` children, and that is an
+ * acceptance criterion rather than an oversight — `hero-fx.ts` is the only
+ * thing that ever assigns one, and under `prefers-reduced-motion` it never
+ * does, so not one video byte is fetched. Whatever else changes here, the
+ * element must not gain a source in the markup.
+ *
+ * The mark in this lockup is the school's real logo raster, not the redrawn
+ * `mark.svg` that runs in the header and the footer. The trace has to inherit a
+ * colour to sit on navy; at 200px beside a 62px wordmark its flaws showed. The
+ * divergence is deliberate and is recorded on #13.
+ */
+---
+
+<section class="hero" id="hero" data-section="hero" data-hero>
+  <div class="hero-media" data-hero-media>
+    <video
+      data-hero-video
+      data-lg="/hero/hope-1920.mp4"
+      data-sm="/hero/hope-1280.mp4"
+      poster="/hero/hope-poster.webp"
+      muted
+      loop
+      playsinline
+      preload="none"
+      aria-hidden="true"
+      tabindex="-1"></video>
+    <img class="hero-still hero-poster" src="/hero/hope-poster.webp" alt="" />
+    <img class="hero-still hero-blur" src="/hero/hope-poster-blur.webp" alt="" data-hero-blur />
+  </div>
+  <div class="hero-scrim"></div>
+  <div class="hero-deep" data-hero-deep></div>
+
+  <div class="hero-inner wide" data-hero-copy>
+    <div class="hero-lockup">
+      <img class="hero-mark" src="/mark-logo.png" alt="" width="480" height="542" />
+      <h1>{SCHOOL_NAME}</h1>
+      <p class="hero-sub">{SUB_BRAND}</p>
+      <div class="hero-rule" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+          <path d="M12 3 L12 21 M5.5 9 L18.5 9"></path>
+        </svg>
+      </div>
+      <p class="hero-display" data-hero-display>
+        H.O.P.E. for Families<em class="hero-display-tag">Helping Our Parents Educate</em>
+      </p>
+      <p class="hero-caps">{HERO_CAPS}</p>
+    </div>
+  </div>
+</section>

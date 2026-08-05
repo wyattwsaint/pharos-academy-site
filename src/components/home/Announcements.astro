@@ -1,0 +1,41 @@
+---
+import { ANNOUNCEMENTS, hasAnnouncements } from '../../lib/home/announcements.js';
+
+/**
+ * Announcements, directly under the hero.
+ *
+ * #9 does not place this section; it is here because an announcement that has
+ * to be seen — a closing, a registration deadline — six sections down is not an
+ * announcement, and the auto-hide only earns its keep if the slot it vacates is
+ * a prominent one.
+ *
+ * The section stays in the document when empty and is hidden with `hidden`
+ * rather than being dropped: the page's section order is asserted as a sequence
+ * (#9), and a section that vanishes from the DOM makes that assertion depend on
+ * whether Jill happens to have posted anything today.
+ */
+const showing = hasAnnouncements();
+---
+
+<section class="band band-quiet" id="announcements" data-section="announcements" hidden={!showing}>
+  <div class="wide">
+    <p class="label">Announcements</p>
+    <ul class="mt-6 grid gap-6 md:grid-cols-2">
+      {
+        ANNOUNCEMENTS.map((announcement) => (
+          <li class="border-l-2 border-gold-orn pl-5">
+            <h2 class="text-2xl">{announcement.headline}</h2>
+            {announcement.detail && <p class="mt-2">{announcement.detail}</p>}
+            {announcement.href && announcement.linkLabel && (
+              <p class="mt-3">
+                <a class="text-gold-ink underline underline-offset-4" href={announcement.href}>
+                  {announcement.linkLabel} →
+                </a>
+              </p>
+            )}
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
