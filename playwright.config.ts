@@ -56,6 +56,6 @@ export default defineConfig({
         // which makes Playwright see the command exit immediately and give up.
         // Blanking the detection variables keeps it in the foreground, so
         // Playwright owns its lifetime and shuts it down after the run.
-        env: AGENT_ENV_BLANKED,
+        env: { ...AGENT_ENV_BLANKED, ASTRO_DEV_TOOLBAR: 'off' },
       },
 });

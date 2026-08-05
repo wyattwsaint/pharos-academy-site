@@ -19,6 +19,14 @@ export default defineConfig({
       expiration: 60 * 60,
     },
   }),
+  // The dev toolbar injects its own `<h1>`s ("Audit", "Settings", …) into the
+  // dev server's DOM, which no deployed page has. Left on, it races the browser
+  // suite: "the school is the single h1" sees five. Off only when the suite
+  // starts the server (see playwright.config.ts) — a person running `astro dev`
+  // still gets the toolbar.
+  devToolbar: {
+    enabled: process.env.ASTRO_DEV_TOOLBAR !== 'off',
+  },
   vite: {
     plugins: [tailwindcss()],
   },
