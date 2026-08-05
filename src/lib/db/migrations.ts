@@ -1,0 +1,101 @@
+/**
+ * The schema, as statements.
+ *
+ * Applied by `npm run db:migrate` against Neon, and automatically against the
+ * ephemeral PGlite database the tests and a laptop with no `DATABASE_URL` run
+ * on. One list, both drivers, so "it works in the tests" means the same DDL
+ * production got.
+ *
+ * Rules for adding one: append, never edit or reorder — an applied id is
+ * recorded in `_migrations` and is never re-run. Each statement must be
+ * independently safe to re-run (`if not exists`, `on conflict do nothing`),
+ * because a half-applied migration is otherwise unrecoverable without hands on
+ * the database.
+ */
+export type Migration = {
+  /** Stable, unique, ordered by string comparison. */
+  id: string;
+  /** Executed one at a time, in order. */
+  statements: string[];
+};
+
+/**
+ * The details the school publishes today, lifted from `docs/mirror/`.
+ *
+ * Seeded rather than left blank so the footer is correct from the first
+ * deploy — an empty address rendering as a gap is how a placeholder ships to
+ * production. Jill overwrites any of it from the admin.
+ */
+export const SEEDED_SCHOOL_DETAILS = {
+  address: '9 Sherwood Drive\nEnola, PA 17025',
+  phone: '717-497-0896',
+  email: 'jkilker@enolacog.com',
+  // Fall 2026 first class date, Monday track (#18 §9).
+  schoolYearStart: '2026-08-31',
+  mission:
+    'Partnering with parents to provide academic rigor and mentoring, while deepening students’ relationships with Christ, developing a Biblical world view, and pursuing goodness, truth, and beauty in a loving church environment.',
+  vision:
+    'Preparing students to, “honor Christ the Lord as holy, always being prepared to make a defense for the hope that is within,” (1 Peter 3:15) while loving and impacting the world for God.',
+  // The host church's Vanco org, an explicit placeholder for Pharos's own
+  // merchant account (#18 §12). Being a value in a row is the point.
+  giveUrl: 'https://secure.myvanco.com/YH8R/home',
+} as const;
+
+export const MIGRATIONS: readonly Migration[] = [
+  {
+    id: '0001-admin-and-school-details',
+    statements: [
+      `create table if not exists admin_users (
+         id uuid primary key default gen_random_uuid(),
+         username text not null unique,
+         display_name text not null,
+         password_hash text not null,
+         created_at timestamptz not null default now()
+       )`,
+      `create table if not exists admin_sessions (
+         token_hash text primary key,
+         user_id uuid references admin_users(id) on delete cascade,
+         break_glass boolean not null default false,
+         created_at timestamptz not null default now(),
+         expires_at timestamptz not null
+       )`,
+      `create index if not exists admin_sessions_user_id_idx on admin_sessions (user_id)`,
+      `create table if not exists school_details (
+         id integer primary key,
+         address text not null,
+         phone text not null,
+         email text not null,
+         school_year_start date not null,
+         mission text not null,
+         vision text not null,
+         give_url text not null,
+         last_edited_by text,
+         last_edited_at timestamptz,
+         constraint school_details_singleton check (id = 1)
+       )`,
+      `insert into school_details (id, address, phone, email, school_year_start, mission, vision, give_url)
+       values (
+         1,
+         ${literal(SEEDED_SCHOOL_DETAILS.address)},
+         ${literal(SEEDED_SCHOOL_DETAILS.phone)},
+         ${literal(SEEDED_SCHOOL_DETAILS.email)},
+         ${literal(SEEDED_SCHOOL_DETAILS.schoolYearStart)},
+         ${literal(SEEDED_SCHOOL_DETAILS.mission)},
+         ${literal(SEEDED_SCHOOL_DETAILS.vision)},
+         ${literal(SEEDED_SCHOOL_DETAILS.giveUrl)}
+       )
+       on conflict (id) do nothing`,
+    ],
+  },
+];
+
+/** A single-quoted SQL string literal. Only ever called on constants above. */
+function literal(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+/** The bookkeeping table the runner uses to decide what still needs applying. */
+export const MIGRATIONS_TABLE_DDL = `create table if not exists _migrations (
+  id text primary key,
+  applied_at timestamptz not null default now()
+)`;
