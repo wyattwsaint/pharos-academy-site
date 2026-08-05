@@ -13,20 +13,26 @@
     "preview": "astro preview",
     "check": "astro check",
     "verify:isr": "node scripts/assert-isr.mjs",
+    "db:migrate": "node --import ./scripts/ts-resolve.mjs scripts/db.mjs migrate",
+    "db:seed": "node --import ./scripts/ts-resolve.mjs scripts/db.mjs seed",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:revalidation": "playwright test --config playwright.revalidation.config.ts",
     "test:e2e:install": "playwright install --with-deps chromium"
   },
   "dependencies": {
     "@astrojs/vercel": "11.0.4",
+    "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/vite": "4.3.3",
     "astro": "7.1.6",
+    "drizzle-orm": "^0.45.2",
     "tailwindcss": "4.3.3"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@axe-core/playwright": "4.12.1",
+    "@electric-sql/pglite": "^0.5.4",
     "@playwright/test": "1.62.1",
     "@types/node": "^26.1.2",
     "typescript": "^6.0.3",

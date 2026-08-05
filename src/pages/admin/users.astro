@@ -1,0 +1,114 @@
+---
+export const prerender = false;
+
+import AdminBanner from '../../components/AdminBanner.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import type { Banner } from '../../lib/admin/banner.js';
+import {
+  MIN_PASSWORD_LENGTH,
+  applyUserAction,
+  humanErrorMessage,
+  listUsers,
+  parseUserAction,
+} from '../../lib/admin/users.js';
+import { getDb } from '../../lib/db/client.js';
+
+/**
+ * Named accounts, and the recovery story (#18 §4).
+ *
+ * Recovery is **mutual reset**: either admin resets the other from this screen.
+ * There are no reset links and no transactional email, because there is no
+ * mail sender to own and nothing here is worth one. Both locked out at once is
+ * answered by the break-glass value in the Vercel environment, not by this
+ * screen.
+ *
+ * Accounts are not created here. They are seeded by `npm run db:seed` from
+ * passwords held in the environment, and the developer's build-time account is
+ * deleted from this screen at handoff — which is the one thing #18 §4 asks this
+ * screen to be able to do besides resetting.
+ *
+ * Permissions are flat, so this screen is not gated: whoever is signed in can
+ * reset and delete. Attribution is the control, which is why it exists.
+ */
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+let banner: Banner | null = null;
+
+if (Astro.request.method === 'POST') {
+  const action = parseUserAction(await Astro.request.formData());
+  if (!action) {
+    banner = { ok: false, message: 'Nothing happened — that form did not say what it wanted.' };
+  } else {
+    try {
+      banner = { ok: true, message: await applyUserAction(db, action) };
+    } catch (error) {
+      banner = { ok: false, message: humanErrorMessage(error) };
+    }
+  }
+}
+
+const users = await listUsers(db);
+---
+
+<AdminLayout title="Users" actor={actor}>
+  <h1 class="text-3xl font-semibold text-navy">Users</h1>
+  <p class="mt-2">
+    Everyone with a login. If one of you is locked out, the other resets the password here.
+  </p>
+
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="users-banner" />}
+
+  <ul class="mt-8 flex flex-col gap-6">
+    {
+      users.map((user) => (
+        <li class="border-t border-navy/15 pt-6">
+          <h2 class="text-xl font-semibold text-navy">{user.displayName}</h2>
+          <p class="mt-1">
+            Signs in as <span class="font-semibold">{user.username}</span>
+          </p>
+
+          <form method="post" class="mt-4 flex flex-wrap items-end gap-3">
+            <input type="hidden" name="intent" value="reset" />
+            <input type="hidden" name="userId" value={user.id} />
+            <input type="hidden" name="displayName" value={user.displayName} />
+            <div class="flex flex-col gap-2">
+              <label for={`password-${user.id}`} class="font-semibold">
+                New password for {user.displayName}
+              </label>
+              <input
+                id={`password-${user.id}`}
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                minlength={MIN_PASSWORD_LENGTH}
+                required
+                class="rounded border border-navy/40 bg-white px-3 py-2"
+              />
+            </div>
+            <button
+              type="submit"
+              class="rounded bg-navy px-4 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+            >
+              Reset password
+            </button>
+          </form>
+
+          <form method="post" class="mt-3">
+            <input type="hidden" name="intent" value="delete" />
+            <input type="hidden" name="userId" value={user.id} />
+            <input type="hidden" name="displayName" value={user.displayName} />
+            <button type="submit" class="underline underline-offset-4">
+              Delete {user.displayName}
+            </button>
+          </form>
+        </li>
+      ))
+    }
+  </ul>
+
+  <p class="mt-10 border-t border-navy/15 pt-6">
+    Accounts are set up when the site is installed. If someone new needs one, that is a job for
+    whoever installed the site.
+  </p>
+</AdminLayout>

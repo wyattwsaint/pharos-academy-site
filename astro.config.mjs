@@ -1,9 +1,31 @@
 // @ts-check
+import { createHash } from 'node:crypto';
+
 import vercel from '@astrojs/vercel';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'astro/config';
 
 import { SITE_URL } from './src/lib/site.js';
+
+/**
+ * The token that lets the admin re-request its own public pages past the cache
+ * (#18 §3).
+ *
+ * Derived from the commit being deployed rather than read from a Vercel
+ * environment variable, because the token only has to agree *within one
+ * deployment* — the adapter bakes it into the prerender config and the same
+ * value is compiled into the server bundle below, so both sides of one build
+ * always match, and no secret has to be provisioned by hand for revalidation to
+ * work. `ISR_BYPASS_TOKEN` overrides it if a shared value is ever wanted.
+ *
+ * Vercel requires exactly 32 characters.
+ */
+const bypassToken =
+  process.env.ISR_BYPASS_TOKEN ??
+  createHash('sha256')
+    .update(process.env.VERCEL_GIT_COMMIT_SHA ?? 'local-development')
+    .digest('hex')
+    .slice(0, 32);
 
 // Public pages are ISR, not static and not SSR (spec #18 §1). Static puts a
 // rebuild in front of every typo fix; plain SSR makes real parents absorb a
@@ -17,6 +39,7 @@ export default defineConfig({
   adapter: vercel({
     isr: {
       expiration: 60 * 60,
+      bypassToken,
     },
   }),
   // The dev toolbar injects its own `<h1>`s ("Audit", "Settings", …) into the
@@ -29,5 +52,10 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    // The other half of the pair above. Read only from server-only modules
+    // (`src/lib/admin/isr-token.ts`) so it never reaches a browser bundle.
+    define: {
+      __ISR_BYPASS_TOKEN__: JSON.stringify(bypassToken),
+    },
   },
 });

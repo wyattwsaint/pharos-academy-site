@@ -41,6 +41,15 @@ describe('the public route list', () => {
       expect(paths, `src/pages has a page for ${route} that is not enumerated`).toContain(route);
     }
   });
+
+  // The admin is not public and must never be revalidated, sitemapped or warmed
+  // as though it were. Its pages are excluded from the walk above by path; this
+  // asserts the exclusion is not silently hiding a real public page.
+  it('never enumerates an admin path', () => {
+    for (const path of publicPaths()) {
+      expect(path.startsWith('/admin')).toBe(false);
+    }
+  });
 });
 
 describe('absoluteUrl', () => {
@@ -96,7 +105,9 @@ function pageRoutes(): string[] {
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry);
       if (statSync(full).isDirectory()) {
-        walk(full);
+        // `src/pages/admin` is the admin, which is deliberately not a public
+        // route: noindex, guarded, and absent from the sitemap by construction.
+        if (entry !== 'admin') walk(full);
         continue;
       }
       // Endpoints (robots.txt.ts, sitemap.xml.ts) are not pages and are not

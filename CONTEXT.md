@@ -127,3 +127,59 @@ the navy band of the homepage, where each letter opens an illustrated card.
 Always set with the periods when written as the acronym in prose (`H.O.P.E.`);
 the homepage sets the four letters spaced as a display device (`H O P E`), which
 is typography, not a second spelling.
+
+### actor
+
+Whoever is driving the admin on a given request — a **named account**, or
+**break-glass access**. The actor is resolved from the session cookie once, by
+the middleware, and handed to the page; it is what a **stamp** names.
+
+An actor is not a "user": break-glass is a legitimate actor and is nobody's
+account, which is why `Actor.userId` is nullable and `adminUsers` has no row
+for it.
+
+Not: "current user", "admin", "session".
+
+### break-glass
+
+The single password held in the Vercel environment as `BREAK_GLASS_PASSWORD`,
+which answers exactly one situation: **both admins locked out at once**. It is
+consulted only after every named account has already refused, so it can never
+shadow a real account, and it is never a person — edits made through it are
+stamped `Break-glass access`.
+
+The defining property is that **the path stays cold**. Absent or blank is a
+closed door, never an open one; the value is never logged, not even a prefix;
+and nothing in the test suite signs in through it.
+
+Not: "admin password", "master password", "recovery code" — recovery is
+**mutual reset**, which is a different thing entirely.
+
+### mutual reset
+
+The school's recovery story for a forgotten password: **either admin resets the
+other** from the Users screen. There are no reset links and no transactional
+email, because there is no mail sender to own. A reset ends that person's
+sessions everywhere, because the usual reason to reset a password is that
+somebody else has it.
+
+### stamp
+
+The "Last edited by <name> on <date>" line an editable record carries. One
+stamp per record, overwritten by each save — it is attribution, not an audit
+log, and there is no history behind it.
+
+The stamp is load-bearing rather than decorative: permissions are flat, so
+attribution is the only remaining control on who changed the money settings.
+
+### republish
+
+Re-requesting **every** public path past the CDN cache, so the live site
+re-renders. It is what a save does automatically, what the **Retry** button does
+after a save reported the live site had not updated, and what the Republish
+button does with no edit attached.
+
+Whole-site on purpose: a per-path invalidation map is a second source of truth
+about which edit touches which page, and it drifts silently.
+
+Not: "deploy" — republishing changes no code and produces no deployment.

@@ -18,6 +18,9 @@ export const GET: APIRoute = () => {
   const body = [
     'User-agent: *',
     INDEXABLE ? 'Allow: /' : 'Disallow: /',
+    // The admin is never indexable, in either state. `X-Robots-Tag` in the
+    // middleware is the enforcement; this is the courtesy.
+    'Disallow: /admin',
     '',
     `Sitemap: ${absoluteUrl(SITE_URL, '/sitemap.xml')}`,
     '',
