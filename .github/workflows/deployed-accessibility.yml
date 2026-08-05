@@ -55,7 +55,7 @@ jobs:
           echo "Auditing $PLAYWRIGHT_BASE_URL"
           status=$(curl -s -o /dev/null -w '%{http_code}' \
             -H "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET:-}" \
-            "$PLAYWRIGHT_BASE_URL/")
+            "${PLAYWRIGHT_BASE_URL%/}/" || echo "unreachable")
           if [ "$status" != "200" ]; then
             echo "::error::$PLAYWRIGHT_BASE_URL answered $status, not 200. If it is a 3xx the deployment is still protected — check VERCEL_AUTOMATION_BYPASS_SECRET matches the project's bypass token."
             exit 1
