@@ -4,6 +4,7 @@
   "packages": {
     ".": {
       "package-name": "pharos-academy-site",
+      "component": "",
       "changelog-path": "CHANGELOG.md",
       "include-component-in-tag": false,
       "changelog-sections": [
