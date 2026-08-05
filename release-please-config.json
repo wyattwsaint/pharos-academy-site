@@ -4,7 +4,7 @@
   "packages": {
     ".": {
       "package-name": "pharos-academy-site",
-      "component": "",
+      "pull-request-title-pattern": "chore${scope}: release${component} ${version}",
       "changelog-path": "CHANGELOG.md",
       "include-component-in-tag": false,
       "changelog-sections": [
@@ -21,6 +21,5 @@
       ]
     }
   },
-  "separate-pull-requests": false,
-  "last-release-sha": "65c90a29597b6ad54e2a2c4717d86e4ab94fe18a"
+  "separate-pull-requests": false
 }
