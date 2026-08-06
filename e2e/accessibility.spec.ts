@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { SUPPORT_PATH } from '../src/lib/about/story.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
-import { CURRENT_FAMILIES_PATH } from '../src/lib/current-families/section.js';
+import { CALENDAR_PATH, CURRENT_FAMILIES_PATH } from '../src/lib/current-families/section.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
 import { POLICIES_PATH } from '../src/lib/policies/views.js';
 import { TEACH_PATH } from '../src/lib/teach/teach.js';
@@ -114,6 +114,14 @@ const SURFACES = [
   // #30 AC 8. Two cards and a paragraph — short, and measured all the same,
   // because it is a nav destination and the nav is on every page.
   { name: 'the current families page', path: CURRENT_FAMILIES_PATH, state: 'closed', open: noop },
+  /*
+   * #23 AC 7. Two 30-row tables of five columns each, which is by a distance
+   * the densest thing on the site — and the one surface that scrolls sideways
+   * inside its own box on a phone rather than squeezing its columns, exactly as
+   * the timetable does. The document must not overflow even where the table's
+   * own box does, which is what a parent actually experiences.
+   */
+  { name: 'the calendar page', path: CALENDAR_PATH, state: 'closed', open: noop },
   // #30 AC 8. Two description lists, a two-column statement grid that stacks,
   // and three long essay paragraphs — the page that absorbed three Wix pages,
   // so it is also the longest one a 301 can land somebody part-way down.

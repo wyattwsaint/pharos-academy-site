@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import {
+  CALENDAR_PATH,
   CURRENT_FAMILIES_LINKS,
   CURRENT_FAMILIES_PATH,
 } from '../src/lib/current-families/section.js';
@@ -29,14 +30,17 @@ test.describe('Current Families', () => {
     await expect(page.locator('h1')).toBeVisible();
   });
 
-  test('names the calendar as absent rather than inventing dates', async ({ page }) => {
+  test('sends the calendar section to the calendar, and says what a subscription cannot promise', async ({
+    page,
+  }) => {
     await page.goto(CURRENT_FAMILIES_PATH);
 
     const calendar = page.locator('#calendar');
-    await expect(calendar).toContainText('not on this site yet');
-    // No link out of the section: there is nowhere honest for it to go until
-    // #23, and a dead link is the failure this wording exists to avoid.
-    await expect(calendar.locator('a[href*="calendar"]')).toHaveCount(0);
+    // Until #23 this section said the dates were not here yet, and linked
+    // nowhere, because the alternative was a dead link or invented dates.
+    await expect(calendar.locator(`a[href="${CALENDAR_PATH}"]`).first()).toBeVisible();
+    // The one thing no vendor controls and neither do we (#23).
+    await expect(calendar).toContainText('own schedule');
   });
 
   for (const link of CURRENT_FAMILIES_LINKS) {
