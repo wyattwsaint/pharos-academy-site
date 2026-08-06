@@ -93,7 +93,7 @@ export const SEEDED_MONEY_SETTINGS: MoneySettings = {
  * The one thing the school still owes an answer on (#29 AC 7).
  *
  * Stated here, printed beside the field in the admin, and raised with the
- * school on the tracker. The settings hold exactly one number, so this cannot
+ * school on the tracker as #51. The settings hold exactly one number, so this cannot
  * be quietly averaged or silently picked — somebody at Pharos has to decide
  * which page of their own handbook is right.
  */

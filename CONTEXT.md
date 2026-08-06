@@ -131,6 +131,47 @@ slot rather than a hole.
 `submitted` while its payment is `awaiting cheque`, then `overdue`, then
 `received`; none of those changes the application's own state.
 
+### money settings
+
+The single row holding every number about money the school controls: the two
+**rate tiers**, the registration fee, the per-class deposit, the late fee, the
+study hall fee, the four quarterly payment dates, the refund terms, whether the
+deposit is credited against tuition, and the addresses new applications are
+emailed to.
+
+One row, on purpose. Every money figure on the public site is read from it and
+none is typed into page copy, so a fee changed here is changed on the homepage,
+the class pages and the Admissions page in the same republish. A test walks the
+public templates and fails on a dollar figure written as a literal.
+
+Saving it asks for an **explicit confirmation naming the change and its effect
+on every family**, which no other editable record does — and an identical save
+is refused rather than **stamped**, because the stamp is the only control on
+the money once permissions are flat.
+
+Separate from **school details** deliberately: sharing a row would mean either a
+phone-number typo asks the "this affects every family" question or a deposit
+change does not.
+
+Not: "fees", "pricing", "the fee schedule" — the fee schedule is what the
+settings *produce*.
+
+### agreed terms
+
+A frozen copy of the **money settings** as they stood when one family applied,
+written once and never updated. The price a family applied at is the price they
+pay.
+
+A **copy**, not a reference. The columns are duplicated from the money settings
+row deliberately: a foreign key would mean a later fee change rewrote what an
+already-enrolled family agreed to, which is precisely the thing this record
+exists to make impossible (ADR-0006).
+
+Append-only. There is no edit path and no delete path, from the admin or
+anywhere else.
+
+Not: "the family's price", "quote", "invoice" — nothing here is billed from.
+
 ### editable set
 
 The complete, closed list of things Jill and George can change from the admin,
