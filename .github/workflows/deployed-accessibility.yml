@@ -27,6 +27,10 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
+    # Without this the job inherits GitHub's 6-hour default, so a hung suite
+    # parks a PR in the merge train overnight instead of going red. A healthy
+    # run is ~2-3 minutes.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
 
