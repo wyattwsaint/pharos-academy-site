@@ -2,7 +2,10 @@
 import '../styles/global.css';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
-import { SCHOOL_NAME } from '../lib/site.js';
+import { getSchoolDetails } from '../lib/admin/school-details.js';
+import { getDb } from '../lib/db/client.js';
+import { SCHOOL_NAME, SITE_URL } from '../lib/site.js';
+import { renderJsonLd, schoolJsonLd } from '../lib/structured-data.js';
 
 interface Props {
   title: string;
@@ -19,6 +22,7 @@ interface Props {
 
 const { title, description, overHero = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+const details = await getSchoolDetails(await getDb());
 ---
 
 <!doctype html>
@@ -39,6 +43,20 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       */
       overHero && <link rel="preload" as="image" href="/hero/hope-poster.webp" />
     }
+    {
+      /*
+        School / LocalBusiness structured data (#30 AC 6), on every page rather
+        than only the homepage.
+
+        One node with a stable `@id`, so the pages do not describe three
+        different schools — they all point at the same entity. It is here rather
+        than in a component because it belongs in `<head>`, and it is read from
+        the school details row for the reason the footer is: the address on the
+        live site is hand-typed in 22 places and has already drifted, and markup
+        that disagrees with the page beside it is what a search engine believes.
+      */
+    }
+    <script type="application/ld+json" set:html={renderJsonLd(schoolJsonLd(details, Astro.site ?? SITE_URL))} is:inline />
   </head>
   <body>
     <a
@@ -51,6 +69,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <main id="main" class:list={[{ 'pt-24': !overHero }]}>
       <slot />
     </main>
-    <SiteFooter />
+    <SiteFooter details={details} />
   </body>
 </html>

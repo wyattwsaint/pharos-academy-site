@@ -1,6 +1,7 @@
 import { SUPPORT_PATH } from './about/story.js';
 import { NEWS_PATH } from './announcements/views.js';
 import { viewFor } from './courses/views.js';
+import { CURRENT_FAMILIES_PATH } from './current-families/section.js';
 import { STAFF_PATH } from './people/views.js';
 import { POLICIES_PATH } from './policies/views.js';
 import { PUBLIC_ROUTES } from './routes.js';
@@ -63,15 +64,15 @@ export type Redirect = {
  * entry is deleted the moment its destination is built; when this is empty the
  * criterion is met, and the test says so in those words.
  *
+ * It is empty. Every one of the nineteen is either served at the same path or
+ * redirected, and the test enforces that against the mirror's own table rather
+ * than against this sentence.
+ *
  * A redirect is deliberately *not* added early. A 301 into a 404 retires the
  * old address on a promise the site cannot keep, which is strictly worse than
  * the 404 it replaces.
  */
-export const STILL_OWED: readonly string[] = [
-  // These two want somewhere to say what the calendar is, which is #23's.
-  '/calendars-and-events',
-  '/download-calendars',
-];
+export const STILL_OWED: readonly string[] = [];
 
 export const REDIRECTS: readonly Redirect[] = [
   {
@@ -137,6 +138,24 @@ export const REDIRECTS: readonly Redirect[] = [
     because:
       'Byte-for-byte the same page as /volunteer, labelled "Media" in the old nav and holding ' +
       'no media at all. Same destination as the page it duplicates.',
+    origin: 'wix',
+  },
+  {
+    from: '/calendars-and-events',
+    to: `${CURRENT_FAMILIES_PATH}#calendar`,
+    because:
+      'The calendar section of Current Families, which says plainly that the 2026–27 calendar is ' +
+      'not on this site yet and how to get the dates. That is a page that exists and answers the ' +
+      'question honestly — the calendar itself is #23, and inventing dates to fill this in would ' +
+      'put a wrong closure on a school website.',
+    origin: 'wix',
+  },
+  {
+    from: '/download-calendars',
+    to: `${CURRENT_FAMILIES_PATH}#calendar`,
+    because:
+      'The same section. That page was five PDFs of four independent day tracks; until #23 ' +
+      'models them, the honest destination is the one that says so.',
     origin: 'wix',
   },
   {

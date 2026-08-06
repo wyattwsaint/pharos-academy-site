@@ -1,9 +1,10 @@
 ---
+import type { SchoolDetails } from '../lib/db/schema.js';
+
 import { BELIEFS_PATH } from '../lib/about/beliefs.js';
 import { SUPPORT_PATH } from '../lib/about/story.js';
 import { TEACH_PATH } from '../lib/teach/teach.js';
-import { copyrightYear, getSchoolDetails, telHref } from '../lib/admin/school-details.js';
-import { getDb } from '../lib/db/client.js';
+import { copyrightYear, telHref } from '../lib/admin/school-details.js';
 import { INQUIRY_HREF } from '../lib/home/sections.js';
 import { SCHOOL_NAME } from '../lib/site.js';
 import { POLICIES_PATH } from '../lib/policies/views.js';
@@ -25,7 +26,17 @@ import { POLICIES_PATH } from '../lib/policies/views.js';
  * no button in it at all, so what is honoured is #9's IA-level wording — a
  * persistent CTA in the header and the footer — at both ends of the page.
  */
-const details = await getSchoolDetails(await getDb());
+/*
+ * The details are a prop rather than a second read of the same row (#30). The
+ * layout already has them — the structured data in `<head>` is built from them
+ * — and two queries for one row on every page is a query the school pays for
+ * on every render for nothing.
+ */
+interface Props {
+  details: SchoolDetails;
+}
+
+const { details } = Astro.props;
 
 // Computed at render, never stored (#18 §10) — a stored year is the only way a
 // site ends up reading "© 2025" in August 2026, which this one does today.
