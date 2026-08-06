@@ -571,6 +571,23 @@ test.describe('Download everything', () => {
     expect(Buffer.from(files['content/people.json']).toString('utf8')).toContain('Jill');
   });
 
+  /*
+   * The archive is the whole school's content, so the address it comes from is
+   * the most valuable one in the app. The guard is the middleware's rather than
+   * this route's, which is exactly why it is worth proving from outside: an
+   * endpoint under `/admin` inherits it by existing, and "by existing" is a
+   * claim, not an assertion, until something checks.
+   */
+  test('hands nothing to anybody who is not signed in', async ({ page, context }) => {
+    await context.clearCookies();
+
+    const response = await page.goto('/admin/backup.zip');
+
+    expect(response?.status()).toBe(200); // The login page, having followed the redirect.
+    await expect(page).toHaveURL(/\/admin\/login\?next=%2Fadmin%2Fbackup\.zip$/);
+    expect(response?.headers()['content-type']).toContain('text/html');
+  });
+
   test('says where the monthly copy goes, and reads it from the settings', async ({ page }) => {
     await signIn(page, '/admin/school-details');
     const email = await page.getByLabel('Email').inputValue();

@@ -229,6 +229,26 @@ describe('the schedule', () => {
     expect(dayOfWeek).toBe('*');
   });
 
+  /*
+   * The failure that would look like success.
+   *
+   * Every route in this app is served by one ISR function with an hour-long
+   * expiration, and the cron is a GET whose whole point is its effect. Cached,
+   * it is a 200 that sent nothing — a green run in the Vercel log and no email
+   * anywhere. The same goes for the download, which would hand back an archive
+   * taken an hour ago while calling itself a backup taken now.
+   */
+  it('keeps the cron and the download out of the ISR cache', () => {
+    const config = readFileSync(
+      fileURLToPath(new URL('../../../astro.config.mjs', import.meta.url)),
+      'utf8',
+    );
+    const exclude = config.match(/exclude:\s*\[([^\]]*)\]/)?.[1] ?? '';
+
+    expect(exclude).toContain('/api/cron/monthly-backup');
+    expect(exclude).toContain('/admin/backup.zip');
+  });
+
   it('points at a route that exists', () => {
     const cron = VERCEL.crons!.find((entry) => entry.path.includes('monthly-backup'))!;
     const file = fileURLToPath(new URL(`../../pages${cron.path}.ts`, import.meta.url));
