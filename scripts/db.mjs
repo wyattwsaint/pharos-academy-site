@@ -3,7 +3,8 @@
  * The two things a person ever does to the store by hand.
  *
  *   npm run db:migrate   apply every migration that has not been applied
- *   npm run db:seed      create the named accounts, from passwords in the env
+ *   npm run db:seed      create the named accounts from passwords in the env,
+ *                        and attach the board update's PDF from `docs/mirror/`
  *
  * Migrations are run from here rather than at build time on purpose: #18 §1
  * forbids the build depending on anything outside the repo, and a build that
@@ -12,6 +13,7 @@
  * Both commands are idempotent. Running either twice is a no-op that says so.
  */
 import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 
 import { getDb, runMigrations } from '../src/lib/db/client.js';
 import { createUser, listUsers, normaliseUsername } from '../src/lib/admin/users.js';
@@ -86,12 +88,62 @@ async function seed() {
   }
 
   console.log(created === 0 ? 'No accounts created.' : `Created ${created} account(s).`);
+  await attachBoardUpdate(db);
   if ((await listUsers(db)).length === 0) {
     console.error(
       'There are no accounts at all. Set the SEED_*_PASSWORD variables and run this again — otherwise the only way in is break-glass, which is meant to stay cold.',
     );
     process.exit(1);
   }
+}
+
+/**
+ * Put the July board update's PDF on the announcement that describes it.
+ *
+ * Here rather than in the migration because 105 KB of base64 in the schema
+ * module would be read into memory on every cold start of the server bundle,
+ * for a file two people will ever open. This command runs on a developer's
+ * machine, where `docs/mirror/` exists.
+ *
+ * Idempotent like everything else here: an announcement that already has a file
+ * is left alone, so a re-run cannot overwrite one Jill replaced from the admin.
+ */
+async function attachBoardUpdate(db) {
+  const slug = '2026-07-01-school-board-update-july-2026';
+  const source = 'docs/mirror/pdf/school-board-update-2026-07-01.pdf';
+
+  const { getAnnouncement, saveAnnouncement } = await import(
+    '../src/lib/announcements/store.js'
+  );
+  const announcement = await getAnnouncement(db, slug);
+  if (!announcement) {
+    console.log(`- ${slug}: not in the database, skipped. Run \`npm run db:migrate\` first.`);
+    return;
+  }
+  if (announcement.attachmentFilename) {
+    console.log(`- ${slug}: already has "${announcement.attachmentFilename}", left alone.`);
+    return;
+  }
+  if (!existsSync(source)) {
+    console.log(`- ${slug}: skipped, ${source} is not here.`);
+    return;
+  }
+
+  const bytes = await readFile(source);
+  await saveAnnouncement(
+    db,
+    slug,
+    {
+      headline: announcement.headline,
+      body: announcement.body,
+      postedOn: announcement.postedOn,
+      linkUrl: announcement.linkUrl,
+      linkLabel: announcement.linkLabel,
+      attachment: { filename: 'school-board-update-2026-07-01.pdf', bytes },
+    },
+    'Site developer',
+  );
+  console.log(`- ${slug}: attached ${source} (${Math.round(bytes.length / 1024)} KB).`);
 }
 
 /** Say out loud which database is about to be written to. Never the credentials. */

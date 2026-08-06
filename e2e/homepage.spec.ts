@@ -307,12 +307,24 @@ test.describe('the page', () => {
     ]);
   });
 
-  test('hides the announcements section while there are none', async ({ page }) => {
+  test('keeps the announcements section in the document, shown only when it has something', async ({
+    page,
+  }) => {
     await page.goto('/');
-    // Present in the document — the order above depends on it — and hidden.
+    // Present in the document whatever the school has posted — the order above
+    // depends on it — and visible exactly when it is carrying something (#27).
+    //
+    // Stated as that agreement rather than as "hidden", because what is current
+    // depends on today's date and on what the admin specs have been posting
+    // against the same database. The transition itself — everything aged out,
+    // section gone — is driven deterministically in `admin.spec.ts`, where a
+    // posted date can actually be changed.
     const announcements = page.locator('[data-section="announcements"]');
     await expect(announcements).toHaveCount(1);
-    await expect(announcements).not.toBeVisible();
+
+    const items = await announcements.locator('li').count();
+    if (items === 0) await expect(announcements).not.toBeVisible();
+    else await expect(announcements).toBeVisible();
   });
 
   test('carries the inquiry CTA in both the header and the footer', async ({ page }) => {

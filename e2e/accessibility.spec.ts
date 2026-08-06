@@ -81,6 +81,9 @@ const SURFACES = [
   // this is also where "an absent bio renders correctly" is measured at every
   // width rather than only asserted in one.
   { name: 'the staff page', path: '/staff', state: 'closed', open: noop },
+  // #27 AC 5. The list carries dates, links out and PDF links, and it is the
+  // one surface whose length is decided by how much the school has posted.
+  { name: 'the news page', path: '/news', state: 'closed', open: noop },
 ];
 
 for (const surface of SURFACES) {

@@ -203,6 +203,174 @@ test.describe('the Users screen', () => {
   });
 });
 
+/**
+ * Announcements, and the disappearing homepage section (#27).
+ *
+ * This is where AC 1 and AC 2 are actually settled, because the admin is the
+ * only place a posted date can be changed — and the posted date is the whole of
+ * the freshness rule. Nothing here depends on the wall clock: the section is
+ * emptied by aging every announcement through the form and brought back by
+ * posting one dated today.
+ *
+ * Serial, because these tests share one database with each other and the last
+ * of them changes what every announcement's date is.
+ */
+test.describe('announcements', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  /** A real PDF, small enough to compare byte for byte in an assertion. */
+  const PDF = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
+
+  /** Today, as the date input wants it. */
+  function today(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  async function post(
+    page: import('@playwright/test').Page,
+    fields: { headline: string; body: string; postedOn?: string; file?: boolean },
+  ): Promise<void> {
+    await signIn(page, '/admin/announcements');
+    await page.getByRole('link', { name: 'Post an announcement' }).click();
+
+    await page.getByLabel('Headline').fill(fields.headline);
+    await page.getByLabel('What it says').fill(fields.body);
+    await page.getByLabel('Posted on').fill(fields.postedOn ?? today());
+    if (fields.file) {
+      await page
+        .getByLabel('PDF')
+        .setInputFiles({ name: 'suite-notice.pdf', mimeType: 'application/pdf', buffer: PDF });
+    }
+    await page.getByRole('button', { name: 'Save' }).click();
+  }
+
+  // AC 1, the half without a file, and AC 2's showing branch in the same pass.
+  test('posts an announcement with no PDF, onto the news page and the homepage', async ({
+    page,
+  }) => {
+    const headline = 'Suite notice, no file';
+    await post(page, { headline, body: 'Posted by the browser suite, with nothing attached.' });
+
+    const banner = page.getByTestId('save-banner');
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+    await expect(banner).toContainText('Saved and live.');
+    await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
+
+    // The news page carries it in full…
+    await page.goto('/news');
+    const entry = page.locator('#news li', { hasText: headline });
+    await expect(entry.getByRole('heading', { name: headline })).toBeVisible();
+    await expect(entry.locator('a[href$=".pdf"]')).toHaveCount(0);
+
+    // …and the homepage band is showing it, because it was posted today.
+    await page.goto('/');
+    const band = page.locator('[data-section="announcements"]');
+    await expect(band).toBeVisible();
+    await expect(band.getByRole('link', { name: headline })).toBeVisible();
+  });
+
+  // AC 1, the half with a file. The bytes are the assertion: a PDF that comes
+  // back as anything but itself is a download that opens on nothing.
+  test('posts one with a PDF, and serves back exactly the bytes it was given', async ({
+    page,
+    request,
+  }) => {
+    const headline = 'Suite notice, with a file';
+    await post(page, { headline, body: 'Posted by the browser suite, with a PDF.', file: true });
+
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+
+    await page.goto('/news');
+    const link = page
+      .locator('#news li', { hasText: headline })
+      .locator('a[href$=".pdf"]');
+    await expect(link).toContainText('suite-notice.pdf');
+
+    const href = await link.getAttribute('href');
+    const response = await request.get(href!);
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toBe('application/pdf');
+    expect(response.headers()['content-disposition']).toContain('suite-notice.pdf');
+    expect(Buffer.from(await response.body()).equals(PDF)).toBe(true);
+  });
+
+  test('refuses a file that is not a PDF, and says so without saving', async ({ page }) => {
+    await signIn(page, '/admin/announcements');
+    await page.getByRole('link', { name: 'Post an announcement' }).click();
+
+    await page.getByLabel('Headline').fill('Suite notice, bad file');
+    await page.getByLabel('What it says').fill('This one should not save.');
+    await page.getByLabel('Posted on').fill(today());
+    await page
+      .getByLabel('PDF')
+      .setInputFiles({
+        name: 'notice.pdf',
+        mimeType: 'application/pdf',
+        buffer: Buffer.from('<html>not a pdf at all</html>'),
+      });
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
+    await expect(page.locator('#attachment-error')).toContainText('not a PDF');
+
+    await page.goto('/news');
+    await expect(page.getByRole('heading', { name: 'Suite notice, bad file' })).toHaveCount(0);
+  });
+
+  /*
+   * AC 2's other branch, and the reason this file's announcements are serial.
+   *
+   * Every announcement is aged past six weeks through the form — the only lever
+   * that exists, and the honest one, because it is what Jill would do. The
+   * section then has to be gone from the page rather than merely empty of
+   * items, and the news page has to still have every one of them, which is the
+   * pair of behaviours the whole ticket is about.
+   *
+   * A fresh announcement at the end brings the band back, so the database is
+   * left in a state the rest of the suite recognises, and proves the transition
+   * runs both ways.
+   */
+  test('hides the homepage section entirely once every announcement is stale', async ({ page }) => {
+    await signIn(page, '/admin/announcements');
+
+    const slugs = await page
+      .locator('a[href^="/admin/announcements/"]')
+      .evaluateAll((links) =>
+        links
+          .map((link) => link.getAttribute('href')!.replace('/admin/announcements/', ''))
+          .filter((slug) => slug !== 'new'),
+      );
+    expect(slugs.length).toBeGreaterThan(0);
+
+    for (const slug of slugs) {
+      await page.goto(`/admin/announcements/${slug}`);
+      await page.getByLabel('Posted on').fill('2020-01-01');
+      await page.getByRole('button', { name: 'Save' }).click();
+      await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    }
+
+    await page.goto('/');
+    const band = page.locator('[data-section="announcements"]');
+    // Still in the document, because the section order is asserted as a
+    // sequence — and carrying nothing, and not visible.
+    await expect(band).toHaveCount(1);
+    await expect(band).not.toBeVisible();
+    await expect(band.locator('li')).toHaveCount(0);
+
+    // Nothing was lost: the record is all still on the news page.
+    await page.goto('/news');
+    for (const slug of slugs) {
+      await expect(page.locator(`[id="${slug}"]`), slug).toHaveCount(1);
+    }
+
+    // And one posted today brings the section back.
+    await post(page, { headline: 'Suite notice, back again', body: 'Dated today.' });
+    await page.goto('/');
+    await expect(band).toBeVisible();
+    await expect(band.getByRole('link', { name: 'Suite notice, back again' })).toBeVisible();
+  });
+});
+
 test.describe('accessibility', () => {
   for (const path of [
     '/admin/login',
@@ -211,6 +379,8 @@ test.describe('accessibility', () => {
     '/admin/people',
     '/admin/people/jill-kilker',
     '/admin/people/new',
+    '/admin/announcements',
+    '/admin/announcements/new',
   ]) {
     for (const width of ADMIN_WIDTHS) {
       test(`${path} has zero axe violations at ${width}px`, async ({ page }) => {

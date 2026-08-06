@@ -1,0 +1,97 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { attachmentPath, postedOnLabel } from '../lib/announcements/views.js';
+import { listAnnouncements } from '../lib/announcements/store.js';
+import { getDb } from '../lib/db/client.js';
+import { INQUIRY_HREF } from '../lib/home/sections.js';
+
+/**
+ * Everything the school has announced (#27).
+ *
+ * **In full, stale ones included.** This page is the record: the homepage shows
+ * what is current and hides itself when nothing is, and that only works if
+ * there is somewhere the older notices still are. A parent looking for the
+ * fundraiser they half-remember from July needs it to still exist in August,
+ * even though it has stopped being front-page news.
+ *
+ * Newest first, and nothing is filtered — the six-week rule belongs to the
+ * homepage band alone. A dated announcement here is not stale content, it is
+ * what the school said in July, printed with the date it said it on.
+ */
+const db = await getDb();
+const announcements = await listAnnouncements(db);
+
+const description =
+  'News from Pharos Academy — board updates, fundraisers and notices for current families, newest first.';
+---
+
+<BaseLayout title="News" description={description}>
+  <section class="band band-quiet" data-section="news-header">
+    <div class="wide">
+      <p class="label">Current families</p>
+      <h1 class="mt-4">News</h1>
+      <p class="sub mt-5">
+        Board updates, fundraisers and notices, newest first. The homepage carries whatever is
+        current; everything the school has posted stays here.
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="news" data-section="news-list">
+    <div class="wide">
+      {
+        /*
+          Nothing posted at all is a real state and gets a sentence rather than
+          an empty page — the same argument as the homepage band, which hides
+          instead. Here the page still has to exist, because it is linked.
+        */
+      }
+      {
+        announcements.length === 0 ? (
+          <p>There is nothing to announce at the moment. Term news appears here as it happens.</p>
+        ) : (
+          <ul class="news-list">
+            {announcements.map((announcement) => (
+              <li id={announcement.slug}>
+                <p class="label">
+                  <time datetime={announcement.postedOn}>{postedOnLabel(announcement.postedOn)}</time>
+                </p>
+                <h2 class="mt-2">{announcement.headline}</h2>
+                <p class="mt-3">{announcement.body}</p>
+                {announcement.linkUrl && announcement.linkLabel && (
+                  <p class="mt-3">
+                    <a href={announcement.linkUrl}>{announcement.linkLabel}</a>
+                  </p>
+                )}
+                {announcement.attachmentFilename && (
+                  <p class="mt-3">
+                    <a href={attachmentPath(announcement.slug)}>
+                      {announcement.attachmentFilename} (PDF)
+                    </a>
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )
+      }
+
+      <p class="mt-9 text-ink-2">
+        Something you were expecting is not here? <a href={INQUIRY_HREF}>Ask us</a>.
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .news-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+
+  .news-list > li {
+    border-left: 2px solid var(--color-gold-orn);
+    padding-left: 1.25rem;
+  }
+</style>
