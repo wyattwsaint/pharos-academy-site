@@ -34,7 +34,7 @@ Resend for notification email.
 | `npm run test:e2e` | Playwright + axe. Starts a dev server unless `PLAYWRIGHT_BASE_URL` is set |
 | `npm run verify:isr` | Asserts the build output really is ISR. Run after `npm run build` |
 | `npm run db:migrate` | Applies every unapplied migration to the database in `DATABASE_URL` |
-| `npm run db:seed` | Creates the named admin accounts, from `SEED_*_PASSWORD` in the env |
+| `npm run db:seed` | Creates the named admin accounts from `SEED_*_PASSWORD`, and attaches the board update's and the policies' PDFs from `docs/mirror/` |
 
 ## Migrations are applied by hand, before the deploy that needs them
 
@@ -46,6 +46,13 @@ every page that reads the store while `npm run check`, vitest and the PR's own P
 run stay green, because those run on PGlite with the migrations already applied.
 
 So: `vercel env pull .env.local`, then `npm run db:migrate`, then let the deploy run.
+
+A migration that adds rows meant to carry a file — the policies do — needs `npm run db:seed`
+in the same sitting. The bytes live in `docs/mirror/`, not in the migration, so until the seed
+runs those rows have no document and every address under them answers 404 while the page that
+lists them renders empty. `db:seed` exits non-zero when no admin account exists yet, which says
+nothing about whether the files attached; read its per-row lines, not its exit code.
+
 Migrations are append-only and each statement is independently safe to re-run, so applying
 one early is safe — but it is a one-way door for the deployment already live, which will
 be reading the old shape until the PR lands. That is fine only while the site is
