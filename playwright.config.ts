@@ -69,12 +69,14 @@ export default defineConfig({
   },
   projects: [
     {
-      // The forced-failure spec needs a server configured to fail, so it runs
-      // from its own config (`playwright.revalidation.config.ts`) rather than
-      // here — Astro 7 allows only one dev server per project directory, so the
-      // two cannot stand up side by side and run sequentially instead.
+      // The forced-failure specs need a server configured to fail, so each runs
+      // from its own config — `playwright.revalidation.config.ts` (a dead
+      // revalidation origin) and `playwright.database-down.config.ts` (a
+      // stopped database). Astro 7 allows only one dev server per project
+      // directory, so none of the three can stand up side by side; they run
+      // sequentially instead.
       name: 'public',
-      testIgnore: '**/admin*.spec.ts',
+      testIgnore: ['**/admin*.spec.ts', '**/database-down.spec.ts'],
       use: { ...devices['Desktop Chrome'] },
     },
     ...(local

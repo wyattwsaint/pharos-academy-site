@@ -20,6 +20,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:revalidation": "playwright test --config playwright.revalidation.config.ts",
+    "test:e2e:database-down": "playwright test --config playwright.database-down.config.ts",
     "test:e2e:install": "playwright install --with-deps chromium"
   },
   "dependencies": {
