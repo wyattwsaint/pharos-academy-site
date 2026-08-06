@@ -1,6 +1,8 @@
+import { SUPPORT_PATH } from './about/story.js';
 import { NEWS_PATH } from './announcements/views.js';
 import { STAFF_PATH } from './people/views.js';
 import { POLICIES_PATH } from './policies/views.js';
+import { TEACH_PATH } from './teach/teach.js';
 import { PUBLIC_ROUTES, absoluteUrl } from './routes.js';
 import { SCHOOL_NAME } from './site.js';
 
@@ -26,9 +28,15 @@ const SUMMARIES: Record<string, string> = {
   '/about':
     'What the school is for, how it teaches, what it believes, where the name comes from, and ' +
     'where it meets.',
+  [SUPPORT_PATH]:
+    'How to give to the school and how to volunteer, including the volunteer form and the five ' +
+    'areas the school asks for help in.',
   '/about/beliefs':
     'The Statement of Faith and Practice, in full — what the school teaches from, and what ' +
     'families are asked to read before applying.',
+  [TEACH_PATH]:
+    'For people who might teach a class — instructors are independent contractors, and this ' +
+    'carries the contract and the Pennsylvania clearances required.',
   '/admissions':
     'How to apply — who the classes are for, which mornings they run, what applying involves, ' +
     'the registration fee and per-class deposit, and which documents families sign.',

@@ -1,9 +1,11 @@
+import { SUPPORT_PATH } from './about/story.js';
 import { NEWS_PATH } from './announcements/views.js';
 import { CATALOGUE } from './courses/catalogue.js';
 import { classPath, CLASS_VIEWS } from './courses/views.js';
 import { CURRENT_FAMILIES_PATH } from './current-families/section.js';
 import { STAFF_PATH } from './people/views.js';
 import { POLICIES_PATH } from './policies/views.js';
+import { TEACH_PATH } from './teach/teach.js';
 
 /**
  * The enumerated public route list.
@@ -133,6 +135,24 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * being true when #23 lands.
    */
   { path: CURRENT_FAMILIES_PATH, priority: 0.4, changefreq: 'yearly' },
+  /*
+   * Giving and volunteering (#30).
+   *
+   * Enumerated like any other page, and it is the one public route that is not
+   * ISR — it renders on request because the volunteer form posts to it. It is
+   * still in this list: the sitemap should carry it, and the Give link on it is
+   * read from the school details row, so a changed `giveUrl` has to reach it in
+   * the same republish as everywhere else.
+   */
+  { path: SUPPORT_PATH, priority: 0.5, changefreq: 'monthly' },
+  /*
+   * Teaching here (#30).
+   *
+   * Low priority and off the nav — the audience is a handful of people a year,
+   * not a family — but enumerated all the same, because the email address on it
+   * is read from the school details row and a changed address has to reach it.
+   */
+  { path: TEACH_PATH, priority: 0.3, changefreq: 'yearly' },
   /*
    * The Statement of Faith (#30).
    *

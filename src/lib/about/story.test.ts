@@ -2,13 +2,19 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { publicPaths } from '../routes.js';
 import {
+  ABOUT_CHILDREN,
   ABOUT_PATH,
   CORE_VALUES,
+  GIVING_INTRO,
+  GIVING_LINK_LABEL,
   MEETING_PLACE,
   METHOD,
   PHAROS_MEANING,
   PHAROS_SOURCES,
+  SUPPORT_PATH,
+  VOLUNTEER_INTRO,
 } from './story.js';
 
 /**
@@ -120,8 +126,56 @@ describe('where the school meets', () => {
   });
 });
 
+describe('how the school asks for support', () => {
+  const giving = flatten(mirror('giving'));
+  const volunteer = flatten(mirror('volunteer'));
+
+  it.each(GIVING_INTRO.map((paragraph, index) => [index + 1, paragraph] as const))(
+    'transcribes paragraph %i of the giving explanation, word for word',
+    (_number, paragraph) => {
+      expect(giving).toContain(flatten(paragraph));
+    },
+  );
+
+  it('uses the school’s own label for the link out', () => {
+    expect(giving).toContain(GIVING_LINK_LABEL);
+  });
+
+  it.each(VOLUNTEER_INTRO.map((sentence, index) => [index + 1, sentence] as const))(
+    'transcribes sentence %i of the volunteer ask, word for word',
+    (_number, sentence) => {
+      expect(volunteer).toContain(flatten(sentence));
+    },
+  );
+
+  // The one sentence deliberately dropped: it instructs the reader to fill out
+  // a Google Form on another domain, and the form is now on the page itself.
+  it('drops the instruction about the Google Form, and only that', () => {
+    expect(VOLUNTEER_INTRO.join(' ')).not.toContain('Volunteer Information Sheet');
+  });
+
+  it('lives under About, beside the rest of the section', () => {
+    expect(SUPPORT_PATH).toBe('/about/support');
+  });
+});
+
 describe('the About page', () => {
   it('is the parent of the rest of the section', () => {
     expect(ABOUT_PATH).toBe('/about');
+  });
+
+  // AC 1 is "reachable from the nav *or its parent*", and the nav is four
+  // items. So About has to list what is under it, and every entry has to be a
+  // path this site really serves — a section index pointing at a 404 is worse
+  // than the Wix link hub it replaces.
+  it('lists its children, and each of them is a route this site serves', () => {
+    expect(ABOUT_CHILDREN.map((child) => child.path)).toEqual([
+      '/about/beliefs',
+      '/about/staff',
+      SUPPORT_PATH,
+    ]);
+    for (const child of ABOUT_CHILDREN) {
+      expect(publicPaths(), child.label).toContain(child.path);
+    }
   });
 });

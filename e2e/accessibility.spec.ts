@@ -1,10 +1,12 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+
+import { SUPPORT_PATH } from '../src/lib/about/story.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
 import { CURRENT_FAMILIES_PATH } from '../src/lib/current-families/section.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
 import { POLICIES_PATH } from '../src/lib/policies/views.js';
-
+import { TEACH_PATH } from '../src/lib/teach/teach.js';
 
 /**
  * WCAG 2.2 AA is a hard target (spec #18 §"Accessibility"), and the acceptance
@@ -116,6 +118,13 @@ const SURFACES = [
   // and three long essay paragraphs — the page that absorbed three Wix pages,
   // so it is also the longest one a 301 can land somebody part-way down.
   { name: 'the about page', path: '/about', state: 'closed', open: noop },
+  // #30 AC 8. The only public page with a form on it — five checkboxes, a
+  // select, an error state and a status line — and forms are where axe finds
+  // real violations rather than cosmetic ones.
+  { name: 'the support page', path: SUPPORT_PATH, state: 'closed', open: noop },
+  // #30 AC 8. Short, and off the parent path — but a nav-less page is exactly
+  // the one that stops being measured.
+  { name: 'the teach page', path: TEACH_PATH, state: 'closed', open: noop },
   // #30 AC 8. The longest unbroken run of prose on the site — eleven numbered
   // articles set in a measure, then two permission notes — and the page a
   // family is most likely to read on a phone, because they were sent to it

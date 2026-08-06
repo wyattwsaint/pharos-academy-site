@@ -1,5 +1,7 @@
 ---
 import { BELIEFS_PATH } from '../lib/about/beliefs.js';
+import { SUPPORT_PATH } from '../lib/about/story.js';
+import { TEACH_PATH } from '../lib/teach/teach.js';
 import { copyrightYear, getSchoolDetails, telHref } from '../lib/admin/school-details.js';
 import { getDb } from '../lib/db/client.js';
 import { INQUIRY_HREF } from '../lib/home/sections.js';
@@ -59,7 +61,14 @@ const addressLines = details.address.split('\n').filter(Boolean);
         <a href={INQUIRY_HREF}>Ask us about Pharos</a><br />
         <a href={BELIEFS_PATH}>Statement of Faith</a><br />
         <a href={POLICIES_PATH}>Policies</a><br />
-        <a href={details.giveUrl}>Give</a>
+        <a href={SUPPORT_PATH}>Give and volunteer</a><br />
+        {/*
+          Off the main nav on purpose (#30): the four items up there are for
+          families, and this is for the handful of people a year who might
+          teach a class. The footer is on every page, so it is still one click
+          from anywhere.
+        */}
+        <a href={TEACH_PATH}>Teach at Pharos</a>
       </div>
     </div>
 

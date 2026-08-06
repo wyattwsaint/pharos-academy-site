@@ -20,6 +20,47 @@
 /** Where this page lives, so links to it are written once. */
 export const ABOUT_PATH = '/about';
 
+/**
+ * Where giving and volunteering live — one page, because they are one question.
+ *
+ * The Wix site had three addresses for it: `/giving`, `/volunteer`, and
+ * `/about-5`, which is byte-for-byte the volunteer page and is labelled "Media"
+ * in the nav. All three land here.
+ */
+export const SUPPORT_PATH = '/about/support';
+
+/**
+ * What sits under About, listed on About itself.
+ *
+ * #30 AC 1 is "reachable from the nav **or its parent**", and this is the
+ * parent half of it. The nav is four items by design and cannot carry seven, so
+ * the section index has to actually index the section — a nav item whose page
+ * silently has three children the reader cannot see is the Wix failure this
+ * ticket is undoing, not repeating.
+ *
+ * Written here rather than in the template because the test walks it: each
+ * entry has to be a path this site really serves.
+ */
+export const ABOUT_CHILDREN: readonly { path: string; label: string; blurb: string }[] = [
+  {
+    path: '/about/beliefs',
+    label: 'Statement of Faith and Practice',
+    blurb:
+      'The eleven articles in full — what families are asked to read before applying, and what ' +
+      'the application asks them to say where they agree and where they do not.',
+  },
+  {
+    path: '/about/staff',
+    label: 'Who teaches here',
+    blurb: 'Everyone who runs the school and everyone who teaches a class, with what they teach.',
+  },
+  {
+    path: SUPPORT_PATH,
+    label: 'Giving and volunteering',
+    blurb: 'How gifts to the school are handled today, and the five areas we need help in.',
+  },
+];
+
 /** One of the six words the school describes its method with. */
 export type MethodMark = {
   /** The word, in the school's own order. */
@@ -204,6 +245,48 @@ export const PHAROS_MEANING: readonly string[] = [
 export const PHAROS_SOURCES: readonly string[] = [
   'Source: Encyclopedia Britannica',
   'A drawing of the Pharos of Alexandria by German archaeologist Prof. H. Thiersch (1909)',
+];
+
+/**
+ * How the school explains giving, from `/giving`, verbatim.
+ *
+ * Every word of this is load-bearing and none of it is ours. Pharos has no
+ * merchant account and no Vanco org of its own: a gift goes through Enola First
+ * Church of God's platform, where the giver picks "Pharos Academy" from a list.
+ * A tidier sentence here would be a sentence that misrepresents where somebody's
+ * money is going, and the Form 1023 for federal tax-exempt status is still in
+ * progress, so how a donation is described is not a copywriting question.
+ *
+ * The link itself is **not** here. It is `giveUrl` on the school details row —
+ * spec #18 §12 — because the board update records a dedicated Pharos account
+ * being set up, and the day that lands the school changes one field rather than
+ * waiting for a deploy.
+ */
+export const GIVING_INTRO: readonly string[] = [
+  'Pharos Academy is currently partnering with Enola First Church of God to facilitate ' +
+    'charitable donations.',
+  "If you'd like to support Pharos Academy with a gift, simply click the link below. " +
+    "You'll be directed to the Enola First Church of God's donation platform, where " +
+    'you can select "Pharos Academy" from the options and proceed with the provided ' +
+    'instructions.',
+];
+
+/** The school's own label for the button, from the live page. */
+export const GIVING_LINK_LABEL = 'Give to Pharos Academy';
+
+/**
+ * How the school asks for volunteers, from `/volunteer`, verbatim.
+ *
+ * The live page's third sentence — "Please take a moment to fill out a
+ * Volunteer Information Sheet" — is deliberately not carried. It is an
+ * instruction about a Google Form that this build replaces, and the form is now
+ * directly under these words rather than behind a link to another domain. The
+ * two sentences that say what the school needs are untouched.
+ */
+export const VOLUNTEER_INTRO: readonly string[] = [
+  'If you are interested in volunteering at Pharos Academy, we would like to hear from you!',
+  'We need Prayer Warriors, Promoters, Help in Directing Students, Donations and Hands on ' +
+    'Volunteers.',
 ];
 
 /**
