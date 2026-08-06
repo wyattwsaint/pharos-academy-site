@@ -1,4 +1,13 @@
-import { boolean, date, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  customType,
+  date,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 /**
  * The store, as Drizzle sees it (spec #18 §2).
@@ -18,6 +27,36 @@ import { boolean, date, integer, pgTable, text, timestamp, uuid } from 'drizzle-
  * are no roles. Attribution is the only control on the money, which is why
  * every editable table carries a stamp rather than sharing one audit table.
  */
+/**
+ * A PDF, as bytes, in the one place the site's data lives (#18).
+ *
+ * Drizzle has no `bytea` column, and the two drivers this schema runs on
+ * disagree about the shape of one — PGlite hands back a `Uint8Array`, neon-http
+ * a hex string over JSON, and node-postgres a `Buffer`. So the type is written
+ * once, here, in the form both directions can agree on.
+ *
+ * **Out** is the buffer itself, and it has to be: PGlite refuses anything that
+ * is not a `Uint8Array` for a bytea parameter, and neon-http hex-encodes a
+ * `Buffer` on its own before it puts the parameter in the JSON request body
+ * (`encodeBuffersAsBytea`). A hex string, which looks like the driver-agnostic
+ * choice, is the one thing PGlite rejects outright.
+ *
+ * **In** normalises all three shapes to a `Buffer`, so a caller — the route that
+ * serves the file — never has to know which driver it is talking to.
+ */
+export const bytea = customType<{ data: Buffer; driverData: unknown }>({
+  dataType: () => 'bytea',
+  toDriver: (value) => value,
+  fromDriver: (value) => {
+    if (typeof value === 'string') {
+      // `\x` then hex — Postgres's default `bytea_output`.
+      return Buffer.from(value.startsWith('\\x') ? value.slice(2) : value, 'hex');
+    }
+    if (value instanceof Uint8Array) return Buffer.from(value);
+    throw new Error(`Unexpected bytea shape from the driver: ${typeof value}`);
+  },
+});
+
 export const adminUsers = pgTable('admin_users', {
   id: uuid('id').primaryKey().defaultRandom(),
   /** What is typed into the login form. Lowercased on write; unique. */
@@ -166,8 +205,48 @@ export const people = pgTable('people', {
   lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
 });
 
+/**
+ * What the school is announcing, and what it announced (#27).
+ *
+ * There is no board-update column, table or flag, and that absence is the
+ * ticket: the live site's "Latest School Board Update – 7/1/2026" is a fixed
+ * slot holding a dated PDF, and a fixed slot is what makes a July file still be
+ * the front page in October. Here a board update is a row with a file attached,
+ * ages out on the same rule as a bake sale, and needs nothing retired.
+ *
+ * The PDF is `bytea` in this table rather than an object in Blob storage,
+ * because spec #18 puts the site's bytes in Neon: one store, one `pg_dump`, no
+ * second set of credentials to hand over at the end. It is also not a shared
+ * `files` table with the policies (#23) — an attachment is owned by one
+ * announcement and dies with it, where a policy is a versioned document at a
+ * stable address.
+ *
+ * `posted_on` is a date the school types and is deliberately not the stamp:
+ * fixing a typo in August must not make a July notice look new to the freshness
+ * rule.
+ */
+export const announcements = pgTable('announcements', {
+  /** `2026-07-01-school-board-update-july-2026` — dated first, so it sorts. */
+  slug: text('slug').primaryKey(),
+  headline: text('headline').notNull(),
+  /** Required: a headline with nothing under it is a rumour. */
+  body: text('body').notNull(),
+  /** `YYYY-MM-DD`, the day the school published it. Drives the six-week rule. */
+  postedOn: date('posted_on').notNull(),
+  /** Somewhere to go, and what it is called. Both or neither — a check enforces it. */
+  linkUrl: text('link_url'),
+  linkLabel: text('link_label'),
+  /** The attached PDF, filename and bytes. Both or neither, likewise. */
+  attachmentFilename: text('attachment_filename'),
+  attachmentBytes: bytea('attachment_bytes'),
+  /** The stamp: who saved this last, and when. Overwritten, never appended. */
+  lastEditedBy: text('last_edited_by'),
+  lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
+});
+
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type AdminSession = typeof adminSessions.$inferSelect;
 export type SchoolDetails = typeof schoolDetails.$inferSelect;
 export type CourseRow = typeof courses.$inferSelect;
 export type PersonRow = typeof people.$inferSelect;
+export type AnnouncementRow = typeof announcements.$inferSelect;
