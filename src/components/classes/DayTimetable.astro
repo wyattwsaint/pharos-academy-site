@@ -3,6 +3,7 @@ import { ageLine } from '../../lib/courses/ages.js';
 import { priceSummary } from '../../lib/courses/pricing.js';
 import { markLabel, timeLabel, type DayLayout } from '../../lib/courses/schedule.js';
 import { classPath } from '../../lib/courses/views.js';
+import { instructorOf, type Person } from '../../lib/people/person.js';
 
 /**
  * One day track, drawn to scale.
@@ -30,9 +31,11 @@ import { classPath } from '../../lib/courses/views.js';
  */
 interface Props {
   layout: DayLayout;
+  /** The one list of people, by slug — where every name in the grid comes from (#26). */
+  directory: ReadonlyMap<string, Person>;
 }
 
-const { layout } = Astro.props;
+const { layout, directory } = Astro.props;
 
 /** One grid row per ten minutes. Every published time lands on a ten. */
 const STEP = 10;
@@ -97,6 +100,7 @@ const rows = (layout.endMinutes - layout.startMinutes) / STEP;
             <span class="slot-meta">
               {ageLine(course)} · {priceSummary(course)}
             </span>
+            <span class="slot-who">{instructorOf(directory, course).name}</span>
           </a>
         ))
       }

@@ -46,7 +46,9 @@ describe('the seeded catalogue', () => {
   it('serves one course by its own address', async () => {
     const course = await getCourse(db, 'kingdom-math');
     expect(course?.title).toBe('Kingdom Math: Early Elementary Math Enrichment');
-    expect(course?.instructor).toBe('Mrs. Mandy Saint');
+    // The slug, not the name — the name is the `people` row's, and #26's
+    // people store is where it is read back.
+    expect(course?.instructorSlug).toBe('mandy-saint');
   });
 
   it('answers with nothing for a slug that is not a class', async () => {

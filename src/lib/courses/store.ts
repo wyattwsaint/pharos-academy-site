@@ -66,6 +66,6 @@ function toCourse(row: CourseRow): Course {
     assessmentFee: row.assessmentFee,
     assessmentFeeNote: row.assessmentFeeNote,
     prerequisites: row.prerequisites,
-    instructor: row.instructor,
+    instructorSlug: row.instructorSlug,
   };
 }

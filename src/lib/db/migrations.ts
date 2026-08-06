@@ -14,6 +14,7 @@
  */
 import { CATALOGUE } from '../courses/catalogue.js';
 import type { Course } from '../courses/course.js';
+import { PEOPLE, seededName, type SeedPerson } from '../people/person.js';
 
 export type Migration = {
   /** Stable, unique, ordered by string comparison. */
@@ -129,7 +130,83 @@ export const MIGRATIONS: readonly Migration[] = [
       insertCourses(CATALOGUE),
     ],
   },
+  {
+    /*
+     * People, and the catalogue pointing at them instead of at typed names
+     * (#26, ADR-0004).
+     *
+     * 0002 wrote each course's instructor as a string, and by the rule at the
+     * top of this file that statement is not edited — it has already run
+     * against Neon. So this migration adds the column that replaces it,
+     * backfills it by matching those names, and then drops the old one. After
+     * it, the only place a person's name exists is the `people` row Jill can
+     * edit.
+     */
+    id: '0003-people',
+    statements: [
+      `create table if not exists people (
+         slug text primary key,
+         name text not null,
+         role text not null,
+         bio text,
+         photo text,
+         leadership_rank integer,
+         last_edited_by text,
+         last_edited_at timestamptz
+       )`,
+      insertPeople(PEOPLE),
+      `alter table courses add column if not exists instructor_slug text references people(slug)`,
+      /*
+       * The backfill, guarded on the old column still being there.
+       *
+       * Each statement in a migration has to be independently safe to re-run,
+       * and this is the one that is not naturally: a run that died between the
+       * drop below and recording the migration id would come back to a
+       * `courses.instructor` that no longer exists. The guard makes the retry a
+       * no-op instead of a wedged database with nobody's hands on it.
+       */
+      `do $$
+       begin
+         if exists (
+           select 1 from information_schema.columns
+           where table_name = 'courses' and column_name = 'instructor'
+         ) then
+           update courses set instructor_slug = mapping.slug
+           from (values ${nameToSlugPairs(PEOPLE)}) as mapping(name, slug)
+           where courses.instructor_slug is null and courses.instructor = mapping.name;
+         end if;
+       end $$`,
+      `alter table courses alter column instructor_slug set not null`,
+      `alter table courses drop column if exists instructor`,
+    ],
+  },
 ];
+
+/** Every person as one idempotent insert, for the same reason the courses are. */
+function insertPeople(people: readonly SeedPerson[]): string {
+  const values = people
+    .map(
+      (person) =>
+        `(${[
+          literal(person.slug),
+          literal(person.name),
+          literal(person.role),
+          nullable(person.bio),
+          nullable(person.photo),
+          number(person.leadershipRank),
+        ].join(', ')})`,
+    )
+    .join(', ');
+
+  return `insert into people (slug, name, role, bio, photo, leadership_rank)
+    values ${values}
+    on conflict (slug) do nothing`;
+}
+
+/** `('Mrs. Mandy Saint', 'mandy-saint'), …` — the backfill's lookup table. */
+function nameToSlugPairs(people: readonly SeedPerson[]): string {
+  return people.map((person) => `(${literal(person.name)}, ${literal(person.slug)})`).join(', ');
+}
 
 /**
  * The whole catalogue as one idempotent insert.
@@ -182,7 +259,14 @@ function courseValues(course: Course): string {
     number(course.assessmentFee),
     nullable(course.assessmentFeeNote),
     literal(course.prerequisites),
-    literal(course.instructor),
+    /*
+     * The name, not the slug — 0002 created an `instructor text` column and
+     * this generates the statement that fills it. The catalogue moved to slugs
+     * in #26; the seed's own name table is what turns one back into the other,
+     * so the SQL 0002 produces is byte-for-byte what Neon already applied.
+     * 0003 replaces the column a moment later.
+     */
+    literal(seededName(course.instructorSlug)),
   ];
 
   return `(${values.join(', ')})`;

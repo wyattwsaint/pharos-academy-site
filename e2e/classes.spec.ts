@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { CATALOGUE } from '../src/lib/courses/catalogue.js';
 import { coursePrice, priceSummary } from '../src/lib/courses/pricing.js';
 import { contactHours } from '../src/lib/courses/schedule.js';
+import { seededName } from '../src/lib/people/person.js';
 
 /**
  * #22's acceptance criteria, in a browser.
@@ -213,7 +214,8 @@ test.describe('a class’s own page', () => {
     const facts = page.locator('.coursefacts');
     await expect(facts).toContainText('Elementary Algebra');
     await expect(facts).toContainText('Proficiency in core arithmetic skills');
-    await expect(facts).toContainText(course.instructor);
+    // The name comes from the one list of people (#26), not from the course.
+    await expect(facts).toContainText(seededName(course.instructorSlug));
     await expect(facts).toContainText(`${contactHours(course)} hours`);
     await expect(facts).toContainText('$50 for test scoring');
     await expect(facts).toContainText('$420/semester, $840/year ($15/hour)');
