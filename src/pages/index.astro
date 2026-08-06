@@ -8,6 +8,8 @@ import InquirySection from '../components/home/InquirySection.astro';
 import TeachersSection from '../components/home/TeachersSection.astro';
 import WeekSection from '../components/home/WeekSection.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { listAnnouncements } from '../lib/announcements/store.js';
+import { getDb } from '../lib/db/client.js';
 
 /**
  * The homepage, in "Beacon, warmed" — variant E, approved by George and Jill
@@ -31,11 +33,28 @@ import BaseLayout from '../layouts/BaseLayout.astro';
  */
 const description =
   'Christian classical classes in Enola, Pennsylvania, for ages 4 to 18 — mornings on Monday, Wednesday and Thursday.';
+
+/*
+ * The announcements are read **here**, in the page, and handed down — not read
+ * inside the component that renders them (#34).
+ *
+ * The response streams. Frontmatter runs to completion before a byte leaves,
+ * but a component's frontmatter runs *during* the stream, with the 200 already
+ * on the wire — so a store read that far in cannot fail the request, only
+ * truncate it. With Neon down this page answered `200` and 51 bytes while every
+ * other public page answered 500, and a 200 is exactly what the CDN stores over
+ * the good copy: stale-on-error needs the regeneration to *fail*.
+ *
+ * Every other public page happened to read the store in its own frontmatter and
+ * was safe by accident. `e2e/database-down.spec.ts` walks `PUBLIC_ROUTES` with
+ * the database stopped and is what keeps the accident from recurring.
+ */
+const announcements = await listAnnouncements(await getDb());
 ---
 
 <BaseLayout title="Home" description={description} overHero>
   <HomeHero />
-  <Announcements />
+  <Announcements announcements={announcements} />
   <WeekSection />
   <Ornament />
   <TeachersSection />

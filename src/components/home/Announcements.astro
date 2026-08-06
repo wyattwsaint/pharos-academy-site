@@ -1,8 +1,6 @@
 ---
-import { currentAnnouncements } from '../../lib/announcements/announcement.js';
-import { listAnnouncements } from '../../lib/announcements/store.js';
+import { currentAnnouncements, type Announcement } from '../../lib/announcements/announcement.js';
 import { attachmentPath, newsPath } from '../../lib/announcements/views.js';
-import { getDb } from '../../lib/db/client.js';
 
 /**
  * Announcements, directly under the hero.
@@ -23,9 +21,16 @@ import { getDb } from '../../lib/db/client.js';
  * rather than being dropped: the page's section order is asserted as a sequence
  * (#9), and a section that vanishes from the DOM makes that assertion depend on
  * whether Jill happens to have posted anything this month.
+ *
+ * **The list arrives as a prop.** Reading it here would put a store read inside
+ * the streamed body, where a failure can no longer change the status code — see
+ * the note in `src/pages/index.astro` (#34). The six-week rule stays here,
+ * because that is this section's own rule and nothing else applies it.
  */
-const db = await getDb();
-const showing = currentAnnouncements(await listAnnouncements(db), new Date());
+type Props = { announcements: Announcement[] };
+
+const { announcements } = Astro.props;
+const showing = currentAnnouncements(announcements, new Date());
 ---
 
 <section
