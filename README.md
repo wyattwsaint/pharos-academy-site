@@ -36,6 +36,37 @@ Resend for notification email.
 | `npm run db:migrate` | Applies every unapplied migration to the database in `DATABASE_URL` |
 | `npm run db:seed` | Creates the named admin accounts from `SEED_*_PASSWORD`, and attaches the board update's and the policies' PDFs from `docs/mirror/` |
 
+## Environment
+
+Set on Vercel, and pulled locally with `vercel env pull .env.local`.
+
+| | |
+| --- | --- |
+| `DATABASE_URL` | Neon. Also `POSTGRES_URL`, whichever the integration wrote |
+| `ISR_BYPASS_TOKEN` | Lets a revalidation request past the CDN cache. Compiled in by the build unless set |
+| `BREAK_GLASS_PASSWORD` | The way back in when both admins are locked out ([#18](https://github.com/wyattwsaint/pharos-academy-site/issues/18) §4) |
+| `SEED_*_PASSWORD` | Read by `npm run db:seed` when it creates the named accounts |
+| `RESEND_API_KEY` | Sends the monthly backup email. Absent, the cron answers 500 rather than succeeding quietly |
+| `MAIL_FROM` | The address the site sends from — a verified Resend sender on the school's domain |
+| `CRON_SECRET` | The bearer token Vercel Cron carries. **Unset, `/api/cron/monthly-backup` refuses everybody**, which is the safe direction: that route mails the whole database |
+
+## Backup
+
+Two layers, because they answer different questions
+([#33](https://github.com/wyattwsaint/pharos-academy-site/issues/33)).
+
+**The operator layer** is [`.github/workflows/db-backup.yml`](.github/workflows/db-backup.yml) — a
+nightly `pg_dump` kept as a 90-day Actions artifact, with a sanity check that fails the job on a
+suspiciously small dump *before* the upload, so a bad dump never joins the list somebody restores
+from in a hurry. Neon Free retains six hours of history, so this artifact is the real
+point-in-time story, not a convenience. `workflow_dispatch` runs it by hand, and its
+`force_small_dump` input drives the sanity check red on purpose — the restore drill.
+
+**The school-held layer** is `/admin/backup`: one ZIP of all content as JSON and every PDF as a
+file, readable without Postgres, and **the same ZIP mailed to the school on the 1st of every
+month** by `/api/cron/monthly-backup`. The recipient is the email on `/admin/school-details`, read
+at send time. The monthly send exists because a manual button is a backup nobody clicks.
+
 ## Migrations are applied by hand, before the deploy that needs them
 
 The build never touches Neon ([`scripts/db.mjs`](scripts/db.mjs) says why), so a branch that

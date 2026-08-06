@@ -8,7 +8,12 @@ import { saveAnnouncement } from '../announcements/store.js';
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import * as schema from '../db/schema.js';
 import { replacePolicyFile } from '../policies/store.js';
-import { EXCLUDED_TABLES, EXPORTED_TABLES, buildExport } from './export.js';
+import {
+  EXCLUDED_TABLES,
+  EXPORTED_TABLES,
+  EXPORTED_TABLE_LABELS,
+  buildExport,
+} from './export.js';
 
 /**
  * The school-held backup, opened the way the school would open it (#33).
@@ -235,6 +240,20 @@ describe('coverage of the editable set', () => {
   it('gives a reason for every exclusion, so none of them is an oversight', () => {
     for (const excluded of EXCLUDED_TABLES) {
       expect(excluded.why.length, excluded.table).toBeGreaterThan(20);
+    }
+  });
+
+  // `/admin/backup` renders both lists, and it renders them to Jill. A table
+  // name on that screen is an answer in the wrong language; the labels exist so
+  // the screen never has to invent one, and this is what keeps them present.
+  it('names every table it exports and every one it excludes in plain English', () => {
+    for (const table of EXPORTED_TABLES) {
+      expect(EXPORTED_TABLE_LABELS[table], table).toBeTruthy();
+      expect(EXPORTED_TABLE_LABELS[table], table).not.toContain('_');
+    }
+    for (const excluded of EXCLUDED_TABLES) {
+      expect(excluded.label, excluded.table).toBeTruthy();
+      expect(excluded.label, excluded.table).not.toContain('_');
     }
   });
 });

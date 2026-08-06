@@ -47,6 +47,24 @@ export const EXPORTED_TABLES = [
 ] as const;
 
 /**
+ * What each exported table is, said to a school administrator.
+ *
+ * A `Record` over `EXPORTED_TABLES` rather than a list, so a table added to the
+ * export without a sentence explaining it to Jill is a type error rather than a
+ * gap on the screen. `/admin/backup` renders this: "what is in the download" is
+ * the only question that screen has to answer, and answering it in table names
+ * would be answering it in the wrong language.
+ */
+export const EXPORTED_TABLE_LABELS: Record<(typeof EXPORTED_TABLES)[number], string> = {
+  school_details: 'The school’s own details — address, phone, email, mission and vision',
+  courses: 'The class catalogue',
+  people: 'Everyone on the staff page',
+  announcements: 'Every announcement, and any PDF posted with one',
+  policies: 'Every policy, with its description and its position on the page',
+  policy_versions: 'Every policy document — including the ones that have been replaced',
+};
+
+/**
  * The tables that are deliberately not in it, and why.
  *
  * A backup of the school's *content*. Accounts are not content: a restore hands
@@ -54,13 +72,18 @@ export const EXPORTED_TABLES = [
  * password material would put the admin's credentials in a monthly email and in
  * whatever downloads folder the ZIP was opened from.
  */
-export const EXCLUDED_TABLES: readonly { table: string; why: string }[] = [
+export const EXCLUDED_TABLES: readonly { table: string; label: string; why: string }[] = [
   {
     table: 'admin_users',
+    // `label` is the same fact in the language `/admin/backup` speaks. The
+    // reason it is here rather than on the screen is that the screen would
+    // then be a second list, and a second list is a list that goes stale.
+    label: 'Logins and passwords',
     why: 'Accounts, not content. Exporting them would put scrypt hashes in a monthly email and in the school’s downloads folder; a restore makes new accounts instead.',
   },
   {
     table: 'admin_sessions',
+    label: 'Who is signed in right now',
     why: 'Live logins, meaningless an hour later and never meaningful in a backup. The rows are hashes of cookies that a restore cannot and must not revive.',
   },
 ];
