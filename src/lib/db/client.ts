@@ -50,6 +50,7 @@ async function open(): Promise<Db> {
     // suite against a throwaway database rather than against the school's.
     const db = await createEphemeralDatabase();
     await seedSuiteAdmin(db, suite);
+    await seedSuitePolicyFiles(db);
     return db;
   }
 
@@ -146,6 +147,36 @@ function suiteAdmin(): { username: string; password: string } | undefined {
 async function seedSuiteAdmin(db: Db, admin: { username: string; password: string }): Promise<void> {
   const { createUser } = await import('../admin/users.js');
   await createUser(db, { ...admin, displayName: 'Suite Admin' });
+}
+
+/**
+ * A stand-in PDF on every seeded policy, so the suite has a page to measure.
+ *
+ * A policy is published by its file, not by its row (#28), and the migrations
+ * seed the four rows without bytes — `npm run db:seed` attaches the school's own
+ * PDFs from `docs/mirror/`, which CI does not have and must not need. Without
+ * this the policies page renders its empty state, and the axe surface that is
+ * meant to measure a list of four documents measures one sentence instead.
+ *
+ * Deliberately not the mirror files: nine bytes prove the route, the caching and
+ * the stamped date exactly as well as 921 KB does, and reading a fixture off
+ * disk would make the ephemeral database depend on the working tree.
+ *
+ * Suite mode only, and suite mode already refuses to run on a deployment.
+ */
+async function seedSuitePolicyFiles(db: Db): Promise<void> {
+  const { SEEDED_POLICIES } = await import('../policies/policy.js');
+  const { replacePolicyFile } = await import('../policies/store.js');
+
+  const bytes = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
+  for (const seed of SEEDED_POLICIES) {
+    await replacePolicyFile(
+      db,
+      seed.slug,
+      { filename: `${seed.slug}.pdf`, bytes },
+      'Suite Admin',
+    );
+  }
 }
 
 function connectionString(): string | undefined {

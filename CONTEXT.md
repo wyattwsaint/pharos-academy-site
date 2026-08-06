@@ -195,6 +195,40 @@ not make a July notice current again.
 
 Not: "news item" (the page is called News; the thing on it is an announcement),
 "post", "board update" as a kind of its own.
+
+### policy
+
+A document the school asks families to read, and sometimes to sign: a title, one
+sentence saying what it is, a position in the list, a "parents sign this" tick,
+and a PDF. Four of them today — Handbook, Code of Conduct, Child Protection,
+Child Protection Background Check.
+
+**A policy is published by its file, not by its row.** A policy created from the
+admin exists before its document does, and for that gap it is deliberately absent
+from the policies page rather than listed as a link to nothing. The admin says so
+on its own screen.
+
+**Its address is fixed.** The slug is minted from the title once, at creation,
+and then never recomputed — it is the URL on a printed handbook and on the far
+end of a 301 from the Wix site. Renaming a policy is a title change, not a move.
+Replacing the document changes the bytes at that address and nothing else: no new
+URL, no redirect, no inbound link broken.
+
+**Its versions are retained.** Every upload appends a version; nothing overwrites
+or deletes one. Each has its own permanent address, linked from the admin rather
+than from the policies page, because "what did the family who enrolled in August
+sign?" is the school's question and not a parent's. The two kinds of address want
+opposite caching, which is why there are two of them (ADR-0005).
+
+The **updated date** is stamped from the upload and is typeable nowhere: there is
+no date control on either policy form, so the published date cannot disagree with
+the document. It is not the [stamp](#stamp) — correcting a description in August
+must not tell every family the Handbook changed.
+
+Not: "document" alone (the file is a document; the policy is the thing that has
+one), "attachment" (that is an [announcement](#announcement)'s optional PDF),
+"revision" (a version is the file, not a diff).
+
 ### H.O.P.E.
 
 **Helping Our Parents Educate** — the school's own acronym, real copy from the

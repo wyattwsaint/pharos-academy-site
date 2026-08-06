@@ -4,6 +4,7 @@ import {
   date,
   integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -244,9 +245,81 @@ export const announcements = pgTable('announcements', {
   lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
 });
 
+/**
+ * The school's policy documents, and the addresses they are served at (#28).
+ *
+ * Two tables rather than one, and the split is the ticket. This one is the
+ * *document* — a slug that never moves, a title, the sentence that says what it
+ * is, where it sits in the list, and whether parents sign it. The bytes are
+ * next door, one row per upload, so replacing a file appends rather than
+ * overwrites and "what did that family actually sign?" stays answerable.
+ *
+ * `current_version`, `current_filename` and `updated_at` are denormalised from
+ * the newest version row on purpose: every read of the policies page wants
+ * exactly those three and none of the bytes, and a join to get them would be a
+ * join on every render of a page whose whole point is being fast to skim.
+ * `replacePolicyFile` writes both tables together and is the only writer.
+ *
+ * **There is no date column Jill can type into.** `updated_at` is set from the
+ * upload, which is the acceptance criterion: the live site's PDFs each carry a
+ * hand-maintained "Updated 7-23-2026" on their cover page, and a hand-
+ * maintained date is a date that is eventually wrong.
+ */
+export const policies = pgTable('policies', {
+  /** The URL segment, minted from the title once and then frozen. */
+  slug: text('slug').primaryKey(),
+  title: text('title').notNull(),
+  /** One sentence. Empty until somebody writes it, which is a real state. */
+  description: text('description').notNull().default(''),
+  /** Position on the policies page, low first. */
+  position: integer('position').notNull(),
+  /** The one "parents sign this" tick the create form offers. */
+  signed: boolean('signed').notNull().default(false),
+  /** The newest version's number. Null until the first upload. */
+  currentVersion: integer('current_version'),
+  /** What that version's file is called. Null exactly when `current_version` is. */
+  currentFilename: text('current_filename'),
+  /** When it was uploaded — the date a parent reads. Never typed. */
+  updatedAt: timestamp('updated_at', { withTimezone: true }),
+  /** The stamp: who saved this row last, and when. Overwritten, never appended. */
+  lastEditedBy: text('last_edited_by'),
+  lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
+});
+
+/**
+ * Every version of every policy, bytes included (#28).
+ *
+ * Append-only by construction — nothing in the codebase updates or deletes a
+ * row here. That is what "prior versions are retained" means as a table rather
+ * than as an intention: there is no code path that could lose one.
+ *
+ * Scale, from the mirror: 18 PDFs at 3.0 MB total, largest 921 KB. A decade of
+ * retained versions is roughly 30 MB against Neon Free's 0.5 GB, which is the
+ * arithmetic that made keeping everything cheaper than deciding what to prune.
+ */
+export const policyVersions = pgTable(
+  'policy_versions',
+  {
+    policySlug: text('policy_slug')
+      .notNull()
+      .references(() => policies.slug, { onDelete: 'cascade' }),
+    /** 1, 2, 3 … per policy. The number in the versioned URL. */
+    version: integer('version').notNull(),
+    filename: text('filename').notNull(),
+    bytes: bytea('bytes').notNull(),
+    /** The upload's own clock. This, promoted, is what a parent sees as the date. */
+    uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
+    /** The actor who uploaded it — attribution on the file, not just on the row. */
+    uploadedBy: text('uploaded_by'),
+  },
+  (table) => [primaryKey({ columns: [table.policySlug, table.version] })],
+);
+
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type AdminSession = typeof adminSessions.$inferSelect;
 export type SchoolDetails = typeof schoolDetails.$inferSelect;
 export type CourseRow = typeof courses.$inferSelect;
 export type PersonRow = typeof people.$inferSelect;
 export type AnnouncementRow = typeof announcements.$inferSelect;
+export type PolicyRow = typeof policies.$inferSelect;
+export type PolicyVersionRow = typeof policyVersions.$inferSelect;

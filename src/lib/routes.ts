@@ -77,6 +77,21 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * on request and revalidates on its own ETag instead.
    */
   { path: '/news', priority: 0.6, changefreq: 'weekly' },
+  /*
+   * The policies page (#28).
+   *
+   * Monthly, because a policy changes when the school revises a document rather
+   * than on any schedule. Here rather than only in the sitemap because this is
+   * the list whole-site republishing walks, and a replaced PDF changes the
+   * updated date printed on this page — a save that reached the file but not
+   * the page would leave a parent reading last term's date beside this term's
+   * document.
+   *
+   * The PDFs themselves are deliberately **not** in this list, for the same
+   * reason an announcement's attachment is not: they are database rows uploaded
+   * after the build, and the routes that serve them render on request.
+   */
+  { path: '/policies', priority: 0.6, changefreq: 'monthly' },
 ] as const;
 
 /** Every public path, in list order. */

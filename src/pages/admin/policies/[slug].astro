@@ -1,0 +1,454 @@
+---
+export const prerender = false;
+
+import AdminBanner from '../../../components/AdminBanner.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import type { Banner } from '../../../lib/admin/banner.js';
+import { isrBypassToken } from '../../../lib/admin/isr-token.js';
+import {
+  LABELS,
+  parsePolicy,
+  parsePolicyDraft,
+  positionNumber,
+  type PolicyErrors,
+  type PolicyFields,
+} from '../../../lib/admin/policies.js';
+import {
+  describeRevalidation,
+  revalidateAll,
+  revalidationOrigin,
+} from '../../../lib/admin/revalidate.js';
+import { formatStamp } from '../../../lib/admin/school-details.js';
+import { getDb } from '../../../lib/db/client.js';
+import { policySlug, type Policy, type PolicyVersion } from '../../../lib/policies/policy.js';
+import {
+  createPolicy,
+  getPolicy,
+  listPolicies,
+  listPolicyVersions,
+  replacePolicyFile,
+  savePolicy,
+} from '../../../lib/policies/store.js';
+import {
+  fileSizeLabel,
+  policyPath,
+  policyVersionPath,
+  updatedOnLabel,
+} from '../../../lib/policies/views.js';
+
+/**
+ * One policy — created, corrected, and replaced (#28).
+ *
+ * `/admin/policies/new` is the create form and every other slug is that
+ * policy's own screen, one page rather than two as announcements and people
+ * are. **The two states are not the same form**, and that is the ticket's one
+ * genuinely unusual requirement: creating a policy asks three questions and
+ * offers no description field and no file input, because this is the one screen
+ * in the admin where a client can create a structurally wrong *thing* rather
+ * than merely a wrong value. A fifth document on the parent path is a mistake
+ * that cannot be fully undone — the address is permanent by design.
+ *
+ * After creation the same screen becomes the ordinary edit screen, where
+ * everything is a value and every mistake is correctable.
+ *
+ * **Uploading is what stamps the date.** There is no date control anywhere on
+ * this page. A replacement lands at the policy's existing address with no
+ * redirect, and the version it replaced keeps its own address forever.
+ */
+const NEW = 'new';
+
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+const routeSlug = Astro.params.slug ?? '';
+const adding = routeSlug === NEW;
+
+let policy = adding ? undefined : await getPolicy(db, routeSlug);
+if (!adding && !policy) {
+  return new Response(null, { status: 404, statusText: 'Not found' });
+}
+
+/** What the create form opens on: nothing typed, and the end of the list. */
+const EMPTY: PolicyFields = {
+  title: '',
+  description: '',
+  position: String((await listPolicies(db)).length + 1),
+  signed: false,
+};
+
+let values: PolicyFields = policy ? fieldsOf(policy) : EMPTY;
+let errors: PolicyErrors = {};
+let banner: Banner | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+
+  if (policy) {
+    const parsed = await parsePolicy(form);
+    values = parsed.values;
+    errors = parsed.errors;
+
+    if (Object.keys(errors).length > 0) {
+      banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+    } else {
+      /*
+       * The upload is a second write rather than part of the first, so that the
+       * version number and the stamped date come from the moment the bytes
+       * arrived and nothing else can supply them.
+       *
+       * Which means a save can half-succeed, and the banner has to say so
+       * rather than say "nothing was saved" over fields that are now in the
+       * database. What the screen reports after a save is the truth about the
+       * live site (#18 §3) — including the awkward truths.
+       */
+      let fieldsSaved = false;
+      try {
+        const edit = {
+          title: values.title,
+          description: values.description,
+          position: positionNumber(values.position),
+          signed: values.signed,
+        };
+        policy = await savePolicy(db, policy.slug, edit, actor.name);
+        fieldsSaved = true;
+
+        if (parsed.file) {
+          policy = await replacePolicyFile(db, policy.slug, parsed.file, actor.name);
+        }
+        values = fieldsOf(policy);
+        banner = await republish();
+      } catch (error) {
+        banner = {
+          ok: false,
+          message: fieldsSaved
+            ? `The wording was saved, but the document was not replaced — ${detailOf(error)} Families are still being served the previous document. Choose the PDF again.`
+            : `Nothing was saved — ${detailOf(error)}`,
+        };
+      }
+    }
+  } else {
+    const parsed = parsePolicyDraft(form);
+    values = { ...values, ...parsed.values };
+    errors = parsed.errors;
+
+    if (Object.keys(errors).length > 0) {
+      banner = { ok: false, message: 'Nothing was created — the fields below need fixing first.' };
+    } else {
+      try {
+        policy = await createPolicy(
+          db,
+          {
+            slug: policySlug(values.title),
+            title: values.title,
+            position: positionNumber(values.position),
+            signed: values.signed,
+          },
+          actor.name,
+        );
+        values = fieldsOf(policy);
+        banner = {
+          ok: true,
+          message:
+            'Created. It is not on the policies page yet — write the line that says what it is, choose the PDF, and save.',
+        };
+      } catch (error) {
+        banner = { ok: false, message: humanCreateError(error) };
+      }
+    }
+  }
+}
+
+const versions: PolicyVersion[] = policy ? await listPolicyVersions(db, policy.slug) : [];
+
+const action = policy ? `/admin/policies/${policy.slug}` : '/admin/policies/new';
+const heading = policy ? policy.title : 'Add a policy';
+const stamp = policy ? formatStamp(policy.lastEditedBy, policy.lastEditedAt) : null;
+const control =
+  'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
+
+async function republish(): Promise<Banner> {
+  const result = await revalidateAll({
+    origin: revalidationOrigin(Astro.url),
+    bypassToken: isrBypassToken(),
+  });
+  return { ok: result.ok, message: describeRevalidation(result) };
+}
+
+function fieldsOf(row: Policy): PolicyFields {
+  return {
+    title: row.title,
+    description: row.description,
+    position: String(row.position),
+    signed: row.signed,
+  };
+}
+
+function detailOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * A failed creation, said in words Jill can act on.
+ *
+ * The one that actually happens is a second policy with a title that slugs to
+ * the same address as an existing one — which is not a new document, it is the
+ * old one under a near-identical name.
+ */
+function humanCreateError(error: unknown): string {
+  const detail = detailOf(error);
+  if (/duplicate key|unique/i.test(detail)) {
+    return 'Nothing was created — there is already a policy at that address. Edit that one instead.';
+  }
+  return `Nothing was created — ${detail}`;
+}
+---
+
+<AdminLayout title={heading} actor={actor}>
+  <p><a href="/admin/policies" class="underline underline-offset-4">← All policies</a></p>
+  <h1 class="mt-2 text-3xl font-semibold text-navy">{heading}</h1>
+
+  {
+    adding && !policy ? (
+      <p class="mt-2">
+        Three questions, and that is the whole form. A policy's web address is made from its title
+        and never changes afterwards, so this is the one screen here worth reading twice. Everything
+        else — what it says it is, and the document itself — comes next and can be changed at any
+        time.
+      </p>
+    ) : (
+      <p class="mt-2">
+        Saved here, this appears on the policies page. Choosing a PDF replaces the document at the
+        same web address — every link that ever pointed at it keeps working.
+      </p>
+    )
+  }
+
+  {
+    banner && (
+      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
+        {!banner.ok && (
+          <form method="post" action="/admin/republish" class="mt-3">
+            <button
+              type="submit"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+            >
+              Retry
+            </button>
+          </form>
+        )}
+      </AdminBanner>
+    )
+  }
+
+  <form method="post" action={action} enctype="multipart/form-data" class="mt-8 flex flex-col gap-6">
+    <div class="flex flex-col gap-2">
+      <label for="title" class="font-semibold">{LABELS.title}</label>
+      <p id="title-hint" class="text-sm">
+        {
+          policy
+            ? 'What the document is called. Renaming it does not move its web address.'
+            : 'What the document is called — “Handbook”, “Code of Conduct”.'
+        }
+      </p>
+      <input
+        id="title"
+        name="title"
+        type="text"
+        value={values.title}
+        required
+        aria-invalid={errors.title ? 'true' : undefined}
+        aria-describedby={errors.title ? 'title-hint title-error' : 'title-hint'}
+        class={control}
+      />
+      {
+        errors.title && (
+          <p id="title-error" class="font-semibold">
+            {errors.title}
+          </p>
+        )
+      }
+    </div>
+
+    {
+      policy && (
+        <div class="flex flex-col gap-2">
+          <label for="description" class="font-semibold">
+            {LABELS.description}
+          </label>
+          <p id="description-hint" class="text-sm">
+            One sentence, shown under the title on the policies page, so a parent knows which
+            document this is without opening it.
+          </p>
+          <textarea
+            id="description"
+            name="description"
+            rows={3}
+            required
+            aria-invalid={errors.description ? 'true' : undefined}
+            aria-describedby={
+              errors.description ? 'description-hint description-error' : 'description-hint'
+            }
+            class={control}
+          >
+            {values.description}
+          </textarea>
+          {errors.description && (
+            <p id="description-error" class="font-semibold">
+              {errors.description}
+            </p>
+          )}
+        </div>
+      )
+    }
+
+    <div class="flex flex-col gap-2">
+      <label for="position" class="font-semibold">{LABELS.position}</label>
+      <p id="position-hint" class="text-sm">
+        Where it sits on the policies page. 1 is the top.
+      </p>
+      <input
+        id="position"
+        name="position"
+        type="number"
+        min="1"
+        max="99"
+        value={values.position}
+        required
+        aria-invalid={errors.position ? 'true' : undefined}
+        aria-describedby={errors.position ? 'position-hint position-error' : 'position-hint'}
+        class="w-24 rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
+      />
+      {
+        errors.position && (
+          <p id="position-error" class="font-semibold">
+            {errors.position}
+          </p>
+        )
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label class="flex items-center gap-2 font-semibold">
+        <input type="checkbox" name="signed" value="on" checked={values.signed} />
+        {LABELS.signed}
+      </label>
+      <p class="text-sm">
+        Tick this if families put a signature on it at enrolment. It adds a note on the policies
+        page and nothing else.
+      </p>
+    </div>
+
+    {
+      policy && (
+        <div class="flex flex-col gap-2">
+          <label for="file" class="font-semibold">
+            {LABELS.file}
+          </label>
+          <p id="file-hint" class="text-sm">
+            A PDF. Choosing one here replaces the document at the same address and stamps today as
+            the updated date — you never type that date. Leave it alone to save the fields above on
+            their own.
+          </p>
+          {policy.filename && (
+            <p class="text-sm">
+              Now serving:{' '}
+              <a
+                href={policyPath(policy.slug)}
+                class="underline underline-offset-4"
+                data-testid="current-file"
+              >
+                {policy.filename}
+              </a>{' '}
+              at <code>{policyPath(policy.slug)}</code>
+            </p>
+          )}
+          <input
+            id="file"
+            name="file"
+            type="file"
+            accept="application/pdf"
+            aria-invalid={errors.file ? 'true' : undefined}
+            aria-describedby={errors.file ? 'file-hint file-error' : 'file-hint'}
+            class={control}
+          />
+          {errors.file && (
+            <p id="file-error" class="font-semibold">
+              {errors.file}
+            </p>
+          )}
+        </div>
+      )
+    }
+
+    <button
+      type="submit"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+    >
+      {policy ? 'Save' : 'Create'}
+    </button>
+  </form>
+
+  {
+    policy && (
+      <section class="mt-10 border-t border-navy/15 pt-6">
+        <h2 class="text-xl font-semibold text-navy">Versions</h2>
+        {versions.length === 0 ? (
+          <p class="mt-2" data-testid="versions-empty">
+            No document has been uploaded yet, so this policy is not on the policies page.
+          </p>
+        ) : (
+          <>
+            <p class="mt-2">
+              Every version ever uploaded, newest first. They are kept so the school can see what a
+              family actually signed.
+            </p>
+            <ul class="mt-4 flex flex-col gap-3" data-testid="versions">
+              {versions.map((version) => (
+                <li>
+                  <a
+                    href={policyVersionPath(policy!.slug, version.version)}
+                    class="underline underline-offset-4"
+                  >
+                    Version {version.version} — {version.filename}
+                  </a>
+                  <span class="text-sm">
+                    {' · '}
+                    {updatedOnLabel(version.uploadedAt)}
+                    {' · '}
+                    {fileSizeLabel(version.size)}
+                    {version.uploadedBy ? ` · uploaded by ${version.uploadedBy}` : ''}
+                    {version.version === policy!.version ? ' · this is the current one' : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+    )
+  }
+
+  {
+    stamp && (
+      <section class="mt-10 border-t border-navy/15 pt-6">
+        <h2 class="text-xl font-semibold text-navy">Publishing</h2>
+        <p class="mt-2" data-testid="stamp">
+          {stamp}
+        </p>
+        <p class="mt-2" data-testid="updated-on">
+          {policy!.updatedAt
+            ? `Parents are told this was updated ${updatedOnLabel(policy!.updatedAt)} — the day the current document was uploaded.`
+            : 'Parents are told nothing yet: there is no document, so this policy is not on the policies page.'}
+        </p>
+        <form method="post" action="/admin/republish" class="mt-4">
+          <button
+            type="submit"
+            class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
+          >
+            Republish
+          </button>
+        </form>
+      </section>
+    )
+  }
+</AdminLayout>

@@ -4,7 +4,8 @@
  *
  *   npm run db:migrate   apply every migration that has not been applied
  *   npm run db:seed      create the named accounts from passwords in the env,
- *                        and attach the board update's PDF from `docs/mirror/`
+ *                        and attach the board update's and the policies' PDFs
+ *                        from `docs/mirror/`
  *
  * Migrations are run from here rather than at build time on purpose: #18 §1
  * forbids the build depending on anything outside the repo, and a build that
@@ -89,6 +90,7 @@ async function seed() {
 
   console.log(created === 0 ? 'No accounts created.' : `Created ${created} account(s).`);
   await attachBoardUpdate(db);
+  await attachPolicies(db);
   if ((await listUsers(db)).length === 0) {
     console.error(
       'There are no accounts at all. Set the SEED_*_PASSWORD variables and run this again — otherwise the only way in is break-glass, which is meant to stay cold.',
@@ -144,6 +146,48 @@ async function attachBoardUpdate(db) {
     'Site developer',
   );
   console.log(`- ${slug}: attached ${source} (${Math.round(bytes.length / 1024)} KB).`);
+}
+
+/**
+ * Put each seeded policy's PDF on its row, as version 1.
+ *
+ * Here rather than in the migration for the same reason the board update is:
+ * 564 KB of base64 across four documents would live in the server bundle and be
+ * read on every cold start. This command runs on a developer's machine, where
+ * `docs/mirror/pdf/` exists.
+ *
+ * Until it has run, the four policies are rows with no document, and the
+ * policies page shows none of them — which is the correct empty state rather
+ * than four links to a 404.
+ *
+ * Idempotent: a policy that already has a document is left alone, so a re-run
+ * cannot bury a replacement Jill uploaded from the admin under version 3 of the
+ * file it superseded.
+ */
+async function attachPolicies(db) {
+  const { SEEDED_POLICIES } = await import('../src/lib/policies/policy.js');
+  const { getPolicy, replacePolicyFile } = await import('../src/lib/policies/store.js');
+
+  for (const seed of SEEDED_POLICIES) {
+    const policy = await getPolicy(db, seed.slug);
+    if (!policy) {
+      console.log(`- ${seed.slug}: not in the database, skipped. Run \`npm run db:migrate\` first.`);
+      continue;
+    }
+    if (policy.version !== null) {
+      console.log(`- ${seed.slug}: already has "${policy.filename}", left alone.`);
+      continue;
+    }
+    if (!existsSync(seed.source)) {
+      console.log(`- ${seed.slug}: skipped, ${seed.source} is not here.`);
+      continue;
+    }
+
+    const bytes = await readFile(seed.source);
+    const filename = seed.source.split('/').pop();
+    await replacePolicyFile(db, seed.slug, { filename, bytes }, 'Site developer');
+    console.log(`- ${seed.slug}: attached ${seed.source} (${Math.round(bytes.length / 1024)} KB).`);
+  }
 }
 
 /** Say out loud which database is about to be written to. Never the credentials. */

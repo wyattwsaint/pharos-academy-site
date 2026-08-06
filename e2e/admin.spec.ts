@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import { LABELS } from '../src/lib/admin/policies.js';
 import { SUITE_ADMIN, signIn } from './suite-admin.js';
 
 /**
@@ -371,6 +372,165 @@ test.describe('announcements', () => {
   });
 });
 
+/**
+ * Policies — created, uploaded, and replaced (#28).
+ *
+ * This is where four of the acceptance criteria are actually settled, because
+ * the admin is the only place a document can be replaced and the only place a
+ * date could have been typed. The store proves the same properties against real
+ * Postgres in `src/lib/policies/store.test.ts`; what only a browser can show is
+ * that the *screens* offer no way to do the wrong thing — three fields on the
+ * create form, no date control on either form, and no delete anywhere.
+ *
+ * Serial, and all on one policy of the suite's own: the tests replace its file
+ * and then read the version it replaced, so they are a sequence rather than a
+ * set. The seeded four are left alone so the public suite has a stable list.
+ */
+test.describe('policies', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  /** Two real PDFs, small enough to compare byte for byte in an assertion. */
+  const FIRST = Buffer.from('%PDF-1.7\n1 0 obj\n<<(first)>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
+  const SECOND = Buffer.from('%PDF-1.7\n1 0 obj\n<<(second)>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
+
+  const TITLE = 'Suite Transport Policy';
+  const SLUG = 'suite-transport-policy';
+  const PATH = `/policies/${SLUG}.pdf`;
+  const DESCRIPTION = 'How the suite gets to school, written by a browser test.';
+
+  async function upload(page: Page, bytes: Buffer, filename: string): Promise<void> {
+    await page.getByLabel(LABELS.file).setInputFiles({ name: filename, mimeType: 'application/pdf', buffer: bytes });
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+  }
+
+  // AC 4, and the reason this screen is not the same form twice: creating a
+  // policy mints a permanent address, so it asks the three structural questions
+  // and offers nothing else to get wrong.
+  test('creates one from a title, a position and a tick, and asks nothing else', async ({
+    page,
+  }) => {
+    await signIn(page, '/admin/policies');
+    await page.getByRole('link', { name: 'Add a policy' }).click();
+
+    await expect(page.getByLabel(LABELS.title)).toBeVisible();
+    await expect(page.getByLabel(LABELS.position)).toBeVisible();
+    await expect(page.getByLabel(LABELS.signed)).toBeVisible();
+    // Not on the create form: a description, a document, and — anywhere, ever —
+    // a date. AC 2 is that the updated date cannot be typed, and the strongest
+    // form of that is that there is no control for it.
+    await expect(page.getByLabel(LABELS.description)).toHaveCount(0);
+    await expect(page.getByLabel(LABELS.file)).toHaveCount(0);
+    await expect(page.locator('input[type="date"]')).toHaveCount(0);
+
+    await page.getByLabel(LABELS.title).fill(TITLE);
+    await page.getByLabel(LABELS.position).fill('9');
+    await page.getByRole('button', { name: 'Create' }).click();
+
+    const banner = page.getByTestId('save-banner');
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+    // Created is not published: a policy is published by its file.
+    await expect(banner).toContainText('not on the policies page yet');
+    await expect(page.getByTestId('versions-empty')).toBeVisible();
+
+    // The address was minted from the title and is now permanent — which is
+    // what the create form's three questions are protecting.
+    await page.goto('/admin/policies');
+    await expect(page.locator(`a[href="/admin/policies/${SLUG}"]`)).toBeVisible();
+  });
+
+  // AC 2 and AC 5: the first upload publishes it, and the date it prints is the
+  // day the bytes arrived rather than anything a person entered.
+  test('publishes it on the first upload, and stamps the date from the file', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page, `/admin/policies/${SLUG}`);
+
+    // Still no date control on the edit form either.
+    await expect(page.locator('input[type="date"]')).toHaveCount(0);
+
+    await page.getByLabel(LABELS.description).fill(DESCRIPTION);
+    await upload(page, FIRST, 'transport-v1.pdf');
+
+    const today = new Date().toISOString().slice(0, 10);
+    await page.goto('/policies');
+    const entry = page.locator(`[id="${SLUG}"]`);
+    await expect(entry).toContainText(DESCRIPTION);
+    await expect(entry.locator('time')).toHaveAttribute('datetime', today);
+
+    const response = await request.get(PATH);
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toBe('application/pdf');
+    expect(Buffer.from(await response.body()).equals(FIRST)).toBe(true);
+  });
+
+  /*
+   * AC 1 and AC 3 together, which is the whole ticket in one test.
+   *
+   * The replacement has to land at the address that was already printed — same
+   * URL, answering for itself rather than redirecting — and the document it
+   * replaced has to still be openable, because "what did the family who
+   * enrolled in August sign?" is a question the school has to be able to
+   * answer.
+   */
+  test('replaces the file at the same address, and keeps the one it replaced', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page, `/admin/policies/${SLUG}`);
+    await upload(page, SECOND, 'transport-v2.pdf');
+
+    // The address did not move…
+    await expect(page.getByTestId('current-file')).toHaveAttribute('href', PATH);
+    const replaced = await request.get(PATH, { maxRedirects: 0 });
+    expect(replaced.status()).toBe(200);
+    expect(Buffer.from(await replaced.body()).equals(SECOND)).toBe(true);
+
+    // …and version 1 is still there, at its own address, with its own bytes.
+    const versions = page.getByTestId('versions').locator('li');
+    await expect(versions).toHaveCount(2);
+    await expect(versions.first()).toContainText('this is the current one');
+
+    const prior = await request.get(`/policies/${SLUG}/v1.pdf`);
+    expect(prior.status()).toBe(200);
+    expect(Buffer.from(await prior.body()).equals(FIRST)).toBe(true);
+    expect(prior.headers()['cache-control']).toContain('immutable');
+  });
+
+  // The address is on printed paper, so nothing here may take it away. Delete
+  // is not merely unimplemented — it must not appear.
+  test('offers no way to delete a policy or take its document down', async ({ page }) => {
+    await signIn(page, `/admin/policies/${SLUG}`);
+
+    await expect(page.getByRole('button', { name: /delete/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /remove/i })).toHaveCount(0);
+  });
+
+  test('refuses a file that is not a PDF, and says so without replacing anything', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page, `/admin/policies/${SLUG}`);
+
+    await page
+      .getByLabel(LABELS.file)
+      .setInputFiles({
+        name: 'transport-v3.pdf',
+        mimeType: 'application/pdf',
+        buffer: Buffer.from('<html>not a pdf at all</html>'),
+      });
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
+    await expect(page.locator('#file-error')).toContainText('not a PDF');
+
+    // And the document families are being served is untouched.
+    const response = await request.get(PATH);
+    expect(Buffer.from(await response.body()).equals(SECOND)).toBe(true);
+  });
+});
+
 test.describe('accessibility', () => {
   for (const path of [
     '/admin/login',
@@ -381,6 +541,9 @@ test.describe('accessibility', () => {
     '/admin/people/new',
     '/admin/announcements',
     '/admin/announcements/new',
+    '/admin/policies',
+    '/admin/policies/handbook',
+    '/admin/policies/new',
   ]) {
     for (const width of ADMIN_WIDTHS) {
       test(`${path} has zero axe violations at ${width}px`, async ({ page }) => {
