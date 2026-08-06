@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 
 import type { APIRoute } from 'astro';
 
-import { getAttachment } from '../../lib/announcements/store.js';
-import { getDb } from '../../lib/db/client.js';
+import { getAttachment } from '../../../lib/announcements/store.js';
+import { getDb } from '../../../lib/db/client.js';
 
 /**
  * An announcement's attached PDF, served from the database (#27).

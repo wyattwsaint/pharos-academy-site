@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { SEEDED_POLICIES } from '../src/lib/policies/policy.js';
+import { POLICIES_PATH } from '../src/lib/policies/views.js';
 
 /**
  * The policies page and the two file routes, in a browser (#28).
@@ -32,7 +33,7 @@ const UNSIGNED = SEEDED_POLICIES.find((policy) => !policy.signed)!;
 
 test.describe('the policies page', () => {
   test('lists every policy with the line that says what it is', async ({ page }) => {
-    await page.goto('/policies');
+    await page.goto(POLICIES_PATH);
 
     for (const policy of SEEDED_POLICIES) {
       const entry = page.locator(`[id="${policy.slug}"]`);
@@ -45,7 +46,7 @@ test.describe('the policies page', () => {
   });
 
   test('dates each one, in words and in a machine-readable attribute', async ({ page }) => {
-    await page.goto('/policies');
+    await page.goto(POLICIES_PATH);
 
     const entry = page.locator(`[id="${HANDBOOK.slug}"]`);
     await expect(entry).toContainText('Updated');
@@ -53,14 +54,14 @@ test.describe('the policies page', () => {
   });
 
   test('says which documents parents sign, and only about those', async ({ page }) => {
-    await page.goto('/policies');
+    await page.goto(POLICIES_PATH);
 
     await expect(page.locator(`[id="${SIGNED.slug}"]`)).toContainText('Parents sign this');
     await expect(page.locator(`[id="${UNSIGNED.slug}"]`)).not.toContainText('Parents sign this');
   });
 
   test('is in the school’s order, not alphabetical by accident', async ({ page }) => {
-    await page.goto('/policies');
+    await page.goto(POLICIES_PATH);
 
     const rendered = await page
       .locator('.policy-list > li')
@@ -109,7 +110,7 @@ test.describe('a policy’s fixed address', () => {
   });
 
   test('is what the page links to, with no redirect on the way', async ({ page, request }) => {
-    await page.goto('/policies');
+    await page.goto(POLICIES_PATH);
     const href = await page
       .locator(`[id="${HANDBOOK.slug}"]`)
       .getByRole('link', { name: HANDBOOK.title })

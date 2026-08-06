@@ -7,6 +7,7 @@ import { listAnnouncements } from '../../lib/announcements/store.js';
 import { postedOnLabel } from '../../lib/announcements/views.js';
 import { formatStamp } from '../../lib/admin/school-details.js';
 import { getDb } from '../../lib/db/client.js';
+import { NEWS_PATH } from '../../lib/announcements/views.js';
 
 /**
  * Everything the school has announced, newest first (#27).
@@ -33,7 +34,7 @@ const showing = announcements.filter((announcement) => isCurrent(announcement, n
   <h1 class="text-3xl font-semibold text-navy">Announcements</h1>
   <p class="mt-2">
     Board updates, fundraisers and notices. Everything here is on the <a
-      href="/news"
+      href={NEWS_PATH}
       class="underline underline-offset-4">news page</a
     >; the homepage shows the ones posted in the last {STALE_AFTER_DAYS} days and hides itself
     entirely when there are none.

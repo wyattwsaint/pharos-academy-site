@@ -1,0 +1,243 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { BELIEFS_PATH } from '../../lib/about/beliefs.js';
+import {
+  ABOUT_CHILDREN,
+  CORE_VALUES,
+  MEETING_PLACE,
+  METHOD,
+  PHAROS_MEANING,
+} from '../../lib/about/story.js';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
+import { getDb } from '../../lib/db/client.js';
+import { INQUIRY_HREF } from '../../lib/home/sections.js';
+
+/**
+ * About — the page the old site never had (#30).
+ *
+ * `/about` on the live site is a link hub: eight links and not one sentence of
+ * its own, so a parent asking "what is this school" is handed a menu instead of
+ * an answer. Four of those links went to pages with real content on them —
+ * `/core-values`, `/general-8`, `/about-1`, `/statement-of-faith` — and three
+ * of the four are folded into this page. The Statement of Faith stays at its
+ * own address because it is long, because it is the document the application
+ * gates on, and because it is the one a family is sent to directly.
+ *
+ * Nothing here is written. The method, the values and the essay on the name are
+ * the school's own paragraphs, transcribed in `src/lib/about/story.ts` and held
+ * to the mirror by its test; the mission and vision are read from the school
+ * details row, which is the copy the school edits. That is the whole of the
+ * page's content policy, and it is the reason a page about a Christian school's
+ * convictions can be built by somebody who does not hold them.
+ *
+ * The order is a stranger's order: what we are here for (mission), how we go
+ * about it (method), what we believe (values, then the fuller document), where
+ * the name comes from, and where the building is.
+ */
+const details = await getSchoolDetails(await getDb());
+
+const description =
+  'What Pharos Academy is for, how it teaches, what it believes, where its name comes from, and where it meets — a classical Christian hybrid microschool in Enola, Pennsylvania.';
+---
+
+<BaseLayout details={details} title="About" description={description}>
+  <section class="band band-quiet" data-section="about-header">
+    <div class="wide">
+      <p class="label">About</p>
+      <h1 class="mt-4">Why Pharos Academy</h1>
+      <p class="sub mt-5">
+        A classical Christian hybrid microschool: families choose the classes they want taught in
+        community, and teach the rest at home. This is what we are for, how we go about it, and
+        what we hold to.
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="mission" data-section="about-mission">
+    <div class="wide">
+      <h2>Our mission and vision</h2>
+      <div class="statements mt-6">
+        <div class="statement">
+          <p class="label">Mission</p>
+          <p class="mt-3">{details.mission}</p>
+        </div>
+        <div class="statement">
+          <p class="label">Vision</p>
+          <p class="mt-3">{details.vision}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band band-quiet" id="method" data-section="about-method">
+    <div class="wide">
+      <h2>Our method</h2>
+      <p class="sub mt-4">Six words, and what the school means by each of them.</p>
+      <dl class="marks mt-7">
+        {
+          METHOD.map((mark) => (
+            <div class="mark">
+              <dt>{mark.word}</dt>
+              <dd>{mark.text}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      <p class="mt-8 text-ink-2">
+        The hybrid part is the one that surprises people, and it has a name here — H.O.P.E.,
+        Helping Our Parents Educate. <a href="/#week">A week here</a> is what it looks like on a
+        timetable.
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="values" data-section="about-values">
+    <div class="wide">
+      <h2>Our core values</h2>
+      <p class="sub mt-4">What the school believes, in the short form.</p>
+      <dl class="marks mt-7">
+        {
+          CORE_VALUES.map((value) => (
+            <div class="mark">
+              <dt>{value.subject}</dt>
+              <dd>{value.text}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      <p class="mt-8 text-ink-2">
+        This is the summary, not the document. The <a href={BELIEFS_PATH}>
+          Statement of Faith and Practice
+        </a> is the full text — eleven articles — and it is what families are asked to read before
+        applying, so please read that one rather than this.
+      </p>
+    </div>
+  </section>
+
+  <section class="band band-quiet" id="name" data-section="about-name">
+    <div class="wide">
+      <h2>What “Pharos” means</h2>
+      <div class="essay mt-6">
+        {PHAROS_MEANING.map((paragraph) => <p>{paragraph}</p>)}
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="location" data-section="about-location">
+    <div class="wide">
+      <h2>Where we meet</h2>
+      <p class="mt-5">
+        {MEETING_PLACE.preamble}
+        <a href={MEETING_PLACE.href} rel="external">{MEETING_PLACE.name}</a>.
+      </p>
+      <address class="mt-4">{details.address}</address>
+      <p class="mt-7 text-ink-2">
+        A question this page does not answer? <a href={INQUIRY_HREF}>Ask us</a> — or read
+        <a href="/admissions">how applying works</a>, which is the next thing most families want.
+      </p>
+    </div>
+  </section>
+
+  <section class="band band-quiet" id="more" data-section="about-more">
+    <div class="wide">
+      <h2>The rest of About</h2>
+      <ul class="more mt-6">
+        {
+          ABOUT_CHILDREN.map((child) => (
+            <li>
+              <a href={child.path}>{child.label}</a>
+              <span class="blurb">{child.blurb}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /*
+    Two statements side by side above 700px and stacked below it, measured
+    rather than counted: they are three lines each, and a two-column grid that
+    survives a phone is a grid that was never two columns there.
+  */
+  .statements {
+    display: grid;
+    gap: 2rem;
+    max-width: 56rem;
+  }
+
+  @media (min-width: 44rem) {
+    .statements {
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+    }
+  }
+
+  .statement p:not(.label) {
+    max-width: 34rem;
+  }
+
+  /*
+    A description list, because that is what it is: a word and what the school
+    means by it. The term is set in the sans the rest of the site labels things
+    in, and the rule down the left is the same one the articles of the Statement
+    of Faith carry — the two lists are the same kind of thing.
+  */
+  .marks {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    max-width: 46rem;
+    margin: 0;
+  }
+
+  .mark {
+    border-left: 2px solid var(--color-gold-orn);
+    padding-left: 1.25rem;
+  }
+
+  .mark dt {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    color: var(--color-gold-ink);
+    margin-bottom: 0.35rem;
+  }
+
+  .mark dd {
+    margin: 0;
+  }
+
+  /* A list of the section's own children, set like the cards elsewhere. */
+  .more {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    list-style: none;
+    padding: 0;
+    max-width: 46rem;
+  }
+
+  .more > li {
+    border-left: 2px solid var(--color-gold-orn);
+    padding-left: 1.25rem;
+  }
+
+  .more .blurb {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--color-ink-2);
+  }
+
+  .essay {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: 46rem;
+  }
+
+  address {
+    font-style: normal;
+    white-space: pre-line;
+  }
+</style>

@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { getSchoolDetails } from '../lib/admin/school-details.js';
 import {
   admissionCosts,
   agesLabel,
@@ -13,7 +14,7 @@ import { INQUIRY_HREF } from '../lib/home/sections.js';
 import { getMoneySettings } from '../lib/money/store.js';
 import { publishedPolicies } from '../lib/policies/policy.js';
 import { listPolicies } from '../lib/policies/store.js';
-import { policyPath } from '../lib/policies/views.js';
+import { POLICIES_PATH, policyPath } from '../lib/policies/views.js';
 
 /**
  * How applying works, said plainly before anybody is asked for anything (#29).
@@ -35,6 +36,7 @@ import { policyPath } from '../lib/policies/views.js';
  * signed rather than a list somebody kept up to date by hand.
  */
 const db = await getDb();
+const details = await getSchoolDetails(db);
 const courses = await listCourses(db);
 const settings = await getMoneySettings(db);
 const signedPolicies = publishedPolicies(await listPolicies(db)).filter((policy) => policy.signed);
@@ -47,7 +49,7 @@ const description =
   'How to apply to Pharos Academy — who the classes are for, what applying involves, what it costs, and which documents families sign.';
 ---
 
-<BaseLayout title="Admissions" description={description}>
+<BaseLayout details={details} title="Admissions" description={description}>
   <section class="band band-quiet" data-section="admissions-header">
     <div class="wide">
       <p class="label">Admissions</p>
@@ -199,7 +201,7 @@ const description =
         )
       }
       <p class="mt-6 text-ink-2">
-        <a href="/policies">Every policy the school publishes</a>, including the ones nobody signs.
+        <a href={POLICIES_PATH}>Every policy the school publishes</a>, including the ones nobody signs.
       </p>
     </div>
   </section>

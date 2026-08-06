@@ -1,3 +1,8 @@
+import { SUPPORT_PATH } from './about/story.js';
+import { NEWS_PATH } from './announcements/views.js';
+import { STAFF_PATH } from './people/views.js';
+import { POLICIES_PATH } from './policies/views.js';
+import { TEACH_PATH } from './teach/teach.js';
 import { PUBLIC_ROUTES, absoluteUrl } from './routes.js';
 import { SCHOOL_NAME } from './site.js';
 
@@ -13,10 +18,25 @@ const SUMMARIES: Record<string, string> = {
   '/classes': 'Every class for 2026–2027, grouped by the ages it is open to.',
   '/classes/by-day':
     'The timetable, drawn to scale — which classes run when, and which of them overlap.',
-  '/classes/full-descriptions':
+  '/classes/descriptions':
     'The full description, texts, prerequisites and fees for all nineteen classes.',
-  '/staff': 'Who runs the school and who teaches each class.',
-  '/news': 'Board updates, fundraisers and notices for current families, newest first.',
+  [STAFF_PATH]: 'Who runs the school and who teaches each class.',
+  [NEWS_PATH]: 'Board updates, fundraisers and notices for current families, newest first.',
+  [POLICIES_PATH]:
+    'The school’s published policies as downloadable documents, each with what it is and when ' +
+    'it was last updated. Nothing here requires a login.',
+  '/about':
+    'What the school is for, how it teaches, what it believes, where the name comes from, and ' +
+    'where it meets.',
+  [SUPPORT_PATH]:
+    'How to give to the school and how to volunteer, including the volunteer form and the five ' +
+    'areas the school asks for help in.',
+  '/about/beliefs':
+    'The Statement of Faith and Practice, in full — what the school teaches from, and what ' +
+    'families are asked to read before applying.',
+  [TEACH_PATH]:
+    'For people who might teach a class — instructors are independent contractors, and this ' +
+    'carries the contract and the Pennsylvania clearances required.',
   '/admissions':
     'How to apply — who the classes are for, which mornings they run, what applying involves, ' +
     'the registration fee and per-class deposit, and which documents families sign.',

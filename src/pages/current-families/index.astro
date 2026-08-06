@@ -1,0 +1,110 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
+import { CURRENT_FAMILIES_LINKS } from '../../lib/current-families/section.js';
+import { getDb } from '../../lib/db/client.js';
+import { INQUIRY_HREF } from '../../lib/home/sections.js';
+
+/**
+ * Current Families — the section index (#30).
+ *
+ * It exists because the nav item does, and a nav item that goes straight to one
+ * of its children is a nav item lying about how many children it has. Two
+ * things are under it today, news and policies, and the third — the calendar —
+ * is #23's and is not built.
+ *
+ * **The calendar is named and not linked.** The school's calendar is five hand
+ * made PDFs of 28 weeks across four independent day tracks; inventing so much
+ * as one date here to make the page feel finished would put a wrong closure on
+ * a school's website, and linking a page that does not exist retires nothing
+ * and helps nobody. Saying "not here yet, ask us" is the honest third option,
+ * and it carries the school's own inquiry route rather than a dead end.
+ *
+ * Nothing on this page or under it is gated. See `current-families/section.ts`
+ * for why that is a decision.
+ */
+const description =
+  'For families already at Pharos Academy — news, policies and the handbook. Nothing here requires a login.';
+
+/*
+ * The signpost itself reads nothing; the footer under it reads the school
+ * details row. Read here rather than in the layout because a layout's read
+ * fails after the 200 has been sent (`BaseLayout.astro`), and this page must
+ * answer 500 with the database down like every other one.
+ */
+const details = await getSchoolDetails(await getDb());
+---
+
+<BaseLayout details={details} title="Current Families" description={description}>
+  <section class="band band-quiet" data-section="current-families-header">
+    <div class="wide">
+      <p class="label">Current Families</p>
+      <h1 class="mt-4">For families already here</h1>
+      <p class="sub mt-5">
+        The things you need during the year, in one place. None of it is behind a login — if you
+        are still deciding whether to apply, you are welcome to read every word of it.
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="what-is-here" data-section="current-families-links">
+    <div class="wide">
+      <ul class="cards">
+        {
+          CURRENT_FAMILIES_LINKS.map((link) => (
+            <li class="card">
+              <h2><a href={link.path}>{link.label}</a></h2>
+              <p class="mt-3">{link.blurb}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section class="band band-quiet" id="calendar" data-section="current-families-calendar">
+    <div class="wide">
+      <h2>The calendar</h2>
+      <p class="mt-5">
+        The 2026–2027 calendar is not on this site yet. It is being rebuilt properly rather than
+        retyped — the school runs four separate day tracks, each with its own week numbering, and
+        a flattened version of that would be wrong for three quarters of families.
+      </p>
+      <p class="mt-4 text-ink-2">
+        Until it is here, <a href={INQUIRY_HREF}>ask us</a> for the dates you need and we will send
+        them. We would rather do that than publish a date we are not certain of.
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /*
+    Two cards side by side above 44rem, stacked below. A list rather than a
+    stack of divs because it is a list, and the count is read out.
+  */
+  .cards {
+    display: grid;
+    gap: 1.75rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-width: 56rem;
+  }
+
+  @media (min-width: 44rem) {
+    .cards {
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+  }
+
+  .card {
+    border-left: 2px solid var(--color-gold-orn);
+    padding-left: 1.25rem;
+  }
+
+  .card p {
+    max-width: 30rem;
+  }
+</style>

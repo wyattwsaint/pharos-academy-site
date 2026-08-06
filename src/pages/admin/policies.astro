@@ -6,6 +6,7 @@ import { formatStamp } from '../../lib/admin/school-details.js';
 import { getDb } from '../../lib/db/client.js';
 import { listPolicies } from '../../lib/policies/store.js';
 import { updatedOnLabel } from '../../lib/policies/views.js';
+import { POLICIES_PATH } from '../../lib/policies/views.js';
 
 /**
  * The school's policy documents (#28).
@@ -32,7 +33,7 @@ const awaiting = policies.filter((policy) => policy.version === null).length;
   <h1 class="text-3xl font-semibold text-navy">Policies</h1>
   <p class="mt-2">
     The documents families read and sign. Everything here with a document behind it is on the <a
-      href="/policies"
+      href={POLICIES_PATH}
       class="underline underline-offset-4">policies page</a
     >, in the order below.
   </p>

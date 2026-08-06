@@ -2,11 +2,30 @@
 import '../styles/global.css';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
-import { SCHOOL_NAME } from '../lib/site.js';
+import type { SchoolDetails } from '../lib/db/schema.js';
+import { SCHOOL_NAME, SITE_URL } from '../lib/site.js';
+import { renderJsonLd, schoolJsonLd } from '../lib/structured-data.js';
 
 interface Props {
   title: string;
   description: string;
+  /**
+   * The school details row, read by the **page** and handed down (#34).
+   *
+   * A prop rather than a read of this layout's own, and required rather than
+   * optional, because of how a rendered response is committed: Astro streams,
+   * so by the time a layout's frontmatter runs the 200 has already gone to the
+   * client. A database failure in here therefore truncates a page that has
+   * already said it succeeded — and a 2xx with the database down is precisely
+   * what `e2e/database-down.spec.ts` exists to forbid, because the CDN caches
+   * that emptiness over the good copy.
+   *
+   * Page frontmatter, by contrast, is fully awaited before a byte is sent, so
+   * the throw becomes a 500, the ISR regeneration fails, and Vercel keeps
+   * serving stale. Making the prop required puts that on the type checker: a
+   * new public page cannot forget to read the row, because it will not compile.
+   */
+  details: SchoolDetails;
   /**
    * Whether this page opens on the full-bleed video hero.
    *
@@ -17,7 +36,7 @@ interface Props {
   overHero?: boolean;
 }
 
-const { title, description, overHero = false } = Astro.props;
+const { title, description, details, overHero = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 
@@ -39,6 +58,20 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       */
       overHero && <link rel="preload" as="image" href="/hero/hope-poster.webp" />
     }
+    {
+      /*
+        School / LocalBusiness structured data (#30 AC 6), on every page rather
+        than only the homepage.
+
+        One node with a stable `@id`, so the pages do not describe three
+        different schools — they all point at the same entity. It is here rather
+        than in a component because it belongs in `<head>`, and it is read from
+        the school details row for the reason the footer is: the address on the
+        live site is hand-typed in 22 places and has already drifted, and markup
+        that disagrees with the page beside it is what a search engine believes.
+      */
+    }
+    <script type="application/ld+json" set:html={renderJsonLd(schoolJsonLd(details, Astro.site ?? SITE_URL))} is:inline />
   </head>
   <body>
     <a
@@ -51,6 +84,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <main id="main" class:list={[{ 'pt-24': !overHero }]}>
       <slot />
     </main>
-    <SiteFooter />
+    <SiteFooter details={details} />
   </body>
 </html>

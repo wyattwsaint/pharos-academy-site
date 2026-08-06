@@ -1,3 +1,6 @@
+import { ABOUT_PATH } from '../about/story.js';
+import { CURRENT_FAMILIES_PATH } from '../current-families/section.js';
+
 /**
  * The homepage's section order, fixed by #9's resolution comment and not open
  * to revision in the surface work (#21).
@@ -32,44 +35,38 @@ export const SECTION_ORDER = [
 export type SectionId = (typeof SECTION_ORDER)[number];
 
 /**
- * The header nav, which is now on more than one page.
+ * The header nav, as #9 and #18 §5 fix it: four items and the inquiry button.
  *
- * Every anchor is written as `/#section` rather than `#section`. On the
- * homepage that is still a same-document jump; on `/classes` it is a link back
- * to the section that answers the question, which a bare fragment would not be
- * — it would silently do nothing. About is still absent because its page is,
- * and a nav item pointing at a 404 is worse than one pointing at the section
- * that answers the same question.
+ * Until #30 this was seven items, most of them homepage anchors, and the
+ * comment here said so — an interim list kept only because the pages behind the
+ * real one did not exist. They all exist now, so this is the settled shape:
  *
- * Admissions is a real route now (#29), and it sits directly after "What it
- * costs" because that is the order of the questions: a family reads the fees
- * and the next thing they want is how to actually do this. It is the only item
- * on the list that leads somewhere a decision gets made.
+ *   About · Classes · Admissions · Current Families
  *
- * Classes is a real route now (#22) and leads with the By Age view, which is
- * `/classes` itself.
+ * Four, and in a stranger's order. About says what the school is, Classes is
+ * what it sells, Admissions is how you get in, and Current Families is for the
+ * people already here — which is why it is last, and why it reads as an
+ * audience rather than a door. **Nothing behind it is gated** (#30): the
+ * section describes who the material is mainly for, not who is permitted to see
+ * it, and Admissions links the calendar and the handbook's fee detail directly
+ * so a prospective family never has to work out that they are allowed to look.
  *
- * "Who teaches" is a real route now too (#26). By this list's own rule an item
- * points at a section only for want of a page, and `/staff` is the fuller
- * answer to the question the label asks — every instructor and what they
- * teach, rather than the three the homepage band has room for. The homepage
- * section stays exactly as #21 signed it off; it is simply no longer the only
- * place that answers this.
+ * The three homepage anchors this replaces — "A week here", "What it costs",
+ * "Why we do this" — are not lost. Each is a section of a page that is now
+ * reachable in two clicks, and each was on the list only for want of the page
+ * above it. Deep-linking the homepage from the header of a different page was
+ * always the weaker half of this nav.
  *
- * News is here because of what the homepage band does (#27): it hides itself
- * when nothing is current, so a news page linked only from that band is a page
- * that becomes unreachable in exactly the quiet weeks somebody would go looking
- * for what happened in July. It is last because it is for families who are
- * already here, and the four items above it are for the ones deciding.
+ * Every href is still rooted at `/`. Only the anchor rule is gone with the
+ * anchors; if an item ever points at a fragment again it must be `/#section`,
+ * because the header is on every page and a bare fragment elsewhere silently
+ * does nothing.
  */
 export const NAV_ITEMS = [
+  { label: 'About', href: ABOUT_PATH },
   { label: 'Classes', href: '/classes' },
-  { label: 'A week here', href: '/#week' },
-  { label: 'Who teaches', href: '/staff' },
-  { label: 'What it costs', href: '/#costs' },
   { label: 'Admissions', href: '/admissions' },
-  { label: 'Why we do this', href: '/#faith' },
-  { label: 'News', href: '/news' },
+  { label: 'Current Families', href: CURRENT_FAMILIES_PATH },
 ] as const;
 
 /**

@@ -82,12 +82,16 @@ describe('the monthly send', () => {
     await sendMonthlyBackup(db, { sender, from: FROM, at: AT });
 
     const button = await buildExport(db, AT);
-    expect(sent[0].attachment.filename).toBe(button.filename);
-    expect(sent[0].attachment.bytes.equals(button.bytes)).toBe(true);
+    // The attachment is optional on `Mail` since the volunteer form shares the
+    // sender (#30), so this asserts the backup actually carried one rather than
+    // letting an absent attachment read as a pass.
+    const attachment = sent[0]!.attachment!;
+    expect(attachment.filename).toBe(button.filename);
+    expect(attachment.bytes.equals(button.bytes)).toBe(true);
 
     // And it is still a ZIP after the trip through the mail shape — the thing
     // an attachment is most likely to stop being.
-    const files = unzipSync(sent[0].attachment.bytes);
+    const files = unzipSync(attachment.bytes);
     expect(files['README.txt']).toBeDefined();
     expect(files['manifest.json']).toBeDefined();
   });

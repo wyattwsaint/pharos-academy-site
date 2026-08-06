@@ -54,7 +54,7 @@ test.describe('the four surfaces', () => {
   test('render all nineteen classes from the one source', async ({ page }) => {
     // AC 1. Every course, on every list surface — the four ways a parent finds
     // a class, agreeing because there is only one source behind them.
-    for (const path of ['/classes', '/classes/by-day', '/classes/full-descriptions']) {
+    for (const path of ['/classes', '/classes/by-day', '/classes/descriptions']) {
       await page.goto(path);
       for (const course of CATALOGUE) {
         await expect(
@@ -238,7 +238,7 @@ test.describe('a class’s own page', () => {
     await page.locator('[data-course="kingdom-math"]').first().click();
     await expect(page.locator('h1')).toContainText('Kingdom Math');
 
-    await page.goto('/classes/full-descriptions');
+    await page.goto('/classes/descriptions');
     await page.locator('.coursefull[data-course="kingdom-math"] a.btn').click();
     await expect(page.locator('h1')).toContainText('Kingdom Math');
   });

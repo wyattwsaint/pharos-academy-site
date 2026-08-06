@@ -1,5 +1,11 @@
+import { SUPPORT_PATH } from './about/story.js';
+import { NEWS_PATH } from './announcements/views.js';
 import { CATALOGUE } from './courses/catalogue.js';
 import { classPath, CLASS_VIEWS } from './courses/views.js';
+import { CURRENT_FAMILIES_PATH } from './current-families/section.js';
+import { STAFF_PATH } from './people/views.js';
+import { POLICIES_PATH } from './policies/views.js';
+import { TEACH_PATH } from './teach/teach.js';
 
 /**
  * The enumerated public route list.
@@ -23,6 +29,18 @@ export type PublicRoute = {
   priority: number;
   /** How often the page's content is expected to change. */
   changefreq: ChangeFreq;
+  /**
+   * How the page is delivered.
+   *
+   * `isr` for all but one of them, which is the whole delivery model (#18 §1).
+   * `on-request` is for a page that takes a POST: the volunteer form's answer
+   * belongs to one submission, and a cache in front of it is a cache that can
+   * hand one visitor's outcome to the next. Three things read this — the
+   * adapter's ISR `exclude` list, the build-output assertion, and whole-site
+   * republishing, which has nothing to revalidate on a page that renders every
+   * time.
+   */
+  delivery?: 'isr' | 'on-request';
 };
 
 export type ChangeFreq =
@@ -63,7 +81,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * surface missing from this list is a surface that keeps the old name until
    * the hour's ISR expiry catches it.
    */
-  { path: '/staff', priority: 0.6, changefreq: 'monthly' },
+  { path: STAFF_PATH, priority: 0.6, changefreq: 'monthly' },
   /*
    * The news page (#27).
    *
@@ -76,7 +94,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * enumerating them here is not possible — the route that serves them renders
    * on request and revalidates on its own ETag instead.
    */
-  { path: '/news', priority: 0.6, changefreq: 'weekly' },
+  { path: NEWS_PATH, priority: 0.6, changefreq: 'weekly' },
   /*
    * The policies page (#28).
    *
@@ -91,7 +109,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * reason an announcement's attachment is not: they are database rows uploaded
    * after the build, and the routes that serve them render on request.
    */
-  { path: '/policies', priority: 0.6, changefreq: 'monthly' },
+  { path: POLICIES_PATH, priority: 0.6, changefreq: 'monthly' },
   /*
    * How applying works (#29).
    *
@@ -106,11 +124,84 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * for an hour is precisely the failure #29 exists to prevent.
    */
   { path: '/admissions', priority: 0.9, changefreq: 'monthly' },
+  /*
+   * About (#30).
+   *
+   * High priority because it is the page three of the old site's addresses now
+   * point at, and because "classical Christian school near Harrisburg" is a
+   * category search — the page that answers it is the one that says what the
+   * school is, not the one that lists classes.
+   *
+   * In this list rather than only in the sitemap for a reason that is not
+   * cosmetic: the mission and vision printed here are read from the school
+   * details row, so an edit in the admin has to reach this page in the same
+   * republish that reaches the homepage and the footer.
+   */
+  { path: '/about', priority: 0.8, changefreq: 'monthly' },
+  /*
+   * Current Families — the section index (#30).
+   *
+   * Low priority and rarely changing: it is a signpost, and the pages under it
+   * are the ones worth landing on. It is enumerated all the same because it is
+   * a nav item, and because the thing it says about the calendar will stop
+   * being true when #23 lands.
+   */
+  { path: CURRENT_FAMILIES_PATH, priority: 0.4, changefreq: 'yearly' },
+  /*
+   * Giving and volunteering (#30).
+   *
+   * Enumerated like any other page, and it is the one public route that is not
+   * ISR — it renders on request because the volunteer form posts to it. It is
+   * still in this list: the sitemap should carry it, and the Give link on it is
+   * read from the school details row, so a changed `giveUrl` has to reach it in
+   * the same republish as everywhere else.
+   */
+  { path: SUPPORT_PATH, priority: 0.5, changefreq: 'monthly', delivery: 'on-request' },
+  /*
+   * Teaching here (#30).
+   *
+   * Low priority and off the nav — the audience is a handful of people a year,
+   * not a family — but enumerated all the same, because the email address on it
+   * is read from the school details row and a changed address has to reach it.
+   */
+  { path: TEACH_PATH, priority: 0.3, changefreq: 'yearly' },
+  /*
+   * The Statement of Faith (#30).
+   *
+   * `yearly` because it changes when the school board changes it, which is a
+   * board decision rather than an edit — and it is not in the editable set at
+   * all, so no admin save can move it. It is enumerated all the same: it is one
+   * of the two pages the homepage and the footer both link, the 301 from the
+   * Wix `/statement-of-faith` lands on it, and a family who has been told to
+   * read it before applying is a family who will search for it.
+   */
+  { path: '/about/beliefs', priority: 0.7, changefreq: 'yearly' },
 ] as const;
 
 /** Every public path, in list order. */
 export function publicPaths(): string[] {
   return PUBLIC_ROUTES.map((route) => route.path);
+}
+
+/**
+ * The paths whole-site republishing should actually re-request.
+ *
+ * A page that renders on every request has no cached copy to replace, so asking
+ * the CDN to revalidate it is a request that costs a Neon round trip and
+ * changes nothing — and it would be reported to Jill as part of "republished
+ * 32 pages", which is a number that should mean something.
+ */
+export function revalidatablePaths(): string[] {
+  return PUBLIC_ROUTES.filter((route) => route.delivery !== 'on-request').map(
+    (route) => route.path,
+  );
+}
+
+/** The paths that must never be served from the ISR cache. */
+export function onRequestPaths(): string[] {
+  return PUBLIC_ROUTES.filter((route) => route.delivery === 'on-request').map(
+    (route) => route.path,
+  );
 }
 
 /**

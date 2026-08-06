@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 
 import type { Db } from '../db/client.js';
+import { isEmailAddress, textField as text } from '../forms.js';
 import { schoolDetails, type SchoolDetails } from '../db/schema.js';
 
 /**
@@ -152,14 +153,7 @@ export function formatStamp(editorName: string | null, editedAt: Date | null): s
   return `Last edited by ${editorName} on ${day}`;
 }
 
-function text(form: FormData, name: string): string {
-  const value = form.get(name);
-  return typeof value === 'string' ? value.trim() : '';
-}
 
-function isEmailAddress(value: string): boolean {
-  return /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(value);
-}
 
 /** `YYYY-MM-DD`, and a day that exists — 31 February is a typo, not a date. */
 function isCalendarDate(value: string): boolean {

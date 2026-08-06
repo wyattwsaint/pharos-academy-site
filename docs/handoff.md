@@ -194,7 +194,8 @@ project, with the site running off it, PDFs included.
    environment, so set it there — `$env:DATABASE_URL = '<scratch connection string>'` in
    PowerShell, `export DATABASE_URL=...` in a POSIX shell — and **do not** leave your usual
    `.env.local` pointing at the school's Neon while you do it. Then `npm run dev` and
-   walk the site: the homepage's announcements, `/staff`, `/news`, `/classes`, and — the
+   walk the site: the homepage's announcements, `/about/staff`, `/current-families/news`,
+   `/classes`, and — the
    part that matters — open a policy PDF and the board update PDF. Those bytes live in the
    database, so a restore that loses them is a restore that looks fine and is not.
 5. **Sign in.** `/admin`, with the password from the printed sheet. The accounts are rows;

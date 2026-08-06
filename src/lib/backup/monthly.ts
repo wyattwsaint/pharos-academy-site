@@ -35,13 +35,21 @@ import { buildExport } from './export.js';
  */
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
-/** One message, described in the terms this codebase cares about. */
+/**
+ * One message, described in the terms this codebase cares about.
+ *
+ * The attachment is optional because there are now two things that send mail
+ * from this site — the monthly backup, which is nothing *but* an attachment,
+ * and the volunteer form (#30), which is a few lines of text somebody typed.
+ * One `Sender` for both, so there is one place that knows how to talk to
+ * Resend and one place to fix when it changes.
+ */
 export type Mail = {
   to: string;
   from: string;
   subject: string;
   text: string;
-  attachment: { filename: string; bytes: Buffer };
+  attachment?: { filename: string; bytes: Buffer };
 };
 
 /**
@@ -116,12 +124,18 @@ export function resendSender(apiKey: string, fetchImpl: typeof fetch = fetch): S
         to: [mail.to],
         subject: mail.subject,
         text: mail.text,
-        attachments: [
-          {
-            filename: mail.attachment.filename,
-            content: mail.attachment.bytes.toString('base64'),
-          },
-        ],
+        // Omitted entirely rather than sent empty when there is nothing to
+        // attach — Resend rejects `attachments: []`.
+        ...(mail.attachment
+          ? {
+              attachments: [
+                {
+                  filename: mail.attachment.filename,
+                  content: mail.attachment.bytes.toString('base64'),
+                },
+              ],
+            }
+          : {}),
       }),
     });
 
@@ -129,7 +143,7 @@ export function resendSender(apiKey: string, fetchImpl: typeof fetch = fetch): S
       // Carrying Resend's own words: a monthly job fails once a month, and
       // "the send failed" is not enough to fix it before the next one.
       const said = await response.text().catch(() => '');
-      throw new Error(`Resend refused the backup email (${response.status}): ${said}`);
+      throw new Error(`Resend refused the email (${response.status}): ${said}`);
     }
   };
 }

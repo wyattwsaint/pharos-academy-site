@@ -1,4 +1,4 @@
-import { publicPaths } from '../routes.js';
+import { revalidatablePaths } from '../routes.js';
 
 /**
  * Whole-site revalidation, synchronous and reported (#18 §3).
@@ -34,7 +34,7 @@ export type RevalidateOptions = {
 };
 
 export async function revalidateAll(options: RevalidateOptions): Promise<RevalidationResult> {
-  const { origin, bypassToken, paths = publicPaths(), fetchImpl = fetch } = options;
+  const { origin, bypassToken, paths = revalidatablePaths(), fetchImpl = fetch } = options;
 
   // No token means every request would be served from the cache and report
   // success while changing nothing. Fail closed and say so, rather than lie.

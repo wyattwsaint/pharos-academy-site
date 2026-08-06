@@ -1,8 +1,13 @@
 ---
-import { copyrightYear, getSchoolDetails, telHref } from '../lib/admin/school-details.js';
-import { getDb } from '../lib/db/client.js';
+import type { SchoolDetails } from '../lib/db/schema.js';
+
+import { BELIEFS_PATH } from '../lib/about/beliefs.js';
+import { SUPPORT_PATH } from '../lib/about/story.js';
+import { TEACH_PATH } from '../lib/teach/teach.js';
+import { copyrightYear, telHref } from '../lib/admin/school-details.js';
 import { INQUIRY_HREF } from '../lib/home/sections.js';
 import { SCHOOL_NAME } from '../lib/site.js';
+import { POLICIES_PATH } from '../lib/policies/views.js';
 
 /**
  * The public footer: the school's own details, straight out of the one row
@@ -21,7 +26,17 @@ import { SCHOOL_NAME } from '../lib/site.js';
  * no button in it at all, so what is honoured is #9's IA-level wording — a
  * persistent CTA in the header and the footer — at both ends of the page.
  */
-const details = await getSchoolDetails(await getDb());
+/*
+ * The details are a prop rather than a second read of the same row (#30). The
+ * layout already has them — the structured data in `<head>` is built from them
+ * — and two queries for one row on every page is a query the school pays for
+ * on every render for nothing.
+ */
+interface Props {
+  details: SchoolDetails;
+}
+
+const { details } = Astro.props;
 
 // Computed at render, never stored (#18 §10) — a stored year is the only way a
 // site ends up reading "© 2025" in August 2026, which this one does today.
@@ -55,9 +70,16 @@ const addressLines = details.address.split('\n').filter(Boolean);
       <div>
         <b>More</b>
         <a href={INQUIRY_HREF}>Ask us about Pharos</a><br />
-        <a href="/statement-of-faith">Statement of Faith</a><br />
-        <a href="/policies">Policies</a><br />
-        <a href={details.giveUrl}>Give</a>
+        <a href={BELIEFS_PATH}>Statement of Faith</a><br />
+        <a href={POLICIES_PATH}>Policies</a><br />
+        <a href={SUPPORT_PATH}>Give and volunteer</a><br />
+        {/*
+          Off the main nav on purpose (#30): the four items up there are for
+          families, and this is for the handful of people a year who might
+          teach a class. The footer is on every page, so it is still one click
+          from anywhere.
+        */}
+        <a href={TEACH_PATH}>Teach at Pharos</a>
       </div>
     </div>
 

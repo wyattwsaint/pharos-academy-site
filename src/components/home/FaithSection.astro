@@ -1,4 +1,5 @@
 ---
+import { BELIEFS_PATH } from '../../lib/about/beliefs.js';
 import { HOPE, VERSE } from '../../lib/home/content.js';
 
 /**
@@ -73,15 +74,14 @@ import { HOPE, VERSE } from '../../lib/home/content.js';
     <p class="mx-auto mt-10 max-w-[46ch]">We partner with parents rather than replace them.</p>
 
     {/*
-      #9 item 6 requires the Statement of Faith link, and this is the path the
-      school's own site already serves it at — `docs/mirror/data/pages.json`
-      records `/statement-of-faith` on this exact origin. So the href is correct
-      the moment the domain points here, and it is the URL any parent who
-      bookmarked it already holds. It 404s on a preview deployment until the
-      page itself is built, which is a later slice.
+      #9 item 6 requires the Statement of Faith link, and it is now a real page
+      under About (#30) rather than the Wix slug this used to point at. The old
+      address still works — `/statement-of-faith` 301s here — so a parent who
+      bookmarked it from the live site loses nothing, but what the site's own
+      pages link is the address the site keeps.
     */}
     <p class="mt-5">
-      <a href="/statement-of-faith">Read our Statement of Faith →</a>
+      <a href={BELIEFS_PATH}>Read our Statement of Faith →</a>
     </p>
   </div>
 </section>

@@ -1,6 +1,7 @@
 ---
 import CourseFacts from '../../components/classes/CourseFacts.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import { ageLine } from '../../lib/courses/ages.js';
 import { priceSummary } from '../../lib/courses/pricing.js';
 import { coursesOnTrack, timeLabel } from '../../lib/courses/schedule.js';
@@ -27,6 +28,7 @@ import { listPeople } from '../../lib/people/store.js';
  */
 const { slug } = Astro.params;
 const db = await getDb();
+const details = await getSchoolDetails(db);
 const course = slug ? await getCourse(db, slug) : undefined;
 
 if (!course) {
@@ -52,7 +54,7 @@ const description = `${course.title} at Pharos Academy — ${ageLine(course)}, $
 )} ${timeLabel(course.start, course.end)}, ${priceSummary(course, rates)}.`;
 ---
 
-<BaseLayout title={course.title} description={description}>
+<BaseLayout details={details} title={course.title} description={description}>
   <section class="band band-quiet" data-section="class-header">
     <div class="wide">
       <p class="label">

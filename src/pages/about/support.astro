@@ -1,0 +1,350 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { GIVING_INTRO, GIVING_LINK_LABEL, VOLUNTEER_INTRO } from '../../lib/about/story.js';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
+import { NEWS_PATH } from '../../lib/announcements/views.js';
+import { listAnnouncements } from '../../lib/announcements/store.js';
+import { resendSender } from '../../lib/backup/monthly.js';
+import { getDb } from '../../lib/db/client.js';
+import {
+  CONTACT_METHODS,
+  INTERESTS,
+  parseVolunteer,
+  submitVolunteer,
+  type VolunteerErrors,
+  type VolunteerFields,
+} from '../../lib/volunteer/volunteer.js';
+
+/**
+ * Support the school — giving, volunteering, and what is being raised for now
+ * (#30).
+ *
+ * Three Wix addresses become this one page: `/giving`, `/volunteer`, and
+ * `/about-5`, which is byte-for-byte the volunteer page and is labelled "Media"
+ * in the old nav. They are one page because they are one question — how can we
+ * help — and splitting it was a Wix artefact, not a decision.
+ *
+ * **`prerender = false`, because the form posts here.** Everything else on the
+ * public site is ISR; this page cannot be, since a POST has to reach a running
+ * function and the answer it renders is specific to one submission.
+ *
+ * The Give link is `giveUrl` from the school details row and never a pasted URL
+ * (#18 §12): today it points at Enola First Church of God's Vanco, where a
+ * giver selects Pharos from a list, and the board is in the middle of opening
+ * an account of its own. That change should be one field, not a deploy.
+ *
+ * Fundraisers are **not** a list on this page. A fundraiser is an announcement
+ * — that is what #27 built and where the Weis Markets one already lives — and a
+ * second hand-kept list here is a page that says "current fundraisers" over
+ * something from last spring.
+ */
+const db = await getDb();
+const details = await getSchoolDetails(db);
+
+let values: VolunteerFields | null = null;
+let errors: VolunteerErrors = {};
+let outcome: { ok: boolean; message: string } | null = null;
+
+if (Astro.request.method === 'POST') {
+  const parsed = parseVolunteer(await Astro.request.formData());
+  values = parsed.values;
+  errors = parsed.errors;
+
+  if (Object.keys(errors).length > 0) {
+    outcome = { ok: false, message: 'Nothing was sent — the fields below need fixing first.' };
+  } else {
+    /*
+     * The mailer is built here rather than imported as a singleton so that a
+     * deployment with no credentials is an absent sender rather than a crash on
+     * import — and an absent sender is a case `submitVolunteer` already handles
+     * honestly, by telling the volunteer it did not go and giving them the
+     * school's address.
+     */
+    const apiKey = import.meta.env.RESEND_API_KEY;
+    const from = import.meta.env.MAIL_FROM;
+    outcome = await submitVolunteer(values, {
+      to: details.email.trim(),
+      from: typeof from === 'string' ? from : '',
+      sender: apiKey && from ? resendSender(apiKey) : undefined,
+    });
+
+    if (outcome.ok) values = null;
+  }
+}
+
+// The most recent announcement, only if there is one — the school's actual
+// current fundraiser, linked rather than retyped.
+const [latest] = await listAnnouncements(db);
+
+const description =
+  'Give to Pharos Academy or volunteer with us — how gifts are handled, the areas we need help in, and the volunteer form.';
+
+/** What was typed, or empty, so a rejected form comes back filled in. */
+const typed = (field: keyof VolunteerFields): string => {
+  const value = values?.[field];
+  return typeof value === 'string' ? value : '';
+};
+const ticked = (id: string): boolean => values?.interests.includes(id) ?? false;
+---
+
+<BaseLayout details={details} title="Give and volunteer" description={description}>
+  <section class="band band-quiet" data-section="support-header">
+    <div class="wide">
+      <p class="label">Support Pharos</p>
+      <h1 class="mt-4">Giving and volunteering</h1>
+      <p class="sub mt-5">
+        Two ways to help, and both of them matter. One takes a minute; the other takes a
+        conversation, and we would rather have the conversation.
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="giving" data-section="support-giving">
+    <div class="wide">
+      <h2>Giving</h2>
+      <div class="prose mt-5">
+        {GIVING_INTRO.map((paragraph) => <p>{paragraph}</p>)}
+      </div>
+      <p class="mt-6">
+        <a class="btn solid" href={details.giveUrl} rel="external">{GIVING_LINK_LABEL}</a>
+      </p>
+      {
+        latest && (
+          <p class="mt-6 text-ink-2">
+            What we are raising for at the moment is on the news page —{' '}
+            <a href={`${NEWS_PATH}#${latest.slug}`}>{latest.headline}</a> is the most recent thing
+            posted.
+          </p>
+        )
+      }
+    </div>
+  </section>
+
+  <section class="band band-quiet" id="volunteer" data-section="support-volunteer">
+    <div class="wide">
+      <h2>Volunteering</h2>
+      <div class="prose mt-5">
+        {VOLUNTEER_INTRO.map((sentence) => <p>{sentence}</p>)}
+      </div>
+
+      {
+        outcome && (
+          <p class="notice mt-7" data-outcome={outcome.ok ? 'sent' : 'failed'} role="status">
+            {outcome.message}
+          </p>
+        )
+      }
+
+      <form class="form mt-7" method="post" novalidate data-volunteer-form>
+        <div>
+          <label for="volunteer-name">Your name</label>
+          <input
+            id="volunteer-name"
+            name="name"
+            autocomplete="name"
+            value={typed('name')}
+            aria-describedby={errors.name ? 'volunteer-name-error' : undefined}
+            aria-invalid={errors.name ? 'true' : undefined}
+          />
+          {errors.name && <p class="error" id="volunteer-name-error">{errors.name}</p>}
+        </div>
+
+        <div>
+          <label for="volunteer-email">Email</label>
+          <input
+            id="volunteer-email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            value={typed('email')}
+            aria-describedby={errors.email ? 'volunteer-email-error' : undefined}
+            aria-invalid={errors.email ? 'true' : undefined}
+          />
+          {errors.email && <p class="error" id="volunteer-email-error">{errors.email}</p>}
+        </div>
+
+        <div>
+          <label for="volunteer-phone">Phone (optional)</label>
+          <input
+            id="volunteer-phone"
+            name="phone"
+            type="tel"
+            autocomplete="tel"
+            value={typed('phone')}
+          />
+        </div>
+
+        <div>
+          <label for="volunteer-contact">How should we get back to you?</label>
+          <select id="volunteer-contact" name="contactMethod">
+            {
+              CONTACT_METHODS.map((method) => (
+                <option value={method} selected={values?.contactMethod === method}>
+                  {method}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+
+        <fieldset class="full">
+          <legend>Where would you like to help?</legend>
+          {errors.interests && <p class="error" id="volunteer-interests-error">{errors.interests}</p>}
+          <ul class="interests">
+            {
+              INTERESTS.map((interest) => (
+                <li>
+                  <label class="check">
+                    <input
+                      type="checkbox"
+                      name="interests"
+                      value={interest.id}
+                      checked={ticked(interest.id)}
+                      aria-describedby={
+                        errors.interests ? 'volunteer-interests-error' : undefined
+                      }
+                    />
+                    <span>
+                      <strong>{interest.label}</strong>
+                      <span class="blurb">{interest.blurb}</span>
+                    </span>
+                  </label>
+                </li>
+              ))
+            }
+          </ul>
+        </fieldset>
+
+        <div class="full">
+          <label for="volunteer-comments">Anything else, or a skill we should know about</label>
+          <textarea id="volunteer-comments" name="comments">{typed('comments')}</textarea>
+        </div>
+
+        <div class="full">
+          <button class="btn solid" type="submit">Send this to the school</button>
+        </div>
+      </form>
+
+      <p class="mt-6 text-ink-2">
+        Would rather just write? <a href={`mailto:${details.email}`}>{details.email}</a>.
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .prose {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 46rem;
+  }
+
+  /*
+    The outcome line. Green and red are not the only signal — the words say
+    what happened, and a failed send names the address to write to — because
+    colour alone is not a status a screen reader or a colour-blind reader gets.
+  */
+  .notice {
+    max-width: 46rem;
+    border-left: 3px solid var(--color-gold-orn);
+    padding: 0.75rem 0 0.75rem 1rem;
+    font-weight: 500;
+  }
+
+  .notice[data-outcome='failed'] {
+    border-left-color: #a3341f;
+  }
+
+  .form {
+    display: grid;
+    gap: 1.5rem;
+    max-width: 46rem;
+  }
+
+  @media (min-width: 44rem) {
+    .form {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .full {
+    grid-column: 1 / -1;
+  }
+
+  label,
+  legend {
+    display: block;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--color-gold-orn);
+    background: white;
+    font: inherit;
+  }
+
+  textarea {
+    min-height: 7rem;
+  }
+
+  fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+
+  .interests {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    list-style: none;
+    padding: 0;
+    margin: 0.6rem 0 0;
+  }
+
+  /*
+    The label wraps the checkbox, so the whole row is the hit target — five
+    small squares on a phone is the difference between a form filled in and one
+    abandoned.
+  */
+  .check {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.65rem;
+    align-items: start;
+    font-weight: 400;
+    margin: 0;
+  }
+
+  .check input {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-top: 0.25rem;
+  }
+
+  .check strong {
+    display: block;
+    font-family: var(--font-sans);
+  }
+
+  .blurb {
+    display: block;
+    color: var(--color-ink-2);
+  }
+
+  .error {
+    margin-top: 0.35rem;
+    color: #8c2b19;
+    font-weight: 500;
+  }
+</style>
