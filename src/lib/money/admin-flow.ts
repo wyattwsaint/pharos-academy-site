@@ -29,6 +29,39 @@ import {
 /** The form field whose presence means "yes, I have read what changes". */
 export const CONFIRM_FIELD = 'confirm';
 
+/** One `name`/`value` pair as the form posts it. Repeated names are repeated pairs. */
+export type MoneyFormField = { name: string; value: string };
+
+/**
+ * A set of values written back out as the fields the form posts them under.
+ *
+ * The confirmation screen carries the submitted values forward in hidden
+ * inputs, and this is what it renders. It lives beside `parseMoneySettings`
+ * rather than in the page because the two are inverses and have to stay
+ * inverses: a field the page forgot to carry would be a setting that silently
+ * reverted to whatever was stored the moment somebody confirmed. `admin-flow.test.ts`
+ * asserts the round trip, so adding a money setting cannot half-land here.
+ *
+ * The checkbox is absent when off, exactly as a browser would post it, because
+ * absent is how `parseMoneySettings` reads *off*.
+ */
+export function moneyFormFields(values: MoneySettings): MoneyFormField[] {
+  return [
+    { name: 'standardRate', value: String(values.rates.standard) },
+    { name: 'highSchoolCreditRate', value: String(values.rates.highSchoolCredit) },
+    { name: 'registrationFee', value: String(values.registrationFee) },
+    { name: 'classDeposit', value: String(values.classDeposit) },
+    { name: 'lateFee', value: String(values.lateFee) },
+    { name: 'studyHallFee', value: String(values.studyHallFee) },
+    ...values.instalmentDates.map((date) => ({ name: 'instalmentDates', value: date })),
+    { name: 'refundTerms', value: values.refundTerms },
+    ...(values.depositCreditedAgainstTuition
+      ? [{ name: 'depositCreditedAgainstTuition', value: 'on' }]
+      : []),
+    { name: 'notificationAddresses', value: values.notificationAddresses.join('\n') },
+  ];
+}
+
 export type MoneyFormOutcome =
   /** Something is wrong with the values. Redisplay the form with the errors. */
   | { kind: 'invalid'; values: MoneySettings; errors: MoneyErrors }

@@ -14,6 +14,7 @@ import { formatStamp } from '../../lib/admin/school-details.js';
 import { getDb } from '../../lib/db/client.js';
 import {
   CONFIRM_FIELD,
+  moneyFormFields,
   moneyFormOutcome,
   type MoneyFormOutcome,
 } from '../../lib/money/admin-flow.js';
@@ -202,30 +203,13 @@ function republishBanner(published: string | null): Banner | null {
             {/*
               The submitted values, carried back under the same field names the
               form posts them under, so the confirming post parses identically
-              to the first one and cannot drift from it.
+              to the first one. Built by `moneyFormFields` rather than listed
+              here: the list and `parseMoneySettings` are inverses, and a
+              setting this markup forgot would silently revert on confirming.
             */}
-            <input type="hidden" name="standardRate" value={String(values.rates.standard)} />
-            <input
-              type="hidden"
-              name="highSchoolCreditRate"
-              value={String(values.rates.highSchoolCredit)}
-            />
-            <input type="hidden" name="registrationFee" value={String(values.registrationFee)} />
-            <input type="hidden" name="classDeposit" value={String(values.classDeposit)} />
-            <input type="hidden" name="lateFee" value={String(values.lateFee)} />
-            <input type="hidden" name="studyHallFee" value={String(values.studyHallFee)} />
-            {values.instalmentDates.map((date) => (
-              <input type="hidden" name="instalmentDates" value={date} />
+            {moneyFormFields(values).map((field) => (
+              <input type="hidden" name={field.name} value={field.value} />
             ))}
-            <input type="hidden" name="refundTerms" value={values.refundTerms} />
-            {values.depositCreditedAgainstTuition && (
-              <input type="hidden" name="depositCreditedAgainstTuition" value="on" />
-            )}
-            <input
-              type="hidden"
-              name="notificationAddresses"
-              value={values.notificationAddresses.join('\n')}
-            />
             <input type="hidden" name={CONFIRM_FIELD} value="yes" />
             <button
               type="submit"

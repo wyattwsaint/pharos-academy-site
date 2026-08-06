@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { moneyFormOutcome } from './admin-flow.js';
-import { SEEDED_MONEY_SETTINGS, type MoneySettings } from './settings.js';
+import { moneyFormFields, moneyFormOutcome } from './admin-flow.js';
+import { parseMoneySettings, SEEDED_MONEY_SETTINGS, type MoneySettings } from './settings.js';
 
 /**
  * The two-step confirmation, decided away from the page (#29 AC 2).
@@ -29,6 +29,43 @@ function formFor(values: MoneySettings, extra: Record<string, string> = {}): For
 }
 
 const current = SEEDED_MONEY_SETTINGS;
+
+describe('moneyFormFields', () => {
+  /**
+   * The property that matters: what the confirmation screen carries forward
+   * parses back into what was submitted. A field the hidden inputs forgot would
+   * be a setting that silently reverted the moment somebody confirmed.
+   */
+  const roundTrip = (values: MoneySettings) => {
+    const form = new FormData();
+    for (const field of moneyFormFields(values)) form.append(field.name, field.value);
+    return parseMoneySettings(form);
+  };
+
+  it('carries every setting through the confirmation unchanged', () => {
+    const parsed = roundTrip(current);
+
+    expect(parsed.errors).toEqual({});
+    expect(parsed.values).toEqual(current);
+  });
+
+  it('carries the awkward ones too — two addresses, and the flag turned off', () => {
+    const awkward: MoneySettings = {
+      ...current,
+      depositCreditedAgainstTuition: false,
+      notificationAddresses: ['jkilker@enolacog.com', 'george@enolacog.com'],
+    };
+
+    expect(roundTrip(awkward).values).toEqual(awkward);
+  });
+
+  it('omits the checkbox when it is off, exactly as a browser would', () => {
+    const off = { ...current, depositCreditedAgainstTuition: false };
+    const names = moneyFormFields(off).map((field) => field.name);
+
+    expect(names).not.toContain('depositCreditedAgainstTuition');
+  });
+});
 
 describe('moneyFormOutcome', () => {
   it('asks for confirmation before saving a change, and names what changed', () => {

@@ -63,11 +63,11 @@ export function admissionCosts(settings: MoneySettings): AdmissionCost[] {
     {
       amount: deposit,
       what: 'Deposit, per class',
-      detail: settings.depositCreditedAgainstTuition
-        ? `By cheque with your application, one for each class. It holds the seat, and it ` +
-          `comes off what you owe your instructor for that class.`
-        : `By cheque with your application, one for each class. It holds the seat, and it is ` +
-          `on top of what you owe your instructor for that class.`,
+      detail:
+        'By cheque with your application, one for each class. It holds the seat, and it ' +
+        (settings.depositCreditedAgainstTuition
+          ? 'comes off what you owe your instructor for that class.'
+          : 'is on top of what you owe your instructor for that class.'),
     },
     {
       amount: formatMoney(settings.lateFee),

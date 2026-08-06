@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
@@ -19,7 +20,7 @@ import { describe, expect, it } from 'vitest';
  * in a docstring is documentation, not something a parent reads.
  */
 
-const ROOT = new URL('../../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 
 /** Public templates, plus the two modules that hold the homepage's copy. */
 const SCANNED = [
