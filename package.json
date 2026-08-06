@@ -40,6 +40,7 @@
     "@electric-sql/pglite": "^0.5.4",
     "@playwright/test": "1.62.1",
     "@types/node": "^26.1.2",
+    "fflate": "^0.8.3",
     "typescript": "^6.0.3",
     "vitest": "4.1.10"
   }
