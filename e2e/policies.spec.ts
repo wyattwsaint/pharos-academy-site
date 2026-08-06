@@ -117,6 +117,15 @@ test.describe('a policy’s fixed address', () => {
 
     expect(href).toBe(`/policies/${HANDBOOK.slug}.pdf`);
 
+    // Against a preview, the first request a context makes carrying the
+    // protection-bypass header is answered with a 307 that sets the bypass
+    // cookie (`x-vercel-set-bypass-cookie`, e2e/protection.ts). That handshake
+    // belongs to Vercel, not to this route, and it is spent here rather than
+    // measured below — otherwise the assertion reports the preview's redirect
+    // as the site's. Locally there is no secret, no header and no handshake, so
+    // this is one extra fetch.
+    await request.get(href!);
+
     // AC 1's other half: the address answers for itself. A 3xx here would mean
     // the fixed URL was a pointer at a versioned one, which is the design the
     // ticket rules out.
