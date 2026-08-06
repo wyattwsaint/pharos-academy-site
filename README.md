@@ -12,6 +12,11 @@ and release pipeline in place. The real pages land slice by slice — see
 The domain vocabulary is in [`CONTEXT.md`](CONTEXT.md); decisions that constrain the
 build are in [`docs/adr/`](docs/adr/).
 
+**[`docs/handoff.md`](docs/handoff.md) is the page to find when something is wrong, when
+the site has to move, or when somebody other than the person who built it has to change
+it** — every environment variable, how to move the hosting, and what the site does with
+the database down. It holds no secrets; it names where the printed sheet lives.
+
 ## Stack
 
 Astro 7 + Tailwind 4 on Vercel via `@astrojs/vercel`. Public pages are **ISR** — rendered
@@ -38,7 +43,10 @@ Resend for notification email.
 
 ## Environment
 
-Set on Vercel, and pulled locally with `vercel env pull .env.local`.
+Set on Vercel, and pulled locally with `vercel env pull .env.local`. The ones you need to
+run the site are below; **the complete list, including the test-only and GitHub Actions
+ones, is in [`docs/handoff.md`](docs/handoff.md)** — and a test fails if a variable the
+source reads is missing from it.
 
 | | |
 | --- | --- |
