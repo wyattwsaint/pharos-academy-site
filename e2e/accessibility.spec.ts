@@ -84,6 +84,9 @@ const SURFACES = [
   // #27 AC 5. The list carries dates, links out and PDF links, and it is the
   // one surface whose length is decided by how much the school has posted.
   { name: 'the news page', path: '/news', state: 'closed', open: noop },
+  // #28 AC 8. A list of documents, each with a description, a date and a
+  // download — and the one page a parent is sent to from a printed handbook.
+  { name: 'the policies page', path: '/policies', state: 'closed', open: noop },
 ];
 
 for (const surface of SURFACES) {
