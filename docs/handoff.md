@@ -190,7 +190,10 @@ project, with the site running off it, PDFs included.
 3. **Restore.**
    `pg_restore --dbname "<scratch connection string>" --no-owner --no-privileges backup-<date>.dump`
    The client's major version must be ≥ the server's; Neon serves Postgres 17.
-4. **Run the site off it.** `DATABASE_URL=<scratch connection string> npm run dev`, then
+4. **Run the site off it.** The dev server reads `DATABASE_URL` from the real process
+   environment, so set it there — `$env:DATABASE_URL = '<scratch connection string>'` in
+   PowerShell, `export DATABASE_URL=...` in a POSIX shell — and **do not** leave your usual
+   `.env.local` pointing at the school's Neon while you do it. Then `npm run dev` and
    walk the site: the homepage's announcements, `/staff`, `/news`, `/classes`, and — the
    part that matters — open a policy PDF and the board update PDF. Those bytes live in the
    database, so a restore that loses them is a restore that looks fine and is not.
@@ -229,9 +232,12 @@ developer touching a keyboard invalidates the result.
    `npm ci`, then `npm run db:migrate`, then `npm run db:seed`.
 8. **Redeploy** and walk the site: every public page, a policy PDF, and a sign-in at
    `/admin` followed by one real edit that appears on the public page.
-9. **Note what the free tier changes.** Cron jobs are limited on Free — the monthly backup
-   email may not fire on schedule; the `/admin/backup` ZIP is still there and still the
-   school's copy. Record what you actually observe.
+9. **Note what the free tier changes.** Vercel's free plan caps how many cron jobs a
+   project may have and how precisely they fire — `vercel.json` declares one, on the 1st of
+   the month, which is within that cap, but the hour it actually runs may drift. Confirm
+   the job appears under the project's **Cron Jobs** tab. Whatever the answer, the
+   `/admin/backup` ZIP is still there and is still the school's own copy. Record what you
+   actually observe rather than what this list expects.
 10. **Write the line below**, then delete the scratch Vercel project and the scratch Neon
     project. The fork can stay.
 

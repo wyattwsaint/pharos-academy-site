@@ -61,8 +61,6 @@ function filesUnder(entry: string): string[] {
 function configurationNames(): string[] {
   const names = new Set(INDIRECT);
   for (const file of SCANNED.flatMap(filesUnder)) {
-    // `handoff-doc.test.ts` itself is scanned, and INDIRECT above would seed it
-    // with its own contents either way, so there is nothing to exclude.
     const source = readFileSync(file, 'utf8');
     for (const match of source.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)) names.add(match[1]!);
     for (const match of source.matchAll(/secrets\.([A-Z][A-Z0-9_]*)/g)) names.add(match[1]!);
@@ -106,7 +104,10 @@ describe('docs/handoff.md', () => {
   });
 
   it.each(NAMES)('documents %s', (name) => {
-    expect(HANDOFF).toContain(name);
+    // Whole word, not substring: `VERCEL` occurs inside `VERCEL_GIT_COMMIT_SHA`,
+    // so a plain `toContain` would pass for a variable nobody had written down.
+    // `_` is a word character, which is what makes the boundary hold here.
+    expect(HANDOFF).toMatch(new RegExp(`\\b${name}\\b`));
   });
 
   it.each(SECRET_SHAPES)('holds no secret shaped like %s', (_label, pattern) => {
