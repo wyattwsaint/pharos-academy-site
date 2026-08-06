@@ -40,6 +40,15 @@ export default defineConfig({
     isr: {
       expiration: 60 * 60,
       bypassToken,
+      // Two addresses that must never be answered from a cache (#33). The
+      // backup download would hand back last hour's content while claiming to
+      // be a backup taken now, and the monthly cron is a GET whose *effect* is
+      // the point — a cached 200 is a month with no email and a green run to
+      // say so. Every other admin address escapes the cache by accident, since
+      // the guard re-stamps the session cookie and Vercel does not cache a
+      // response carrying `Set-Cookie`; these two are too important to leave
+      // resting on an accident, and the cron carries no cookie at all.
+      exclude: ['/admin/backup.zip', '/api/cron/monthly-backup'],
     },
   }),
   // The dev toolbar injects its own `<h1>`s ("Audit", "Settings", …) into the

@@ -1,5 +1,8 @@
+import { readFile } from 'node:fs/promises';
+
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { unzipSync } from 'fflate';
 
 import { LABELS } from '../src/lib/admin/policies.js';
 import { SUITE_ADMIN, signIn } from './suite-admin.js';
@@ -531,6 +534,74 @@ test.describe('policies', () => {
   });
 });
 
+/**
+ * Download everything (#33, AC 3).
+ *
+ * `export.test.ts` already opens the archive with an independent unzipper and
+ * checks what is in it. What only a browser can settle is the other half of the
+ * criterion: that the button is reachable by a signed-in admin who has never
+ * been told a URL, that clicking it produces a *download* rather than a page,
+ * and that the bytes which arrive over HTTP are still a readable ZIP — which is
+ * the thing a wrong content type or a mangled response body would break without
+ * failing a single unit test.
+ */
+test.describe('Download everything', () => {
+  test('downloads a ZIP the school can open, from a button in the nav', async ({ page }) => {
+    await signIn(page, '/admin/school-details');
+
+    // Found by navigating, because a backup nobody can find is the same as no
+    // backup.
+    await page.getByRole('link', { name: 'Backup' }).click();
+    await expect(page).toHaveURL(/\/admin\/backup$/);
+
+    const downloading = page.waitForEvent('download');
+    await page.getByTestId('download-everything').click();
+    const download = await downloading;
+
+    expect(download.suggestedFilename()).toMatch(/^pharos-academy-backup-\d{4}-\d{2}-\d{2}\.zip$/);
+
+    const path = await download.path();
+    const bytes = await readFile(path!);
+    // "Readable without Postgres" — opened here with fflate, the independent
+    // implementation, on the bytes that actually came down the wire.
+    const files = unzipSync(bytes);
+    expect(files['README.txt']).toBeDefined();
+    expect(files['manifest.json']).toBeDefined();
+    expect(Object.keys(files).some((name) => name.startsWith('content/'))).toBe(true);
+    expect(Buffer.from(files['content/people.json']).toString('utf8')).toContain('Jill');
+  });
+
+  /*
+   * The archive is the whole school's content, so the address it comes from is
+   * the most valuable one in the app. The guard is the middleware's rather than
+   * this route's, which is exactly why it is worth proving from outside: an
+   * endpoint under `/admin` inherits it by existing, and "by existing" is a
+   * claim, not an assertion, until something checks.
+   */
+  test('hands nothing to anybody who is not signed in', async ({ page, context }) => {
+    await context.clearCookies();
+
+    const response = await page.goto('/admin/backup.zip');
+
+    expect(response?.status()).toBe(200); // The login page, having followed the redirect.
+    await expect(page).toHaveURL(/\/admin\/login\?next=%2Fadmin%2Fbackup\.zip$/);
+    expect(response?.headers()['content-type']).toContain('text/html');
+  });
+
+  test('says where the monthly copy goes, and reads it from the settings', async ({ page }) => {
+    await signIn(page, '/admin/school-details');
+    const email = await page.getByLabel('Email').inputValue();
+
+    await page.goto('/admin/backup');
+
+    // AC 4 as the school sees it: the screen names the address the send
+    // actually uses, so the two cannot disagree.
+    await expect(page.getByRole('heading', { name: 'This also arrives by email' })).toBeVisible();
+    await expect(page.locator('main')).toContainText(email);
+    await expect(page.locator('main')).toContainText('1st of every month');
+  });
+});
+
 test.describe('accessibility', () => {
   for (const path of [
     '/admin/login',
@@ -544,6 +615,7 @@ test.describe('accessibility', () => {
     '/admin/policies',
     '/admin/policies/handbook',
     '/admin/policies/new',
+    '/admin/backup',
   ]) {
     for (const width of ADMIN_WIDTHS) {
       test(`${path} has zero axe violations at ${width}px`, async ({ page }) => {

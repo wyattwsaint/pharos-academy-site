@@ -1,0 +1,259 @@
+import { readFile } from 'node:fs/promises';
+import { getTableName, is } from 'drizzle-orm';
+import { PgTable } from 'drizzle-orm/pg-core';
+import { unzipSync } from 'fflate';
+import { beforeEach, describe, expect, it } from 'vitest';
+
+import { saveAnnouncement } from '../announcements/store.js';
+import { createEphemeralDatabase, type Db } from '../db/client.js';
+import * as schema from '../db/schema.js';
+import { replacePolicyFile } from '../policies/store.js';
+import {
+  EXCLUDED_TABLES,
+  EXPORTED_TABLES,
+  EXPORTED_TABLE_LABELS,
+  buildExport,
+} from './export.js';
+
+/**
+ * The school-held backup, opened the way the school would open it (#33).
+ *
+ * Every assertion here goes through `fflate` rather than through the entry list
+ * this repo built, because the acceptance criterion is not "the export contains
+ * the right things" but "the ZIP is readable without Postgres". Those are the
+ * same sentence only if the container is right, and the container is the part
+ * nobody would notice being wrong until the day it mattered.
+ */
+
+let db: Db;
+
+beforeEach(async () => {
+  db = await createEphemeralDatabase();
+});
+
+async function open(): Promise<Record<string, Uint8Array>> {
+  const archive = await buildExport(db, new Date('2026-09-01T05:00:00Z'));
+  return unzipSync(archive.bytes);
+}
+
+function json(files: Record<string, Uint8Array>, path: string): unknown {
+  const file = files[path];
+  expect(file, `${path} is missing from the ZIP`).toBeDefined();
+  return JSON.parse(Buffer.from(file).toString('utf8'));
+}
+
+describe('the ZIP', () => {
+  it('is named for the school and the day it was taken', async () => {
+    const archive = await buildExport(db, new Date('2026-09-01T05:00:00Z'));
+
+    expect(archive.filename).toBe('pharos-academy-backup-2026-09-01.zip');
+  });
+
+  it('opens, and leads with a plain-English README rather than with data', async () => {
+    const files = await open();
+
+    const readme = Buffer.from(files['README.txt']).toString('utf8');
+    // Somebody restoring this is not necessarily a developer, and by the time
+    // they open it the person who wrote it may be unreachable. That is the
+    // whole reason the school holds a copy at all.
+    expect(readme).toMatch(/content\//);
+    expect(readme).toMatch(/files\//);
+    expect(readme).toMatch(/JSON/);
+  });
+
+  it('carries a manifest that names every file actually in the archive', async () => {
+    const files = await open();
+    const manifest = json(files, 'manifest.json') as {
+      generatedAt: string;
+      files: { path: string; bytes: number }[];
+    };
+
+    expect(manifest.generatedAt).toBe('2026-09-01T05:00:00.000Z');
+    const listed = manifest.files.map((file) => file.path).sort();
+    const present = Object.keys(files)
+      .filter((path) => path !== 'manifest.json')
+      .sort();
+    expect(listed).toEqual(present);
+    for (const file of manifest.files) {
+      expect(files[file.path].length, file.path).toBe(file.bytes);
+    }
+  });
+});
+
+describe('the content', () => {
+  it('carries the school details, as the school typed them', async () => {
+    const files = await open();
+
+    const details = json(files, 'content/school-details.json') as { phone: string };
+    expect(details.phone).toBeTruthy();
+  });
+
+  it('carries the whole catalogue, the people and the announcements', async () => {
+    const files = await open();
+
+    expect((json(files, 'content/courses.json') as unknown[]).length).toBeGreaterThan(0);
+    expect((json(files, 'content/people.json') as unknown[]).length).toBeGreaterThan(0);
+    expect((json(files, 'content/announcements.json') as unknown[]).length).toBeGreaterThan(0);
+    expect((json(files, 'content/policies.json') as unknown[]).length).toBeGreaterThan(0);
+  });
+
+  it('reads without Postgres — a course in the JSON is the course, not an id', async () => {
+    const files = await open();
+
+    const courses = json(files, 'content/courses.json') as { slug: string; title: string }[];
+    const latin = courses.find((course) => course.slug.includes('latin'));
+    expect(latin?.title).toMatch(/Latin/);
+  });
+});
+
+describe('the files', () => {
+  it('carries every retained version of every policy, byte for byte', async () => {
+    const first = await readFile('docs/mirror/pdf/policy-handbook.pdf');
+    const second = await readFile('docs/mirror/pdf/policy-code-of-conduct.pdf');
+    await replacePolicyFile(db, 'handbook', { filename: 'handbook.pdf', bytes: first }, 'Jill');
+    await replacePolicyFile(db, 'handbook', { filename: 'handbook-v2.pdf', bytes: second }, 'Jill');
+
+    const files = await open();
+
+    // Both versions, because "prior versions are retained" has to survive the
+    // export as well as the table — an export that carried only the current
+    // file would quietly answer "what did that family sign?" with the wrong PDF.
+    expect(Buffer.from(files['files/policies/handbook/v1-handbook.pdf']).equals(first)).toBe(true);
+    expect(Buffer.from(files['files/policies/handbook/v2-handbook-v2.pdf']).equals(second)).toBe(
+      true,
+    );
+  });
+
+  it('names each policy version in the JSON at the path it is actually at', async () => {
+    const pdf = await readFile('docs/mirror/pdf/policy-handbook.pdf');
+    await replacePolicyFile(db, 'handbook', { filename: 'handbook.pdf', bytes: pdf }, 'Jill');
+
+    const files = await open();
+
+    const policies = json(files, 'content/policies.json') as {
+      slug: string;
+      versions: { version: number; file: string }[];
+    }[];
+    const handbook = policies.find((policy) => policy.slug === 'handbook');
+    expect(handbook?.versions).toHaveLength(1);
+    expect(files[handbook!.versions[0].file]).toBeDefined();
+  });
+
+  it('carries an announcement’s attachment, and says where it is', async () => {
+    const pdf = await readFile('docs/mirror/pdf/policy-handbook.pdf');
+    const [announcement] = await (await import('../announcements/store.js')).listAnnouncements(db);
+    await saveAnnouncement(
+      db,
+      announcement.slug,
+      {
+        headline: announcement.headline,
+        body: announcement.body,
+        postedOn: announcement.postedOn,
+        linkUrl: announcement.linkUrl,
+        linkLabel: announcement.linkLabel,
+        attachment: { filename: 'board-update.pdf', bytes: pdf },
+      },
+      'Jill',
+    );
+
+    const files = await open();
+
+    const announcements = json(files, 'content/announcements.json') as {
+      slug: string;
+      attachment: string | null;
+    }[];
+    const exported = announcements.find((row) => row.slug === announcement.slug);
+    expect(exported?.attachment).toBe(`files/announcements/${announcement.slug}/board-update.pdf`);
+    expect(Buffer.from(files[exported!.attachment!]).equals(pdf)).toBe(true);
+  });
+
+  it('does not invent a file for a policy that has none', async () => {
+    const files = await open();
+
+    // The migration seeds four policy rows with no documents. A policy is
+    // published by its file, not its row (#28) — and an export that shipped a
+    // zero-byte `handbook.pdf` would look like a corrupt backup rather than an
+    // empty one.
+    expect(Object.keys(files).some((path) => path.startsWith('files/policies/'))).toBe(false);
+    const policies = json(files, 'content/policies.json') as { versions: unknown[] }[];
+    expect(policies.every((policy) => policy.versions.length === 0)).toBe(true);
+  });
+});
+
+describe('what it deliberately leaves out', () => {
+  it('carries no password hash and no session token', async () => {
+    const files = await open();
+
+    const everything = Object.entries(files)
+      .filter(([path]) => path.endsWith('.json') || path.endsWith('.txt'))
+      .map(([, bytes]) => Buffer.from(bytes).toString('utf8'))
+      .join('\n');
+
+    expect(everything).not.toMatch(/scrypt\$/);
+    expect(everything).not.toMatch(/password_hash|passwordHash/);
+    expect(everything).not.toMatch(/token_hash|tokenHash/);
+  });
+});
+
+describe('coverage of the editable set', () => {
+  /**
+   * The criterion "every editable content type, not only the ones that were
+   * easy" (#33), made mechanical.
+   *
+   * Every table in the schema is either exported or on a written exclusion
+   * list, so a table added by a later ticket — the school year and its events
+   * (#23), the money settings (#29) — fails this test until somebody decides
+   * which it is. The failure mode this guards against is not a bug: it is a
+   * backup that is quietly one content type short for a year.
+   */
+  it('accounts for every table in the schema', () => {
+    const tables = Object.values(schema)
+      .filter((value) => is(value, PgTable))
+      .map((value) => getTableName(value as PgTable));
+
+    const accounted = new Set<string>([...EXPORTED_TABLES, ...EXCLUDED_TABLES.map((t) => t.table)]);
+
+    for (const table of tables) {
+      expect(accounted, `"${table}" is neither exported nor explicitly excluded`).toContain(table);
+    }
+  });
+
+  it('puts a real, non-empty file in the archive for each table it claims', async () => {
+    // With a document attached, so `policy_versions` has rows: the seeded state
+    // is four policies and no files, which is a real state but not one that can
+    // tell an exported table from a forgotten one.
+    const pdf = await readFile('docs/mirror/pdf/policy-handbook.pdf');
+    await replacePolicyFile(db, 'handbook', { filename: 'handbook.pdf', bytes: pdf }, 'Jill');
+
+    const files = await open();
+    const manifest = json(files, 'manifest.json') as {
+      tables: { table: string; file: string; rows: number }[];
+    };
+
+    expect(manifest.tables.map((entry) => entry.table).sort()).toEqual([...EXPORTED_TABLES].sort());
+    for (const entry of manifest.tables) {
+      expect(files[entry.file], entry.table).toBeDefined();
+      expect(entry.rows, entry.table).toBeGreaterThan(0);
+    }
+  });
+
+  it('gives a reason for every exclusion, so none of them is an oversight', () => {
+    for (const excluded of EXCLUDED_TABLES) {
+      expect(excluded.why.length, excluded.table).toBeGreaterThan(20);
+    }
+  });
+
+  // `/admin/backup` renders both lists, and it renders them to Jill. A table
+  // name on that screen is an answer in the wrong language; the labels exist so
+  // the screen never has to invent one, and this is what keeps them present.
+  it('names every table it exports and every one it excludes in plain English', () => {
+    for (const table of EXPORTED_TABLES) {
+      expect(EXPORTED_TABLE_LABELS[table], table).toBeTruthy();
+      expect(EXPORTED_TABLE_LABELS[table], table).not.toContain('_');
+    }
+    for (const excluded of EXCLUDED_TABLES) {
+      expect(excluded.label, excluded.table).toBeTruthy();
+      expect(excluded.label, excluded.table).not.toContain('_');
+    }
+  });
+});

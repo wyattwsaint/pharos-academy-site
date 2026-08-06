@@ -1,0 +1,88 @@
+name: DB backup
+
+# The operator half of the backup (#33, spec #18 §14).
+#
+# Neon Free retains six hours of point-in-time history, so this artifact — not
+# Neon — is the real backup, and the ninety-day retention is what makes "we
+# noticed in March that February was wrong" a recoverable sentence.
+#
+# The school-held half is a different thing entirely and lives in the app: the
+# admin's **Download everything** ZIP, and the copy of it that is emailed on the
+# 1st of each month. This dump lives in the developer's GitHub account, which is
+# exactly why it is not allowed to be the only copy.
+#
+# The pattern is the house one from `legacy-roofing-site`, sanity check
+# included. What is new here is that the check is a tested module rather than
+# four lines of shell — see `src/lib/backup/dump-size.ts`.
+
+on:
+  schedule:
+    # 07:00 UTC — the small hours in America/New_York, the school's time zone.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      force_small_dump:
+        description: 'Truncate the dump to prove the sanity check fails the job'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # ubuntu-latest (24.04) ships postgresql-client 16; Neon serves Postgres
+      # 17 and pg_dump's major must be >= the server's, so install the v17
+      # client from the official PGDG apt repo.
+      - name: Install PostgreSQL 17 client (PGDG)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq --no-install-recommends postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Dump database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          BACKUP_DATE="$(date +%F)"
+          BACKUP_FILE="backup-${BACKUP_DATE}.dump"
+          # Call the v17 binary directly so pg_wrapper can't pick an older client.
+          /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" --format=custom --file="$BACKUP_FILE"
+          echo "BACKUP_DATE=$BACKUP_DATE" >> "$GITHUB_ENV"
+          echo "BACKUP_FILE=$BACKUP_FILE" >> "$GITHUB_ENV"
+
+      # The drill. "The sanity check fails the job on a suspiciously small dump"
+      # is a claim about a job that has actually gone red, so there is a switch
+      # that makes one go red on demand — run this workflow from the Actions tab
+      # with the box ticked and watch the next step fail. It is a manual input,
+      # so the nightly run can never take this path.
+      - name: Force a small dump (drill only)
+        if: ${{ inputs.force_small_dump }}
+        run: |
+          echo '::warning::Truncating the dump on purpose — this run is a sanity-check drill.'
+          head -c 512 "$BACKUP_FILE" > "$BACKUP_FILE.small"
+          mv "$BACKUP_FILE.small" "$BACKUP_FILE"
+
+      # Before the upload, deliberately: a check that ran afterwards would still
+      # go red, and would still leave a 6 KB artifact sitting at the top of the
+      # list for whoever is restoring in a hurry.
+      - name: Sanity-check dump size
+        run: node --import ./scripts/ts-resolve.mjs scripts/check-dump-size.mjs "$BACKUP_FILE"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.BACKUP_DATE }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 90
+          if-no-files-found: error

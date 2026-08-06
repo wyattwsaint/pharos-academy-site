@@ -1,0 +1,80 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
+import {
+  EXCLUDED_TABLES,
+  EXPORTED_TABLES,
+  EXPORTED_TABLE_LABELS,
+} from '../../lib/backup/export.js';
+import { getDb } from '../../lib/db/client.js';
+
+/**
+ * The school's own copy of its own content (#33).
+ *
+ * The button is here because the school should never have to ask anyone for its
+ * content back. The paragraph about the monthly email is here because the button
+ * is a backup nobody clicks, and the screen should say so plainly rather than
+ * leaving the school believing this page is the whole story.
+ *
+ * The recipient is read live rather than named, so the sentence on this screen
+ * cannot be wrong about where the email actually goes — it is the same address
+ * `sendMonthlyBackup` reads, from the same row, at the same moment Jill is
+ * looking at it.
+ */
+const details = await getSchoolDetails(await getDb());
+---
+
+<AdminLayout title="Backup" actor={Astro.locals.actor!}>
+  <h1 class="text-3xl font-semibold text-navy">Backup</h1>
+  <p class="mt-2">
+    A copy of everything on this website that the school can edit, in one file you keep yourselves.
+  </p>
+
+  <div class="mt-8 rounded border border-navy/15 bg-parchment p-6">
+    <a
+      href="/admin/backup.zip"
+      download
+      data-testid="download-everything"
+      class="inline-block rounded bg-navy px-5 py-3 font-semibold text-cream hover:bg-deep-blue"
+    >
+      Download everything
+    </a>
+    <p class="mt-4">
+      One ZIP file. It may take a few seconds to build, because the policy documents are inside it.
+    </p>
+  </div>
+
+  <h2 class="mt-10 text-xl font-semibold text-navy">This also arrives by email</h2>
+  <p class="mt-2">
+    The same file is sent to <span class="font-semibold">{details.email}</span> on the 1st of every
+    month, so a backup does not depend on anyone remembering to come here. That address is the one on
+    the <a href="/admin/school-details" class="underline underline-offset-4">School details</a> screen
+    — change it there and the backup follows.
+  </p>
+  <p class="mt-2">
+    Keep the newest copy somewhere that is not the mailbox it arrived in.
+  </p>
+
+  <h2 class="mt-10 text-xl font-semibold text-navy">What is in it</h2>
+  <ul class="mt-3 flex list-disc flex-col gap-2 pl-5" data-testid="exported">
+    {EXPORTED_TABLES.map((table) => <li>{EXPORTED_TABLE_LABELS[table]}</li>)}
+  </ul>
+  <p class="mt-4">
+    The text is in ordinary JSON files and the documents are ordinary PDFs, so nothing in the file
+    needs this website, a database or a password to read. There is a README inside that says what is
+    where.
+  </p>
+
+  <h2 class="mt-10 text-xl font-semibold text-navy">What is not in it</h2>
+  <ul class="mt-3 flex list-disc flex-col gap-2 pl-5" data-testid="excluded">
+    {
+      EXCLUDED_TABLES.map((excluded) => (
+        <li>
+          <span class="font-semibold">{excluded.label}</span> — {excluded.why}
+        </li>
+      ))
+    }
+  </ul>
+</AdminLayout>
