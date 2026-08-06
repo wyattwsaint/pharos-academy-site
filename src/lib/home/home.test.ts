@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { ANNOUNCEMENTS, hasAnnouncements } from './announcements.js';
 import { HOPE, INSTRUCTORS } from './content.js';
 import { publicPaths } from '../routes.js';
 import { INQUIRY_HREF, NAV_ITEMS, SECTION_ORDER } from './sections.js';
@@ -56,25 +55,6 @@ describe('the nav', () => {
       expect(item.href.startsWith('/'), item.label).toBe(true);
     }
     expect(INQUIRY_HREF).toBe('/#inquiry');
-  });
-});
-
-describe('announcements', () => {
-  it('start empty, which is the section’s normal state', () => {
-    expect(ANNOUNCEMENTS).toEqual([]);
-    expect(hasAnnouncements()).toBe(false);
-  });
-
-  it('show the section as soon as there is one', () => {
-    expect(hasAnnouncements([{ id: 'a', headline: 'Snow day' }])).toBe(true);
-  });
-
-  it('requires link text whenever there is a link', () => {
-    // "Read more" is not a link name, and a bare URL is worse. Enforced on the
-    // data rather than in the template, so the rule survives a second surface.
-    for (const announcement of ANNOUNCEMENTS) {
-      if (announcement.href) expect(announcement.linkLabel).toBeTruthy();
-    }
   });
 });
 

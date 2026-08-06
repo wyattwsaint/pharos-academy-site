@@ -64,6 +64,19 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * the hour's ISR expiry catches it.
    */
   { path: '/staff', priority: 0.6, changefreq: 'monthly' },
+  /*
+   * The news page (#27).
+   *
+   * Weekly, because it is the one page whose content changes on its own: an
+   * announcement crossing six weeks changes the homepage without anybody
+   * editing anything.
+   *
+   * The attached PDFs are deliberately **not** in this list. It is a build-time
+   * constant and an attachment is a database row uploaded after the build, so
+   * enumerating them here is not possible — the route that serves them renders
+   * on request and revalidates on its own ETag instead.
+   */
+  { path: '/news', priority: 0.6, changefreq: 'weekly' },
 ] as const;
 
 /** Every public path, in list order. */

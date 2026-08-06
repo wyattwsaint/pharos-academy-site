@@ -1,0 +1,370 @@
+---
+export const prerender = false;
+
+import AdminBanner from '../../../components/AdminBanner.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import {
+  LABELS,
+  parseAnnouncement,
+  type AnnouncementErrors,
+  type AnnouncementFields,
+} from '../../../lib/admin/announcements.js';
+import type { Banner } from '../../../lib/admin/banner.js';
+import { isrBypassToken } from '../../../lib/admin/isr-token.js';
+import {
+  describeRevalidation,
+  revalidateAll,
+  revalidationOrigin,
+} from '../../../lib/admin/revalidate.js';
+import { formatStamp } from '../../../lib/admin/school-details.js';
+import {
+  announcementSlug,
+  isCurrent,
+  STALE_AFTER_DAYS,
+  type Announcement,
+} from '../../../lib/announcements/announcement.js';
+import {
+  createAnnouncement,
+  getAnnouncement,
+  saveAnnouncement,
+  type AnnouncementEdit,
+} from '../../../lib/announcements/store.js';
+import { attachmentPath } from '../../../lib/announcements/views.js';
+import { getDb } from '../../../lib/db/client.js';
+
+/**
+ * One announcement, posted or corrected (#27).
+ *
+ * `/admin/announcements/new` is the post form and every other slug is that
+ * announcement's own screen — one page rather than two, exactly as people are,
+ * because the fields, the validation and the publishing story are identical and
+ * a near-duplicate page is how the two drift.
+ *
+ * Save writes the row, stamps it, then revalidates **every** public path and
+ * waits for the answer (#18 §3). An announcement is on two surfaces at once —
+ * the homepage band and the news page — so a save that reached only one of them
+ * would be the site disagreeing with itself about what the school just said.
+ *
+ * The date field is the whole freshness control and is deliberately editable.
+ * Reposting last term's fundraiser is typing today's date; letting something
+ * drop off the homepage early is typing an older one. There is no separate
+ * "feature this" switch, because that would be a second rule about the same
+ * six weeks.
+ *
+ * Changing the date does **not** move the announcement's address. The slug is
+ * minted once from the date it was first posted and then stays put, because it
+ * is a URL somebody may already have followed — a link Jill sent in July does
+ * not stop working because she corrected the date in August. What the date
+ * decides is the homepage, which is what it is for.
+ */
+/** The one slug that is not an announcement: the post form's address. */
+const NEW = 'new';
+
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+const routeSlug = Astro.params.slug ?? '';
+const adding = routeSlug === NEW;
+
+let announcement = adding ? undefined : await getAnnouncement(db, routeSlug);
+if (!adding && !announcement) {
+  return new Response(null, { status: 404, statusText: 'Not found' });
+}
+
+/** What the post form opens on — today's date, and everything else blank. */
+const EMPTY: AnnouncementFields = {
+  headline: '',
+  body: '',
+  postedOn: new Date().toISOString().slice(0, 10),
+  linkUrl: null,
+  linkLabel: null,
+};
+
+let values: AnnouncementFields = announcement ? fieldsOf(announcement) : EMPTY;
+let errors: AnnouncementErrors = {};
+let banner: Banner | null = null;
+
+if (Astro.request.method === 'POST') {
+  const parsed = await parseAnnouncement(await Astro.request.formData());
+  values = parsed.values;
+  errors = parsed.errors;
+
+  if (Object.keys(errors).length > 0) {
+    banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+  } else {
+    /*
+     * `attachment` is copied across only when the form actually spoke about the
+     * file. Absent means "leave it alone", which is what a save that only fixed
+     * a headline means, and spreading a plain `undefined` in would clear the
+     * PDF on every such save.
+     */
+    const edit: AnnouncementEdit = { ...values };
+    if ('attachment' in parsed) edit.attachment = parsed.attachment;
+
+    try {
+      announcement = announcement
+        ? await saveAnnouncement(db, announcement.slug, edit, actor.name)
+        : await createAnnouncement(
+            db,
+            { slug: announcementSlug(values.postedOn, values.headline), ...edit },
+            actor.name,
+          );
+      values = fieldsOf(announcement);
+      const result = await revalidateAll({
+        origin: revalidationOrigin(Astro.url),
+        bypassToken: isrBypassToken(),
+      });
+      banner = { ok: result.ok, message: describeRevalidation(result) };
+    } catch (error) {
+      banner = { ok: false, message: humanErrorMessage(error) };
+    }
+  }
+}
+
+/*
+ * After a post succeeds this screen becomes that announcement's own screen: the
+ * form posts to its address from here on, so a second Save corrects the row
+ * just written rather than trying to post it again. The URL stays `/new` until
+ * the next navigation, which is the honest cost of showing the revalidation
+ * answer instead of throwing it away in a redirect.
+ */
+const action = announcement
+  ? `/admin/announcements/${announcement.slug}`
+  : '/admin/announcements/new';
+const heading = announcement ? announcement.headline : 'Post an announcement';
+const stamp = announcement ? formatStamp(announcement.lastEditedBy, announcement.lastEditedAt) : null;
+const attached = announcement?.attachmentFilename ?? null;
+const onHomepage = announcement ? isCurrent(announcement, new Date()) : false;
+const control =
+  'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
+
+/** The typed fields, in the order they are asked for. */
+const FIELDS: {
+  name: keyof AnnouncementFields;
+  type: 'text' | 'multiline' | 'date' | 'url';
+  required?: boolean;
+  hint?: string;
+}[] = [
+  {
+    name: 'headline',
+    type: 'text',
+    required: true,
+    hint: 'The one line a parent reads at a glance.',
+  },
+  {
+    name: 'body',
+    type: 'multiline',
+    required: true,
+    hint: 'A short paragraph. What it is, when it is, and what to do about it.',
+  },
+  {
+    name: 'postedOn',
+    type: 'date',
+    required: true,
+    hint: `The date this goes out. It leaves the homepage ${STALE_AFTER_DAYS} days after this date and stays on the news page for good.`,
+  },
+  {
+    name: 'linkUrl',
+    type: 'url',
+    hint: 'Optional. A registration page, a form — “https://…”.',
+  },
+  {
+    name: 'linkLabel',
+    type: 'text',
+    hint: 'What that link is called. Needed whenever there is a link.',
+  },
+];
+
+function fieldsOf(row: Announcement): AnnouncementFields {
+  return {
+    headline: row.headline,
+    body: row.body,
+    postedOn: row.postedOn,
+    linkUrl: row.linkUrl,
+    linkLabel: row.linkLabel,
+  };
+}
+
+/**
+ * A failed write, said in words Jill can act on.
+ *
+ * The one that actually happens is two announcements posted the same day with
+ * the same headline, which is a repost rather than a mistake — so the message
+ * says where the first one is.
+ */
+function humanErrorMessage(error: unknown): string {
+  const detail = error instanceof Error ? error.message : String(error);
+  if (/duplicate key|unique/i.test(detail)) {
+    return 'Nothing was saved — there is already an announcement with that headline on that date. Edit that one instead.';
+  }
+  return `Nothing was saved — ${detail}`;
+}
+---
+
+<AdminLayout title={heading} actor={actor}>
+  <p><a href="/admin/announcements" class="underline underline-offset-4">← All announcements</a></p>
+  <h1 class="mt-2 text-3xl font-semibold text-navy">{heading}</h1>
+  <p class="mt-2">
+    Saved here, this appears on the news page and — while it is recent — on the homepage.
+  </p>
+
+  {
+    banner && (
+      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
+        {!banner.ok && (
+          <form method="post" action="/admin/republish" class="mt-3">
+            <button
+              type="submit"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+            >
+              Retry
+            </button>
+          </form>
+        )}
+      </AdminBanner>
+    )
+  }
+
+  <form method="post" action={action} enctype="multipart/form-data" class="mt-8 flex flex-col gap-6">
+    {
+      FIELDS.map((field) => {
+        const invalid = Boolean(errors[field.name]);
+        const describedBy =
+          [field.hint ? `${field.name}-hint` : null, invalid ? `${field.name}-error` : null]
+            .filter(Boolean)
+            .join(' ') || undefined;
+        const value = values[field.name];
+
+        return (
+          <div class="flex flex-col gap-2">
+            <label for={field.name} class="font-semibold">
+              {LABELS[field.name]}
+            </label>
+            {field.hint && (
+              <p id={`${field.name}-hint`} class="text-sm">
+                {field.hint}
+              </p>
+            )}
+            {field.type === 'multiline' ? (
+              <textarea
+                id={field.name}
+                name={field.name}
+                rows={8}
+                required={field.required}
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={describedBy}
+                class={control}
+              >
+                {value ?? ''}
+              </textarea>
+            ) : (
+              <input
+                id={field.name}
+                name={field.name}
+                type={field.type === 'date' ? 'date' : field.type === 'url' ? 'url' : 'text'}
+                value={value ?? ''}
+                required={field.required}
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={describedBy}
+                class={control}
+              />
+            )}
+            {invalid && (
+              <p id={`${field.name}-error`} class="font-semibold">
+                {errors[field.name]}
+              </p>
+            )}
+          </div>
+        );
+      })
+    }
+
+    <div class="flex flex-col gap-2">
+      <label for="attachment" class="font-semibold">{LABELS.attachment}</label>
+      <p id="attachment-hint" class="text-sm">
+        Optional, and a PDF — the board update, a flyer. Choosing one here replaces whatever is
+        attached now.
+      </p>
+      {
+        attached && (
+          <p class="text-sm">
+            Attached now:{' '}
+            <a
+              href={attachmentPath(announcement!.slug)}
+              class="underline underline-offset-4"
+              data-testid="current-attachment"
+            >
+              {attached}
+            </a>
+          </p>
+        )
+      }
+      <input
+        id="attachment"
+        name="attachment"
+        type="file"
+        accept="application/pdf"
+        aria-invalid={errors.attachment ? 'true' : undefined}
+        aria-describedby={errors.attachment ? 'attachment-hint attachment-error' : 'attachment-hint'}
+        class={control}
+      />
+      {
+        errors.attachment && (
+          <p id="attachment-error" class="font-semibold">
+            {errors.attachment}
+          </p>
+        )
+      }
+      {
+        /*
+          Only offered when there is something to remove. A checkbox that took
+          down a file that was not there would be a control with no effect,
+          which is the kind of thing somebody ticks to find out what it does.
+        */
+      }
+      {
+        attached && (
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="removeAttachment" value="on" />
+            Remove the attached PDF
+          </label>
+        )
+      }
+    </div>
+
+    <button
+      type="submit"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+    >
+      Save
+    </button>
+  </form>
+
+  {
+    stamp && (
+      <section class="mt-10 border-t border-navy/15 pt-6">
+        <h2 class="text-xl font-semibold text-navy">Publishing</h2>
+        <p class="mt-2" data-testid="stamp">
+          {stamp}
+        </p>
+        <p class="mt-2" data-testid="homepage-state">
+          {onHomepage
+            ? `On the homepage until ${STALE_AFTER_DAYS} days after the posted date.`
+            : 'Past its six weeks — on the news page, not on the homepage.'}
+        </p>
+        <p class="mt-2">
+          Saving republishes the whole site, because an announcement is on the homepage and the news
+          page both.
+        </p>
+        <form method="post" action="/admin/republish" class="mt-4">
+          <button
+            type="submit"
+            class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
+          >
+            Republish
+          </button>
+        </form>
+      </section>
+    )
+  }
+</AdminLayout>

@@ -169,6 +169,32 @@ neither a paragraph nor a face.
 Not: "staff member" (excludes nobody but sounds like it excludes instructors),
 "teacher", "instructor" as an entity.
 
+### announcement
+
+A headline, a short body, an optional link and an optional PDF, posted on a
+date the school types. That is the shape of **every** notice Pharos puts out —
+a fundraiser, a closure, a board update.
+
+**A board update is an announcement with a file attached, not a slot.** The
+live site has a fixed "Latest School Board Update – 7/1/2026" position on its
+front page, which is why a July PDF is still the headline in October. There is
+no such position here, no column and no flag: the board update ages out exactly
+as a bake sale does, and nothing has to be retired next time.
+
+**Current** means posted within the last six weeks. The homepage shows the
+current announcements and hides that section entirely when there are none, and
+those are *one* rule rather than two — the newest going stale is precisely the
+moment the current list empties. A school that has posted nothing since July
+then reads as a school with a tidy homepage rather than one that stopped caring.
+
+The news page carries all of them, stale ones included, because the homepage can
+only be free to hide itself if the record is somewhere else.
+
+The **posted date** is not the [stamp](#stamp): correcting a typo in August must
+not make a July notice current again.
+
+Not: "news item" (the page is called News; the thing on it is an announcement),
+"post", "board update" as a kind of its own.
 ### H.O.P.E.
 
 **Helping Our Parents Educate** — the school's own acronym, real copy from the

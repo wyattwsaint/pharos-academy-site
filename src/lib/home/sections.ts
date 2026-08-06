@@ -50,6 +50,12 @@ export type SectionId = (typeof SECTION_ORDER)[number];
  * teach, rather than the three the homepage band has room for. The homepage
  * section stays exactly as #21 signed it off; it is simply no longer the only
  * place that answers this.
+ *
+ * News is here because of what the homepage band does (#27): it hides itself
+ * when nothing is current, so a news page linked only from that band is a page
+ * that becomes unreachable in exactly the quiet weeks somebody would go looking
+ * for what happened in July. It is last because it is for families who are
+ * already here, and the four items above it are for the ones deciding.
  */
 export const NAV_ITEMS = [
   { label: 'Classes', href: '/classes' },
@@ -57,6 +63,7 @@ export const NAV_ITEMS = [
   { label: 'Who teaches', href: '/staff' },
   { label: 'What it costs', href: '/#costs' },
   { label: 'Why we do this', href: '/#faith' },
+  { label: 'News', href: '/news' },
 ] as const;
 
 /**

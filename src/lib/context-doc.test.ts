@@ -18,6 +18,7 @@ const REQUIRED_TERMS = [
   'possible clash',
   'payment slot',
   'editable set',
+  'announcement',
   'H.O.P.E.',
 ];
 

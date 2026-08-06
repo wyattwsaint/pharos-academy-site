@@ -12,6 +12,10 @@
  * because a half-applied migration is otherwise unrecoverable without hands on
  * the database.
  */
+import {
+  SEEDED_ANNOUNCEMENTS,
+  type SeedAnnouncement,
+} from '../announcements/announcement.js';
 import { CATALOGUE } from '../courses/catalogue.js';
 import type { Course } from '../courses/course.js';
 import { PEOPLE, seededName, type SeedPerson } from '../people/person.js';
@@ -180,7 +184,67 @@ export const MIGRATIONS: readonly Migration[] = [
       `alter table courses drop column if exists instructor`,
     ],
   },
+  {
+    /*
+     * Announcements (#27).
+     *
+     * Note what is *not* here: no board-update column, no "is pinned" flag, no
+     * second table for the file. A board update is a row with a PDF attached,
+     * so the slot that reads as stale by October has nowhere to come back.
+     *
+     * The two check constraints say the same thing twice about two different
+     * pairs: a link is a URL *and* a name for it, and an attachment is a
+     * filename *and* its bytes. Half of either is the shape that renders as a
+     * link with no text or a download button that serves nothing.
+     */
+    id: '0004-announcements',
+    statements: [
+      `create table if not exists announcements (
+         slug text primary key,
+         headline text not null,
+         body text not null,
+         posted_on date not null,
+         link_url text,
+         link_label text,
+         attachment_filename text,
+         attachment_bytes bytea,
+         last_edited_by text,
+         last_edited_at timestamptz,
+         constraint announcements_link_is_whole check ((link_url is null) = (link_label is null)),
+         constraint announcements_attachment_is_whole
+           check ((attachment_filename is null) = (attachment_bytes is null))
+       )`,
+      insertAnnouncements(SEEDED_ANNOUNCEMENTS),
+    ],
+  },
 ];
+
+/**
+ * The school's own six, seeded like the courses and the people are.
+ *
+ * Without bytes. The board update's PDF is 105 KB and would be a base64 blob in
+ * the server bundle read on every cold start; `npm run db:seed` attaches it
+ * from `docs/mirror/`, on a machine where that directory exists.
+ */
+function insertAnnouncements(list: readonly SeedAnnouncement[]): string {
+  const values = list
+    .map(
+      (announcement) =>
+        `(${[
+          literal(announcement.slug),
+          literal(announcement.headline),
+          literal(announcement.body),
+          literal(announcement.postedOn),
+          nullable(announcement.linkUrl),
+          nullable(announcement.linkLabel),
+        ].join(', ')})`,
+    )
+    .join(', ');
+
+  return `insert into announcements (slug, headline, body, posted_on, link_url, link_label)
+    values ${values}
+    on conflict (slug) do nothing`;
+}
 
 /** Every person as one idempotent insert, for the same reason the courses are. */
 function insertPeople(people: readonly SeedPerson[]): string {
