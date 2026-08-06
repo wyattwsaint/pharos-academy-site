@@ -5,6 +5,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { layoutWeek } from '../../lib/courses/schedule.js';
 import { listCourses } from '../../lib/courses/store.js';
 import { viewFor } from '../../lib/courses/views.js';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import { getDb } from '../../lib/db/client.js';
 import { getMoneySettings } from '../../lib/money/store.js';
 
@@ -24,13 +25,14 @@ import { listPeople } from '../../lib/people/store.js';
  */
 const view = viewFor('by-day');
 const db = await getDb();
+const details = await getSchoolDetails(db);
 const week = layoutWeek(await listCourses(db));
 const { rates } = await getMoneySettings(db);
 // Every name in the grid is read from the one list of people (#26).
 const directory = bySlug(await listPeople(db));
 ---
 
-<BaseLayout title={view.title} description={view.description}>
+<BaseLayout details={details} title={view.title} description={view.description}>
   <ClassesHeader
     current="by-day"
     heading="The week, drawn to the clock"

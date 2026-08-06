@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import { CURRENT_FAMILIES_LINKS } from '../../lib/current-families/section.js';
+import { getDb } from '../../lib/db/client.js';
 import { INQUIRY_HREF } from '../../lib/home/sections.js';
 
 /**
@@ -23,9 +25,17 @@ import { INQUIRY_HREF } from '../../lib/home/sections.js';
  */
 const description =
   'For families already at Pharos Academy — news, policies and the handbook. Nothing here requires a login.';
+
+/*
+ * The signpost itself reads nothing; the footer under it reads the school
+ * details row. Read here rather than in the layout because a layout's read
+ * fails after the 200 has been sent (`BaseLayout.astro`), and this page must
+ * answer 500 with the database down like every other one.
+ */
+const details = await getSchoolDetails(await getDb());
 ---
 
-<BaseLayout title="Current Families" description={description}>
+<BaseLayout details={details} title="Current Families" description={description}>
   <section class="band band-quiet" data-section="current-families-header">
     <div class="wide">
       <p class="label">Current Families</p>

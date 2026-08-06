@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { listCourses } from '../../lib/courses/store.js';
 import { classPath } from '../../lib/courses/views.js';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import { getDb } from '../../lib/db/client.js';
 import { INQUIRY_HREF } from '../../lib/home/sections.js';
 import { instructorsAmong, leadershipAmong } from '../../lib/people/person.js';
@@ -31,6 +32,7 @@ import { listPeople } from '../../lib/people/store.js';
  * advertising eight missing photographs rather than eight people who teach.
  */
 const db = await getDb();
+const details = await getSchoolDetails(db);
 const [people, courses] = await Promise.all([listPeople(db), listCourses(db)]);
 
 const leadership = leadershipAmong(people);
@@ -40,7 +42,7 @@ const description =
   'The people of Pharos Academy — the head of school, the chaplain, the director of business administration, and the instructors who teach each class.';
 ---
 
-<BaseLayout title="Our people" description={description}>
+<BaseLayout details={details} title="Our people" description={description}>
   <section class="band band-quiet" data-section="staff-header">
     <div class="wide">
       <p class="label">Who we are</p>

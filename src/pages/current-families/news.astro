@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { attachmentPath, postedOnLabel } from '../../lib/announcements/views.js';
 import { listAnnouncements } from '../../lib/announcements/store.js';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import { getDb } from '../../lib/db/client.js';
 import { INQUIRY_HREF } from '../../lib/home/sections.js';
 
@@ -19,13 +20,14 @@ import { INQUIRY_HREF } from '../../lib/home/sections.js';
  * what the school said in July, printed with the date it said it on.
  */
 const db = await getDb();
+const details = await getSchoolDetails(db);
 const announcements = await listAnnouncements(db);
 
 const description =
   'News from Pharos Academy — board updates, fundraisers and notices for current families, newest first.';
 ---
 
-<BaseLayout title="News" description={description}>
+<BaseLayout details={details} title="News" description={description}>
   <section class="band band-quiet" data-section="news-header">
     <div class="wide">
       <p class="label">Current families</p>

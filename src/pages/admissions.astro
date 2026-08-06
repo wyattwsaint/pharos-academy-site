@@ -8,6 +8,7 @@ import {
   morningsLabel,
 } from '../lib/admissions/admissions.js';
 import { listCourses } from '../lib/courses/store.js';
+import { getSchoolDetails } from '../lib/admin/school-details.js';
 import { getDb } from '../lib/db/client.js';
 import { INQUIRY_HREF } from '../lib/home/sections.js';
 import { getMoneySettings } from '../lib/money/store.js';
@@ -35,6 +36,7 @@ import { POLICIES_PATH, policyPath } from '../lib/policies/views.js';
  * signed rather than a list somebody kept up to date by hand.
  */
 const db = await getDb();
+const details = await getSchoolDetails(db);
 const courses = await listCourses(db);
 const settings = await getMoneySettings(db);
 const signedPolicies = publishedPolicies(await listPolicies(db)).filter((policy) => policy.signed);
@@ -47,7 +49,7 @@ const description =
   'How to apply to Pharos Academy — who the classes are for, what applying involves, what it costs, and which documents families sign.';
 ---
 
-<BaseLayout title="Admissions" description={description}>
+<BaseLayout details={details} title="Admissions" description={description}>
   <section class="band band-quiet" data-section="admissions-header">
     <div class="wide">
       <p class="label">Admissions</p>

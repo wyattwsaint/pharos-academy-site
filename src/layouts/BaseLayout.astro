@@ -2,14 +2,30 @@
 import '../styles/global.css';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
-import { getSchoolDetails } from '../lib/admin/school-details.js';
-import { getDb } from '../lib/db/client.js';
+import type { SchoolDetails } from '../lib/db/schema.js';
 import { SCHOOL_NAME, SITE_URL } from '../lib/site.js';
 import { renderJsonLd, schoolJsonLd } from '../lib/structured-data.js';
 
 interface Props {
   title: string;
   description: string;
+  /**
+   * The school details row, read by the **page** and handed down (#34).
+   *
+   * A prop rather than a read of this layout's own, and required rather than
+   * optional, because of how a rendered response is committed: Astro streams,
+   * so by the time a layout's frontmatter runs the 200 has already gone to the
+   * client. A database failure in here therefore truncates a page that has
+   * already said it succeeded — and a 2xx with the database down is precisely
+   * what `e2e/database-down.spec.ts` exists to forbid, because the CDN caches
+   * that emptiness over the good copy.
+   *
+   * Page frontmatter, by contrast, is fully awaited before a byte is sent, so
+   * the throw becomes a 500, the ISR regeneration fails, and Vercel keeps
+   * serving stale. Making the prop required puts that on the type checker: a
+   * new public page cannot forget to read the row, because it will not compile.
+   */
+  details: SchoolDetails;
   /**
    * Whether this page opens on the full-bleed video hero.
    *
@@ -20,9 +36,8 @@ interface Props {
   overHero?: boolean;
 }
 
-const { title, description, overHero = false } = Astro.props;
+const { title, description, details, overHero = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
-const details = await getSchoolDetails(await getDb());
 ---
 
 <!doctype html>

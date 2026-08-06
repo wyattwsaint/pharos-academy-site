@@ -10,6 +10,7 @@ import WeekSection from '../components/home/WeekSection.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { listAnnouncements } from '../lib/announcements/store.js';
 import { listCourses } from '../lib/courses/store.js';
+import { getSchoolDetails } from '../lib/admin/school-details.js';
 import { getDb } from '../lib/db/client.js';
 import { getMoneySettings } from '../lib/money/store.js';
 
@@ -57,12 +58,13 @@ const description =
  * the database stopped and is what keeps the accident from recurring.
  */
 const db = await getDb();
+const details = await getSchoolDetails(db);
 const announcements = await listAnnouncements(db);
 const courses = await listCourses(db);
 const settings = await getMoneySettings(db);
 ---
 
-<BaseLayout title="Home" description={description} overHero>
+<BaseLayout details={details} title="Home" description={description} overHero>
   <HomeHero />
   <Announcements announcements={announcements} />
   <WeekSection courses={courses} rates={settings.rates} />

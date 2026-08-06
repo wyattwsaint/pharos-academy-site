@@ -89,7 +89,7 @@ const typed = (field: keyof VolunteerFields): string => {
 const ticked = (id: string): boolean => values?.interests.includes(id) ?? false;
 ---
 
-<BaseLayout title="Give and volunteer" description={description}>
+<BaseLayout details={details} title="Give and volunteer" description={description}>
   <section class="band band-quiet" data-section="support-header">
     <div class="wide">
       <p class="label">Support Pharos</p>

@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
+import { getDb } from '../../lib/db/client.js';
 import {
   BELIEFS_ARTICLES,
   BELIEFS_CLOSING,
@@ -30,9 +32,18 @@ import { INQUIRY_HREF } from '../../lib/home/sections.js';
  */
 const description =
   'The Pharos Academy Statement of Faith and Practice — the eleven articles the school teaches from and asks families to read before applying.';
+
+/*
+ * The only database read on the page, and it is the chrome's rather than the
+ * doctrine's: the articles are a transcribed module, and the footer's address
+ * is a row. Read here rather than in the layout because a layout's read fails
+ * after the 200 has been sent (`BaseLayout.astro`), and this page must answer
+ * 500 with the database down like every other one.
+ */
+const details = await getSchoolDetails(await getDb());
 ---
 
-<BaseLayout title="Statement of Faith" description={description}>
+<BaseLayout details={details} title="Statement of Faith" description={description}>
   <section class="band band-quiet" data-section="beliefs-header">
     <div class="wide">
       <p class="label">What we believe</p>
