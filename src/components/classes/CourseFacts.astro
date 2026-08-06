@@ -2,6 +2,7 @@
 import { ageLine } from '../../lib/courses/ages.js';
 import { durationLabel, type Course } from '../../lib/courses/course.js';
 import { priceLine } from '../../lib/courses/pricing.js';
+import type { RateCard } from '../../lib/money/settings.js';
 import { contactHours, timeLabel } from '../../lib/courses/schedule.js';
 import type { Person } from '../../lib/people/person.js';
 
@@ -31,9 +32,18 @@ interface Props {
    * read the list once.
    */
   instructor: Person;
+  /**
+   * The two hourly rates, read from the money settings by the page (#29).
+   *
+   * A prop rather than an import, because nothing that renders a price may hold
+   * its own copy of the rate card: the price the school charges is a settings
+   * value, and a component that could price a course without being handed one
+   * is a component that could publish last year's figure.
+   */
+  rates: RateCard;
 }
 
-const { course, instructor } = Astro.props;
+const { course, instructor, rates } = Astro.props;
 
 const dateFormat = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
@@ -55,7 +65,7 @@ const facts: Fact[] = [
   { term: 'Meets', value: `${course.days.join(' and ')}, ${timeLabel(course.start, course.end)}` },
   { term: 'Duration', value: durationLabel(course) },
   { term: 'Ages', value: ageLine(course) },
-  { term: 'Cost', value: priceLine(course) },
+  { term: 'Cost', value: priceLine(course, rates) },
   { term: 'Contact hours', value: `${contactHours(course)} hours` },
   ...optional('Credit', course.credit),
   { term: 'Prerequisites', value: course.prerequisites },

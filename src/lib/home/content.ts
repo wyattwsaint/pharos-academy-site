@@ -7,7 +7,14 @@
  * editable ones into the database. Two exceptions are called out where they
  * appear, because they are *not* the school's words and a reader needs to know
  * which lines still need George and Jill's sign-off (#13).
+ *
+ * The one thing that is *not* copy is the fee figures. They are computed from
+ * the money settings (#29) — see `costFigures`.
  */
+
+import type { Course } from '../courses/course.js';
+import { priceRange } from '../money/owed.js';
+import { formatMoney, type MoneySettings } from '../money/settings.js';
 
 /** One instructor on the "who teaches" row. */
 export type Instructor = {
@@ -48,11 +55,44 @@ export const INSTRUCTORS: readonly Instructor[] = [
 /** The whole of the fee schedule, which is the point of the section. */
 export type Figure = { amount: string; note: string };
 
-export const FIGURES: readonly Figure[] = [
-  { amount: '$90–840', note: 'per class per year, paid directly to your instructor' },
-  { amount: '$25', note: 'registration, once per student per year' },
-  { amount: '$100', note: 'deposit per class, by cheque, holds the seat' },
-];
+/**
+ * The three figures the costs band prints, computed from the school's settings
+ * (#29 AC 1).
+ *
+ * A function rather than a constant, and that is the whole change: the three
+ * amounts used to be typed strings, so raising the registration fee in the
+ * admin left the homepage quoting the old one to every parent who scrolled past
+ * it. The notes are still the school's own wording — what is derived is the
+ * money, not the sentence around it.
+ *
+ * The range is the cheapest and dearest whole course in the catalogue, written
+ * the way the school writes it: one dollar sign, then the two numbers.
+ */
+export function costFigures(
+  courses: readonly Course[],
+  settings: MoneySettings,
+): Figure[] {
+  const range = priceRange(courses, settings);
+  return [
+    // An empty catalogue has no range, and no figure is better than "$0–0".
+    ...(range
+      ? [
+          {
+            amount: `${formatMoney(range.low)}–${range.high}`,
+            note: 'per class per year, paid directly to your instructor',
+          },
+        ]
+      : []),
+    {
+      amount: formatMoney(settings.registrationFee),
+      note: 'registration, once per student per year',
+    },
+    {
+      amount: formatMoney(settings.classDeposit),
+      note: 'deposit per class, by cheque, holds the seat',
+    },
+  ];
+}
 
 /** The verse the faith band is built around. */
 export const VERSE = {

@@ -2,6 +2,7 @@
 import { ageLine } from '../../lib/courses/ages.js';
 import type { Course } from '../../lib/courses/course.js';
 import { priceSummary } from '../../lib/courses/pricing.js';
+import type { RateCard } from '../../lib/money/settings.js';
 import { timeLabel } from '../../lib/courses/schedule.js';
 import { classPath } from '../../lib/courses/views.js';
 
@@ -24,9 +25,18 @@ import { classPath } from '../../lib/courses/views.js';
 interface Props {
   course: Course;
   idPrefix: string;
+  /**
+   * The two hourly rates, read from the money settings by the page (#29).
+   *
+   * A prop rather than an import, because nothing that renders a price may hold
+   * its own copy of the rate card: the price the school charges is a settings
+   * value, and a component that could price a course without being handed one
+   * is a component that could publish last year's figure.
+   */
+  rates: RateCard;
 }
 
-const { course, idPrefix } = Astro.props;
+const { course, idPrefix, rates } = Astro.props;
 const panelId = `${idPrefix}-${course.slug}`;
 ---
 
@@ -40,7 +50,7 @@ const panelId = `${idPrefix}-${course.slug}`;
   >
     <span class="title">{course.title}</span>
     <span class="when">{course.days.join(' & ')} · {timeLabel(course.start, course.end)}</span>
-    <span class="meta">{ageLine(course)} · {priceSummary(course)}</span>
+    <span class="meta">{ageLine(course)} · {priceSummary(course, rates)}</span>
   </button>
 
   <div class="classcard-panel" id={panelId} data-disclosure-panel>

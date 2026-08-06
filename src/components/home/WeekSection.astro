@@ -1,5 +1,8 @@
 ---
+import type { Course } from '../../lib/courses/course.js';
+import { priceSummary } from '../../lib/courses/pricing.js';
 import { activeDayTracks, classCountOnTrack, TIMETABLE } from '../../lib/home/timetable.js';
+import type { RateCard } from '../../lib/money/settings.js';
 
 /**
  * What a week looks like — #9's items 2 and 3 as one section.
@@ -17,8 +20,29 @@ import { activeDayTracks, classCountOnTrack, TIMETABLE } from '../../lib/home/ti
  * The school has four tracks and the Tuesday one is routinely empty
  * (CONTEXT.md, "day track"); an empty track is complete, not incomplete, so it
  * is not drawn as a permanently blank column.
+ *
+ * The price on each cell is looked up rather than typed (#29 AC 1). The cell
+ * carries a catalogue slug; the figure beside it is `priceSummary` at the
+ * school's current rates. Two cells the school quotes by length rather than by
+ * price ("12 weeks", "rotating") carry no slug and get no figure, which is
+ * complete rather than missing.
  */
+interface Props {
+  /** The catalogue, for the price on each cell. */
+  courses: readonly Course[];
+  /** The school's two hourly rates, from the money settings. */
+  rates: RateCard;
+}
+
+const { courses, rates } = Astro.props;
+const bySlug = new Map(courses.map((course) => [course.slug, course]));
 const tracks = activeDayTracks();
+
+/** The short price for a cell, or null where the cell does not quote one. */
+function priceFor(slug: string | undefined): string | null {
+  const course = slug ? bySlug.get(slug) : undefined;
+  return course ? priceSummary(course, rates) : null;
+}
 ---
 
 <section class="band" id="week" data-section="week">
@@ -54,7 +78,9 @@ const tracks = activeDayTracks();
                   const cell = slot.classes[track] ?? [];
                   return (
                     <div class:list={['cell', { free: cell.length === 0 }]}>
-                      {cell.map((entry) => (
+                      {cell.map((entry) => {
+                        const price = priceFor(entry.slug);
+                        return (
                         <div data-disclosure-cell>
                           <button
                             class="class"
@@ -65,13 +91,14 @@ const tracks = activeDayTracks();
                           >
                             <span class="title">{entry.title}</span>
                             <span class="ends">{entry.ends}</span>
-                            <span class="meta">{entry.meta}</span>
+                            <span class="meta">{price ? `${entry.meta} · ${price}` : entry.meta}</span>
                           </button>
                           <div class="class-panel" id={`class-${entry.id}`} data-disclosure-panel>
                             {entry.description}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}

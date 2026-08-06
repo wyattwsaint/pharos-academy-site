@@ -6,6 +6,8 @@ import { layoutWeek } from '../../lib/courses/schedule.js';
 import { listCourses } from '../../lib/courses/store.js';
 import { viewFor } from '../../lib/courses/views.js';
 import { getDb } from '../../lib/db/client.js';
+import { getMoneySettings } from '../../lib/money/store.js';
+
 import { bySlug } from '../../lib/people/person.js';
 import { listPeople } from '../../lib/people/store.js';
 
@@ -23,6 +25,7 @@ import { listPeople } from '../../lib/people/store.js';
 const view = viewFor('by-day');
 const db = await getDb();
 const week = layoutWeek(await listCourses(db));
+const { rates } = await getMoneySettings(db);
 // Every name in the grid is read from the one list of people (#26).
 const directory = bySlug(await listPeople(db));
 ---
@@ -36,7 +39,7 @@ const directory = bySlug(await listPeople(db));
 
   <section class="band" data-section="by-day">
     <div class="wide">
-      {week.map((layout) => <DayTimetable layout={layout} directory={directory} />)}
+      {week.map((layout) => <DayTimetable layout={layout} directory={directory} rates={rates} />)}
 
       <p class="mt-9 text-ink-2">
         Wednesday’s 10:40 hour carries several short electives on purpose — they run in different

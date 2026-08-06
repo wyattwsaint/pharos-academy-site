@@ -2,6 +2,7 @@ import type { Db } from '../db/client.js';
 import { getSchoolDetails } from '../admin/school-details.js';
 import { getAttachment, listAnnouncements } from '../announcements/store.js';
 import { listCourses } from '../courses/store.js';
+import { getMoneySettings, listAgreedTerms } from '../money/store.js';
 import { listPeople } from '../people/store.js';
 import { getPolicyFile, listPolicies, listPolicyVersions } from '../policies/store.js';
 import { SCHOOL_NAME } from '../site.js';
@@ -32,10 +33,15 @@ import { zip, type ZipEntry } from './zip.js';
  *
  * Named as tables rather than as concepts so that `export.test.ts` can hold
  * this list against the schema and fail when a new one appears. The editable
- * set (CONTEXT.md) is seven things; four of them are tables today, and the
- * three that are not — the school year and its events (#23), the money
- * settings (#29), and the course editor's own additions (#24) — will each fail
- * that test into this list on the day they land.
+ * set (CONTEXT.md) is seven things; the money settings (#29) failed that test
+ * into this list exactly as intended, and the school year and its events (#23)
+ * and the course editor's own additions (#24) will do the same on the day they
+ * land.
+ *
+ * `agreed_terms` is here for a different reason than the rest: nothing edits it,
+ * so it is not "editable content" — but it is what the school promised each
+ * family, and a copy of the school's content that restored today's fees with no
+ * record of what anyone agreed to pay would be worse than useless.
  */
 export const EXPORTED_TABLES = [
   'school_details',
@@ -44,6 +50,8 @@ export const EXPORTED_TABLES = [
   'announcements',
   'policies',
   'policy_versions',
+  'money_settings',
+  'agreed_terms',
 ] as const;
 
 /**
@@ -62,6 +70,8 @@ export const EXPORTED_TABLE_LABELS: Record<(typeof EXPORTED_TABLES)[number], str
   announcements: 'Every announcement, and any PDF posted with one',
   policies: 'Every policy, with its description and its position on the page',
   policy_versions: 'Every policy document — including the ones that have been replaced',
+  money_settings: 'The rates, fees, instalment dates and refund terms the school charges today',
+  agreed_terms: 'What each family agreed to pay when they applied, frozen at that date',
 };
 
 /**
@@ -137,6 +147,14 @@ export async function buildExport(db: Db, at = new Date()): Promise<BackupArchiv
     file: 'content/policies.json',
     rows: versionCount,
   });
+
+  const money = await getMoneySettings(db);
+  files.push(jsonEntry('content/money-settings.json', money));
+  tables.push({ table: 'money_settings', file: 'content/money-settings.json', rows: 1 });
+
+  const agreed = await listAgreedTerms(db);
+  files.push(jsonEntry('content/agreed-terms.json', agreed));
+  tables.push({ table: 'agreed_terms', file: 'content/agreed-terms.json', rows: agreed.length });
 
   files.unshift({ path: 'README.txt', bytes: Buffer.from(readme(at), 'utf8') });
 

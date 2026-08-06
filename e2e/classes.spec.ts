@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { CATALOGUE } from '../src/lib/courses/catalogue.js';
 import { coursePrice, priceSummary } from '../src/lib/courses/pricing.js';
+import { SEEDED_MONEY_SETTINGS } from '../src/lib/money/settings.js';
 import { contactHours } from '../src/lib/courses/schedule.js';
 import { seededName } from '../src/lib/people/person.js';
 
@@ -248,17 +249,21 @@ test.describe('the prices', () => {
     // AC 2's browser half: the same computed figure wherever it is printed.
     // The formula itself is proven against the school's published costs in
     // `pricing.test.ts`.
+    //
+    // Priced at the seeded rates, which is what the server's database holds
+    // until somebody edits the money settings — the same figures the school
+    // publishes today (#29).
     await page.goto('/classes');
     for (const course of CATALOGUE) {
       await expect(
         page.locator(`.classcard[data-course="${course.slug}"]`).first(),
         course.title,
-      ).toContainText(priceSummary(course));
+      ).toContainText(priceSummary(course, SEEDED_MONEY_SETTINGS.rates));
     }
 
     for (const course of CATALOGUE) {
       await page.goto(`/classes/${course.slug}`);
-      const price = coursePrice(course);
+      const price = coursePrice(course, SEEDED_MONEY_SETTINGS.rates);
       await expect(page.locator('.coursefacts'), course.title).toContainText(
         `$${price.ratePerHour}/hour`,
       );

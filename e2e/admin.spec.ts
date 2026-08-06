@@ -535,6 +535,125 @@ test.describe('policies', () => {
 });
 
 /**
+ * The money screen (#29 ACs 2, 5, 6).
+ *
+ * The confirmation is the thing worth a browser: it is a two-step POST with no
+ * JavaScript, so what has to be true is that the first Save does not write, the
+ * screen names the change in both directions, and the second post does. The
+ * arithmetic and the diff are proved in `src/lib/money/`; what only a browser
+ * can show is that a fee changed here reaches the public page a family reads
+ * before writing a cheque.
+ */
+test.describe('saving money', () => {
+  // One row, one database across the suite, and each save posts the whole form.
+  test.describe.configure({ mode: 'serial' });
+
+  test('will not save until the school confirms it affects every family', async ({ page }) => {
+    await signIn(page, '/admin/money');
+
+    const field = page.getByLabel('Deposit, per class');
+    const before = await field.inputValue();
+    const after = String(Number(before) + 5);
+
+    await field.fill(after);
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    // Step one: a confirmation naming the change, not a save.
+    const confirm = page.getByTestId('confirm');
+    await expect(confirm).toContainText('This affects every family.');
+    await expect(confirm.locator('[data-change="classDeposit"]')).toContainText(`$${before}`);
+    await expect(confirm.locator('[data-change="classDeposit"]')).toContainText(`$${after}`);
+    // And it says the thing that makes the change safe to make at all.
+    await expect(confirm).toContainText('keep the terms they agreed to');
+
+    // Nothing was written: coming back shows the old figure.
+    await page.goto('/admin/money');
+    await expect(page.getByLabel('Deposit, per class')).toHaveValue(before);
+
+    // Step two: confirm, and now it writes and says so.
+    await page.getByLabel('Deposit, per class').fill(after);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByRole('button', { name: 'Yes, change it for everyone' }).click();
+
+    const banner = page.getByTestId('save-banner');
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+    await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
+    await expect(page.getByLabel('Deposit, per class')).toHaveValue(after);
+
+    // AC 1 and AC 6 together: the figure a family is quoted follows the row.
+    await page.goto('/admissions');
+    await expect(page.locator('#cost')).toContainText(`$${after}`);
+
+    // Put it back, the same way a person would have to.
+    await page.goto('/admin/money');
+    await page.getByLabel('Deposit, per class').fill(before);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByRole('button', { name: 'Yes, change it for everyone' }).click();
+    await expect(page.getByLabel('Deposit, per class')).toHaveValue(before);
+  });
+
+  test('lets the school back out of the confirmation without saving', async ({ page }) => {
+    await signIn(page, '/admin/money');
+
+    const field = page.getByLabel('Late fee, per class');
+    const before = await field.inputValue();
+
+    await field.fill(String(Number(before) + 5));
+    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByRole('link', { name: 'Go back without saving' }).click();
+
+    await expect(page.getByTestId('confirm')).toHaveCount(0);
+    await expect(page.getByLabel('Late fee, per class')).toHaveValue(before);
+  });
+
+  test('does not stamp the row when nothing actually changed', async ({ page }) => {
+    await signIn(page, '/admin/money');
+
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    const banner = page.getByTestId('save-banner');
+    await expect(banner).toContainText('Nothing changed');
+    await expect(page.getByTestId('confirm')).toHaveCount(0);
+  });
+
+  test('holds more than one address for application notifications', async ({ page }) => {
+    await signIn(page, '/admin/money');
+
+    const addresses = 'jkilker@enolacog.com\ngeorge@enolacog.com';
+    await page.getByLabel('Application notifications go to').fill(addresses);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByRole('button', { name: 'Yes, change it for everyone' }).click();
+
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    await page.goto('/admin/money');
+    await expect(page.getByLabel('Application notifications go to')).toHaveValue(addresses);
+  });
+
+  test('refuses a rate of zero, and never offers to confirm one', async ({ page }) => {
+    await signIn(page, '/admin/money');
+
+    await page.getByLabel('Standard rate, per hour').fill('0');
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByTestId('confirm')).toHaveCount(0);
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
+    await expect(page.locator('#standardRate-error')).toContainText('cannot be zero');
+  });
+
+  test('prints the study hall contradiction the school still owes an answer on', async ({
+    page,
+  }) => {
+    await signIn(page, '/admin/money');
+
+    // #29 AC 7. The handbook says $10 on page 3 and $60 on page 8; this surface
+    // holds one number, so the disagreement is stated beside the field rather
+    // than quietly averaged away.
+    await expect(page.locator('#studyHallFee-hint')).toContainText('page 3');
+    await expect(page.locator('#studyHallFee-hint')).toContainText('page 8');
+  });
+});
+
+/**
  * Download everything (#33, AC 3).
  *
  * `export.test.ts` already opens the archive with an independent unzipper and
@@ -605,6 +724,7 @@ test.describe('Download everything', () => {
 test.describe('accessibility', () => {
   for (const path of [
     '/admin/login',
+    '/admin/money',
     '/admin/school-details',
     '/admin/users',
     '/admin/people',

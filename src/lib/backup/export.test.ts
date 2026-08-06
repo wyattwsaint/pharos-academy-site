@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { saveAnnouncement } from '../announcements/store.js';
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import * as schema from '../db/schema.js';
+import { getMoneySettings, recordAgreedTerms } from '../money/store.js';
 import { replacePolicyFile } from '../policies/store.js';
 import {
   EXCLUDED_TABLES,
@@ -224,6 +225,10 @@ describe('coverage of the editable set', () => {
     // tell an exported table from a forgotten one.
     const pdf = await readFile('docs/mirror/pdf/policy-handbook.pdf');
     await replacePolicyFile(db, 'handbook', { filename: 'handbook.pdf', bytes: pdf }, 'Jill');
+    // And one family's frozen terms, for the same reason: `agreed_terms` is
+    // empty until somebody applies (#18 §11), which is a real state and a
+    // useless one for telling an exported table from a forgotten one.
+    await recordAgreedTerms(db, 'The Kilker family', await getMoneySettings(db));
 
     const files = await open();
     const manifest = json(files, 'manifest.json') as {

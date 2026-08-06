@@ -1,6 +1,7 @@
 ---
 import { ageLine } from '../../lib/courses/ages.js';
 import { priceSummary } from '../../lib/courses/pricing.js';
+import type { RateCard } from '../../lib/money/settings.js';
 import { markLabel, timeLabel, type DayLayout } from '../../lib/courses/schedule.js';
 import { classPath } from '../../lib/courses/views.js';
 import { instructorOf, type Person } from '../../lib/people/person.js';
@@ -33,9 +34,18 @@ interface Props {
   layout: DayLayout;
   /** The one list of people, by slug — where every name in the grid comes from (#26). */
   directory: ReadonlyMap<string, Person>;
+  /**
+   * The two hourly rates, read from the money settings by the page (#29).
+   *
+   * A prop rather than an import, because nothing that renders a price may hold
+   * its own copy of the rate card: the price the school charges is a settings
+   * value, and a component that could price a course without being handed one
+   * is a component that could publish last year's figure.
+   */
+  rates: RateCard;
 }
 
-const { layout, directory } = Astro.props;
+const { layout, directory, rates } = Astro.props;
 
 /** One grid row per ten minutes. Every published time lands on a ten. */
 const STEP = 10;
@@ -98,7 +108,7 @@ const rows = (layout.endMinutes - layout.startMinutes) / STEP;
             <span class="slot-title">{course.title}</span>
             <span class="slot-time">{timeLabel(course.start, course.end)}</span>
             <span class="slot-meta">
-              {ageLine(course)} · {priceSummary(course)}
+              {ageLine(course)} · {priceSummary(course, rates)}
             </span>
             <span class="slot-who">{instructorOf(directory, course).name}</span>
           </a>

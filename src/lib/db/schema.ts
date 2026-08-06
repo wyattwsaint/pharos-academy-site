@@ -315,7 +315,89 @@ export const policyVersions = pgTable(
   (table) => [primaryKey({ columns: [table.policySlug, table.version] })],
 );
 
+/**
+ * Every number about money the school controls — one row, forever (#29).
+ *
+ * A separate table from `school_details` rather than seven more columns on it,
+ * and the reason is the confirmation: saving this row is the one save on the
+ * site that has to stop and say "this affects every family" first. Sharing a
+ * row with the phone number would mean either correcting a typo in the address
+ * asks that question, or changing the deposit does not.
+ *
+ * Dollars are `integer` and not `numeric`, because every figure the school
+ * publishes is a whole number of them and a cent that cannot be typed is a cent
+ * that cannot be wrong. The four instalment dates are an array with a length
+ * check rather than four columns: they are one ordered fact, and the form
+ * renders them as one repeated control.
+ *
+ * `deposit_credited_against_tuition` defaults true, confirmed by George (#14).
+ */
+export const moneySettings = pgTable('money_settings', {
+  id: integer('id').primaryKey(),
+  /** Dollars an hour for an ordinary class. */
+  standardRate: integer('standard_rate').notNull(),
+  /** Dollars an hour for a class carrying high-school credit. */
+  highSchoolCreditRate: integer('high_school_credit_rate').notNull(),
+  registrationFee: integer('registration_fee').notNull(),
+  classDeposit: integer('class_deposit').notNull(),
+  lateFee: integer('late_fee').notNull(),
+  /** One number. The handbook gives two, and the school owes an answer (#29 AC 7). */
+  studyHallFee: integer('study_hall_fee').notNull(),
+  /** Four `YYYY-MM-DD` strings, earliest first. */
+  instalmentDates: text('instalment_dates').array().notNull(),
+  refundTerms: text('refund_terms').notNull(),
+  depositCreditedAgainstTuition: boolean('deposit_credited_against_tuition')
+    .notNull()
+    .default(true),
+  /** Where an application notification goes. More than one is the normal case. */
+  notificationAddresses: text('notification_addresses').array().notNull(),
+  /**
+   * The stamp, and it is load-bearing here in a way it is not elsewhere:
+   * permissions are flat (#16), so attribution is the only control on the money.
+   */
+  lastEditedBy: text('last_edited_by'),
+  lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
+});
+
+/**
+ * The money terms one family agreed to, frozen at the moment they applied (#29).
+ *
+ * The columns duplicate `money_settings` on purpose. A foreign key to the
+ * settings row would mean every enrolled family's terms changed the instant
+ * George corrected a fee, which is precisely what "a change never rewrites what
+ * an already-enrolled family agreed to" forbids. The price a family applied at
+ * is the price they pay, and the only way a row can promise that is by holding
+ * the numbers itself.
+ *
+ * Nothing in the codebase updates a row here. It is written once, by
+ * `recordAgreedTerms`, and read thereafter — which is the same construction
+ * that makes policy versions retained rather than merely intended to be.
+ *
+ * The application flow (#18 §11) is what will create these; this table and its
+ * writer exist now because the settings screen is meaningless without the thing
+ * it must not reach.
+ */
+export const agreedTerms = pgTable('agreed_terms', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  /** Who agreed. The family's own name, as they typed it. */
+  familyName: text('family_name').notNull(),
+  /** When. Not the stamp — nothing edits this row, so there is nothing to stamp. */
+  agreedAt: timestamp('agreed_at', { withTimezone: true }).notNull().defaultNow(),
+  standardRate: integer('standard_rate').notNull(),
+  highSchoolCreditRate: integer('high_school_credit_rate').notNull(),
+  registrationFee: integer('registration_fee').notNull(),
+  classDeposit: integer('class_deposit').notNull(),
+  lateFee: integer('late_fee').notNull(),
+  studyHallFee: integer('study_hall_fee').notNull(),
+  instalmentDates: text('instalment_dates').array().notNull(),
+  refundTerms: text('refund_terms').notNull(),
+  depositCreditedAgainstTuition: boolean('deposit_credited_against_tuition').notNull(),
+  notificationAddresses: text('notification_addresses').array().notNull(),
+});
+
 export type AdminUser = typeof adminUsers.$inferSelect;
+export type MoneySettingsRow = typeof moneySettings.$inferSelect;
+export type AgreedTermsRow = typeof agreedTerms.$inferSelect;
 export type AdminSession = typeof adminSessions.$inferSelect;
 export type SchoolDetails = typeof schoolDetails.$inferSelect;
 export type CourseRow = typeof courses.$inferSelect;

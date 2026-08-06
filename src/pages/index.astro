@@ -9,7 +9,9 @@ import TeachersSection from '../components/home/TeachersSection.astro';
 import WeekSection from '../components/home/WeekSection.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { listAnnouncements } from '../lib/announcements/store.js';
+import { listCourses } from '../lib/courses/store.js';
 import { getDb } from '../lib/db/client.js';
+import { getMoneySettings } from '../lib/money/store.js';
 
 /**
  * The homepage, in "Beacon, warmed" — variant E, approved by George and Jill
@@ -35,8 +37,13 @@ const description =
   'Christian classical classes in Enola, Pennsylvania, for ages 4 to 18 — mornings on Monday, Wednesday and Thursday.';
 
 /*
- * The announcements are read **here**, in the page, and handed down — not read
- * inside the component that renders them (#34).
+ * The announcements, the catalogue and the money settings are all read **here**,
+ * in the page, and handed down — not read inside the components that render
+ * them (#34, and #29 AC 1).
+ *
+ * For money that means no component holds a copy of the school's rates, and the
+ * two sections that quote money quote the same figures as each other by
+ * construction.
  *
  * The response streams. Frontmatter runs to completion before a byte leaves,
  * but a component's frontmatter runs *during* the stream, with the 200 already
@@ -49,17 +56,20 @@ const description =
  * was safe by accident. `e2e/database-down.spec.ts` walks `PUBLIC_ROUTES` with
  * the database stopped and is what keeps the accident from recurring.
  */
-const announcements = await listAnnouncements(await getDb());
+const db = await getDb();
+const announcements = await listAnnouncements(db);
+const courses = await listCourses(db);
+const settings = await getMoneySettings(db);
 ---
 
 <BaseLayout title="Home" description={description} overHero>
   <HomeHero />
   <Announcements announcements={announcements} />
-  <WeekSection />
+  <WeekSection courses={courses} rates={settings.rates} />
   <Ornament />
   <TeachersSection />
   <Ornament />
-  <CostsSection />
+  <CostsSection courses={courses} settings={settings} />
   <FaithSection />
   <InquirySection />
 </BaseLayout>

@@ -37,9 +37,14 @@ export type SectionId = (typeof SECTION_ORDER)[number];
  * Every anchor is written as `/#section` rather than `#section`. On the
  * homepage that is still a same-document jump; on `/classes` it is a link back
  * to the section that answers the question, which a bare fragment would not be
- * — it would silently do nothing. About and Admissions are still absent because
- * their pages are, and a nav item pointing at a 404 is worse than one pointing
- * at the section that answers the same question.
+ * — it would silently do nothing. About is still absent because its page is,
+ * and a nav item pointing at a 404 is worse than one pointing at the section
+ * that answers the same question.
+ *
+ * Admissions is a real route now (#29), and it sits directly after "What it
+ * costs" because that is the order of the questions: a family reads the fees
+ * and the next thing they want is how to actually do this. It is the only item
+ * on the list that leads somewhere a decision gets made.
  *
  * Classes is a real route now (#22) and leads with the By Age view, which is
  * `/classes` itself.
@@ -62,6 +67,7 @@ export const NAV_ITEMS = [
   { label: 'A week here', href: '/#week' },
   { label: 'Who teaches', href: '/staff' },
   { label: 'What it costs', href: '/#costs' },
+  { label: 'Admissions', href: '/admissions' },
   { label: 'Why we do this', href: '/#faith' },
   { label: 'News', href: '/news' },
 ] as const;
