@@ -111,6 +111,80 @@ test.describe('saving school details', () => {
   });
 });
 
+test.describe('editing a person', () => {
+  // One row per person and a save posts the whole form, as school details does.
+  test.describe.configure({ mode: 'serial' });
+
+  test('saves, republishes the site, and stamps who did it', async ({ page }) => {
+    await signIn(page, '/admin/people');
+
+    await page.getByRole('link', { name: 'Mrs. Angela Fecteau' }).click();
+
+    const role = 'Instructor, Life Science';
+    await page.getByLabel('Role').fill(role);
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    // AC 5: the screen reports what actually happened to the live site, not
+    // what it hopes happened. This name is printed on the staff page and on
+    // every class she teaches, so a save that did not republish is a site
+    // disagreeing with itself.
+    const banner = page.getByTestId('save-banner');
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+    await expect(banner).toContainText('Saved and live.');
+    await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
+
+    // A real write, and it reaches the public page it is printed on.
+    await page.goto('/staff');
+    await expect(page.locator('#angela-fecteau .role')).toHaveText(role);
+  });
+
+  test('refuses a person with no role, and says so without saving', async ({ page }) => {
+    await signIn(page, '/admin/people');
+    await page.getByRole('link', { name: 'Mrs. Chelsea Miller' }).click();
+
+    // A field of spaces is what gets past the browser's own `required`, so it
+    // is the server's trim that has to catch it.
+    await page.getByLabel('Role').fill('   ');
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    const banner = page.getByTestId('save-banner');
+    await expect(banner).toHaveAttribute('data-ok', 'false');
+    await expect(banner).toContainText('Nothing was saved');
+    await expect(page.locator('#role')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#role-error')).toContainText('cannot be empty');
+  });
+
+  // AC 4, defended where a photograph can actually get in: a face nobody at the
+  // school can vouch for or take down does not go on the staff page.
+  test('refuses a photograph that does not live in this site', async ({ page }) => {
+    await signIn(page, '/admin/people');
+    await page.getByRole('link', { name: 'Mrs. Chelsea Miller' }).click();
+
+    await page.getByLabel('Photograph').fill('https://example.org/somebody.jpg');
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
+    await expect(page.locator('#photo')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  test('adds somebody with no bio and no photograph, which is a complete person', async ({
+    page,
+  }) => {
+    await signIn(page, '/admin/people');
+    await page.getByRole('link', { name: 'Add a person' }).click();
+
+    await page.getByLabel('Name').fill('Mrs. Suite Newcomer');
+    await page.getByLabel('Role').fill('Instructor');
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
+
+    await page.goto('/admin/people');
+    await expect(page.getByRole('link', { name: 'Mrs. Suite Newcomer' })).toBeVisible();
+  });
+});
+
 /**
  * Resetting and deleting are proved against real Postgres in
  * `src/lib/admin/store.test.ts`, not here: every spec in this file shares one
@@ -130,7 +204,14 @@ test.describe('the Users screen', () => {
 });
 
 test.describe('accessibility', () => {
-  for (const path of ['/admin/login', '/admin/school-details', '/admin/users']) {
+  for (const path of [
+    '/admin/login',
+    '/admin/school-details',
+    '/admin/users',
+    '/admin/people',
+    '/admin/people/jill-kilker',
+    '/admin/people/new',
+  ]) {
     for (const width of ADMIN_WIDTHS) {
       test(`${path} has zero axe violations at ${width}px`, async ({ page }) => {
         if (path !== '/admin/login') await signIn(page, path);

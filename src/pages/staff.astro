@@ -1,0 +1,124 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { listCourses } from '../lib/courses/store.js';
+import { classPath } from '../lib/courses/views.js';
+import { getDb } from '../lib/db/client.js';
+import { INQUIRY_HREF } from '../lib/home/sections.js';
+import { instructorsAmong, leadershipAmong } from '../lib/people/person.js';
+import { listPeople } from '../lib/people/store.js';
+
+/**
+ * The school is people (#26).
+ *
+ * Two sections off **one list**. Leadership are the three the school publishes
+ * bios for, in the order it put them in; instructors are everybody the
+ * catalogue actually names, derived rather than stored — assign a course to
+ * somebody in the admin and they appear here, with what they teach, without a
+ * second list being edited.
+ *
+ * George Jensen is in both sections and is one row. That is the whole argument
+ * for the module this page reads from.
+ *
+ * **Bios and photographs are optional by design.** Eight of the eleven names
+ * here have neither, and this page says so by showing their name and their
+ * classes rather than a paragraph of invented biography. Nothing is padded to
+ * make a card the same height as its neighbour.
+ *
+ * Slot 4 — the three leadership portraits — stays an empty tint. It has to be
+ * photographs of real consenting adults, it is blocked on the school supplying
+ * them, and no generated or stock face substitutes for one. The instructors
+ * carry no portrait frame at all, because eight empty circles would be a page
+ * advertising eight missing photographs rather than eight people who teach.
+ */
+const db = await getDb();
+const [people, courses] = await Promise.all([listPeople(db), listCourses(db)]);
+
+const leadership = leadershipAmong(people);
+const instructors = instructorsAmong(people, courses);
+
+const description =
+  'The people of Pharos Academy — the head of school, the chaplain, the director of business administration, and the instructors who teach each class.';
+---
+
+<BaseLayout title="Our people" description={description}>
+  <section class="band band-quiet" data-section="staff-header">
+    <div class="wide">
+      <p class="label">Who we are</p>
+      <h1 class="mt-4">The people of Pharos Academy</h1>
+      <p class="sub mt-5">
+        A school is the people in front of the class and the people behind them. These are ours.
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="leadership" data-section="staff-leadership">
+    <div class="wide">
+      <h2>Leadership</h2>
+      <div class="people">
+        {
+          leadership.map((person) => (
+            <article id={person.slug}>
+              {
+                /*
+                  A real photograph when the school has supplied one, and an
+                  empty tint when it has not (#13). Never a stand-in face: a
+                  generated painting under a named member of staff is the one
+                  substitution that would be dishonest.
+                */
+              }
+              {person.photo ? (
+                <img
+                  class="portrait"
+                  src={person.photo}
+                  alt={person.name}
+                  width="300"
+                  height="300"
+                  loading="lazy"
+                />
+              ) : (
+                <div class="portrait" aria-hidden="true" />
+              )}
+              <h3>{person.name}</h3>
+              <p class="role label">{person.role}</p>
+              {person.bio && <p>{person.bio}</p>}
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="band band-quiet" id="instructors" data-section="staff-instructors">
+    <div class="wide">
+      <h2>Who teaches</h2>
+      <p class="sub mt-5">
+        {instructors.length} instructors teach the {courses.length} classes. Each name links to what
+        they teach.
+      </p>
+
+      <ul class="staff-teaching">
+        {
+          instructors.map(({ person, courses: taught }) => (
+            <li id={person.slug}>
+              <h3>{person.name}</h3>
+              <p class="role label">{person.role}</p>
+              {person.bio && <p class="staff-bio">{person.bio}</p>}
+              <ul class="staff-classes">
+                {taught.map((course) => (
+                  <li>
+                    <a href={classPath(course.slug)}>{course.title}</a>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))
+        }
+      </ul>
+
+      <p class="mt-9 text-ink-2">
+        Wondering whether a class is right for your child?
+        <a href={INQUIRY_HREF}>Ask us</a> — the answer comes from the person who teaches it.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

@@ -15,6 +15,7 @@ const SUMMARIES: Record<string, string> = {
     'The timetable, drawn to scale — which classes run when, and which of them overlap.',
   '/classes/full-descriptions':
     'The full description, texts, prerequisites and fees for all nineteen classes.',
+  '/staff': 'Who runs the school and who teaches each class.',
 };
 
 /**

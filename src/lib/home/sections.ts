@@ -43,11 +43,18 @@ export type SectionId = (typeof SECTION_ORDER)[number];
  *
  * Classes is a real route now (#22) and leads with the By Age view, which is
  * `/classes` itself.
+ *
+ * "Who teaches" is a real route now too (#26). By this list's own rule an item
+ * points at a section only for want of a page, and `/staff` is the fuller
+ * answer to the question the label asks — every instructor and what they
+ * teach, rather than the three the homepage band has room for. The homepage
+ * section stays exactly as #21 signed it off; it is simply no longer the only
+ * place that answers this.
  */
 export const NAV_ITEMS = [
   { label: 'Classes', href: '/classes' },
   { label: 'A week here', href: '/#week' },
-  { label: 'Who teaches', href: '/#teachers' },
+  { label: 'Who teaches', href: '/staff' },
   { label: 'What it costs', href: '/#costs' },
   { label: 'Why we do this', href: '/#faith' },
 ] as const;

@@ -77,6 +77,10 @@ const SURFACES = [
     open: noop,
   },
   { name: 'a class page', path: '/classes/algebra-1', state: 'closed', open: noop },
+  // #26. Eight of the eleven people on it have no bio and no photograph, so
+  // this is also where "an absent bio renders correctly" is measured at every
+  // width rather than only asserted in one.
+  { name: 'the staff page', path: '/staff', state: 'closed', open: noop },
 ];
 
 for (const surface of SURFACES) {
