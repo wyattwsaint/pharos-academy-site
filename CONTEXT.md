@@ -335,3 +335,22 @@ Whole-site on purpose: a per-path invalidation map is a second source of truth
 about which edit touches which page, and it drifts silently.
 
 Not: "deploy" — republishing changes no code and produces no deployment.
+
+### export
+
+The school's own copy of the **editable set**, as one ZIP: the content as JSON,
+every PDF as an ordinary file, and a README addressed to whoever opens it. It is
+what **Download everything** produces on `/admin/backup`, and it is the same
+bytes that arrive by email on the 1st of every month.
+
+An export is **restorable without Postgres on purpose**. A `pg_dump` is smaller
+and a better restore, and is worth nothing to a board with no developer: the
+nightly dump answers "can this database be brought back", and the export answers
+"can the school get its content back without asking anyone".
+
+It carries content and not accounts. Logins and live sessions are excluded, each
+with its reason written beside it in `src/lib/backup/export.ts`, and a table
+added to the schema fails a test until somebody decides which it is.
+
+Not: "backup" unqualified — that word covers both layers and they are not
+interchangeable. Not "dump", which is the operator layer's artifact.

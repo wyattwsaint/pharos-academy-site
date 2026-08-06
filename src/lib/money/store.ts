@@ -100,6 +100,18 @@ export async function getAgreedTerms(db: Db, id: string): Promise<AgreedTerms | 
   return row ? toAgreedTerms(row) : undefined;
 }
 
+/**
+ * Every family's frozen terms, oldest first.
+ *
+ * Exists for the backup (#33): these rows are what the school promised, and a
+ * copy of the school's content that left them out would restore a set of
+ * current fees with no record of what anyone actually agreed to pay.
+ */
+export async function listAgreedTerms(db: Db): Promise<AgreedTerms[]> {
+  const rows = await db.select().from(agreedTerms).orderBy(agreedTerms.agreedAt);
+  return rows.map(toAgreedTerms);
+}
+
 /** The domain shape as columns. One mapping, used by both writers. */
 function toColumns(values: MoneySettings) {
   return {

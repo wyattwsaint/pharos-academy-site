@@ -3,6 +3,9 @@
   "framework": "astro",
   "buildCommand": "npm run build",
   "installCommand": "npm ci",
+  "crons": [
+    { "path": "/api/cron/monthly-backup", "schedule": "0 8 1 * *" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",

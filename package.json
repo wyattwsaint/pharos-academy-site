@@ -20,6 +20,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:revalidation": "playwright test --config playwright.revalidation.config.ts",
+    "test:e2e:database-down": "playwright test --config playwright.database-down.config.ts",
     "test:e2e:install": "playwright install --with-deps chromium"
   },
   "dependencies": {
@@ -40,6 +41,7 @@
     "@electric-sql/pglite": "^0.5.4",
     "@playwright/test": "1.62.1",
     "@types/node": "^26.1.2",
+    "fflate": "^0.8.3",
     "typescript": "^6.0.3",
     "vitest": "4.1.10"
   }

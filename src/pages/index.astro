@@ -8,6 +8,7 @@ import InquirySection from '../components/home/InquirySection.astro';
 import TeachersSection from '../components/home/TeachersSection.astro';
 import WeekSection from '../components/home/WeekSection.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { listAnnouncements } from '../lib/announcements/store.js';
 import { listCourses } from '../lib/courses/store.js';
 import { getDb } from '../lib/db/client.js';
 import { getMoneySettings } from '../lib/money/store.js';
@@ -36,21 +37,34 @@ const description =
   'Christian classical classes in Enola, Pennsylvania, for ages 4 to 18 — mornings on Monday, Wednesday and Thursday.';
 
 /*
- * The catalogue and the money settings, read once here and handed down.
+ * The announcements, the catalogue and the money settings are all read **here**,
+ * in the page, and handed down — not read inside the components that render
+ * them (#34, and #29 AC 1).
  *
- * Read on the page rather than inside each section for the same reason
- * `/classes` does it (#29 AC 1): no component holds a copy of the school's
- * rates, and the two sections that quote money quote the same figures as each
- * other by construction.
+ * For money that means no component holds a copy of the school's rates, and the
+ * two sections that quote money quote the same figures as each other by
+ * construction.
+ *
+ * The response streams. Frontmatter runs to completion before a byte leaves,
+ * but a component's frontmatter runs *during* the stream, with the 200 already
+ * on the wire — so a store read that far in cannot fail the request, only
+ * truncate it. With Neon down this page answered `200` and 51 bytes while every
+ * other public page answered 500, and a 200 is exactly what the CDN stores over
+ * the good copy: stale-on-error needs the regeneration to *fail*.
+ *
+ * Every other public page happened to read the store in its own frontmatter and
+ * was safe by accident. `e2e/database-down.spec.ts` walks `PUBLIC_ROUTES` with
+ * the database stopped and is what keeps the accident from recurring.
  */
 const db = await getDb();
+const announcements = await listAnnouncements(db);
 const courses = await listCourses(db);
 const settings = await getMoneySettings(db);
 ---
 
 <BaseLayout title="Home" description={description} overHero>
   <HomeHero />
-  <Announcements />
+  <Announcements announcements={announcements} />
   <WeekSection courses={courses} rates={settings.rates} />
   <Ornament />
   <TeachersSection />
