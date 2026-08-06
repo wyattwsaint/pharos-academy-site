@@ -1,0 +1,404 @@
+---
+export const prerender = false;
+
+import AdminBanner from '../../components/AdminBanner.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import type { Banner } from '../../lib/admin/banner.js';
+import { isrBypassToken } from '../../lib/admin/isr-token.js';
+import {
+  describeRevalidation,
+  revalidateAll,
+  revalidationOrigin,
+} from '../../lib/admin/revalidate.js';
+import { formatStamp } from '../../lib/admin/school-details.js';
+import {
+  emptyFields,
+  fieldsOf,
+  parseSchoolYear,
+  SPARE_CLOSURE_ROWS,
+  termKey,
+  type SchoolYearErrors,
+  type SchoolYearFields,
+} from '../../lib/admin/school-year.js';
+import { CALENDAR_PATH } from '../../lib/calendar/views.js';
+import { getSchoolYear, saveSchoolYear } from '../../lib/calendar/store.js';
+import { SEMESTERS } from '../../lib/calendar/year.js';
+import { semesterHeading } from '../../lib/calendar/views.js';
+import { DAY_TRACKS } from '../../lib/courses/schedule.js';
+import { getDb } from '../../lib/db/client.js';
+
+/**
+ * The School Year screen — the whole calendar, typed once a summer (#23).
+ *
+ * Eight first-class dates, two week counts and a list of closed days. Every one
+ * of the 112 dates and each track's own week numbering is computed from them,
+ * so the four tracks cannot drift apart the way the school's five hand-made
+ * PDFs already have.
+ *
+ * **The Tuesday row is left blank to leave the Tuesday track out.** A year in
+ * which it has no first class date and no courses is complete, not incomplete
+ * (#14), so a blank row is not an error and there is no "no Tuesday this year"
+ * tick to remember. Half a row is an error, because a date with no week count
+ * is a track that runs for no weeks.
+ *
+ * The preview to the right of the form is computed **in the browser, from the
+ * same module the site renders with** — `calendar/year.ts`. It updates as she
+ * types, before anything is saved, which is what makes a mistyped closure
+ * visible as a shifted column rather than as a wrong date on a live site.
+ */
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+let year = await getSchoolYear(db);
+let values: SchoolYearFields = year ? fieldsOf(year) : emptyFields();
+let errors: SchoolYearErrors = {};
+let banner: Banner | null = null;
+
+if (Astro.request.method === 'POST') {
+  const parsed = parseSchoolYear(await Astro.request.formData());
+  values = parsed.values;
+  errors = parsed.errors;
+
+  if (Object.keys(errors).length > 0) {
+    banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+  } else {
+    try {
+      year = await saveSchoolYear(db, parsed.edit, actor.name);
+      values = fieldsOf(year);
+      const result = await revalidateAll({
+        origin: revalidationOrigin(Astro.url),
+        bypassToken: isrBypassToken(),
+      });
+      banner = { ok: result.ok, message: describeRevalidation(result) };
+    } catch (error) {
+      banner = {
+        ok: false,
+        message: `Nothing was saved — ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+}
+
+/** The closure rows to render: the real ones, plus spares to type into. */
+const closureRows = [
+  ...values.closures,
+  ...Array.from({ length: SPARE_CLOSURE_ROWS }, () => ({ date: '', label: '' })),
+];
+
+const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
+---
+
+<AdminLayout title="School year" actor={actor}>
+  <h1 class="text-3xl font-semibold text-navy">School year</h1>
+  <p class="mt-2">
+    Type the year once. Every class date on <a href={CALENDAR_PATH} class="underline underline-offset-4"
+      >the calendar</a
+    >, the parents’ subscribe link and each track’s week numbering are computed from what is on
+    this screen.
+  </p>
+
+  {
+    banner && (
+      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
+        {!banner.ok && (
+          <form method="post" action="/admin/republish" class="mt-3">
+            <button
+              type="submit"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+            >
+              Retry
+            </button>
+          </form>
+        )}
+      </AdminBanner>
+    )
+  }
+
+  <form method="post" action="/admin/school-year" class="mt-8 flex flex-col gap-10" data-year-form>
+    <div class="flex flex-col gap-2">
+      <label for="label" class="font-semibold">Which year this is</label>
+      <p id="label-hint" class="text-sm">As it is written on the sheets — “2026–2027”.</p>
+      <input
+        id="label"
+        name="label"
+        type="text"
+        value={values.label}
+        required
+        aria-invalid={errors.label ? 'true' : undefined}
+        aria-describedby={['label-hint', errors.label ? 'label-error' : null].filter(Boolean).join(' ')}
+        class={control}
+      />
+      {errors.label && <p id="label-error" class="font-semibold">{errors.label}</p>}
+    </div>
+
+    {
+      SEMESTERS.map((semester) => (
+        <fieldset class="flex flex-col gap-4">
+          <legend class="text-xl font-semibold text-navy">{semesterHeading(semester)}</legend>
+          <p class="text-sm">
+            The first class date for each track, and how many weeks of classes it runs. Leave a
+            track empty if it does not run this semester — that is a complete year, not an
+            unfinished one.
+          </p>
+
+          {DAY_TRACKS.map((track) => {
+            const key = termKey(semester, track);
+            const fields = values.terms[key]!;
+            const dateError = errors[`${key}.firstClassDate`];
+            const weeksError = errors[`${key}.weeks`];
+
+            return (
+              <div class="flex flex-wrap items-end gap-4">
+                <div class="flex flex-col gap-2">
+                  <label for={`${key}.firstClassDate`} class="font-semibold">
+                    {track} — first class
+                  </label>
+                  <input
+                    id={`${key}.firstClassDate`}
+                    name={`${key}.firstClassDate`}
+                    type="date"
+                    value={fields.firstClassDate}
+                    aria-invalid={dateError ? 'true' : undefined}
+                    aria-describedby={dateError ? `${key}.firstClassDate-error` : undefined}
+                    class="rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
+                  />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <label for={`${key}.weeks`} class="font-semibold">
+                    Weeks
+                  </label>
+                  <input
+                    id={`${key}.weeks`}
+                    name={`${key}.weeks`}
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={fields.weeks}
+                    aria-invalid={weeksError ? 'true' : undefined}
+                    aria-describedby={weeksError ? `${key}.weeks-error` : undefined}
+                    class="w-24 rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
+                  />
+                </div>
+                {dateError && (
+                  <p id={`${key}.firstClassDate-error`} class="w-full font-semibold">
+                    {dateError}
+                  </p>
+                )}
+                {weeksError && (
+                  <p id={`${key}.weeks-error`} class="w-full font-semibold">
+                    {weeksError}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </fieldset>
+      ))
+    }
+
+    <fieldset class="flex flex-col gap-4" data-closures>
+      <legend class="text-xl font-semibold text-navy">Days the school is closed</legend>
+      <p class="text-sm">
+        A closed day takes a week off whichever track meets that weekday, which is exactly why the
+        four tracks’ week numbers differ. Thanksgiving is several rows, one per day off.
+      </p>
+
+      {
+        closureRows.map((closure, index) => {
+          const dateError = errors[`closures.${index}.date`];
+          const labelError = errors[`closures.${index}.label`];
+          return (
+            <div class="flex flex-wrap items-end gap-4" data-closure-row>
+              <div class="flex flex-col gap-2">
+                <label class="font-semibold" for={`closure-date-${index}`}>
+                  Closed on
+                </label>
+                <input
+                  id={`closure-date-${index}`}
+                  name="closure.date"
+                  type="date"
+                  value={closure.date}
+                  aria-invalid={dateError ? 'true' : undefined}
+                  class="rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
+                />
+              </div>
+              <div class="flex flex-1 flex-col gap-2">
+                <label class="font-semibold" for={`closure-label-${index}`}>
+                  What for
+                </label>
+                <input
+                  id={`closure-label-${index}`}
+                  name="closure.label"
+                  type="text"
+                  value={closure.label}
+                  aria-invalid={labelError ? 'true' : undefined}
+                  class={control}
+                />
+              </div>
+              {(dateError || labelError) && (
+                <p class="w-full font-semibold">{dateError ?? labelError}</p>
+              )}
+            </div>
+          );
+        })
+      }
+
+      <p class="text-sm">
+        Clearing both boxes on a row removes that closed day. There are always spare rows at the
+        bottom.
+      </p>
+    </fieldset>
+
+    <button
+      type="submit"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+    >
+      Save the year
+    </button>
+  </form>
+
+  <section class="mt-12 border-t border-navy/15 pt-6">
+    <h2 class="text-xl font-semibold text-navy">What this produces</h2>
+    <p class="mt-2 text-sm">
+      Computed here in the browser as you type, from the same code the calendar page renders with.
+      Nothing is saved until you press Save.
+    </p>
+    <div class="mt-6 flex flex-col gap-8" data-preview aria-live="polite">
+      <p data-preview-empty>Fill in a track above and its dates appear here.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 border-t border-navy/15 pt-6">
+    <h2 class="text-xl font-semibold text-navy">Publishing</h2>
+    <p class="mt-2" data-testid="stamp">{formatStamp(year?.lastEditedBy ?? null, year?.lastEditedAt ?? null)}</p>
+    <p class="mt-2">
+      Saving republishes the whole site, and changes what
+      <code>/calendar.ics</code> hands to every subscribed phone. Those phones check on their own
+      schedule — usually within a few hours, sometimes a day or two — so a change made this week
+      still needs a text message. Nobody controls that, and no calendar service would change it.
+    </p>
+    <form method="post" action="/admin/republish" class="mt-4">
+      <button
+        type="submit"
+        class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
+      >
+        Republish
+      </button>
+    </form>
+  </section>
+</AdminLayout>
+
+<script>
+  import { previewRows, SEMESTERS, type Closure, type SchoolYear, type Term } from '../../lib/calendar/year.js';
+  import { DAY_TRACKS } from '../../lib/courses/schedule.js';
+
+  /**
+   * The live preview (#23 AC 4).
+   *
+   * It imports the site's own computation rather than reimplementing it in the
+   * browser. A second implementation here would be the one place the preview
+   * could disagree with what is published — which is precisely the failure the
+   * five hand-made PDFs are, moved into the admin.
+   */
+  const form = document.querySelector<HTMLFormElement>('[data-year-form]');
+  const preview = document.querySelector<HTMLElement>('[data-preview]');
+  if (form && preview) {
+    const draw = () => {
+      const year = readYear(form);
+      preview.replaceChildren(...render(year));
+    };
+    form.addEventListener('input', draw);
+    form.addEventListener('change', draw);
+    draw();
+  }
+
+  /** The form as a school year, ignoring anything not yet typed. */
+  function readYear(form: HTMLFormElement): SchoolYear {
+    const data = new FormData(form);
+    const value = (name: string) => String(data.get(name) ?? '').trim();
+
+    const terms: Term[] = [];
+    for (const semester of SEMESTERS) {
+      for (const track of DAY_TRACKS) {
+        const firstClassDate = value(`${semester}.${track}.firstClassDate`);
+        const weeks = Number(value(`${semester}.${track}.weeks`));
+        if (!firstClassDate || !Number.isInteger(weeks) || weeks < 1) continue;
+        terms.push({ semester, track, firstClassDate, weeks });
+      }
+    }
+
+    const dates = data.getAll('closure.date').map((one) => String(one).trim());
+    const labels = data.getAll('closure.label').map((one) => String(one).trim());
+    const closures: Closure[] = [];
+    dates.forEach((date, index) => {
+      if (date) closures.push({ date, label: labels[index] ?? '' });
+    });
+
+    return { label: value('label'), terms, closures, lastEditedBy: null, lastEditedAt: null };
+  }
+
+  /** The four-column sheet, one table per semester. */
+  function render(year: SchoolYear): HTMLElement[] {
+    const sections: HTMLElement[] = [];
+
+    for (const semester of SEMESTERS) {
+      const rows = previewRows(year, semester);
+      if (rows.length === 0) continue;
+
+      const section = document.createElement('section');
+      const heading = document.createElement('h3');
+      heading.className = 'font-semibold text-navy';
+      heading.textContent = semester === 'fall' ? 'Fall semester' : 'Spring semester';
+      section.append(heading);
+
+      const table = document.createElement('table');
+      table.className = 'mt-3 w-full text-sm';
+      const head = document.createElement('thead');
+      head.append(row(['Week', ...DAY_TRACKS], 'th'));
+      const body = document.createElement('tbody');
+
+      for (const entry of rows) {
+        const cells =
+          entry.kind === 'week'
+            ? [String(entry.week), ...DAY_TRACKS.map((track) => label(entry.cells[track]))]
+            : ['', ...DAY_TRACKS.map((track) => entry.cells[track] ?? '')];
+        const line = row(cells, 'td');
+        if (entry.kind === 'closure') line.className = 'italic';
+        body.append(line);
+      }
+
+      table.append(head, body);
+      section.append(table);
+      sections.push(section);
+    }
+
+    if (sections.length === 0) {
+      const empty = document.createElement('p');
+      empty.textContent = 'Fill in a track above and its dates appear here.';
+      return [empty];
+    }
+    return sections;
+  }
+
+  function row(cells: readonly string[], kind: 'th' | 'td'): HTMLTableRowElement {
+    const line = document.createElement('tr');
+    for (const value of cells) {
+      const cell = document.createElement(kind);
+      cell.className = 'border-b border-navy/15 py-1 pr-3 text-left';
+      cell.textContent = value;
+      line.append(cell);
+    }
+    return line;
+  }
+
+  /** "31 Aug 2026" — short, because eight of these sit side by side. */
+  function label(date: string | null): string {
+    if (!date) return '';
+    return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+  }
+</script>

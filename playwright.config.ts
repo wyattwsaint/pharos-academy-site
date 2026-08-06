@@ -83,7 +83,11 @@ export default defineConfig({
       ? [
           {
             name: 'admin',
-            testMatch: '**/admin.spec.ts',
+            // Named one by one rather than by a glob: `admin-revalidation.spec.ts`
+            // needs a server pointed at a dead origin and runs from its own
+            // config, so a `**/admin*.spec.ts` here would start it against a
+            // working one and assert the opposite of what it means.
+            testMatch: ['**/admin.spec.ts', '**/admin-calendar.spec.ts'],
             use: { ...devices['Desktop Chrome'], baseURL: LOCAL_URL },
           },
         ]

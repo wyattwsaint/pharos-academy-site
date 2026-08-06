@@ -1,6 +1,7 @@
 import type { Db } from '../db/client.js';
 import { getSchoolDetails } from '../admin/school-details.js';
 import { getAttachment, listAnnouncements } from '../announcements/store.js';
+import { getSchoolYear, listEvents } from '../calendar/store.js';
 import { listCourses } from '../courses/store.js';
 import { getMoneySettings, listAgreedTerms } from '../money/store.js';
 import { listPeople } from '../people/store.js';
@@ -52,6 +53,10 @@ export const EXPORTED_TABLES = [
   'policy_versions',
   'money_settings',
   'agreed_terms',
+  'school_year',
+  'school_year_terms',
+  'school_year_closures',
+  'calendar_events',
 ] as const;
 
 /**
@@ -72,6 +77,10 @@ export const EXPORTED_TABLE_LABELS: Record<(typeof EXPORTED_TABLES)[number], str
   policy_versions: 'Every policy document — including the ones that have been replaced',
   money_settings: 'The rates, fees, instalment dates and refund terms the school charges today',
   agreed_terms: 'What each family agreed to pay when they applied, frozen at that date',
+  school_year: 'Which school year the site is publishing',
+  school_year_terms: 'Each day track’s first class date and week count, per semester',
+  school_year_closures: 'Every day the school is closed, with what it is closed for',
+  calendar_events: 'One-off events — open houses, concerts, picture days',
 };
 
 /**
@@ -155,6 +164,34 @@ export async function buildExport(db: Db, at = new Date()): Promise<BackupArchiv
   const agreed = await listAgreedTerms(db);
   files.push(jsonEntry('content/agreed-terms.json', agreed));
   tables.push({ table: 'agreed_terms', file: 'content/agreed-terms.json', rows: agreed.length });
+
+  /*
+   * The school year, as the eight numbers and the closures it actually is —
+   * not as the 112 dates it produces (#23).
+   *
+   * A restore wants what Jill typed. The dates are a computation over it, and a
+   * copy carrying the output instead would be the five hand-made PDFs again:
+   * correct on the day it was taken and unmaintainable afterwards. `schoolYear`
+   * is undefined only before the migration that creates it has run, and the
+   * empty object keeps the file present rather than the archive short.
+   */
+  const schoolYear = await getSchoolYear(db);
+  files.push(jsonEntry('content/school-year.json', schoolYear ?? {}));
+  tables.push({ table: 'school_year', file: 'content/school-year.json', rows: schoolYear ? 1 : 0 });
+  tables.push({
+    table: 'school_year_terms',
+    file: 'content/school-year.json',
+    rows: schoolYear?.terms.length ?? 0,
+  });
+  tables.push({
+    table: 'school_year_closures',
+    file: 'content/school-year.json',
+    rows: schoolYear?.closures.length ?? 0,
+  });
+
+  const events = await listEvents(db);
+  files.push(jsonEntry('content/events.json', events));
+  tables.push({ table: 'calendar_events', file: 'content/events.json', rows: events.length });
 
   files.unshift({ path: 'README.txt', bytes: Buffer.from(readme(at), 'utf8') });
 
@@ -279,8 +316,8 @@ Taken on ${isoDate(at)}.
 
 WHAT THIS IS
   A complete copy of the content on the Pharos Academy website: the classes,
-  the people, the announcements, the policy documents and the school's own
-  details. It is a backup you hold yourselves, so that getting your content
+  the people, the announcements, the policy documents, the school year and the
+  school's own details. It is a backup you hold yourselves, so that getting your content
   back never depends on anyone else's account.
 
 WHAT IS IN IT

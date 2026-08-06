@@ -1,5 +1,6 @@
 import { SUPPORT_PATH } from './about/story.js';
 import { NEWS_PATH } from './announcements/views.js';
+import { CALENDAR_PATH } from './calendar/views.js';
 import { CATALOGUE } from './courses/catalogue.js';
 import { classPath, CLASS_VIEWS } from './courses/views.js';
 import { CURRENT_FAMILIES_PATH } from './current-families/section.js';
@@ -147,6 +148,21 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * being true when #23 lands.
    */
   { path: CURRENT_FAMILIES_PATH, priority: 0.4, changefreq: 'yearly' },
+  /*
+   * The calendar (#23).
+   *
+   * `yearly`, because that is genuinely how often it changes: Jill types the
+   * year once a summer and the 112 dates follow from it. It is enumerated for
+   * the usual reason and a sharp one — every date on it is computed from the
+   * school year row, so a corrected closure has to reach this page in the same
+   * republish that reaches everything else, rather than an hour later.
+   *
+   * `/calendar.ics` is deliberately **not** in this list. It is a subscription
+   * rather than a page: nothing links to it as a document, a search engine has
+   * no use for it, and it renders on request because the year behind it is a
+   * row Jill can change.
+   */
+  { path: CALENDAR_PATH, priority: 0.5, changefreq: 'yearly' },
   /*
    * Giving and volunteering (#30).
    *

@@ -1,0 +1,254 @@
+---
+export const prerender = false;
+
+import AdminBanner from '../../../components/AdminBanner.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import type { Banner } from '../../../lib/admin/banner.js';
+import {
+  EMPTY,
+  LABELS,
+  parseEvent,
+  type EventErrors,
+  type EventFields,
+} from '../../../lib/admin/calendar-events.js';
+import { isrBypassToken } from '../../../lib/admin/isr-token.js';
+import {
+  describeRevalidation,
+  revalidateAll,
+  revalidationOrigin,
+} from '../../../lib/admin/revalidate.js';
+import { formatStamp } from '../../../lib/admin/school-details.js';
+import { eventSlug, TIMED_EVENT_MINUTES, type CalendarEvent } from '../../../lib/calendar/event.js';
+import { createEvent, deleteEvent, getEvent, saveEvent } from '../../../lib/calendar/store.js';
+import { getDb } from '../../../lib/db/client.js';
+
+/**
+ * One event, added, edited or taken off the calendar (#23).
+ *
+ * `/admin/events/new` is the add form and every other slug is that event's edit
+ * form — one screen, as People and Announcements are, because the fields and
+ * the publishing story are identical and a second nearly-identical page is how
+ * the two drift.
+ *
+ * **This is the one screen with a delete**, and the reason is the feed. An
+ * announcement that has aged out is history and stays; a cancelled concert left
+ * on a subscribed calendar is a family driving to a school that is dark.
+ */
+const NEW = 'new';
+
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+const routeSlug = Astro.params.slug ?? '';
+const adding = routeSlug === NEW;
+
+let event: CalendarEvent | undefined = adding ? undefined : await getEvent(db, routeSlug);
+if (!adding && !event) {
+  return new Response(null, { status: 404, statusText: 'Not found' });
+}
+
+let values: EventFields = event ? fieldsOf(event) : EMPTY;
+let errors: EventErrors = {};
+let banner: Banner | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+
+  if (form.get('remove') !== null && event) {
+    await deleteEvent(db, event.slug);
+    await revalidateAll({
+      origin: revalidationOrigin(Astro.url),
+      bypassToken: isrBypassToken(),
+    });
+    return Astro.redirect('/admin/events', 303);
+  }
+
+  const parsed = parseEvent(form);
+  values = parsed.values;
+  errors = parsed.errors;
+
+  if (Object.keys(errors).length > 0) {
+    banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+  } else {
+    try {
+      event = event
+        ? await saveEvent(db, event.slug, parsed.edit, actor.name)
+        : await createEvent(
+            db,
+            eventSlug(parsed.edit.heldOn, parsed.edit.title),
+            parsed.edit,
+            actor.name,
+          );
+      values = fieldsOf(event);
+      const result = await revalidateAll({
+        origin: revalidationOrigin(Astro.url),
+        bypassToken: isrBypassToken(),
+      });
+      banner = { ok: result.ok, message: describeRevalidation(result) };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      banner = {
+        ok: false,
+        message: /duplicate key|unique/i.test(detail)
+          ? 'Nothing was saved — there is already an event with that name on that day. Edit that one instead.'
+          : `Nothing was saved — ${detail}`,
+      };
+    }
+  }
+}
+
+/*
+ * After an add succeeds this becomes that event's own screen, so a second Save
+ * updates the row just created rather than inserting it again — the same trade
+ * People makes, and for the same reason: showing the revalidation answer beats
+ * throwing it away in a redirect.
+ */
+const action = event ? `/admin/events/${event.slug}` : '/admin/events/new';
+const heading = event ? event.title : 'Add an event';
+
+const FIELDS: {
+  name: keyof EventFields;
+  type: 'text' | 'date' | 'time' | 'multiline';
+  required?: boolean;
+  hint?: string;
+}[] = [
+  { name: 'heldOn', type: 'date', required: true, hint: 'The day it happens.' },
+  { name: 'title', type: 'text', required: true, hint: '“Fall open house”, “Picture day”.' },
+  {
+    name: 'startTime',
+    type: 'time',
+    hint: `Optional. Leave it empty and it shows as a whole day; give a time and it shows as ${
+      TIMED_EVENT_MINUTES / 60
+    } hour on a parent’s calendar.`,
+  },
+  { name: 'place', type: 'text', hint: 'Optional. Where to turn up, if it is not the usual place.' },
+  { name: 'note', type: 'multiline', hint: 'Optional. Anything a family needs to know beforehand.' },
+];
+
+const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
+
+function fieldsOf(row: CalendarEvent): EventFields {
+  return {
+    heldOn: row.heldOn,
+    title: row.title,
+    startTime: row.startTime ?? '',
+    place: row.place ?? '',
+    note: row.note ?? '',
+  };
+}
+---
+
+<AdminLayout title={heading} actor={actor}>
+  <p><a href="/admin/events" class="underline underline-offset-4">← All events</a></p>
+  <h1 class="mt-2 text-3xl font-semibold text-navy">{heading}</h1>
+  <p class="mt-2">
+    Saved here, this appears on the calendar page and in the file parents subscribe to.
+  </p>
+
+  {
+    banner && (
+      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
+        {!banner.ok && (
+          <form method="post" action="/admin/republish" class="mt-3">
+            <button
+              type="submit"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+            >
+              Retry
+            </button>
+          </form>
+        )}
+      </AdminBanner>
+    )
+  }
+
+  <form method="post" action={action} class="mt-8 flex flex-col gap-6">
+    {
+      FIELDS.map((field) => {
+        const invalid = Boolean(errors[field.name]);
+        const describedBy =
+          [field.hint ? `${field.name}-hint` : null, invalid ? `${field.name}-error` : null]
+            .filter(Boolean)
+            .join(' ') || undefined;
+
+        return (
+          <div class="flex flex-col gap-2">
+            <label for={field.name} class="font-semibold">
+              {LABELS[field.name]}
+            </label>
+            {field.hint && (
+              <p id={`${field.name}-hint`} class="text-sm">
+                {field.hint}
+              </p>
+            )}
+            {field.type === 'multiline' ? (
+              <textarea
+                id={field.name}
+                name={field.name}
+                rows={5}
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={describedBy}
+                class={control}
+              >
+                {values[field.name]}
+              </textarea>
+            ) : (
+              <input
+                id={field.name}
+                name={field.name}
+                type={field.type}
+                value={values[field.name]}
+                required={field.required}
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={describedBy}
+                class={field.type === 'text' ? control : 'rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold'}
+              />
+            )}
+            {invalid && (
+              <p id={`${field.name}-error`} class="font-semibold">
+                {errors[field.name]}
+              </p>
+            )}
+          </div>
+        );
+      })
+    }
+
+    <button
+      type="submit"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+    >
+      Save
+    </button>
+  </form>
+
+  {
+    event && (
+      <section class="mt-10 border-t border-navy/15 pt-6">
+        <h2 class="text-xl font-semibold text-navy">Publishing</h2>
+        <p class="mt-2" data-testid="stamp">
+          {formatStamp(event.lastEditedBy, event.lastEditedAt)}
+        </p>
+        <p class="mt-2">
+          Parents’ phones check the subscribed calendar on their own schedule — usually within a
+          few hours, sometimes a day or two. If this changes at short notice, text them as well.
+        </p>
+
+        <form method="post" action={action} class="mt-6">
+          <p class="text-sm">
+            Cancelled? Take it off, and it disappears from the calendar and from every subscribed
+            phone at their next check. Nothing else here deletes anything.
+          </p>
+          <button
+            type="submit"
+            name="remove"
+            value="1"
+            class="mt-3 rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
+          >
+            Take this off the calendar
+          </button>
+        </form>
+      </section>
+    )
+  }
+</AdminLayout>

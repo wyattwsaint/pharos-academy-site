@@ -1,0 +1,85 @@
+import { fullDateLabel } from './year.js';
+
+/**
+ * A one-off on the school's calendar (#23).
+ *
+ * Deliberately a different shape from the term dates. A meeting date is one of
+ * 112 computed from eight numbers and belongs to a day track; an event is a
+ * concert, a picture day or a parents' evening, happens once, and belongs to
+ * nothing. Forcing the two into one model would give every meeting a place and
+ * a note it never has, and every event a week number that means nothing.
+ *
+ * The time is optional and its absence is a real state — "Field day, 12 May" is
+ * a complete event. So are a missing place and a missing note.
+ */
+
+export type CalendarEvent = {
+  /** `2026-10-17-fall-open-house` — the date first, so the list sorts itself. */
+  slug: string;
+  /** `YYYY-MM-DD`. */
+  heldOn: string;
+  title: string;
+  /** `HH:MM`, 24-hour. Null is an all-day event, not an unfinished one. */
+  startTime: string | null;
+  place: string | null;
+  note: string | null;
+  lastEditedBy: string | null;
+  lastEditedAt: Date | null;
+};
+
+/** What a save may change. The slug is the key and is not one of them. */
+export type CalendarEventEdit = {
+  heldOn: string;
+  title: string;
+  startTime: string | null;
+  place: string | null;
+  note: string | null;
+};
+
+/**
+ * How long a timed event runs on a subscribed calendar: one hour.
+ *
+ * The school types a start time and nothing else, because that is what it
+ * publishes — "Open house, 6:30" is the whole notice. An hour is the shape that
+ * puts a readable block on a parent's phone; a zero-length event is drawn as a
+ * hairline by most clients and read as a bug. The admin screen says this in
+ * words rather than leaving it to be discovered.
+ */
+export const TIMED_EVENT_MINUTES = 60;
+
+/**
+ * The address of a new event: its date, then its title.
+ *
+ * Dated first so the admin list and the slug agree about order, and so two
+ * "Picture day"s in one year are two different rows rather than a collision.
+ */
+export function eventSlug(heldOn: string, title: string): string {
+  const words = title
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return words ? `${heldOn}-${words}` : heldOn;
+}
+
+/**
+ * "17 October 2026" — how a date is printed wherever an event is shown.
+ *
+ * The same format, and the same function, a meeting date is printed in: one
+ * date format on the calendar, in one place.
+ */
+export { fullDateLabel as eventDateLabel };
+
+/**
+ * "6.30pm" — the school's own way of writing a time, from `HH:MM`.
+ *
+ * Not `18:30`, which no American school publishes, and not "6:30 PM", which is
+ * not how the existing site writes it either.
+ */
+export function eventTimeLabel(startTime: string): string {
+  const [hours, minutes] = startTime.split(':').map(Number) as [number, number];
+  const suffix = hours < 12 ? 'am' : 'pm';
+  const hour = hours % 12 === 0 ? 12 : hours % 12;
+  return minutes === 0 ? `${hour}${suffix}` : `${hour}.${String(minutes).padStart(2, '0')}${suffix}`;
+}

@@ -1,0 +1,313 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
+import { eventDateLabel, eventTimeLabel } from '../../lib/calendar/event.js';
+import { getSchoolYear, listEvents } from '../../lib/calendar/store.js';
+import {
+  CALENDAR_FEED_PATH,
+  meetingDateLabel,
+  semesterHeading,
+  SUBSCRIPTION_CAVEAT,
+} from '../../lib/calendar/views.js';
+import { previewRows, SEMESTERS, type SchoolYear } from '../../lib/calendar/year.js';
+import { DAY_TRACKS } from '../../lib/courses/schedule.js';
+import { getDb } from '../../lib/db/client.js';
+
+/**
+ * The school year, as the sheet a family already recognises (#23).
+ *
+ * This page retires five hand-made PDFs, and it does it by looking like them:
+ * a week per row, four columns, the closures written in where they interrupt.
+ * What is different is that nothing here is typed — every date is computed from
+ * the eight numbers and the closure list on the admin's School Year screen, so
+ * the four tracks cannot drift apart the way the PDFs already have.
+ *
+ * **The tracks are four columns and not one.** A flat week number would be
+ * wrong for three families in four: week 10 is 9 November on Monday and
+ * 4 November on Wednesday, because each track skips only its own holidays.
+ *
+ * One download, and it is the same bytes the subscribe link serves. Printing is
+ * the other half — a school office prints this sheet, and the print rules at
+ * the bottom of this file are why it comes out as the calendar rather than as a
+ * website with a navigation bar across the top.
+ */
+const db = await getDb();
+const details = await getSchoolDetails(db);
+const year = (await getSchoolYear(db)) as SchoolYear | undefined;
+const events = await listEvents(db);
+
+const description =
+  'Every class date for the Pharos Academy school year, by day track, with the days the school ' +
+  'is closed and the year’s one-off events. Subscribe to it or print it.';
+
+/** Both semesters, each with its rows already computed. Empty if there is no year. */
+const semesters = year
+  ? SEMESTERS.map((semester) => ({
+      semester,
+      heading: semesterHeading(semester),
+      rows: previewRows(year, semester),
+    })).filter((one) => one.rows.length > 0)
+  : [];
+---
+
+<BaseLayout details={details} title="Calendar" description={description}>
+  <section class="band band-quiet" data-section="calendar-header">
+    <div class="wide">
+      <p class="label">Current Families</p>
+      <h1 class="mt-4">The {year?.label ?? ''} calendar</h1>
+      <p class="sub mt-5">
+        Every class date, by day track. The four tracks do not line up — each one skips only its
+        own holidays — so week 10 falls on a different date in each column, and all four are
+        right.
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="subscribe" data-section="calendar-subscribe">
+    <div class="wide">
+      <h2>Take it with you</h2>
+      <p class="mt-5">
+        One file, generated from the dates below. Open it to add the year to the calendar on your
+        phone or computer, or subscribe to this address so it stays in step when the school
+        changes something.
+      </p>
+      <p class="mt-6 actions">
+        <a class="btn" href={CALENDAR_FEED_PATH} data-testid="calendar-download">
+          Download the calendar
+        </a>
+        <button type="button" class="btn" data-print-calendar>Print this page</button>
+      </p>
+      <p class="mt-6 caveat" data-testid="subscription-caveat">{SUBSCRIPTION_CAVEAT}</p>
+    </div>
+  </section>
+
+  {
+    semesters.map(({ semester, heading, rows }) => (
+      <section class="band" id={semester} data-section={`calendar-${semester}`}>
+        <div class="wide">
+          <h2 id={`${semester}-heading`}>{heading}</h2>
+          {/*
+            A scrollable box with nothing focusable inside it is unreachable
+            from a keyboard, which is a real failure and not a lint: the sheet
+            scrolls sideways on a phone and holds no links at all. So it is a
+            named region and it takes focus, and the name is the semester
+            heading that is already above it.
+          */}
+          <div
+            class="sheet-scroll"
+            role="region"
+            tabindex="0"
+            aria-labelledby={`${semester}-heading`}
+          >
+            <table class="sheet">
+              <caption class="sr-only">
+                {heading} of the {year?.label} school year — one row per week, one column per day
+                track, with the days the school is closed written in between.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Week</th>
+                  {DAY_TRACKS.map((track) => (
+                    <th scope="col">{track}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) =>
+                  row.kind === 'week' ? (
+                    <tr>
+                      <th scope="row">{row.week}</th>
+                      {DAY_TRACKS.map((track) => (
+                        <td>
+                          {row.cells[track] ? (
+                            <time datetime={row.cells[track]}>
+                              {meetingDateLabel(row.cells[track]!)}
+                            </time>
+                          ) : (
+                            <span class="sr-only">No class on this track</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ) : (
+                    <tr class="closed">
+                      <th scope="row">
+                        <span class="sr-only">School closed</span>
+                      </th>
+                      {DAY_TRACKS.map((track) => (
+                        <td>{row.cells[track] ?? ''}</td>
+                      ))}
+                    </tr>
+                  ),
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    ))
+  }
+
+  <section class="band band-quiet" id="events" data-section="calendar-events">
+    <div class="wide">
+      <h2>Events</h2>
+      {
+        events.length === 0 ? (
+          <p class="mt-5">
+            Nothing else is on the calendar at the moment. Open houses, concerts and picture days
+            appear here, and in the file above, as the school schedules them.
+          </p>
+        ) : (
+          <ul class="events mt-6">
+            {events.map((event) => (
+              <li>
+                <p class="when">
+                  <time datetime={event.heldOn}>{eventDateLabel(event.heldOn)}</time>
+                  {event.startTime && <span> · {eventTimeLabel(event.startTime)}</span>}
+                </p>
+                <h3>{event.title}</h3>
+                {event.place && <p class="where">{event.place}</p>}
+                {event.note && <p class="mt-2">{event.note}</p>}
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  /*
+   * The print button, which is the one thing on this page that needs a browser.
+   * Rendered as a `button` and wired here rather than shipped as an `onclick`,
+   * so a visitor with no JavaScript sees no control that does nothing — and
+   * loses nothing either, since their browser prints perfectly well on its own.
+   */
+  const button = document.querySelector('[data-print-calendar]');
+  button?.addEventListener('click', () => window.print());
+</script>
+
+<style>
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .caveat {
+    max-width: 42rem;
+    color: var(--color-ink-2);
+  }
+
+  /*
+    On a phone the sheet scrolls sideways inside its own box rather than
+    squeezing four columns of dates into 390px, exactly as the timetable does.
+    `tabindex` would be added by a script; the container is focusable by being a
+    region with a name instead, so a keyboard can reach the scroll.
+  */
+  .sheet-scroll {
+    margin-top: 1.5rem;
+    overflow-x: auto;
+  }
+
+  .sheet {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 40rem;
+  }
+
+  .sheet th,
+  .sheet td {
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-navy) 15%, transparent);
+    white-space: nowrap;
+  }
+
+  .sheet thead th {
+    border-bottom-width: 2px;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.06em;
+  }
+
+  .sheet tbody th {
+    width: 4rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A closed row reads as an interruption, which is what it is. */
+  .sheet tr.closed td {
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.04em;
+    color: var(--color-ink-2);
+    background: color-mix(in srgb, var(--color-gold-orn) 12%, transparent);
+  }
+
+  .events {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 2rem;
+    max-width: 46rem;
+  }
+
+  .events li {
+    border-left: 2px solid var(--color-gold-orn);
+    padding-left: 1.25rem;
+  }
+
+  .events .when {
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.06em;
+    color: var(--color-ink-2);
+  }
+
+  .events .where {
+    margin-top: 0.25rem;
+    color: var(--color-ink-2);
+  }
+
+  /*
+    Printed, this is the calendar and nothing else.
+
+    A school office prints this sheet and pins it up, so the header, the footer,
+    the buttons and the bands' colour all come off, the table gets its rules
+    back in black, and a semester is not allowed to break across two sheets in
+    the middle of a week. Everything here is print-only: nothing in this block
+    can change what the page looks like on a screen.
+  */
+  @media print {
+    .actions,
+    .caveat {
+      display: none;
+    }
+
+    .sheet-scroll {
+      overflow: visible;
+    }
+
+    .sheet {
+      min-width: 0;
+      font-size: 10pt;
+    }
+
+    .sheet th,
+    .sheet td {
+      padding: 0.2rem 0.4rem;
+      border-bottom: 1px solid #000;
+    }
+
+    .sheet tr.closed td {
+      background: none;
+      font-style: italic;
+    }
+
+    .sheet tr,
+    .events li {
+      break-inside: avoid;
+    }
+  }
+</style>

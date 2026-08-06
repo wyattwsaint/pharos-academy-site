@@ -1,7 +1,7 @@
 import { SUPPORT_PATH } from './about/story.js';
 import { NEWS_PATH } from './announcements/views.js';
 import { viewFor } from './courses/views.js';
-import { CURRENT_FAMILIES_PATH } from './current-families/section.js';
+import { CALENDAR_PATH } from './current-families/section.js';
 import { STAFF_PATH } from './people/views.js';
 import { POLICIES_PATH } from './policies/views.js';
 import { PUBLIC_ROUTES } from './routes.js';
@@ -142,20 +142,20 @@ export const REDIRECTS: readonly Redirect[] = [
   },
   {
     from: '/calendars-and-events',
-    to: `${CURRENT_FAMILIES_PATH}#calendar`,
+    to: CALENDAR_PATH,
     because:
-      'The calendar section of Current Families, which says plainly that the 2026–27 calendar is ' +
-      'not on this site yet and how to get the dates. That is a page that exists and answers the ' +
-      'question honestly — the calendar itself is #23, and inventing dates to fill this in would ' +
-      'put a wrong closure on a school website.',
+      'The calendar itself (#23) — the same four day tracks the old page linked five PDFs of, ' +
+      'computed rather than retyped, with the year’s one-off events under it. Until #23 this ' +
+      'landed on a section of Current Families that said the dates were not here yet.',
     origin: 'wix',
   },
   {
     from: '/download-calendars',
-    to: `${CURRENT_FAMILIES_PATH}#calendar`,
+    to: CALENDAR_PATH,
     because:
-      'The same section. That page was five PDFs of four independent day tracks; until #23 ' +
-      'models them, the honest destination is the one that says so.',
+      'The same page. That was six PDFs — a full sheet, one per day track, and the daily course ' +
+      'offerings — and the calendar page replaces all of them with one generated file and a ' +
+      'sheet that prints.',
     origin: 'wix',
   },
   {
