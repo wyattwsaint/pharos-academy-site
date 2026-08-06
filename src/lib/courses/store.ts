@@ -41,6 +41,85 @@ export async function getCourse(db: Db, slug: string): Promise<Course | undefine
   return row ? toCourse(row) : undefined;
 }
 
+/** What a save may change. The slug is the key and the stamp is the store's. */
+export type CourseEdit = Omit<Course, 'slug' | 'lastEditedBy' | 'lastEditedAt'>;
+
+/**
+ * Save a course and stamp it.
+ *
+ * The stamp is overwritten rather than appended, like every other editable
+ * record (CONTEXT.md): "who last edited this" is the question the school asks,
+ * and permissions are flat, so attribution is the control.
+ */
+export async function saveCourse(
+  db: Db,
+  slug: string,
+  edit: CourseEdit,
+  editorName: string,
+  now = new Date(),
+): Promise<Course> {
+  const [row] = await db
+    .update(coursesTable)
+    .set({ ...toRow(edit), lastEditedBy: editorName, lastEditedAt: now })
+    .where(eq(coursesTable.slug, slug))
+    .returning();
+
+  if (!row) throw new Error(`No course with the slug "${slug}".`);
+  return toCourse(row);
+}
+
+/**
+ * Add a course the school now offers.
+ *
+ * Stamped on creation as well as on save, for the reason `createPerson` is:
+ * a record with no attribution is the record somebody would ask about.
+ */
+export async function createCourse(
+  db: Db,
+  slug: string,
+  edit: CourseEdit,
+  editorName: string,
+  now = new Date(),
+): Promise<Course> {
+  const [row] = await db
+    .insert(coursesTable)
+    .values({ slug, ...toRow(edit), lastEditedBy: editorName, lastEditedAt: now })
+    .returning();
+
+  if (!row) throw new Error(`Could not add a course with the slug "${slug}".`);
+  return toCourse(row);
+}
+
+/** The edit as columns — the one place `start`/`end` meet `start_time`/`end_time`. */
+function toRow(edit: CourseEdit): Omit<typeof coursesTable.$inferInsert, 'slug'> {
+  return {
+    title: edit.title,
+    description: edit.description,
+    stages: [...edit.stages],
+    days: [...edit.days],
+    startTime: edit.start,
+    endTime: edit.end,
+    enrolment: edit.enrolment,
+    enrolmentUnits: [...edit.enrolmentUnits],
+    weeks: edit.weeks,
+    dates: [...edit.dates],
+    ageLabel: edit.ageLabel,
+    ageMin: edit.ageMin,
+    ageMax: edit.ageMax,
+    rateTier: edit.rateTier,
+    credit: edit.credit,
+    requiredText: edit.requiredText,
+    optionalText: edit.optionalText,
+    materialsToBuy: edit.materialsToBuy,
+    materialsFee: edit.materialsFee,
+    materialsFeeNote: edit.materialsFeeNote,
+    assessmentFee: edit.assessmentFee,
+    assessmentFeeNote: edit.assessmentFeeNote,
+    prerequisites: edit.prerequisites,
+    instructorSlug: edit.instructorSlug,
+  };
+}
+
 function toCourse(row: CourseRow): Course {
   return {
     slug: row.slug,
@@ -51,6 +130,7 @@ function toCourse(row: CourseRow): Course {
     start: row.startTime,
     end: row.endTime,
     enrolment: row.enrolment as EnrolmentUnit,
+    enrolmentUnits: row.enrolmentUnits as EnrolmentUnit[],
     weeks: row.weeks,
     dates: row.dates,
     ageLabel: row.ageLabel,
@@ -67,5 +147,7 @@ function toCourse(row: CourseRow): Course {
     assessmentFeeNote: row.assessmentFeeNote,
     prerequisites: row.prerequisites,
     instructorSlug: row.instructorSlug,
+    lastEditedBy: row.lastEditedBy,
+    lastEditedAt: row.lastEditedAt,
   };
 }

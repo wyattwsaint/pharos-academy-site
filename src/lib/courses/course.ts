@@ -68,6 +68,14 @@ export type Course = {
   /** Meeting end, `HH:MM`. */
   end: string;
   enrolment: EnrolmentUnit;
+  /**
+   * The units a family may actually buy — ticked in the admin, never inferred
+   * (#24). Distinct from `enrolment`, the course's *shape*: nine year courses
+   * publish a semester price while publishing no semester offering, so the site
+   * cannot read purchasability off the shape without guessing a $420 offering
+   * into existence. The application's picker offers exactly what is here.
+   */
+  enrolmentUnits: readonly EnrolmentUnit[];
   /** Meeting weeks per day track. Contact hours are computed from it. */
   weeks: number;
   /** A block's published meeting dates, `YYYY-MM-DD`. Empty for anything else. */
@@ -110,6 +118,9 @@ export type Course = {
    * this slug to the person.
    */
   instructorSlug: string;
+  /** The stamp: who saved this course last, and when. Null for the seeded rows. */
+  lastEditedBy: string | null;
+  lastEditedAt: Date | null;
 };
 
 /** The duration line the school publishes, rebuilt from the fields above. */

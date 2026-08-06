@@ -19,7 +19,7 @@ import {
 import { SEEDED_SCHOOL_YEAR, type Closure, type Term } from '../calendar/year.js';
 import { DAY_TRACKS } from '../courses/schedule.js';
 import { CATALOGUE } from '../courses/catalogue.js';
-import type { Course } from '../courses/course.js';
+import { ENROLMENT_UNITS, type Course } from '../courses/course.js';
 import { SEEDED_MONEY_SETTINGS, type MoneySettings } from '../money/settings.js';
 import { PEOPLE, seededName, type SeedPerson } from '../people/person.js';
 import { SEEDED_POLICIES, type SeedPolicy } from '../policies/policy.js';
@@ -377,6 +377,47 @@ export const MIGRATIONS: readonly Migration[] = [
        on conflict (id) do nothing`,
       insertTerms(SEEDED_SCHOOL_YEAR.terms),
       insertClosures(SEEDED_SCHOOL_YEAR.closures),
+    ],
+  },
+  {
+    /*
+     * The course editor (#24): the ticked enrolment units, and the stamp.
+     *
+     * `enrolment_units` is what a family may actually buy, as distinct from the
+     * existing `enrolment` — the course's *shape*, which drives pricing and the
+     * duration line. The backfill is deliberately conservative: every course
+     * starts purchasable only as its own shape, so the nine year courses that
+     * publish a semester price get `['year']` until Jill ticks the semesters
+     * herself. Admin data, not inference — the site must not guess a $420
+     * offering into existence.
+     *
+     * The stamp columns arrive here because this is the migration that makes
+     * courses editable at all; before it, every row was the seed's.
+     */
+    id: '0008-course-editor',
+    statements: [
+      `alter table courses add column if not exists enrolment_units text[]`,
+      `update courses set enrolment_units = array[enrolment] where enrolment_units is null`,
+      `alter table courses alter column enrolment_units set not null`,
+      /*
+       * Guarded the way 0003's backfill is: `add constraint` has no
+       * `if not exists`, and each statement must survive a re-run.
+       */
+      `do $$
+       begin
+         if not exists (
+           select 1 from pg_constraint where conname = 'courses_enrolment_units_are_units'
+         ) then
+           -- cardinality, not array_length: array_length('{}', 1) is null, and
+           -- a null check passes — the empty list would slip straight through.
+           alter table courses add constraint courses_enrolment_units_are_units check (
+             enrolment_units <@ array[${ENROLMENT_UNITS.map(literal).join(', ')}]::text[]
+             and cardinality(enrolment_units) >= 1
+           );
+         end if;
+       end $$`,
+      `alter table courses add column if not exists last_edited_by text`,
+      `alter table courses add column if not exists last_edited_at timestamptz`,
     ],
   },
 ];
