@@ -91,6 +91,17 @@ if (Astro.request.method === 'POST') {
     if (Object.keys(errors).length > 0) {
       banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
     } else {
+      /*
+       * The upload is a second write rather than part of the first, so that the
+       * version number and the stamped date come from the moment the bytes
+       * arrived and nothing else can supply them.
+       *
+       * Which means a save can half-succeed, and the banner has to say so
+       * rather than say "nothing was saved" over fields that are now in the
+       * database. What the screen reports after a save is the truth about the
+       * live site (#18 §3) — including the awkward truths.
+       */
+      let fieldsSaved = false;
       try {
         const edit = {
           title: values.title,
@@ -99,18 +110,20 @@ if (Astro.request.method === 'POST') {
           signed: values.signed,
         };
         policy = await savePolicy(db, policy.slug, edit, actor.name);
-        /*
-         * The upload is a second write rather than part of the first, so that
-         * the version number and the stamped date come from the moment the
-         * bytes arrived and nothing else can supply them.
-         */
+        fieldsSaved = true;
+
         if (parsed.file) {
           policy = await replacePolicyFile(db, policy.slug, parsed.file, actor.name);
         }
         values = fieldsOf(policy);
         banner = await republish();
       } catch (error) {
-        banner = { ok: false, message: `Nothing was saved — ${detailOf(error)}` };
+        banner = {
+          ok: false,
+          message: fieldsSaved
+            ? `The wording was saved, but the document was not replaced — ${detailOf(error)} Families are still being served the previous document. Choose the PDF again.`
+            : `Nothing was saved — ${detailOf(error)}`,
+        };
       }
     }
   } else {

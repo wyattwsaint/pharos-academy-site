@@ -100,10 +100,20 @@ describe('a policy’s address', () => {
 describe('what a parent is shown', () => {
   it('leaves out a policy that has no document yet', () => {
     const listed = publishedPolicies([
-      { slug: 'handbook', version: 1 },
-      { slug: 'brand-new', version: null },
+      { slug: 'handbook', version: 1, updatedAt: new Date('2026-07-23T00:00:00Z') },
+      { slug: 'brand-new', version: null, updatedAt: null },
     ]);
     expect(listed.map((policy) => policy.slug)).toEqual(['handbook']);
+  });
+
+  // The narrowing is the reason the public page prints the date without a
+  // non-null assertion, so it is asserted rather than assumed: what comes back
+  // is a `Date`, not a `Date | null` that happens to be set today.
+  it('hands back policies whose date is a date', () => {
+    const [listed] = publishedPolicies([
+      { slug: 'handbook', version: 1, updatedAt: new Date('2026-07-23T00:00:00Z') },
+    ]);
+    expect(updatedOnAttribute(listed!.updatedAt)).toBe('2026-07-23');
   });
 });
 

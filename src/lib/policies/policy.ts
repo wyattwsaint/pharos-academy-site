@@ -181,8 +181,16 @@ export function policySlug(title: string): string {
  * 404 on the one page whose whole job is telling a family which document is
  * which — so the public page shows it from the upload, and the admin says so.
  */
-export function publishedPolicies<T extends { version: number | null }>(
+export function publishedPolicies<T extends { version: number | null; updatedAt: Date | null }>(
   policies: readonly T[],
-): T[] {
-  return policies.filter((policy) => policy.version !== null);
+): (T & { version: number; updatedAt: Date })[] {
+  // The narrowed return type is the point of the signature. A published policy
+  // has a version *and* an upload date — the check constraint on the table
+  // keeps those two null-or-present together — so the page that lists them can
+  // print the date without a non-null assertion standing in for a guarantee the
+  // types were already able to make.
+  return policies.filter(
+    (policy): policy is T & { version: number; updatedAt: Date } =>
+      policy.version !== null && policy.updatedAt !== null,
+  );
 }
