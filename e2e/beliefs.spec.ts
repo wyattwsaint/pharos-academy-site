@@ -62,7 +62,13 @@ test.describe('the 301 map', () => {
       // The landing page answers 200 — the point of the map is that no old
       // address 404s, and a 301 into a 404 satisfies only half of that.
       expect(response?.status()).toBe(200);
-      expect(new URL(page.url()).pathname).toBe(redirect.to);
+
+      // Path *and* fragment: three of these addresses were whole pages of one
+      // idea, and they land on the section of About that carries that idea. A
+      // redirect that dropped the fragment would still pass a path check while
+      // leaving somebody at the top of a six-section page.
+      const landed = new URL(page.url());
+      expect(landed.pathname + landed.hash).toBe(redirect.to);
 
       // …and it got there permanently. A 302 leaves the old address in the
       // index competing with the new one.

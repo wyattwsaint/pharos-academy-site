@@ -1,0 +1,224 @@
+/**
+ * What the school says about itself (#30).
+ *
+ * The live site spread this across three addresses — `/core-values` (the
+ * Method, the Core Values and the Mission & Vision), `/general-8` (an essay on
+ * where the name comes from) and `/about-1` (where it meets) — behind an
+ * `/about` that was a link hub with no content of its own. All three land on
+ * one page here, and all three 301 to it.
+ *
+ * **Every string below is transcribed, not written.** The test beside this file
+ * reads the captures in `docs/mirror/pages/` and fails on any drift, including
+ * a tidied dash or a corrected space. The school's account of its own
+ * convictions is not ours to edit, and this is the only copy of it we hold.
+ *
+ * Mission and vision are the one exception, and they are absent from here on
+ * purpose: they live in the school details row, because the school edits them
+ * and the mirror already caught four hand-typed copies drifting apart.
+ */
+
+/** Where this page lives, so links to it are written once. */
+export const ABOUT_PATH = '/about';
+
+/** One of the six words the school describes its method with. */
+export type MethodMark = {
+  /** The word, in the school's own order. */
+  word: string;
+  /** The school's paragraph about it, verbatim. */
+  text: string;
+};
+
+/**
+ * The six marks of the method, in the order the school lists them.
+ *
+ * The live page shouts each word in capitals mid-sentence. That is a Wix
+ * styling habit rather than a spelling, so the heading carries the word and the
+ * paragraph keeps the school's own sentence exactly as published — capitals and
+ * all. Nothing is re-cased inside the quoted text.
+ */
+export const METHOD: readonly MethodMark[] = [
+  {
+    word: 'Christian',
+    text:
+      'Our students will be guided to adopt a CHRISTIAN worldview, anchoring all that we do in ' +
+      "the principles of God's Word.",
+  },
+  {
+    word: 'Classical',
+    text:
+      'Our students will thrive under a CLASSICAL teaching approach that emphasizes goodness, ' +
+      'truth, and beauty while pursuing excellence, as they explore rich curriculum.',
+  },
+  {
+    word: 'Church-based',
+    text:
+      'Our families, as part of this CHURCH-BASED school, are encouraged to actively participate ' +
+      'in a Christian church community. Affiliation with Pharos Academy’s partner, Enola First ' +
+      'Church of God, is not mandatory for parents or students.',
+  },
+  {
+    word: 'Covenantal',
+    text:
+      'As the cornerstone of our COVENANTAL school community, parents will sign a partnership ' +
+      'agreement affirming that, while their children are entrusted to Pharos Academy’s care, ' +
+      'they will fully support the school in educating their children according to its ' +
+      'principles, mission, vision, core values, and statement of faith.',
+  },
+  {
+    word: 'Hybrid',
+    text:
+      'Students flourish in our innovative hybrid model, which beautifully blends the structure ' +
+      'and community of classroom learning with the flexibility and personalization of ' +
+      'homeschooling. Families enjoy the convenience of dropping off their children for engaging ' +
+      'small-group classes, or they may relax in our parent lounge. At the same time, we ' +
+      'actively support parents as the primary guides of their children’s education at ' +
+      'home—providing resources, guidance, and encouragement every step of the way. This ' +
+      'approach is rooted in H.O.P.E. — Helping Our Parents Educate.',
+  },
+  {
+    word: 'Microschool',
+    text:
+      'Your child will thrive in our vibrant microschool, where small-group classes allow ' +
+      'parents to select a variety of subjects and experiences.',
+  },
+];
+
+/** One of the eight subjects the school states a conviction about. */
+export type CoreValue = {
+  /** The subject, as the school labels it. */
+  subject: string;
+  /** What the school says it believes about that subject, verbatim. */
+  text: string;
+};
+
+/**
+ * The eight core values, in the school's own order.
+ *
+ * The label is split off the sentence so the page can set it as a heading; the
+ * sentence itself is untouched. These overlap the Statement of Faith and do not
+ * replace it — the page says so and links it, because the application gates on
+ * the longer document and a family reading the short version alone would be
+ * agreeing to something they have not seen.
+ */
+export const CORE_VALUES: readonly CoreValue[] = [
+  {
+    subject: 'God',
+    text:
+      'We believe God is one God Who exists as and manifests Himself in the three Persons of the ' +
+      'Father, Son, and Holy Spirit.',
+  },
+  {
+    subject: 'Scripture',
+    text:
+      'We believe that the Bible is the Word of God, is our rule of faith, and is the guide for ' +
+      'how we think, speak, and act, as well as the lens through which we view and engage ' +
+      'culture.',
+  },
+  {
+    subject: 'Salvation',
+    text:
+      'We believe salvation comes by grace through faith by accepting Jesus Christ as Lord and ' +
+      'Savior. By His death on the cross, Jesus paid the price for our sins so that we can be ' +
+      'forgiven of our sins and be reconciled to God.',
+  },
+  {
+    subject: 'Family',
+    text:
+      'We believe that the responsibility to train and educate a child belongs to the parents, ' +
+      'and it is our goal to assist parents in this biblical endeavor.',
+  },
+  {
+    subject: 'Learning',
+    text:
+      'We believe that the use of Classical Education leads to wisdom; virtue; and a love of ' +
+      'goodness, truth, and beauty as seen throughout all curricular areas.',
+  },
+  {
+    subject: 'Community',
+    text:
+      'We believe in the value of individuals as people created in God’s image, celebrate their ' +
+      'gifts, encourage mutual growth, and care for others.',
+  },
+  {
+    subject: 'Discipleship',
+    text:
+      'We believe in the use of Truth to develop a mature and growing faith in Christ, to build ' +
+      'godly relationships, to develop the fruit of the Spirit, and to share the love of Christ ' +
+      'with others.',
+  },
+  {
+    subject: 'Leadership',
+    text:
+      'We believe in the calling to be servant-leaders in our families, churches, and ' +
+      'communities, and desire to use godly wisdom, grace, and love to impact our world for ' +
+      'Christ.',
+  },
+];
+
+/**
+ * The essay on the name, in three paragraphs, from `/general-8`.
+ *
+ * It is here rather than at its own address because a Wix slug called
+ * `general-8` is not a page anybody navigates to on purpose, and because the
+ * question it answers — why is a school called Pharos — is an About question.
+ * The old address 301s here.
+ */
+export const PHAROS_MEANING: readonly string[] = [
+  'Pharos Academy derives its name from the Greek word “pharos” (φάρος). The Lighthouse of ' +
+    'Alexandria, Egypt, one of the Seven Wonders of the World stood on the island of Pharos in ' +
+    'the harbor of Alexandria and is said to have been more than 350 feet (110 meters) high; the ' +
+    'only taller man-made structures at the time would have been the pyramids of Giza. It was a ' +
+    'technological triumph and is the archetype of all lighthouses since (Source: Encyclopedia ' +
+    'Britannica). The lighthouse was built around 300 B.C. and was still standing until the 12th ' +
+    'century A.D.',
+  'The Greek word “pharos” spans both the Classical and Koine Greek periods, evolving in meaning ' +
+    'over time. During the Classical era (500–323 BCE), it referred to a “plough.” By the Koine ' +
+    'era (323 BCE–600 CE), however, “pharos” had come to mean “lighthouse,” a shift linked to the ' +
+    'iconic Lighthouse of Alexandria on Pharos Island.',
+  'Pharos Academy also draws its name from two core inspirations. First, we aim to shine as a ' +
+    'beacon among educational institutions, collaborating with parents to deliver a classical ' +
+    'education marked by excellence, much like a lighthouse guides through the dark. Second, we ' +
+    'connect to the Koine Greek era, the language of the New Testament. While “pharos” doesn’t ' +
+    'appear in the New Testament or the Septuagint—the Greek translation of the Old Testament—the ' +
+    'New Testament introduces Apollos, a native of Alexandria, Egypt. Historical records confirm ' +
+    'the Lighthouse of Alexandria stood during Apollos’ lifetime. In Acts 18:24–28, Apollos is ' +
+    'described as an eloquent speaker who boldly taught about Jesus in the Ephesus synagogue, ' +
+    'though initially he knew only John’s baptism. Priscilla and Aquila refined his ' +
+    'understanding, deepening his grasp of God’s way. Later, in Achaia, he strengthened ' +
+    'believers and skillfully proved from the Scriptures that Jesus was the Christ. At Pharos ' +
+    'Academy, we aspire to nurture every student in the same spirit as Apollos, fostering growth ' +
+    'in grace and knowledge and teaching them to “honor Christ the Lord as holy, always being ' +
+    'prepared to make a defense to anyone who asks” for a reason for the hope that lies within ' +
+    'them (1 Peter 3:15).',
+];
+
+/**
+ * The attributions the essay carries, kept with it.
+ *
+ * The second one belongs to a drawing the live page prints and this one does
+ * not: the image is a Wix-hosted file we have no licence record for, and the
+ * caption is reproduced without it only because the sentence about the
+ * archetype cites the same source. If the drawing is ever restored, its caption
+ * is already here and already correct.
+ */
+export const PHAROS_SOURCES: readonly string[] = [
+  'Source: Encyclopedia Britannica',
+  'A drawing of the Pharos of Alexandria by German archaeologist Prof. H. Thiersch (1909)',
+];
+
+/**
+ * Where the school meets, from `/about-1`.
+ *
+ * The street address is deliberately not here — it is the school details row,
+ * rendered in the footer of every page and edited in one place. What `/about-1`
+ * adds over the footer is exactly two things: that the building is a church,
+ * and which church. That is what this holds.
+ */
+export const MEETING_PLACE = {
+  /** The school's own lead-in line. */
+  preamble: 'Pharos Academy meets at',
+  /** The host church, named as the school names it. */
+  name: 'Enola First Church of God',
+  /** The church's own site, as the live page links it, over https. */
+  href: 'https://www.enolacog.com/',
+} as const;

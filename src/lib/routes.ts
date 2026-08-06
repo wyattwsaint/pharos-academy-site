@@ -107,6 +107,20 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    */
   { path: '/admissions', priority: 0.9, changefreq: 'monthly' },
   /*
+   * About (#30).
+   *
+   * High priority because it is the page three of the old site's addresses now
+   * point at, and because "classical Christian school near Harrisburg" is a
+   * category search — the page that answers it is the one that says what the
+   * school is, not the one that lists classes.
+   *
+   * In this list rather than only in the sitemap for a reason that is not
+   * cosmetic: the mission and vision printed here are read from the school
+   * details row, so an edit in the admin has to reach this page in the same
+   * republish that reaches the homepage and the footer.
+   */
+  { path: '/about', priority: 0.8, changefreq: 'monthly' },
+  /*
    * The Statement of Faith (#30).
    *
    * `yearly` because it changes when the school board changes it, which is a

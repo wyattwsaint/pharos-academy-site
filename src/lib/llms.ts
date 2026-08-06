@@ -17,6 +17,9 @@ const SUMMARIES: Record<string, string> = {
     'The full description, texts, prerequisites and fees for all nineteen classes.',
   '/staff': 'Who runs the school and who teaches each class.',
   '/news': 'Board updates, fundraisers and notices for current families, newest first.',
+  '/about':
+    'What the school is for, how it teaches, what it believes, where the name comes from, and ' +
+    'where it meets.',
   '/about/beliefs':
     'The Statement of Faith and Practice, in full — what the school teaches from, and what ' +
     'families are asked to read before applying.',

@@ -63,6 +63,7 @@ export type SectionId = (typeof SECTION_ORDER)[number];
  * already here, and the four items above it are for the ones deciding.
  */
 export const NAV_ITEMS = [
+  { label: 'About', href: '/about' },
   { label: 'Classes', href: '/classes' },
   { label: 'A week here', href: '/#week' },
   { label: 'Who teaches', href: '/staff' },

@@ -26,6 +26,15 @@ describe('the 301 map', () => {
     }
   });
 
+  // A fragment is allowed and a query string is not: the first lands somebody
+  // on the section their old bookmark was about, the second would be a route
+  // that quietly does not exist.
+  it('accepts a destination’s fragment but still checks the page under it', () => {
+    expect(isLiveDestination('/about#location')).toBe(true);
+    expect(isLiveDestination('/nowhere#location')).toBe(false);
+    expect(isLiveDestination('/about?tab=location')).toBe(false);
+  });
+
   it('redirects each old address exactly once', () => {
     const paths = redirectedPaths();
     expect(new Set(paths).size).toBe(paths.length);

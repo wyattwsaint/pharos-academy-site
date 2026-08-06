@@ -104,6 +104,10 @@ const SURFACES = [
     state: 'with the refund terms open',
     open: openRefundTerms,
   },
+  // #30 AC 8. Two description lists, a two-column statement grid that stacks,
+  // and three long essay paragraphs — the page that absorbed three Wix pages,
+  // so it is also the longest one a 301 can land somebody part-way down.
+  { name: 'the about page', path: '/about', state: 'closed', open: noop },
   // #30 AC 8. The longest unbroken run of prose on the site — eleven numbered
   // articles set in a measure, then two permission notes — and the page a
   // family is most likely to read on a phone, because they were sent to it
