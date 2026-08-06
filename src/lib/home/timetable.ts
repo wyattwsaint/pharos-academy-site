@@ -28,7 +28,17 @@ export type ClassEntry = {
   title: string;
   /** "ends 10:00 a.m." — rendered on its own line above the meta. */
   ends: string;
-  /** Ages or grades, then price or duration, joined with a middot. */
+  /**
+   * The catalogue slug this cell is showing, where it has one.
+   *
+   * Present so the grid can *price* the cell without a price ever being typed
+   * into it (#29 AC 1): the component looks the course up and asks
+   * `priceSummary` for the figure at the school's current rates. Absent on the
+   * two cells the school quotes by length rather than by price — "12 weeks",
+   * "rotating" — which are complete without one.
+   */
+  slug?: string;
+  /** Ages or grades, then any non-money qualifier, joined with a middot. */
   meta: string;
   /** The school's own course description, in full. */
   description: string;
@@ -84,9 +94,10 @@ export const TIMETABLE: readonly TimeSlot[] = [
       Monday: [
         {
           id: 'latin-beginner',
+          slug: 'beginner-latin-grades-7-8',
           title: 'Beginner Latin Immersion',
           ends: 'ends 10:00 a.m.',
-          meta: 'Grades 7–8 · $280/yr',
+          meta: 'Grades 7–8',
           description:
             'This immersion course in Latin will utilize short stories, simple fables, and ' +
             'scenes set in the Roman era to learn the language through use. By reading, ' +
@@ -99,9 +110,10 @@ export const TIMETABLE: readonly TimeSlot[] = [
         },
         {
           id: 'science-god-made-everything',
+          slug: 'god-made-everything',
           title: 'God Made Everything: Science',
           ends: 'ends 10:30 a.m.',
-          meta: 'Ages 5–8 · $420/yr',
+          meta: 'Ages 5–8',
           description:
             "Your little explorer will participate in a beginner's science class, inspired by " +
             'the Biblically-based curriculum, Generations. Through hands-on engaging lessons, ' +
@@ -114,16 +126,18 @@ export const TIMETABLE: readonly TimeSlot[] = [
       Wednesday: [
         {
           id: 'spanish-basic-5-8',
+          slug: 'basic-spanish-grades-5-8',
           title: 'Basic Spanish Conversation',
           ends: 'ends 10:00 a.m.',
-          meta: 'Grades 5–8 · $280/yr',
+          meta: 'Grades 5–8',
           description: SPANISH_BASIC,
         },
         {
           id: 'church-bible-history',
+          slug: 'introduction-to-church-and-bible-history',
           title: 'Church & Bible History',
           ends: 'ends 10:30 a.m.',
-          meta: 'Ages 6–8 · $420/yr',
+          meta: 'Ages 6–8',
           description:
             "Young learners will discover God's history by engaging in weekly activities " +
             'inspired by the Biblically based curriculums, Generations and My Father’s ' +
@@ -142,9 +156,10 @@ export const TIMETABLE: readonly TimeSlot[] = [
       Thursday: [
         {
           id: 'letter-of-the-week',
+          slug: 'letter-of-the-week',
           title: 'Letter of the Week',
           ends: 'ends 11:00 a.m.',
-          meta: 'Ages 4–6 · $420/yr',
+          meta: 'Ages 4–6',
           description:
             'Your early learner will engage in sensory based activities to build an ' +
             'understanding of the letters, A–Z, and their sounds. Each session is designed to ' +
@@ -162,9 +177,10 @@ export const TIMETABLE: readonly TimeSlot[] = [
       Monday: [
         {
           id: 'drawing-principles',
+          slug: 'principles-of-drawing',
           title: 'Principles of Drawing',
           ends: 'ends 11:10 a.m.',
-          meta: 'Ages 14–18 · $420/yr',
+          meta: 'Ages 14–18',
           description:
             'This drawing course will begin with the basics: orientation, scale, pressure, ' +
             'composition, and basic shapes. We will advance to finding interior shapes, ' +
@@ -178,18 +194,20 @@ export const TIMETABLE: readonly TimeSlot[] = [
       Wednesday: [
         {
           id: 'spanish-basic-9-12',
+          slug: 'basic-spanish-grades-9-12',
           title: 'Basic Spanish Conversation',
           ends: 'ends 11:10 a.m.',
-          meta: 'Grades 9–12 · $420/yr',
+          meta: 'Grades 9–12',
           description: SPANISH_BASIC,
         },
       ],
       Thursday: [
         {
           id: 'poetry-plays-patterns',
+          slug: 'poetry-plays-and-patterns',
           title: 'Poetry, Plays, and Patterns',
           ends: 'ends 11:00 a.m.',
-          meta: 'Ages 14–18 · $420/yr',
+          meta: 'Ages 14–18',
           description:
             "Students will read and study Shakespeare's Hamlet, Julius Caesar and Macbeth, as " +
             'well as poetry by various poets. Throughout the course, there will be ' +
@@ -206,9 +224,10 @@ export const TIMETABLE: readonly TimeSlot[] = [
       Monday: [
         {
           id: 'kingdom-math',
+          slug: 'kingdom-math',
           title: 'Kingdom Math',
           ends: 'ends 12:10 p.m.',
-          meta: 'Ages 6–8 · $420/yr',
+          meta: 'Ages 6–8',
           description:
             'Kingdom Math is a hands-on homeschool class where children discover the wonder ' +
             'of mathematics through games, building projects, puzzles, nature studies, ' +
@@ -218,9 +237,10 @@ export const TIMETABLE: readonly TimeSlot[] = [
         },
         {
           id: 'drawing-painting',
+          slug: 'drawing-and-painting-grades-5-8',
           title: 'Drawing & Painting',
           ends: 'ends 12:10 p.m.',
-          meta: 'Grades 5–8 · $210/sem',
+          meta: 'Grades 5–8',
           description:
             'Half of the semester will focus on technical drawing skills using both ' +
             'photographs (like animals) and three dimensional objects (still life), while ' +
@@ -270,9 +290,10 @@ export const TIMETABLE: readonly TimeSlot[] = [
       Thursday: [
         {
           id: 'backyard-botany',
+          slug: 'backyard-botany',
           title: 'Backyard Botany',
           ends: 'ends 12:10 p.m.',
-          meta: 'Ages 5–10 · $140/sem',
+          meta: 'Ages 5–10',
           description:
             'Discover some of the most common trees and plants found right in your own ' +
             'backyard here in Central Pennsylvania. Learn about their botanical, beneficial, ' +
@@ -287,18 +308,20 @@ export const TIMETABLE: readonly TimeSlot[] = [
       Monday: [
         {
           id: 'algebra-1-monday',
+          slug: 'algebra-1',
           title: 'Algebra 1',
           ends: 'ends 12:20 p.m.',
-          meta: 'Grades 8+ · 1 credit · $840/yr',
+          meta: 'Grades 8+ · 1 credit',
           description: ALGEBRA_1,
         },
       ],
       Wednesday: [
         {
           id: 'algebra-1-wednesday',
+          slug: 'algebra-1',
           title: 'Algebra 1',
           ends: 'ends 12:20 p.m.',
-          meta: 'Grades 8+ · 1 credit · $840/yr',
+          meta: 'Grades 8+ · 1 credit',
           description: ALGEBRA_1,
         },
       ],

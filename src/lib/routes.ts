@@ -92,6 +92,20 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * after the build, and the routes that serve them render on request.
    */
   { path: '/policies', priority: 0.6, changefreq: 'monthly' },
+  /*
+   * How applying works (#29).
+   *
+   * The second-highest priority on the site, under the home page and above the
+   * catalogue views: it is the page a parent who has decided reads, and the one
+   * a search for "how do I apply to Pharos Academy" should land on.
+   *
+   * In this list rather than only in the sitemap for the usual reason, and a
+   * sharper one than most: every fee on it is read from the money settings, so
+   * a deposit changed in the admin has to reach this page in the same
+   * republish that reaches the homepage. Two pages quoting different deposits
+   * for an hour is precisely the failure #29 exists to prevent.
+   */
+  { path: '/admissions', priority: 0.9, changefreq: 'monthly' },
 ] as const;
 
 /** Every public path, in list order. */

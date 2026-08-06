@@ -45,6 +45,12 @@ async function openCatalogueCard(page: Page) {
   await expect(cell.locator('[data-disclosure-panel]')).toBeVisible();
 }
 
+/** Open the refund terms on Admissions — the one long block that expands. */
+async function openRefundTerms(page: Page) {
+  await page.getByRole('group', { name: 'What happens if you withdraw' }).click();
+  await expect(page.locator('.refunds[open]')).toBeVisible();
+}
+
 const noop = async (_page: Page) => {};
 
 /**
@@ -87,6 +93,17 @@ const SURFACES = [
   // #28 AC 8. A list of documents, each with a description, a date and a
   // download — and the one page a parent is sent to from a printed handbook.
   { name: 'the policies page', path: '/policies', state: 'closed', open: noop },
+  // #29 AC 8. The longest piece of prose on the site, a numbered list, a
+  // three-column figure list that stacks on a phone, and a `<details>` — and
+  // the page a family reads immediately before committing money, so a layout
+  // that fails at one width fails at the worst possible moment.
+  { name: 'the admissions page', path: '/admissions', state: 'closed', open: noop },
+  {
+    name: 'the admissions page',
+    path: '/admissions',
+    state: 'with the refund terms open',
+    open: openRefundTerms,
+  },
 ];
 
 for (const surface of SURFACES) {

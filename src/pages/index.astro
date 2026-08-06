@@ -8,6 +8,9 @@ import InquirySection from '../components/home/InquirySection.astro';
 import TeachersSection from '../components/home/TeachersSection.astro';
 import WeekSection from '../components/home/WeekSection.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { listCourses } from '../lib/courses/store.js';
+import { getDb } from '../lib/db/client.js';
+import { getMoneySettings } from '../lib/money/store.js';
 
 /**
  * The homepage, in "Beacon, warmed" — variant E, approved by George and Jill
@@ -31,16 +34,28 @@ import BaseLayout from '../layouts/BaseLayout.astro';
  */
 const description =
   'Christian classical classes in Enola, Pennsylvania, for ages 4 to 18 — mornings on Monday, Wednesday and Thursday.';
+
+/*
+ * The catalogue and the money settings, read once here and handed down.
+ *
+ * Read on the page rather than inside each section for the same reason
+ * `/classes` does it (#29 AC 1): no component holds a copy of the school's
+ * rates, and the two sections that quote money quote the same figures as each
+ * other by construction.
+ */
+const db = await getDb();
+const courses = await listCourses(db);
+const settings = await getMoneySettings(db);
 ---
 
 <BaseLayout title="Home" description={description} overHero>
   <HomeHero />
   <Announcements />
-  <WeekSection />
+  <WeekSection courses={courses} rates={settings.rates} />
   <Ornament />
   <TeachersSection />
   <Ornament />
-  <CostsSection />
+  <CostsSection courses={courses} settings={settings} />
   <FaithSection />
   <InquirySection />
 </BaseLayout>

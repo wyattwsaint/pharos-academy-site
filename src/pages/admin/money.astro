@@ -1,0 +1,413 @@
+---
+export const prerender = false;
+
+import AdminBanner from '../../components/AdminBanner.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import type { Banner } from '../../lib/admin/banner.js';
+import { isrBypassToken } from '../../lib/admin/isr-token.js';
+import {
+  describeRevalidation,
+  revalidateAll,
+  revalidationOrigin,
+} from '../../lib/admin/revalidate.js';
+import { formatStamp } from '../../lib/admin/school-details.js';
+import { getDb } from '../../lib/db/client.js';
+import {
+  CONFIRM_FIELD,
+  moneyFormOutcome,
+  type MoneyFormOutcome,
+} from '../../lib/money/admin-flow.js';
+import {
+  INSTALMENT_COUNT,
+  LABELS,
+  STUDY_HALL_FEE_CONTRADICTION,
+  type MoneyChange,
+  type MoneyErrors,
+  type MoneyField,
+  type MoneySettings,
+} from '../../lib/money/settings.js';
+import { getMoneySettings, saveMoneySettings } from '../../lib/money/store.js';
+
+/**
+ * Every number about money the school controls, on one screen (#29).
+ *
+ * Two things make this screen different from the other admin forms.
+ *
+ * **It confirms before it saves.** A deposit is not a phone number: the figure
+ * here is what every family on the site is quoted from the moment it is
+ * written, so the first Save renders a confirmation naming each change, old
+ * value and new, and says the words out loud. The decision is
+ * `moneyFormOutcome`; this page only renders the outcome. There is no
+ * JavaScript, so the confirmation is a second POST carrying the values back in
+ * hidden inputs — a `confirm()` dialog would be both untestable and unavailable
+ * to anyone with scripting off.
+ *
+ * **Permissions are flat.** Jill and George see this screen equally; #16
+ * overrode the recommendation to gate it. The stamp below is therefore the only
+ * control on the money, which is why saving stamps it and why an identical save
+ * deliberately does not.
+ *
+ * What a change does *not* do is rewrite what an already-enrolled family agreed
+ * to — those numbers were copied, not referenced, when they applied (ADR-0006).
+ * The confirmation screen says so, because that is the reassurance that lets
+ * somebody click Save at all.
+ */
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+let row = await getMoneySettings(db);
+let values: MoneySettings = row;
+let errors: MoneyErrors = {};
+let banner: Banner | null = republishBanner(Astro.url.searchParams.get('republished'));
+/** Non-empty only on the confirmation screen, which replaces the form. */
+let confirming: MoneyChange[] | null = null;
+
+if (Astro.request.method === 'POST') {
+  const outcome: MoneyFormOutcome = moneyFormOutcome(await Astro.request.formData(), row);
+  values = outcome.values;
+
+  switch (outcome.kind) {
+    case 'invalid':
+      errors = outcome.errors;
+      banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+      break;
+    case 'unchanged':
+      banner = { ok: true, message: 'Nothing changed, so nothing was saved.' };
+      break;
+    case 'confirm':
+      confirming = outcome.changes;
+      break;
+    case 'save': {
+      row = await saveMoneySettings(db, outcome.values, actor.name);
+      values = row;
+      const result = await revalidateAll({
+        origin: revalidationOrigin(Astro.url),
+        bypassToken: isrBypassToken(),
+      });
+      banner = { ok: result.ok, message: describeRevalidation(result) };
+      break;
+    }
+  }
+}
+
+const stamp = formatStamp(row.lastEditedBy, row.lastEditedAt);
+
+/** A dollar field: the six amounts, which all behave identically. */
+type AmountField = Extract<
+  MoneyField,
+  | 'standardRate'
+  | 'highSchoolCreditRate'
+  | 'registrationFee'
+  | 'classDeposit'
+  | 'lateFee'
+  | 'studyHallFee'
+>;
+
+const AMOUNTS: { name: AmountField; value: number; hint?: string }[] = [
+  {
+    name: 'standardRate',
+    value: values.rates.standard,
+    hint: 'Every class price on the site is contact hours × one of these two rates.',
+  },
+  { name: 'highSchoolCreditRate', value: values.rates.highSchoolCredit },
+  { name: 'registrationFee', value: values.registrationFee, hint: 'Once per student per year.' },
+  { name: 'classDeposit', value: values.classDeposit, hint: 'Per class, by cheque, holds the seat.' },
+  { name: 'lateFee', value: values.lateFee, hint: 'Added per class when a payment misses its date.' },
+  { name: 'studyHallFee', value: values.studyHallFee, hint: STUDY_HALL_FEE_CONTRADICTION },
+];
+
+/** The ordinal each instalment date is labelled with. Four, per the handbook. */
+const ORDINALS = ['First', 'Second', 'Third', 'Fourth'];
+
+const control =
+  'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
+
+function describedBy(name: string, hint: boolean, invalid: boolean): string | undefined {
+  return (
+    [hint ? `${name}-hint` : null, invalid ? `${name}-error` : null].filter(Boolean).join(' ') ||
+    undefined
+  );
+}
+
+function republishBanner(published: string | null): Banner | null {
+  if (published === 'live') return { ok: true, message: 'Republished — the live site is up to date.' };
+  if (published === 'stale') {
+    return { ok: false, message: "Republishing didn't reach the live site — Retry." };
+  }
+  return null;
+}
+---
+
+<AdminLayout title="Money" actor={actor}>
+  <h1 class="text-3xl font-semibold text-navy">Money</h1>
+  <p class="mt-2">
+    Every figure about money on the public site is read from this page. None of it is typed into
+    the wording of a page, so a number changed here is changed everywhere at once.
+  </p>
+
+  {
+    banner && (
+      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
+        {!banner.ok && (
+          <form method="post" action="/admin/republish" class="mt-3">
+            <button
+              type="submit"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+            >
+              Retry
+            </button>
+          </form>
+        )}
+      </AdminBanner>
+    )
+  }
+
+  {
+    confirming ? (
+      <section class="mt-8" data-testid="confirm">
+        <h2 class="text-2xl font-semibold text-navy">This affects every family.</h2>
+        <p class="mt-3">
+          These figures are quoted on the public site and in every application from the moment
+          they are saved. Every family enquiring or applying afterwards is told the new numbers.
+        </p>
+        <p class="mt-3">
+          Families who have already enrolled keep the terms they agreed to. Their fees were
+          written down when they applied and nothing on this page rewrites them.
+        </p>
+
+        <table class="mt-6 w-full border-collapse text-left">
+          <caption class="sr-only">What is about to change</caption>
+          <thead>
+            <tr class="border-b border-navy/25">
+              <th scope="col" class="py-2 pr-4 font-semibold">What</th>
+              <th scope="col" class="py-2 pr-4 font-semibold">Now</th>
+              <th scope="col" class="py-2 font-semibold">After saving</th>
+            </tr>
+          </thead>
+          <tbody>
+            {confirming.map((change) => (
+              <tr class="border-b border-navy/15 align-top" data-change={change.field}>
+                <th scope="row" class="py-2 pr-4 font-normal">
+                  {change.label}
+                </th>
+                <td class="py-2 pr-4">{change.from}</td>
+                <td class="py-2 font-semibold">{change.to}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div class="mt-8 flex flex-wrap gap-4">
+          <form method="post">
+            {/*
+              The submitted values, carried back under the same field names the
+              form posts them under, so the confirming post parses identically
+              to the first one and cannot drift from it.
+            */}
+            <input type="hidden" name="standardRate" value={String(values.rates.standard)} />
+            <input
+              type="hidden"
+              name="highSchoolCreditRate"
+              value={String(values.rates.highSchoolCredit)}
+            />
+            <input type="hidden" name="registrationFee" value={String(values.registrationFee)} />
+            <input type="hidden" name="classDeposit" value={String(values.classDeposit)} />
+            <input type="hidden" name="lateFee" value={String(values.lateFee)} />
+            <input type="hidden" name="studyHallFee" value={String(values.studyHallFee)} />
+            {values.instalmentDates.map((date) => (
+              <input type="hidden" name="instalmentDates" value={date} />
+            ))}
+            <input type="hidden" name="refundTerms" value={values.refundTerms} />
+            {values.depositCreditedAgainstTuition && (
+              <input type="hidden" name="depositCreditedAgainstTuition" value="on" />
+            )}
+            <input
+              type="hidden"
+              name="notificationAddresses"
+              value={values.notificationAddresses.join('\n')}
+            />
+            <input type="hidden" name={CONFIRM_FIELD} value="yes" />
+            <button
+              type="submit"
+              class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+            >
+              Yes, change it for everyone
+            </button>
+          </form>
+          <a
+            href="/admin/money"
+            class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
+          >
+            Go back without saving
+          </a>
+        </div>
+      </section>
+    ) : (
+      <form method="post" class="mt-8 flex flex-col gap-6">
+        {AMOUNTS.map((field) => {
+          const invalid = Boolean(errors[field.name]);
+          return (
+            <div class="flex flex-col gap-2">
+              <label for={field.name} class="font-semibold">
+                {LABELS[field.name]}
+              </label>
+              {field.hint && (
+                <p id={`${field.name}-hint`} class="text-sm">
+                  {field.hint}
+                </p>
+              )}
+              <input
+                id={field.name}
+                name={field.name}
+                type="text"
+                inputmode="numeric"
+                value={Number.isFinite(field.value) ? String(field.value) : ''}
+                required
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={describedBy(field.name, Boolean(field.hint), invalid)}
+                class={control}
+              />
+              {invalid && (
+                <p id={`${field.name}-error`} class="font-semibold">
+                  {errors[field.name]}
+                </p>
+              )}
+            </div>
+          );
+        })}
+
+        <fieldset class="flex flex-col gap-2 border-0 p-0">
+          <legend class="font-semibold">{LABELS.instalmentDates}</legend>
+          <p id="instalmentDates-hint" class="text-sm">
+            The {INSTALMENT_COUNT} dates a quarterly payment is due, earliest first.
+          </p>
+          <div class="flex flex-wrap gap-4">
+            {Array.from({ length: INSTALMENT_COUNT }, (_, index) => (
+              <div class="flex flex-col gap-1">
+                <label for={`instalmentDate-${index}`}>{ORDINALS[index]} payment</label>
+                <input
+                  id={`instalmentDate-${index}`}
+                  name="instalmentDates"
+                  type="date"
+                  value={values.instalmentDates[index] ?? ''}
+                  required
+                  aria-invalid={errors.instalmentDates ? 'true' : undefined}
+                  aria-describedby={describedBy(
+                    'instalmentDates',
+                    true,
+                    Boolean(errors.instalmentDates),
+                  )}
+                  class="rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
+                />
+              </div>
+            ))}
+          </div>
+          {errors.instalmentDates && (
+            <p id="instalmentDates-error" class="font-semibold">
+              {errors.instalmentDates}
+            </p>
+          )}
+        </fieldset>
+
+        <div class="flex flex-col gap-2">
+          <label for="refundTerms" class="font-semibold">
+            {LABELS.refundTerms}
+          </label>
+          <p id="refundTerms-hint" class="text-sm">
+            In the school's own words. Families are asked to agree to this.
+          </p>
+          <textarea
+            id="refundTerms"
+            name="refundTerms"
+            rows={5}
+            required
+            aria-invalid={errors.refundTerms ? 'true' : undefined}
+            aria-describedby={describedBy('refundTerms', true, Boolean(errors.refundTerms))}
+            class={control}
+          >
+            {values.refundTerms}
+          </textarea>
+          {errors.refundTerms && (
+            <p id="refundTerms-error" class="font-semibold">
+              {errors.refundTerms}
+            </p>
+          )}
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div class="flex items-start gap-3">
+            <input
+              id="depositCreditedAgainstTuition"
+              name="depositCreditedAgainstTuition"
+              type="checkbox"
+              checked={values.depositCreditedAgainstTuition}
+              aria-describedby="depositCreditedAgainstTuition-hint"
+              class="mt-1 size-5"
+            />
+            <label for="depositCreditedAgainstTuition" class="font-semibold">
+              {LABELS.depositCreditedAgainstTuition}
+            </label>
+          </div>
+          <p id="depositCreditedAgainstTuition-hint" class="text-sm">
+            Ticked, the deposit comes off what a family owes its instructors. Unticked, it is on
+            top. On three classes that is a difference of {' '}
+            {`$${values.classDeposit * 3}`} to the family.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="notificationAddresses" class="font-semibold">
+            {LABELS.notificationAddresses}
+          </label>
+          <p id="notificationAddresses-hint" class="text-sm">
+            One email address per line. More than one is normal — an application nobody is told
+            about is an application nobody answers.
+          </p>
+          <textarea
+            id="notificationAddresses"
+            name="notificationAddresses"
+            rows={3}
+            required
+            aria-invalid={errors.notificationAddresses ? 'true' : undefined}
+            aria-describedby={describedBy(
+              'notificationAddresses',
+              true,
+              Boolean(errors.notificationAddresses),
+            )}
+            class={control}
+          >
+            {values.notificationAddresses.join('\n')}
+          </textarea>
+          {errors.notificationAddresses && (
+            <p id="notificationAddresses-error" class="font-semibold">
+              {errors.notificationAddresses}
+            </p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+        >
+          Save
+        </button>
+      </form>
+    )
+  }
+
+  <section class="mt-10 border-t border-navy/15 pt-6">
+    <h2 class="text-xl font-semibold text-navy">Publishing</h2>
+    <p class="mt-2" data-testid="stamp">{stamp}</p>
+    <p class="mt-2">
+      Saving republishes the whole site. Use this if the site ever looks out of date anyway.
+    </p>
+    <form method="post" action="/admin/republish" class="mt-4">
+      <button
+        type="submit"
+        class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
+      >
+        Republish
+      </button>
+    </form>
+  </section>
+</AdminLayout>

@@ -1,8 +1,25 @@
 ---
-import { FIGURES } from '../../lib/home/content.js';
+import type { Course } from '../../lib/courses/course.js';
+import { costFigures } from '../../lib/home/content.js';
+import type { MoneySettings } from '../../lib/money/settings.js';
+
+interface Props {
+  /** The catalogue, for the "per class per year" range. */
+  courses: readonly Course[];
+  /** The school's money settings. Every figure below comes from these. */
+  settings: MoneySettings;
+}
+
+const { courses, settings } = Astro.props;
+const figures = costFigures(courses, settings);
 
 /**
  * What it costs, in full, before anyone asks.
+ *
+ * Not one of these three numbers is written here. They are computed from the
+ * money settings and the catalogue (#29 AC 1), because a fee raised in the
+ * admin and still quoted at the old figure on the homepage is the exact failure
+ * this section is supposed to prevent.
  *
  * The three gold marks are decorative and carry no information the numerals do
  * not — hence `aria-hidden`. The numerals themselves are sans and tabular:
@@ -21,7 +38,7 @@ const MARKS = [
     <h2 class="mt-4">Everything, before you ask.</h2>
     <div class="figures">
       {
-        FIGURES.map((figure, index) => (
+        figures.map((figure, index) => (
           <div class="figure">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
               <path d={MARKS[index]} />
