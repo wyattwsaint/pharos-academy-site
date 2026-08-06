@@ -36,10 +36,19 @@ const showing = currentAnnouncements(await listAnnouncements(db), new Date());
 >
   <div class="wide">
     <p class="label">Announcements</p>
-    <ul class="mt-6 grid gap-6 md:grid-cols-2">
+    {
+      /*
+        A scoped class rather than Tailwind's `grid`, which this page already
+        owns: `beacon.css` defines `.grid` as the timetable's four fixed
+        columns, and a band that borrowed the name inherited them — 660px of
+        list inside a 390px phone. The section was empty until now, so nothing
+        had ever rendered to show it.
+      */
+    }
+    <ul class="announcement-list">
       {
         showing.map((announcement) => (
-          <li class="border-l-2 border-gold-orn pl-5">
+          <li>
             <h2 class="text-2xl">
               <a class="no-underline hover:underline" href={newsPath(announcement.slug)}>
                 {announcement.headline}
@@ -72,3 +81,23 @@ const showing = currentAnnouncements(await listAnnouncements(db), new Date());
     </p>
   </div>
 </section>
+
+<style>
+  .announcement-list {
+    margin-top: 1.5rem;
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .announcement-list > li {
+    border-left: 2px solid var(--color-gold-orn);
+    padding-left: 1.25rem;
+  }
+
+  /* Two abreast once there is room for two columns of readable measure. */
+  @media (min-width: 768px) {
+    .announcement-list {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>
