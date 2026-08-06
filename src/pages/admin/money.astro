@@ -324,9 +324,7 @@ function republishBanner(published: string | null): Banner | null {
             aria-invalid={errors.refundTerms ? 'true' : undefined}
             aria-describedby={describedBy('refundTerms', true, Boolean(errors.refundTerms))}
             class={control}
-          >
-            {values.refundTerms}
-          </textarea>
+          >{values.refundTerms}</textarea>
           {errors.refundTerms && (
             <p id="refundTerms-error" class="font-semibold">
               {errors.refundTerms}
@@ -375,9 +373,7 @@ function republishBanner(published: string | null): Banner | null {
               Boolean(errors.notificationAddresses),
             )}
             class={control}
-          >
-            {values.notificationAddresses.join('\n')}
-          </textarea>
+          >{values.notificationAddresses.join('\n')}</textarea>
           {errors.notificationAddresses && (
             <p id="notificationAddresses-error" class="font-semibold">
               {errors.notificationAddresses}

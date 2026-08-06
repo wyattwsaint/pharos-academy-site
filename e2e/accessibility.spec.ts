@@ -47,7 +47,7 @@ async function openCatalogueCard(page: Page) {
 
 /** Open the refund terms on Admissions — the one long block that expands. */
 async function openRefundTerms(page: Page) {
-  await page.getByRole('group', { name: 'What happens if you withdraw' }).click();
+  await page.locator('.refunds summary').click();
   await expect(page.locator('.refunds[open]')).toBeVisible();
 }
 
