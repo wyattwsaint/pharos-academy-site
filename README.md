@@ -33,6 +33,23 @@ Resend for notification email.
 | `npm test` | vitest, the pure modules |
 | `npm run test:e2e` | Playwright + axe. Starts a dev server unless `PLAYWRIGHT_BASE_URL` is set |
 | `npm run verify:isr` | Asserts the build output really is ISR. Run after `npm run build` |
+| `npm run db:migrate` | Applies every unapplied migration to the database in `DATABASE_URL` |
+| `npm run db:seed` | Creates the named admin accounts, from `SEED_*_PASSWORD` in the env |
+
+## Migrations are applied by hand, before the deploy that needs them
+
+The build never touches Neon ([`scripts/db.mjs`](scripts/db.mjs) says why), so a branch that
+adds a migration does not apply it. Neon is one database shared by every deployment, and
+the deployed pages read it directly — so a PR whose code expects a column Neon does not
+have yet deploys green and then serves 500s, and **Deployed accessibility** goes red on
+every page that reads the store while `npm run check`, vitest and the PR's own Playwright
+run stay green, because those run on PGlite with the migrations already applied.
+
+So: `vercel env pull .env.local`, then `npm run db:migrate`, then let the deploy run.
+Migrations are append-only and each statement is independently safe to re-run, so applying
+one early is safe — but it is a one-way door for the deployment already live, which will
+be reading the old shape until the PR lands. That is fine only while the site is
+pre-launch (see **Before launch** below).
 
 ## The pre-commit gate
 
