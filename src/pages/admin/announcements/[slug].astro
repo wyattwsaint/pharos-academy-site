@@ -50,6 +50,12 @@ import { getDb } from '../../../lib/db/client.js';
  * drop off the homepage early is typing an older one. There is no separate
  * "feature this" switch, because that would be a second rule about the same
  * six weeks.
+ *
+ * Changing the date does **not** move the announcement's address. The slug is
+ * minted once from the date it was first posted and then stays put, because it
+ * is a URL somebody may already have followed — a link Jill sent in July does
+ * not stop working because she corrected the date in August. What the date
+ * decides is the homepage, which is what it is for.
  */
 /** The one slug that is not an announcement: the post form's address. */
 const NEW = 'new';

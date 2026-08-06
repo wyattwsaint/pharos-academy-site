@@ -148,14 +148,10 @@ export async function createAnnouncement(
   const { slug, ...edit } = draft;
   const [row] = await db
     .insert(announcementsTable)
-    .values({
-      slug,
-      ...columnsOf(edit),
-      attachmentFilename: edit.attachment?.filename ?? null,
-      attachmentBytes: edit.attachment?.bytes ?? null,
-      lastEditedBy: editorName,
-      lastEditedAt: now,
-    })
+    // An insert that does not mention the file simply omits both columns, which
+    // is the null a new announcement with no PDF wants — so the three-valued
+    // `attachment` needs no second reading here.
+    .values({ slug, ...columnsOf(edit), lastEditedBy: editorName, lastEditedAt: now })
     .returning(WITHOUT_BYTES);
 
   if (!row) throw new Error(`Could not post an announcement at "${slug}".`);

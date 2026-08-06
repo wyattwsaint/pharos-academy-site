@@ -57,7 +57,7 @@ const description =
                   <time datetime={announcement.postedOn}>{postedOnLabel(announcement.postedOn)}</time>
                 </p>
                 <h2 class="mt-2">{announcement.headline}</h2>
-                <p class="mt-3">{announcement.body}</p>
+                <p class="news-body mt-3">{announcement.body}</p>
                 {announcement.linkUrl && announcement.linkLabel && (
                   <p class="mt-3">
                     <a href={announcement.linkUrl}>{announcement.linkLabel}</a>
@@ -93,5 +93,11 @@ const description =
   .news-list > li {
     border-left: 2px solid var(--color-gold-orn);
     padding-left: 1.25rem;
+  }
+
+  /* The body is a textarea in the admin, so a blank line typed there is a
+     paragraph break here rather than a space. */
+  .news-body {
+    white-space: pre-line;
   }
 </style>

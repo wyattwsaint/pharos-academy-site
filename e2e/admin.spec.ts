@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 import { SUITE_ADMIN, signIn } from './suite-admin.js';
 
@@ -227,7 +227,7 @@ test.describe('announcements', () => {
   }
 
   async function post(
-    page: import('@playwright/test').Page,
+    page: Page,
     fields: { headline: string; body: string; postedOn?: string; file?: boolean },
   ): Promise<void> {
     await signIn(page, '/admin/announcements');
