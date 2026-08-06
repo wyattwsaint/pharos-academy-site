@@ -1,5 +1,9 @@
+import { NEWS_PATH } from './announcements/views.js';
 import { CATALOGUE } from './courses/catalogue.js';
 import { classPath, CLASS_VIEWS } from './courses/views.js';
+import { CURRENT_FAMILIES_PATH } from './current-families/section.js';
+import { STAFF_PATH } from './people/views.js';
+import { POLICIES_PATH } from './policies/views.js';
 
 /**
  * The enumerated public route list.
@@ -63,7 +67,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * surface missing from this list is a surface that keeps the old name until
    * the hour's ISR expiry catches it.
    */
-  { path: '/staff', priority: 0.6, changefreq: 'monthly' },
+  { path: STAFF_PATH, priority: 0.6, changefreq: 'monthly' },
   /*
    * The news page (#27).
    *
@@ -76,7 +80,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * enumerating them here is not possible — the route that serves them renders
    * on request and revalidates on its own ETag instead.
    */
-  { path: '/news', priority: 0.6, changefreq: 'weekly' },
+  { path: NEWS_PATH, priority: 0.6, changefreq: 'weekly' },
   /*
    * The policies page (#28).
    *
@@ -91,7 +95,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * reason an announcement's attachment is not: they are database rows uploaded
    * after the build, and the routes that serve them render on request.
    */
-  { path: '/policies', priority: 0.6, changefreq: 'monthly' },
+  { path: POLICIES_PATH, priority: 0.6, changefreq: 'monthly' },
   /*
    * How applying works (#29).
    *
@@ -120,6 +124,15 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * republish that reaches the homepage and the footer.
    */
   { path: '/about', priority: 0.8, changefreq: 'monthly' },
+  /*
+   * Current Families — the section index (#30).
+   *
+   * Low priority and rarely changing: it is a signpost, and the pages under it
+   * are the ones worth landing on. It is enumerated all the same because it is
+   * a nav item, and because the thing it says about the calendar will stop
+   * being true when #23 lands.
+   */
+  { path: CURRENT_FAMILIES_PATH, priority: 0.4, changefreq: 'yearly' },
   /*
    * The Statement of Faith (#30).
    *

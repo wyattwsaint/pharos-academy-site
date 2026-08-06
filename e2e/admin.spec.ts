@@ -6,6 +6,9 @@ import { unzipSync } from 'fflate';
 
 import { LABELS } from '../src/lib/admin/policies.js';
 import { SUITE_ADMIN, signIn } from './suite-admin.js';
+import { NEWS_PATH } from '../src/lib/announcements/views.js';
+import { STAFF_PATH } from '../src/lib/people/views.js';
+import { POLICIES_PATH } from '../src/lib/policies/views.js';
 
 /**
  * The admin, in a browser (#20).
@@ -138,7 +141,7 @@ test.describe('editing a person', () => {
     await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
 
     // A real write, and it reaches the public page it is printed on.
-    await page.goto('/staff');
+    await page.goto(STAFF_PATH);
     await expect(page.locator('#angela-fecteau .role')).toHaveText(role);
   });
 
@@ -261,7 +264,7 @@ test.describe('announcements', () => {
     await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
 
     // The news page carries it in full…
-    await page.goto('/news');
+    await page.goto(NEWS_PATH);
     const entry = page.locator('#news li', { hasText: headline });
     await expect(entry.getByRole('heading', { name: headline })).toBeVisible();
     await expect(entry.locator('a[href$=".pdf"]')).toHaveCount(0);
@@ -284,7 +287,7 @@ test.describe('announcements', () => {
 
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
 
-    await page.goto('/news');
+    await page.goto(NEWS_PATH);
     const link = page
       .locator('#news li', { hasText: headline })
       .locator('a[href$=".pdf"]');
@@ -317,7 +320,7 @@ test.describe('announcements', () => {
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
     await expect(page.locator('#attachment-error')).toContainText('not a PDF');
 
-    await page.goto('/news');
+    await page.goto(NEWS_PATH);
     await expect(page.getByRole('heading', { name: 'Suite notice, bad file' })).toHaveCount(0);
   });
 
@@ -362,7 +365,7 @@ test.describe('announcements', () => {
     await expect(band.locator('li')).toHaveCount(0);
 
     // Nothing was lost: the record is all still on the news page.
-    await page.goto('/news');
+    await page.goto(NEWS_PATH);
     for (const slug of slugs) {
       await expect(page.locator(`[id="${slug}"]`), slug).toHaveCount(1);
     }
@@ -457,7 +460,7 @@ test.describe('policies', () => {
     await upload(page, FIRST, 'transport-v1.pdf');
 
     const today = new Date().toISOString().slice(0, 10);
-    await page.goto('/policies');
+    await page.goto(POLICIES_PATH);
     const entry = page.locator(`[id="${SLUG}"]`);
     await expect(entry).toContainText(DESCRIPTION);
     await expect(entry.locator('time')).toHaveAttribute('datetime', today);

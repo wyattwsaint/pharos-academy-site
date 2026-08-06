@@ -8,6 +8,20 @@
  */
 
 /**
+ * The listing page's own address.
+ *
+ * Under Current Families since #30 — it is the section for families who are
+ * already here, and nothing in it is behind a login; Admissions links the
+ * handbook's fee detail directly so a prospective family never has to work out
+ * that they are allowed to look. The old `/policies` 301s here.
+ *
+ * **The files themselves did not move**, and must not: `policyPath` below is
+ * the address printed on a handbook and the far end of a 301 from the Wix site.
+ * Only the page listing them changed address.
+ */
+export const POLICIES_PATH = '/current-families/policies';
+
+/**
  * The fixed address of a policy — the current version, always, forever.
  *
  * This is the URL that goes in a printed handbook and on the far end of a 301

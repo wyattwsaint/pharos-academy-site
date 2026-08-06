@@ -1,6 +1,7 @@
 ---
 import { currentAnnouncements, type Announcement } from '../../lib/announcements/announcement.js';
 import { attachmentPath, newsPath } from '../../lib/announcements/views.js';
+import { NEWS_PATH } from '../../lib/announcements/views.js';
 
 /**
  * Announcements, directly under the hero.
@@ -82,7 +83,7 @@ const showing = currentAnnouncements(announcements, new Date());
       }
     </ul>
     <p class="mt-8">
-      <a class="text-gold-ink underline underline-offset-4" href="/news">All news →</a>
+      <a class="text-gold-ink underline underline-offset-4" href={NEWS_PATH}>All news →</a>
     </p>
   </div>
 </section>

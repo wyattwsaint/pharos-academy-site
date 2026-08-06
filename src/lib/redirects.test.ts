@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { isLiveDestination, redirectConfig, redirectedPaths, REDIRECTS } from './redirects.js';
+import {
+  isLiveDestination,
+  redirectConfig,
+  redirectedPaths,
+  REDIRECTS,
+  STILL_OWED,
+} from './redirects.js';
 import { publicPaths } from './routes.js';
 
 /**
@@ -48,11 +54,61 @@ describe('the 301 map', () => {
     }
   });
 
-  it('only carries addresses the live Wix site actually published', () => {
-    for (const path of redirectedPaths()) {
-      expect(MIRROR_README, path).toContain(`\`${path}\``);
+  it('only carries Wix addresses the live site actually published', () => {
+    for (const redirect of REDIRECTS.filter((entry) => entry.origin === 'wix')) {
+      expect(MIRROR_README, redirect.from).toContain(`\`${redirect.from}\``);
     }
   });
+
+  // The other kind: an address this build shipped and then moved when #9's
+  // tree was applied. It cannot be in the mirror, and asserting that is what
+  // stops the escape hatch being used to smuggle in a Wix path nobody checked.
+  it('marks a moved address of our own as ours, and it is one', () => {
+    const ours = REDIRECTS.filter((entry) => entry.origin === 'this-site');
+    expect(ours.length).toBeGreaterThan(0);
+    for (const redirect of ours) {
+      expect(MIRROR_README, redirect.from).not.toContain(`\`${redirect.from}\``);
+    }
+  });
+
+  /*
+   * #30 AC 4, read straight off the mirror's own table rather than off a list
+   * somebody kept in step with it.
+   *
+   * The table is the record of what the Wix site published — nineteen numbered
+   * rows — and every one of them has to end somewhere that renders: either this
+   * site serves the same path, or the map redirects it. A row that is neither
+   * is an address that 404s the day the DNS moves, and that is the whole
+   * failure this ticket exists to prevent.
+   */
+  it('leaves none of the nineteen published URLs without a home', () => {
+    const served = new Set(publicPaths());
+    const redirected = new Set(redirectedPaths());
+    const owed = new Set(STILL_OWED);
+
+    expect(publishedUrls()).toHaveLength(19);
+    for (const path of publishedUrls()) {
+      if (owed.has(path)) continue;
+      expect(served.has(path) || redirected.has(path), `${path} goes nowhere`).toBe(true);
+    }
+  });
+
+  // The escape hatch, kept honest two ways: an owed address has to be one the
+  // Wix site really published, and it must not already have a home — an entry
+  // left behind after its page was built would hide the next real gap.
+  it('owes only published addresses, and only ones that really have nowhere to go', () => {
+    const published = new Set(publishedUrls());
+    const homed = new Set([...publicPaths(), ...redirectedPaths()]);
+    for (const path of STILL_OWED) {
+      expect(published.has(path), `${path} was never published`).toBe(true);
+      expect(homed.has(path), `${path} has a home and is still listed as owed`).toBe(false);
+    }
+  });
+
+  /** The nineteen, read off the mirror's own numbered table. */
+  function publishedUrls(): string[] {
+    return [...MIRROR_README.matchAll(/^\| \d+ \| `([^`]+)` \|/gm)].map((match) => match[1]!);
+  }
 
   it('says why, for every entry', () => {
     for (const redirect of REDIRECTS) {

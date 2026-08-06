@@ -1,5 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { NEWS_PATH } from '../src/lib/announcements/views.js';
+import { CURRENT_FAMILIES_PATH } from '../src/lib/current-families/section.js';
+import { STAFF_PATH } from '../src/lib/people/views.js';
+import { POLICIES_PATH } from '../src/lib/policies/views.js';
+
 
 /**
  * WCAG 2.2 AA is a hard target (spec #18 §"Accessibility"), and the acceptance
@@ -78,7 +83,7 @@ const SURFACES = [
   { name: 'classes by day', path: '/classes/by-day', state: 'closed', open: noop },
   {
     name: 'the full descriptions',
-    path: '/classes/full-descriptions',
+    path: '/classes/descriptions',
     state: 'closed',
     open: noop,
   },
@@ -86,13 +91,13 @@ const SURFACES = [
   // #26. Eight of the eleven people on it have no bio and no photograph, so
   // this is also where "an absent bio renders correctly" is measured at every
   // width rather than only asserted in one.
-  { name: 'the staff page', path: '/staff', state: 'closed', open: noop },
+  { name: 'the staff page', path: STAFF_PATH, state: 'closed', open: noop },
   // #27 AC 5. The list carries dates, links out and PDF links, and it is the
   // one surface whose length is decided by how much the school has posted.
-  { name: 'the news page', path: '/news', state: 'closed', open: noop },
+  { name: 'the news page', path: NEWS_PATH, state: 'closed', open: noop },
   // #28 AC 8. A list of documents, each with a description, a date and a
   // download — and the one page a parent is sent to from a printed handbook.
-  { name: 'the policies page', path: '/policies', state: 'closed', open: noop },
+  { name: 'the policies page', path: POLICIES_PATH, state: 'closed', open: noop },
   // #29 AC 8. The longest piece of prose on the site, a numbered list, a
   // three-column figure list that stacks on a phone, and a `<details>` — and
   // the page a family reads immediately before committing money, so a layout
@@ -104,6 +109,9 @@ const SURFACES = [
     state: 'with the refund terms open',
     open: openRefundTerms,
   },
+  // #30 AC 8. Two cards and a paragraph — short, and measured all the same,
+  // because it is a nav destination and the nav is on every page.
+  { name: 'the current families page', path: CURRENT_FAMILIES_PATH, state: 'closed', open: noop },
   // #30 AC 8. Two description lists, a two-column statement grid that stacks,
   // and three long essay paragraphs — the page that absorbed three Wix pages,
   // so it is also the longest one a 301 can land somebody part-way down.

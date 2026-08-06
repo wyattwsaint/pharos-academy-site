@@ -42,7 +42,10 @@ export const CLASS_VIEWS: readonly ClassView[] = [
   },
   {
     id: 'full-descriptions',
-    path: '/classes/full-descriptions',
+    // `descriptions`, not `full-descriptions`: #9's tree names it that, and the
+    // word "full" was only ever there to distinguish this page from the Wix
+    // course list that no longer exists. Both older addresses 301 here.
+    path: '/classes/descriptions',
     label: 'Full descriptions',
     title: 'Full course descriptions',
     description:

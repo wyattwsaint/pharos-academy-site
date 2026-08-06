@@ -6,14 +6,23 @@
  * one of them the day the route moves.
  */
 
+/**
+ * The news page's own address.
+ *
+ * Under Current Families since #30, because that is who news is for — the
+ * section describes the audience, not a permission, and nothing here is behind
+ * a login. The old `/news` 301s.
+ */
+export const NEWS_PATH = '/current-families/news';
+
 /** Where an announcement's attached PDF is served. */
 export function attachmentPath(slug: string): string {
-  return `/news/${slug}.pdf`;
+  return `${NEWS_PATH}/${slug}.pdf`;
 }
 
 /** Where an announcement is anchored on the news page. */
 export function newsPath(slug: string): string {
-  return `/news#${slug}`;
+  return `${NEWS_PATH}#${slug}`;
 }
 
 /**

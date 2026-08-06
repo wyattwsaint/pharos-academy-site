@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { CATALOGUE } from '../src/lib/courses/catalogue.js';
 import { classPath } from '../src/lib/courses/views.js';
 import { PEOPLE } from '../src/lib/people/person.js';
+import { STAFF_PATH } from '../src/lib/people/views.js';
 
 /**
  * #26's acceptance criteria, in a browser.
@@ -15,7 +16,7 @@ import { PEOPLE } from '../src/lib/people/person.js';
  * on the class page and in the timetable. Three surfaces, one row.
  *
  * Zero axe violations at all five widths is `accessibility.spec.ts`'s, where
- * `/staff` is one line on the surface list.
+ * `/about/staff` is one line on the surface list.
  */
 
 /** Somebody the school has published no bio and no photograph for. AC 2. */
@@ -26,7 +27,7 @@ const BOTH = 'george-jensen';
 
 test.describe('the staff page', () => {
   test('renders a person with no bio and no photograph, and invents neither', async ({ page }) => {
-    await page.goto('/staff');
+    await page.goto(STAFF_PATH);
 
     const entry = page.locator(`#${UNWRITTEN.slug}`);
     await expect(entry).toHaveCount(1);
@@ -43,7 +44,7 @@ test.describe('the staff page', () => {
   });
 
   test('puts no image of a person on the page at all, generated or otherwise', async ({ page }) => {
-    await page.goto('/staff');
+    await page.goto(STAFF_PATH);
 
     // Slot 4 is blocked on the school supplying photographs of real consenting
     // adults, so the leadership portraits are empty tints and nothing else.
@@ -56,7 +57,7 @@ test.describe('the staff page', () => {
   test('shows one row in both sections rather than two rows saying the same thing', async ({
     page,
   }) => {
-    await page.goto('/staff');
+    await page.goto(STAFF_PATH);
 
     const leadership = page.locator(`[data-section="staff-leadership"] #${BOTH}`);
     const teaching = page.locator(`[data-section="staff-instructors"] #${BOTH}`);
@@ -74,7 +75,7 @@ test.describe('the staff page', () => {
   });
 
   test('links each instructor to every class they teach', async ({ page }) => {
-    await page.goto('/staff');
+    await page.goto(STAFF_PATH);
 
     for (const course of CATALOGUE) {
       const link = page.locator(
@@ -95,7 +96,7 @@ test.describe('an instructor’s name', () => {
   test('is the same on the class page, in the timetable and on the staff page', async ({
     page,
   }) => {
-    await page.goto('/staff');
+    await page.goto(STAFF_PATH);
     const onStaff = (
       await page.locator(`#${course.instructorSlug} h3`).first().textContent()
     )?.trim();

@@ -65,7 +65,7 @@ describe('the public route list', () => {
     const paths = new Set(publicPaths());
     expect(paths).toContain('/classes');
     expect(paths).toContain('/classes/by-day');
-    expect(paths).toContain('/classes/full-descriptions');
+    expect(paths).toContain('/classes/descriptions');
     for (const course of CATALOGUE) {
       expect(paths, course.title).toContain(`/classes/${course.slug}`);
     }

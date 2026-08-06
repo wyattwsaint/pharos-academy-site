@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { SEEDED_ANNOUNCEMENTS } from '../src/lib/announcements/announcement.js';
+import { NEWS_PATH } from '../src/lib/announcements/views.js';
 
 /**
  * The news page, in a browser (#27).
@@ -35,7 +36,7 @@ const WITH_LINK = SEEDED_ANNOUNCEMENTS.find((announcement) => announcement.linkU
 
 test.describe('the news page', () => {
   test('lists everything the school has announced, stale or not', async ({ page }) => {
-    await page.goto('/news');
+    await page.goto(NEWS_PATH);
 
     for (const announcement of SEEDED_ANNOUNCEMENTS) {
       await expect(
@@ -46,7 +47,7 @@ test.describe('the news page', () => {
   });
 
   test('prints each one with the date the school posted it', async ({ page }) => {
-    await page.goto('/news');
+    await page.goto(NEWS_PATH);
 
     const entry = page.locator(`[id="${PLAIN.slug}"]`);
     await expect(entry).toHaveCount(1);
@@ -57,14 +58,14 @@ test.describe('the news page', () => {
   });
 
   test('shows no PDF link on an announcement that has no file', async ({ page }) => {
-    await page.goto('/news');
+    await page.goto(NEWS_PATH);
 
     const entry = page.locator(`[id="${PLAIN.slug}"]`);
     await expect(entry.locator('a[href$=".pdf"]')).toHaveCount(0);
   });
 
   test('carries a link out under the name the school gave it', async ({ page }) => {
-    await page.goto('/news');
+    await page.goto(NEWS_PATH);
 
     const entry = page.locator(`[id="${WITH_LINK.slug}"]`);
     const link = entry.getByRole('link', { name: WITH_LINK.linkLabel! });
@@ -74,14 +75,21 @@ test.describe('the news page', () => {
   test('is reachable from the site nav, which the homepage band is not always', async ({ page }) => {
     await page.goto('/');
     // The announcements band hides itself when nothing is current, so the nav
-    // is what keeps the record reachable in a quiet month.
-    await page.locator('[data-site-header]').getByRole('link', { name: 'News' }).click();
-    await expect(page).toHaveURL(/\/news$/);
+    // is what keeps the record reachable in a quiet month. Since #30 the nav
+    // item is the section rather than the page — News is one of two things a
+    // current family comes for, and the trail is two clicks rather than one.
+    await page
+      .locator('[data-site-header]')
+      .getByRole('link', { name: 'Current Families', exact: true })
+      .click();
+    await page.getByRole('link', { name: 'News', exact: true }).click();
+
+    await expect(page).toHaveURL(new RegExp(`${NEWS_PATH}$`));
     await expect(page.getByRole('heading', { level: 1, name: 'News' })).toBeVisible();
   });
 
   test('answers a slug with no file behind it with a 404, not an empty PDF', async ({ request }) => {
-    const response = await request.get('/news/not-an-announcement.pdf');
+    const response = await request.get(`${NEWS_PATH}/not-an-announcement.pdf`);
     expect(response.status()).toBe(404);
   });
 });

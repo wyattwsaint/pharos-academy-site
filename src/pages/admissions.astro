@@ -13,7 +13,7 @@ import { INQUIRY_HREF } from '../lib/home/sections.js';
 import { getMoneySettings } from '../lib/money/store.js';
 import { publishedPolicies } from '../lib/policies/policy.js';
 import { listPolicies } from '../lib/policies/store.js';
-import { policyPath } from '../lib/policies/views.js';
+import { POLICIES_PATH, policyPath } from '../lib/policies/views.js';
 
 /**
  * How applying works, said plainly before anybody is asked for anything (#29).
@@ -199,7 +199,7 @@ const description =
         )
       }
       <p class="mt-6 text-ink-2">
-        <a href="/policies">Every policy the school publishes</a>, including the ones nobody signs.
+        <a href={POLICIES_PATH}>Every policy the school publishes</a>, including the ones nobody signs.
       </p>
     </div>
   </section>
