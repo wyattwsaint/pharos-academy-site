@@ -739,6 +739,13 @@ test.describe('accessibility', () => {
     '/admin/policies/handbook',
     '/admin/policies/new',
     '/admin/backup',
+    // #23. The School Year screen is the densest form on the site — eight date
+    // and week pairs, a repeating closure row and a table redrawn by script —
+    // and the preview is the only region here whose content changes without a
+    // navigation.
+    '/admin/school-year',
+    '/admin/events',
+    '/admin/events/new',
   ]) {
     for (const width of ADMIN_WIDTHS) {
       test(`${path} has zero axe violations at ${width}px`, async ({ page }) => {

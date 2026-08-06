@@ -299,6 +299,26 @@ export function dayLabel(date: string): string {
   });
 }
 
+/**
+ * "31 August 2026" — how every date on the calendar and beside every event is
+ * printed.
+ *
+ * One function for both, because they are one format and a second copy is a
+ * second thing to notice when the school asks for American order.
+ *
+ * Parsed as UTC, like every other date on the site: `new Date('2026-08-31')` is
+ * midnight UTC, and printing it in a timezone behind Greenwich gives 30 August
+ * — a calendar one day wrong on all 112 rows, west of London, forever.
+ */
+export function fullDateLabel(date: string): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 /** Errors keyed by the form field that caused them; empty means the year saves. */
 export type SchoolYearErrors = Record<string, string>;
 

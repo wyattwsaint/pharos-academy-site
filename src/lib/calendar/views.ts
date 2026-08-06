@@ -1,4 +1,5 @@
 import { CALENDAR_PATH } from '../current-families/section.js';
+import { fullDateLabel } from './year.js';
 
 /**
  * Where the calendar lives, and what the school has to tell families about it
@@ -53,15 +54,7 @@ export function semesterHeading(semester: 'fall' | 'spring'): string {
 /**
  * "31 August 2026" — a meeting date, as the sheet prints it.
  *
- * Parsed as UTC, like every other date on the site: `new Date('2026-08-31')` is
- * midnight UTC, and printing it in a timezone behind Greenwich gives 30 August
- * — a calendar one day wrong on all 112 rows, west of London, forever.
+ * The same format an event's date is printed in, and the same function: one
+ * date format on the calendar, in one place (`calendar/year.ts`).
  */
-export function meetingDateLabel(date: string): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-}
+export { fullDateLabel as meetingDateLabel };

@@ -1,3 +1,5 @@
+import { fullDateLabel } from './year.js';
+
 /**
  * A one-off on the school's calendar (#23).
  *
@@ -61,15 +63,13 @@ export function eventSlug(heldOn: string, title: string): string {
   return words ? `${heldOn}-${words}` : heldOn;
 }
 
-/** "17 October 2026" — how a date is printed wherever an event is shown. */
-export function eventDateLabel(heldOn: string): string {
-  return new Date(`${heldOn}T00:00:00Z`).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-}
+/**
+ * "17 October 2026" — how a date is printed wherever an event is shown.
+ *
+ * The same format, and the same function, a meeting date is printed in: one
+ * date format on the calendar, in one place.
+ */
+export { fullDateLabel as eventDateLabel };
 
 /**
  * "6.30pm" — the school's own way of writing a time, from `HH:MM`.

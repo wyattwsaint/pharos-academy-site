@@ -85,8 +85,20 @@ const semesters = year
     semesters.map(({ semester, heading, rows }) => (
       <section class="band" id={semester} data-section={`calendar-${semester}`}>
         <div class="wide">
-          <h2>{heading}</h2>
-          <div class="sheet-scroll">
+          <h2 id={`${semester}-heading`}>{heading}</h2>
+          {/*
+            A scrollable box with nothing focusable inside it is unreachable
+            from a keyboard, which is a real failure and not a lint: the sheet
+            scrolls sideways on a phone and holds no links at all. So it is a
+            named region and it takes focus, and the name is the semester
+            heading that is already above it.
+          */}
+          <div
+            class="sheet-scroll"
+            role="region"
+            tabindex="0"
+            aria-labelledby={`${semester}-heading`}
+          >
             <table class="sheet">
               <caption class="sr-only">
                 {heading} of the {year?.label} school year — one row per week, one column per day
