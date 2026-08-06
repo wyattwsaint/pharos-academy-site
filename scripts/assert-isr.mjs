@@ -49,14 +49,22 @@ if (!existsSync(prerenderConfig)) {
 // next match rather than serving anything, so they are not the route's
 // destination. Matching one would report `served by undefined` and fail a build
 // that is in fact correct.
-for (const { path } of PUBLIC_ROUTES) {
+for (const { path, delivery } of PUBLIC_ROUTES) {
   const match = routes.find(
     (route) => route.src && route.continue !== true && new RegExp(route.src).test(path),
   );
+  // A route marked `on-request` must land on `_render` instead — it takes a
+  // POST, and the adapter puts every route on the ISR function unless it is in
+  // the `exclude` list. That list is built from this same field, so a page
+  // added here and forgotten there fails the build rather than quietly caching
+  // one visitor's form outcome for the next.
+  const wants = delivery === 'on-request' ? '_render' : '_isr';
   if (!match) {
     problems.push(`No route in the build output matches \`${path}\`.`);
-  } else if (!String(match.dest ?? '').includes('_isr')) {
-    problems.push(`\`${path}\` is served by \`${match.dest}\`, not the ISR function.`);
+  } else if (!String(match.dest ?? '').includes(wants)) {
+    problems.push(
+      `\`${path}\` is served by \`${match.dest}\`, not \`${wants}\` as its delivery says.`,
+    );
   }
 }
 
@@ -64,8 +72,10 @@ if (problems.length > 0) {
   fail(problems.map((p) => `  - ${p}`).join('\n'));
 }
 
+const onRequest = PUBLIC_ROUTES.filter((route) => route.delivery === 'on-request').length;
 console.log(
-  `ISR verified: ${PUBLIC_ROUTES.length} public route(s) served by \`_isr.func\` with an expiration set.`,
+  `ISR verified: ${PUBLIC_ROUTES.length - onRequest} public route(s) served by \`_isr.func\` with an expiration set` +
+    (onRequest > 0 ? `, and ${onRequest} deliberately rendered on request.` : '.'),
 );
 
 function fail(message) {

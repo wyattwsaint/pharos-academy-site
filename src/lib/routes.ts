@@ -29,6 +29,18 @@ export type PublicRoute = {
   priority: number;
   /** How often the page's content is expected to change. */
   changefreq: ChangeFreq;
+  /**
+   * How the page is delivered.
+   *
+   * `isr` for all but one of them, which is the whole delivery model (#18 §1).
+   * `on-request` is for a page that takes a POST: the volunteer form's answer
+   * belongs to one submission, and a cache in front of it is a cache that can
+   * hand one visitor's outcome to the next. Three things read this — the
+   * adapter's ISR `exclude` list, the build-output assertion, and whole-site
+   * republishing, which has nothing to revalidate on a page that renders every
+   * time.
+   */
+  delivery?: 'isr' | 'on-request';
 };
 
 export type ChangeFreq =
@@ -144,7 +156,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * read from the school details row, so a changed `giveUrl` has to reach it in
    * the same republish as everywhere else.
    */
-  { path: SUPPORT_PATH, priority: 0.5, changefreq: 'monthly' },
+  { path: SUPPORT_PATH, priority: 0.5, changefreq: 'monthly', delivery: 'on-request' },
   /*
    * Teaching here (#30).
    *
@@ -169,6 +181,27 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
 /** Every public path, in list order. */
 export function publicPaths(): string[] {
   return PUBLIC_ROUTES.map((route) => route.path);
+}
+
+/**
+ * The paths whole-site republishing should actually re-request.
+ *
+ * A page that renders on every request has no cached copy to replace, so asking
+ * the CDN to revalidate it is a request that costs a Neon round trip and
+ * changes nothing — and it would be reported to Jill as part of "republished
+ * 32 pages", which is a number that should mean something.
+ */
+export function revalidatablePaths(): string[] {
+  return PUBLIC_ROUTES.filter((route) => route.delivery !== 'on-request').map(
+    (route) => route.path,
+  );
+}
+
+/** The paths that must never be served from the ISR cache. */
+export function onRequestPaths(): string[] {
+  return PUBLIC_ROUTES.filter((route) => route.delivery === 'on-request').map(
+    (route) => route.path,
+  );
 }
 
 /**

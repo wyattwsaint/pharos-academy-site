@@ -1,7 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { flattenCapture as flatten, mirrorExternalLinks, mirrorPage } from '../mirror.js';
 import { publicPaths } from '../routes.js';
 import {
   ABOUT_CHILDREN,
@@ -32,21 +31,9 @@ import {
  * database row (`getSchoolDetails`), because the school edits them and the
  * mirror records them drifting across four hand-typed copies already.
  */
-function mirror(name: string): string {
-  return readFileSync(
-    fileURLToPath(new URL(`../../../docs/mirror/pages/${name}.txt`, import.meta.url)),
-    'utf8',
-  );
-}
-
-/** Wix's captures are full of non-breaking and zero-width marks; words survive. */
-function flatten(text: string): string {
-  return text.replace(/[ ​‎‏]/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-const coreValues = flatten(mirror('core_values'));
-const pharosMeaning = flatten(mirror('general_8'));
-const location = flatten(mirror('about_1'));
+const coreValues = flatten(mirrorPage('core_values'));
+const pharosMeaning = flatten(mirrorPage('general_8'));
+const location = flatten(mirrorPage('about_1'));
 
 describe('the school’s method', () => {
   it('carries all six marks of it', () => {
@@ -118,17 +105,13 @@ describe('where the school meets', () => {
   // the live site links it, and the mirror's link graph is the record of what
   // it linked.
   it('links the church at the address the school links it', () => {
-    const external = readFileSync(
-      fileURLToPath(new URL('../../../docs/mirror/data/external.json', import.meta.url)),
-      'utf8',
-    );
-    expect(external).toContain(MEETING_PLACE.href);
+    expect(mirrorExternalLinks()).toContain(MEETING_PLACE.href);
   });
 });
 
 describe('how the school asks for support', () => {
-  const giving = flatten(mirror('giving'));
-  const volunteer = flatten(mirror('volunteer'));
+  const giving = flatten(mirrorPage('giving'));
+  const volunteer = flatten(mirrorPage('volunteer'));
 
   it.each(GIVING_INTRO.map((paragraph, index) => [index + 1, paragraph] as const))(
     'transcribes paragraph %i of the giving explanation, word for word',

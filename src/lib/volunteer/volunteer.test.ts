@@ -1,8 +1,7 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { Mail } from '../backup/monthly.js';
+import { flattenCapture as flatten, mirrorForm } from '../mirror.js';
 import {
   CONTACT_METHODS,
   INTERESTS,
@@ -23,18 +22,7 @@ import {
  * thing the school asked for most. The second is delivery: what is actually
  * sent, and — the failure that matters — what happens when the send fails.
  */
-const FORM = readFileSync(
-  fileURLToPath(
-    new URL('../../../docs/mirror/forms/googleform_volunteer-info.txt', import.meta.url),
-  ),
-  'utf8',
-);
-
-function flatten(text: string): string {
-  return text.replace(/[ ​‎‏]/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-const published = flatten(FORM);
+const published = flatten(mirrorForm('googleform_volunteer-info'));
 
 function form(
   values: Partial<Omit<VolunteerFields, 'contactMethod' | 'interests'>> & {

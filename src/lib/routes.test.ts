@@ -4,7 +4,15 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { CATALOGUE } from './courses/catalogue.js';
-import { PUBLIC_ROUTES, absoluteUrl, publicPaths, renderSitemap } from './routes.js';
+import { SUPPORT_PATH } from './about/story.js';
+import {
+  PUBLIC_ROUTES,
+  absoluteUrl,
+  onRequestPaths,
+  publicPaths,
+  renderSitemap,
+  revalidatablePaths,
+} from './routes.js';
 
 const SITE = 'https://www.pharosacademy.net';
 const PAGES_DIR = fileURLToPath(new URL('../pages', import.meta.url));
@@ -75,6 +83,31 @@ describe('the public route list', () => {
     for (const path of publicPaths()) {
       expect(path.startsWith('/admin')).toBe(false);
     }
+  });
+});
+
+describe('how each route is delivered', () => {
+  /*
+   * ISR is the delivery model (#18 §1) and the exception has to earn itself.
+   * `/about/support` is the one page that takes a POST — the volunteer form —
+   * and a cache in front of it can hand one visitor's outcome to the next.
+   */
+  it('renders on request only where a page takes a POST', () => {
+    expect(onRequestPaths()).toEqual([SUPPORT_PATH]);
+  });
+
+  // The sitemap still carries it: how a page is delivered is not whether it
+  // should be found.
+  it('keeps an on-request page in the sitemap all the same', () => {
+    expect(publicPaths()).toContain(SUPPORT_PATH);
+    expect(renderSitemap('https://example.org')).toContain(SUPPORT_PATH);
+  });
+
+  // …and whole-site republishing skips it, because there is no cached copy to
+  // replace and the count Jill is shown should mean something.
+  it('leaves an on-request page out of what republishing re-requests', () => {
+    expect(revalidatablePaths()).not.toContain(SUPPORT_PATH);
+    expect(revalidatablePaths().length).toBe(publicPaths().length - 1);
   });
 });
 

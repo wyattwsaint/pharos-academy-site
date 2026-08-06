@@ -1,4 +1,5 @@
 import type { Mail, Sender } from '../backup/monthly.js';
+import { isEmailAddress, textField as text } from '../forms.js';
 
 /**
  * The Volunteer Information Sheet, as a form this site owns (#30 AC 3).
@@ -205,10 +206,6 @@ export async function submitVolunteer(
   }
 }
 
-function text(form: FormData, name: string): string {
-  const value = form.get(name);
-  return typeof value === 'string' ? value.trim() : '';
-}
 
 function asContactMethod(value: string): ContactMethod {
   return (CONTACT_METHODS as readonly string[]).includes(value)
@@ -216,6 +213,3 @@ function asContactMethod(value: string): ContactMethod {
     : 'Email';
 }
 
-function isEmailAddress(value: string): boolean {
-  return /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(value);
-}

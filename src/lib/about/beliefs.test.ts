@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+import { flattenCapture as flatten, mirrorExternalLinks, mirrorPage } from '../mirror.js';
 
 import {
   BELIEFS_ARTICLES,
@@ -21,21 +21,7 @@ import {
  * line of theology fails this immediately, which is the point: the school's
  * words are not ours to edit, and the mirror is the only copy of them we have.
  */
-const MIRROR = readFileSync(
-  fileURLToPath(new URL('../../../docs/mirror/pages/statement_of_faith.txt', import.meta.url)),
-  'utf8',
-);
-
-/**
- * The Wix capture is full of non-breaking spaces and zero-width marks, and
- * carries each article on its own line. Neither is meaningful, so both sides of
- * the comparison are flattened the same way — what survives is the words.
- */
-function flatten(text: string): string {
-  return text.replace(/[ ​‎‏]/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-const publishedText = flatten(MIRROR);
+const publishedText = flatten(mirrorPage('statement_of_faith'));
 
 describe('the Statement of Faith', () => {
   it('carries all eleven of the school’s articles', () => {
@@ -65,11 +51,7 @@ describe('the Statement of Faith', () => {
   // link graph — so this asserts we are pointing at the same file, not at a
   // plausible-looking one.
   it('links Here We Stand 2016 at the address the school links it', () => {
-    const external = readFileSync(
-      fileURLToPath(new URL('../../../docs/mirror/data/external.json', import.meta.url)),
-      'utf8',
-    );
-    expect(external).toContain(HERE_WE_STAND.href);
+    expect(mirrorExternalLinks()).toContain(HERE_WE_STAND.href);
   });
 
   it('lives under About, where the nav tree puts it', () => {
