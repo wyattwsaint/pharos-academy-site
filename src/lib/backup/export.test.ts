@@ -5,6 +5,7 @@ import { unzipSync } from 'fflate';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { saveAnnouncement } from '../announcements/store.js';
+import { createEvent } from '../calendar/store.js';
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import * as schema from '../db/schema.js';
 import { getMoneySettings, recordAgreedTerms } from '../money/store.js';
@@ -229,6 +230,21 @@ describe('coverage of the editable set', () => {
     // empty until somebody applies (#18 §11), which is a real state and a
     // useless one for telling an exported table from a forgotten one.
     await recordAgreedTerms(db, 'The Kilker family', await getMoneySettings(db));
+    // And one event, likewise: a school year with nothing extra on it is an
+    // ordinary year (#23) and cannot distinguish an exported table from a
+    // forgotten one either.
+    await createEvent(
+      db,
+      '2026-10-17-fall-open-house',
+      {
+        heldOn: '2026-10-17',
+        title: 'Fall open house',
+        startTime: '18:30',
+        place: null,
+        note: null,
+      },
+      'Jill',
+    );
 
     const files = await open();
     const manifest = json(files, 'manifest.json') as {

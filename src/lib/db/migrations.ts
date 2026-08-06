@@ -16,6 +16,8 @@ import {
   SEEDED_ANNOUNCEMENTS,
   type SeedAnnouncement,
 } from '../announcements/announcement.js';
+import { SEEDED_SCHOOL_YEAR, type Closure, type Term } from '../calendar/year.js';
+import { DAY_TRACKS } from '../courses/schedule.js';
 import { CATALOGUE } from '../courses/catalogue.js';
 import type { Course } from '../courses/course.js';
 import { SEEDED_MONEY_SETTINGS, type MoneySettings } from '../money/settings.js';
@@ -320,7 +322,94 @@ export const MIGRATIONS: readonly Migration[] = [
        )`,
     ],
   },
+  {
+    /*
+     * The school year, and the one-off events beside it (#23).
+     *
+     * Three tables for the year rather than one wide row, and the shape is the
+     * ticket: a term is one track's own start date and week count, a closure is
+     * a date with no track at all, and the 112 meeting dates are computed from
+     * the two (`calendar/year.ts`). A stored list of dates would be the five
+     * hand-made PDFs again, in a database.
+     *
+     * Seeded with the 2026–27 year the school has already published, like the
+     * courses and the policies are — with the two corrections its own sheets
+     * need, both recorded beside the data in `calendar/year.ts`.
+     */
+    id: '0007-school-year-and-events',
+    statements: [
+      `create table if not exists school_year (
+         id integer primary key,
+         label text not null,
+         last_edited_by text,
+         last_edited_at timestamptz,
+         constraint school_year_singleton check (id = 1)
+       )`,
+      `create table if not exists school_year_terms (
+         semester text not null,
+         track text not null,
+         first_class_date date not null,
+         weeks integer not null,
+         primary key (semester, track),
+         constraint school_year_terms_semester check (semester in ('fall', 'spring')),
+         constraint school_year_terms_track
+           check (track in (${DAY_TRACKS.map(literal).join(', ')})),
+         constraint school_year_terms_has_weeks check (weeks >= 1)
+       )`,
+      `create table if not exists school_year_closures (
+         closed_on date primary key,
+         label text not null,
+         constraint school_year_closures_is_named check (length(trim(label)) > 0)
+       )`,
+      `create table if not exists calendar_events (
+         slug text primary key,
+         held_on date not null,
+         title text not null,
+         start_time text,
+         place text,
+         note text,
+         last_edited_by text,
+         last_edited_at timestamptz,
+         constraint calendar_events_time_is_a_time
+           check (start_time is null or start_time ~ '^[0-2][0-9]:[0-5][0-9]$')
+       )`,
+      `insert into school_year (id, label) values (1, ${literal(SEEDED_SCHOOL_YEAR.label)})
+       on conflict (id) do nothing`,
+      insertTerms(SEEDED_SCHOOL_YEAR.terms),
+      insertClosures(SEEDED_SCHOOL_YEAR.closures),
+    ],
+  },
 ];
+
+/** The eight terms of the published year, idempotent like every other seed. */
+function insertTerms(terms: readonly Term[]): string {
+  const values = terms
+    .map(
+      (term) =>
+        `(${[
+          literal(term.semester),
+          literal(term.track),
+          literal(term.firstClassDate),
+          String(term.weeks),
+        ].join(', ')})`,
+    )
+    .join(', ');
+
+  return `insert into school_year_terms (semester, track, first_class_date, weeks)
+    values ${values}
+    on conflict (semester, track) do nothing`;
+}
+
+/** The days the school is closed, as published — see `calendar/year.ts`. */
+function insertClosures(closures: readonly Closure[]): string {
+  const values = closures
+    .map((closure) => `(${literal(closure.date)}, ${literal(closure.label)})`)
+    .join(', ');
+
+  return `insert into school_year_closures (closed_on, label)
+    values ${values}
+    on conflict (closed_on) do nothing`;
+}
 
 /** The school's own figures, seeded like everything else it already publishes. */
 function insertMoneySettings(settings: MoneySettings): string {

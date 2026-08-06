@@ -395,7 +395,97 @@ export const agreedTerms = pgTable('agreed_terms', {
   notificationAddresses: text('notification_addresses').array().notNull(),
 });
 
+/**
+ * The school year — one row, the way `school_details` is one row (#23).
+ *
+ * It holds a name and nothing else, because the year *is* its terms and its
+ * closed days and those are the two tables below. A single row rather than one
+ * per year on purpose: the site publishes the year it is in, and a second row
+ * would immediately raise the question of which one the calendar page and the
+ * feed are for. Next summer Jill types over these values.
+ */
+export const schoolYear = pgTable('school_year', {
+  id: integer('id').primaryKey(),
+  /** '2026–2027', as the school writes it on its own sheets. */
+  label: text('label').notNull(),
+  /** The stamp: who saved the year last, and when. Overwritten, never appended. */
+  lastEditedBy: text('last_edited_by'),
+  lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
+});
+
+/**
+ * What one day track does in one semester (#23).
+ *
+ * Eight rows at most, and **fewer is a complete year**: a track with no first
+ * class date and no courses is the Tuesday track's routine state (CONTEXT.md,
+ * "day track"), so its absence here is data the school typed rather than a
+ * fault. That is why this is a table of present tracks and not eight columns
+ * on the row above, half of which would be null and would read as missing.
+ *
+ * `weeks` counts meetings, not calendar weeks — the closures are skipped, and
+ * `calendar/year.ts` is where that computation lives.
+ */
+export const schoolYearTerms = pgTable(
+  'school_year_terms',
+  {
+    /** `fall` | `spring`. */
+    semester: text('semester').notNull(),
+    /** `Monday` … `Thursday` — a day track, as the catalogue spells them. */
+    track: text('track').notNull(),
+    /** `YYYY-MM-DD`, and it is that track's own weekday or it is refused. */
+    firstClassDate: date('first_class_date').notNull(),
+    weeks: integer('weeks').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.semester, table.track] })],
+);
+
+/**
+ * A day the school is closed (#23).
+ *
+ * **No track column, and that absence is the model.** A closure falls on a
+ * weekday and the track meeting that weekday is the one that loses it, which is
+ * exactly why the four tracks' week numbers disagree. Thanksgiving is four rows
+ * here — 25, 26 and 30 November and 1 December — and takes a week off all four
+ * tracks; Election Day is one row and touches only Tuesday.
+ */
+export const schoolYearClosures = pgTable('school_year_closures', {
+  /** `YYYY-MM-DD`, and the key: the school is closed on a day at most once. */
+  closedOn: date('closed_on').primaryKey(),
+  /** 'Labor Day'. Printed on the sheet beside the gap, so it is required. */
+  label: text('label').notNull(),
+});
+
+/**
+ * A one-off on the calendar — a concert, a picture day, a parents' evening (#23).
+ *
+ * A separate table from the term dates, and not a flag on one shared model.
+ * Term dates are a computation over eight numbers; an event is a thing that
+ * happens once, at a place, possibly at a time. Forcing them into one shape
+ * would mean either an event carrying a week number that means nothing or a
+ * meeting date carrying a place that never varies.
+ *
+ * `start_time`, `place` and `note` are nullable together with nothing else:
+ * an all-day event with no location is an ordinary event, not half of one.
+ */
+export const calendarEvents = pgTable('calendar_events', {
+  /** `2026-10-17-fall-open-house` — dated first, so it sorts. */
+  slug: text('slug').primaryKey(),
+  heldOn: date('held_on').notNull(),
+  title: text('title').notNull(),
+  /** `HH:MM`, 24-hour. Null means an all-day event, which is a real state. */
+  startTime: text('start_time'),
+  place: text('place'),
+  note: text('note'),
+  /** The stamp: who saved this last, and when. Overwritten, never appended. */
+  lastEditedBy: text('last_edited_by'),
+  lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
+});
+
 export type AdminUser = typeof adminUsers.$inferSelect;
+export type SchoolYearRow = typeof schoolYear.$inferSelect;
+export type SchoolYearTermRow = typeof schoolYearTerms.$inferSelect;
+export type SchoolYearClosureRow = typeof schoolYearClosures.$inferSelect;
+export type CalendarEventRow = typeof calendarEvents.$inferSelect;
 export type MoneySettingsRow = typeof moneySettings.$inferSelect;
 export type AgreedTermsRow = typeof agreedTerms.$inferSelect;
 export type AdminSession = typeof adminSessions.$inferSelect;
