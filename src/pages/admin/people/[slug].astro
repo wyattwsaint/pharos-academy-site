@@ -13,7 +13,7 @@ import {
 } from '../../../lib/admin/revalidate.js';
 import { formatStamp } from '../../../lib/admin/school-details.js';
 import { getDb } from '../../../lib/db/client.js';
-import { slugify } from '../../../lib/people/person.js';
+import { slugify, type Person } from '../../../lib/people/person.js';
 import { createPerson, getPerson, savePerson } from '../../../lib/people/store.js';
 
 /**
@@ -128,7 +128,7 @@ const FIELDS: {
   },
 ];
 
-function fieldsOf(row: { name: string; role: string; bio: string | null; photo: string | null; leadershipRank: number | null }): PersonFields {
+function fieldsOf(row: Person): PersonFields {
   return {
     name: row.name,
     role: row.role,
@@ -142,13 +142,18 @@ function fieldsOf(row: { name: string; role: string; bio: string | null; photo: 
  * The address of somebody just hired.
  *
  * Derived from the name rather than typed, because a slug is a URL and nobody
- * should have to think about URLs to add a member of staff. A name that
- * slugifies to nothing — punctuation only — would produce an unreachable page,
- * so it is refused instead.
+ * should have to think about URLs to add a member of staff. Two names are
+ * refused rather than stored: one that slugifies to nothing — punctuation only
+ * — because it has no page to be reached at, and one that slugifies to `new`,
+ * because this screen's own address is `/admin/people/new` and that person
+ * would be permanently hidden behind the add form.
  */
 function slugFor(name: string): string {
   const slug = slugify(name);
-  if (!slug) throw new Error('That name has no letters or numbers in it.');
+  if (!slug) throw new Error('that name has no letters or numbers in it.');
+  if (slug === NEW) {
+    throw new Error('“New” is the address of this form — give that person a fuller name.');
+  }
   return slug;
 }
 

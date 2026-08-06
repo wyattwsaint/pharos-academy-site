@@ -80,4 +80,12 @@ describe('parsing a person submission', () => {
     expect(parsePerson(form({ photo: 'people/jill.webp' })).errors.photo).toBeTruthy();
     expect(parsePerson(form({ photo: '/people/jill.txt' })).errors.photo).toBeTruthy();
   });
+
+  // The one that looks like a path and is not: `//host/face.jpg` is a
+  // protocol-relative URL, and a check that only asked for a leading slash
+  // would let exactly the off-site face this refuses straight through.
+  it('refuses a protocol-relative URL, and a path that climbs out of the site', () => {
+    expect(parsePerson(form({ photo: '//example.org/face.jpg' })).errors.photo).toBeTruthy();
+    expect(parsePerson(form({ photo: '/../secrets/face.png' })).errors.photo).toBeTruthy();
+  });
 });

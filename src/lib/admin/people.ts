@@ -74,9 +74,15 @@ export function parsePerson(form: FormData): ParsedPerson {
  * adults (#13, #26). A path under `public/` is one somebody at the school
  * chose, can look at, and can take down; an off-site URL is a face nobody here
  * can vouch for, so it is refused rather than hot-linked.
+ *
+ * The second leading slash is the case worth naming: `//example.org/face.jpg`
+ * *looks* like a path and is a protocol-relative URL, so a check that only
+ * asked for a leading slash would let exactly the thing this refuses straight
+ * through into a named member of staff's place.
  */
 function isSitePhotograph(value: string): boolean {
-  return /^\/[\w./-]+\.(webp|jpg|jpeg|png|avif)$/i.test(value) && !value.includes('..');
+  if (value.startsWith('//') || value.includes('..')) return false;
+  return /^\/[\w./-]+\.(webp|jpg|jpeg|png|avif)$/i.test(value);
 }
 
 function text(form: FormData, name: string): string {
