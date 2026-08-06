@@ -1,4 +1,5 @@
 ---
+import { BELIEFS_PATH } from '../lib/about/beliefs.js';
 import { copyrightYear, getSchoolDetails, telHref } from '../lib/admin/school-details.js';
 import { getDb } from '../lib/db/client.js';
 import { INQUIRY_HREF } from '../lib/home/sections.js';
@@ -55,7 +56,7 @@ const addressLines = details.address.split('\n').filter(Boolean);
       <div>
         <b>More</b>
         <a href={INQUIRY_HREF}>Ask us about Pharos</a><br />
-        <a href="/statement-of-faith">Statement of Faith</a><br />
+        <a href={BELIEFS_PATH}>Statement of Faith</a><br />
         <a href="/policies">Policies</a><br />
         <a href={details.giveUrl}>Give</a>
       </div>

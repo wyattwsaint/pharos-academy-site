@@ -106,6 +106,17 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
    * for an hour is precisely the failure #29 exists to prevent.
    */
   { path: '/admissions', priority: 0.9, changefreq: 'monthly' },
+  /*
+   * The Statement of Faith (#30).
+   *
+   * `yearly` because it changes when the school board changes it, which is a
+   * board decision rather than an edit — and it is not in the editable set at
+   * all, so no admin save can move it. It is enumerated all the same: it is one
+   * of the two pages the homepage and the footer both link, the 301 from the
+   * Wix `/statement-of-faith` lands on it, and a family who has been told to
+   * read it before applying is a family who will search for it.
+   */
+  { path: '/about/beliefs', priority: 0.7, changefreq: 'yearly' },
 ] as const;
 
 /** Every public path, in list order. */

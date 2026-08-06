@@ -1,0 +1,122 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import {
+  BELIEFS_ARTICLES,
+  BELIEFS_CLOSING,
+  BELIEFS_NOTES,
+  HERE_WE_STAND,
+} from '../../lib/about/beliefs.js';
+import { INQUIRY_HREF } from '../../lib/home/sections.js';
+
+/**
+ * The Statement of Faith as a web page, not a download (#30 AC 2).
+ *
+ * It is the document a family reads before deciding, and the application gates
+ * on agreeing to it — so it has to be readable on a phone in a kitchen, which a
+ * PDF is not. The live site's own version is HTML too; what changes here is
+ * that it is a real page at a real address rather than a Wix slug, and that the
+ * text comes from one transcribed module the tests hold to the school's own
+ * words (`src/lib/about/beliefs.ts`).
+ *
+ * Nothing on this page paraphrases, summarises or introduces the doctrine. The
+ * only sentences that are ours are the ones that say what this document is and
+ * where to ask a question about it — which is the honest division of labour: we
+ * arrange the school's words and add none of our own to them.
+ *
+ * The PDF is not linked. The live page offers one, and the whole reason this
+ * ticket exists is that a family should not have to download a file to read
+ * what a school believes; the page *is* the copy, and a second one going stale
+ * beside it is the drift this build removes everywhere else.
+ */
+const description =
+  'The Pharos Academy Statement of Faith and Practice — the eleven articles the school teaches from and asks families to read before applying.';
+---
+
+<BaseLayout title="Statement of Faith" description={description}>
+  <section class="band band-quiet" data-section="beliefs-header">
+    <div class="wide">
+      <p class="label">What we believe</p>
+      <h1 class="mt-4">Statement of Faith and Practice</h1>
+      <p class="sub mt-5">
+        This is what Pharos Academy teaches from. Families are asked to read it before applying and
+        to say where they agree and where they do not — the questions we ask are about disclosure,
+        not about passing a test.
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="articles" data-section="beliefs-articles">
+    <div class="wide">
+      <ol class="articles">
+        {BELIEFS_ARTICLES.map((article) => <li>{article}</li>)}
+      </ol>
+
+      <p class="closing mt-9">{BELIEFS_CLOSING}</p>
+
+      <p class="mt-6">
+        Article 11 refers to
+        <a href={HERE_WE_STAND.href} rel="external">{HERE_WE_STAND.title}</a>, a document of the
+        Churches of God, General Conference, published on our host church's site.
+      </p>
+    </div>
+  </section>
+
+  <section class="band band-quiet" id="notes" data-section="beliefs-notes">
+    <div class="wide">
+      <h2>Notes</h2>
+      <ul class="notes mt-5">
+        {BELIEFS_NOTES.map((note) => <li>{note}</li>)}
+      </ul>
+      <p class="mt-9 text-ink-2">
+        Somewhere you agree, somewhere you are not sure, or something you would want to talk
+        through first? <a href={INQUIRY_HREF}>Ask us</a> — that conversation is a normal part of
+        applying here, and it is better had before the form than after it.
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /*
+    Numbered by the list rather than by the text, so the number is not read out
+    twice, and set in the gold the rest of the site numbers things in.
+  */
+  .articles {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    counter-reset: article;
+    list-style: none;
+    padding: 0;
+    max-width: 46rem;
+  }
+
+  .articles > li {
+    counter-increment: article;
+    border-left: 2px solid var(--color-gold-orn);
+    padding-left: 1.25rem;
+  }
+
+  .articles > li::before {
+    content: counter(article) '.';
+    display: block;
+    font-family: var(--font-sans);
+    font-feature-settings: 'tnum';
+    font-weight: 600;
+    color: var(--color-gold-ink);
+    margin-bottom: 0.35rem;
+  }
+
+  .closing,
+  .notes {
+    max-width: 46rem;
+  }
+
+  .notes {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    list-style: none;
+    padding: 0;
+  }
+</style>

@@ -5,6 +5,7 @@ import vercel from '@astrojs/vercel';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'astro/config';
 
+import { redirectConfig } from './src/lib/redirects.js';
 import { SITE_URL } from './src/lib/site.js';
 
 /**
@@ -36,6 +37,11 @@ const bypassToken =
 export default defineConfig({
   site: SITE_URL,
   output: 'server',
+  // The 301 map from the Wix site (#30). Declared from one module rather than
+  // written out here, so the tests can hold every destination against the
+  // enumerated route list — a redirect to a page that does not exist answers
+  // 301 and looks fine from the outside.
+  redirects: redirectConfig(),
   adapter: vercel({
     isr: {
       expiration: 60 * 60,
