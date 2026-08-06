@@ -19,6 +19,7 @@ import {
 import { CATALOGUE } from '../courses/catalogue.js';
 import type { Course } from '../courses/course.js';
 import { PEOPLE, seededName, type SeedPerson } from '../people/person.js';
+import { SEEDED_POLICIES, type SeedPolicy } from '../policies/policy.js';
 
 export type Migration = {
   /** Stable, unique, ordered by string comparison. */
@@ -217,7 +218,82 @@ export const MIGRATIONS: readonly Migration[] = [
       insertAnnouncements(SEEDED_ANNOUNCEMENTS),
     ],
   },
+  {
+    /*
+     * Policy documents, and every version of every one of them (#28).
+     *
+     * The version table is append-only and the composite key says so: a second
+     * upload is `(slug, 2)`, not an update of `(slug, 1)`. There is no
+     * `on delete` path that a policy row could take without taking its
+     * versions with it, which is the only deletion this schema allows at all.
+     *
+     * `policies_current_is_whole` is the same shape of check as the
+     * announcements' attachment one: a policy either has a current version —
+     * number, filename and the date it was uploaded — or has none of the three.
+     * Two of three is a policies page linking a download that is not there.
+     */
+    id: '0005-policies',
+    statements: [
+      `create table if not exists policies (
+         slug text primary key,
+         title text not null,
+         description text not null default '',
+         position integer not null,
+         signed boolean not null default false,
+         current_version integer,
+         current_filename text,
+         updated_at timestamptz,
+         last_edited_by text,
+         last_edited_at timestamptz,
+         constraint policies_current_is_whole check (
+           (current_version is null) = (current_filename is null)
+           and (current_version is null) = (updated_at is null)
+         )
+       )`,
+      `create table if not exists policy_versions (
+         policy_slug text not null references policies(slug) on delete cascade,
+         version integer not null,
+         filename text not null,
+         bytes bytea not null,
+         uploaded_at timestamptz not null default now(),
+         uploaded_by text,
+         primary key (policy_slug, version)
+       )`,
+      insertPolicies(SEEDED_POLICIES),
+    ],
+  },
 ];
+
+/**
+ * The four published policies, seeded without their files.
+ *
+ * Bytes stay out of the migration for the same reason the board update's do:
+ * 564 KB of base64 across four documents would be read into memory on every
+ * cold start of the server bundle. `npm run db:seed` attaches them from
+ * `docs/mirror/pdf/`, which is where the school's own published PDFs already
+ * are, and does it as version 1 with a real upload date.
+ *
+ * Until it runs, the four rows exist and the policies page shows none of them
+ * — a policy is published by its file, not by its row (`publishedPolicies`).
+ */
+function insertPolicies(list: readonly SeedPolicy[]): string {
+  const values = list
+    .map(
+      (policy) =>
+        `(${[
+          literal(policy.slug),
+          literal(policy.title),
+          literal(policy.description),
+          String(policy.position),
+          policy.signed ? 'true' : 'false',
+        ].join(', ')})`,
+    )
+    .join(', ');
+
+  return `insert into policies (slug, title, description, position, signed)
+    values ${values}
+    on conflict (slug) do nothing`;
+}
 
 /**
  * The school's own six, seeded like the courses and the people are.

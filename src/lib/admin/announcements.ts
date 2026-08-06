@@ -1,4 +1,5 @@
 import type { Attachment } from '../announcements/store.js';
+import { isPdf, MAX_UPLOAD_BYTES, megabytes, plainFilename } from './pdf-upload.js';
 
 /**
  * An announcement, as the admin form posts it (#27).
@@ -50,14 +51,8 @@ export const LABELS: Record<keyof AnnouncementFields | 'attachment', string> = {
   attachment: 'PDF',
 };
 
-/**
- * The largest PDF the school can attach.
- *
- * Eight megabytes, against a largest-in-the-mirror of 921 KB. Generous rather
- * than tight, because the failure this guards is a 200 MB video going into the
- * database, not a scanned newsletter being slightly heavy.
- */
-export const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+/** The largest PDF an announcement can carry. One limit, shared with policies. */
+export const MAX_ATTACHMENT_BYTES = MAX_UPLOAD_BYTES;
 
 /** Read a submitted form, trimmed, with every complaint collected at once. */
 export async function parseAnnouncement(form: FormData): Promise<ParsedAnnouncement> {
@@ -117,9 +112,9 @@ async function readAttachment(
 
   if (file.size > MAX_ATTACHMENT_BYTES) {
     return {
-      error: `That PDF is ${Math.round(file.size / 1024 / 1024)} MB. ${
-        MAX_ATTACHMENT_BYTES / 1024 / 1024
-      } MB is the most an announcement can carry — attach a smaller one, or link to it instead.`,
+      error: `That PDF is ${megabytes(file.size)} MB. ${megabytes(
+        MAX_ATTACHMENT_BYTES,
+      )} MB is the most an announcement can carry — attach a smaller one, or link to it instead.`,
     };
   }
 
@@ -130,35 +125,7 @@ async function readAttachment(
     };
   }
 
-  return { attachment: { filename: plainFilename(file.name), bytes } };
-}
-
-/**
- * A PDF, by its first five bytes as well as by its type.
- *
- * The signature is the half that matters. A declared content type and a `.pdf`
- * on the end of a filename are both typed by whoever is uploading, so a check
- * that trusted either would accept an HTML page served back at parents from
- * this school's own domain.
- */
-function isPdf(file: File, bytes: Buffer): boolean {
-  const declared = file.type === '' || file.type === 'application/pdf';
-  return declared && bytes.subarray(0, 5).toString('latin1') === '%PDF-';
-}
-
-/**
- * The name of the file, and nothing about the machine it came from.
- *
- * Browsers send a bare filename, but this value ends up in a
- * `content-disposition` header and in a URL, so the path separators and the
- * `..` that a non-browser client could send are cut here rather than trusted to
- * be absent. Anything left that is not filename-shaped becomes `notice.pdf`,
- * because a download with no name is worse than a generic one.
- */
-function plainFilename(name: string): string {
-  const base = name.split(/[\\/]/).pop() ?? '';
-  const cleaned = base.replace(/[^\w. -]+/g, '').replace(/^[.\s]+/, '');
-  return /\.pdf$/i.test(cleaned) ? cleaned : 'notice.pdf';
+  return { attachment: { filename: plainFilename(file.name, 'notice.pdf'), bytes } };
 }
 
 /**

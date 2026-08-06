@@ -1,0 +1,86 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { formatStamp } from '../../lib/admin/school-details.js';
+import { getDb } from '../../lib/db/client.js';
+import { listPolicies } from '../../lib/policies/store.js';
+import { updatedOnLabel } from '../../lib/policies/views.js';
+
+/**
+ * The school's policy documents (#28).
+ *
+ * A list and nothing else; every edit and every upload happens on the policy's
+ * own screen. What this screen adds is telling Jill which rows are actually on
+ * the public page — a policy created here has no document until one is
+ * uploaded, and until then it is deliberately not listed for parents. Without
+ * that sentence she would create one, not see it, and reasonably conclude the
+ * admin was broken.
+ *
+ * There is no delete, for a stronger reason than usual. A policy's address is
+ * on printed handbooks; deleting the row would break every link that ever
+ * pointed at it, which is the exact failure this ticket exists to prevent.
+ */
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+const policies = await listPolicies(db);
+const awaiting = policies.filter((policy) => policy.version === null).length;
+---
+
+<AdminLayout title="Policies" actor={actor}>
+  <h1 class="text-3xl font-semibold text-navy">Policies</h1>
+  <p class="mt-2">
+    The documents families read and sign. Everything here with a document behind it is on the <a
+      href="/policies"
+      class="underline underline-offset-4">policies page</a
+    >, in the order below.
+  </p>
+
+  <p class="mt-4" data-testid="awaiting-count">
+    {
+      awaiting === 0
+        ? 'Every policy here has a document and is on the policies page.'
+        : `${awaiting} of these has no document yet, so it is not on the policies page. Upload one and it appears.`
+    }
+  </p>
+
+  <p class="mt-8">
+    <a
+      href="/admin/policies/new"
+      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+    >
+      Add a policy
+    </a>
+  </p>
+
+  <ul class="mt-8 flex flex-col gap-6">
+    {
+      policies.map((policy) => (
+        <li class="border-t border-navy/15 pt-6">
+          <h2 class="text-xl font-semibold text-navy">
+            <a href={`/admin/policies/${policy.slug}`} class="underline underline-offset-4">
+              {policy.position}. {policy.title}
+            </a>
+          </h2>
+          <p class="mt-1 text-sm" data-testid={`state-${policy.slug}`}>
+            {policy.updatedAt
+              ? `Updated ${updatedOnLabel(policy.updatedAt)} · version ${policy.version}`
+              : 'No document yet — not on the policies page'}
+            {' · '}
+            {policy.signed ? 'Parents sign this' : 'Not signed'}
+          </p>
+          <p class="mt-1 text-sm" data-testid={`stamp-${policy.slug}`}>
+            {formatStamp(policy.lastEditedBy, policy.lastEditedAt)}
+          </p>
+        </li>
+      ))
+    }
+  </ul>
+
+  <p class="mt-10 border-t border-navy/15 pt-6">
+    Nothing is ever deleted here, and a policy's web address never changes. Uploading a replacement
+    puts the new document at the same address, so a link in an email or a printed handbook keeps
+    working — and the version it replaced is kept.
+  </p>
+</AdminLayout>
