@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getSchoolDetails } from '../../lib/admin/school-details.js';
-import { CURRENT_FAMILIES_LINKS } from '../../lib/current-families/section.js';
+import { CALENDAR_PATH, CURRENT_FAMILIES_LINKS } from '../../lib/current-families/section.js';
 import { getDb } from '../../lib/db/client.js';
 import { INQUIRY_HREF } from '../../lib/home/sections.js';
 
@@ -9,16 +9,13 @@ import { INQUIRY_HREF } from '../../lib/home/sections.js';
  * Current Families — the section index (#30).
  *
  * It exists because the nav item does, and a nav item that goes straight to one
- * of its children is a nav item lying about how many children it has. Two
- * things are under it today, news and policies, and the third — the calendar —
- * is #23's and is not built.
+ * of its children is a nav item lying about how many children it has. Three
+ * things are under it: the calendar, the news and the policies.
  *
- * **The calendar is named and not linked.** The school's calendar is five hand
- * made PDFs of 28 weeks across four independent day tracks; inventing so much
- * as one date here to make the page feel finished would put a wrong closure on
- * a school's website, and linking a page that does not exist retires nothing
- * and helps nobody. Saying "not here yet, ask us" is the honest third option,
- * and it carries the school's own inquiry route rather than a dead end.
+ * The calendar section stays a section of its own rather than becoming one more
+ * card, because two of the old site's addresses land on it — and because what
+ * it says about a subscribed calendar refreshing on the phone's own schedule is
+ * the thing families most need told and least expect (#23).
  *
  * Nothing on this page or under it is gated. See `current-families/section.ts`
  * for why that is a decision.
@@ -66,13 +63,16 @@ const details = await getSchoolDetails(await getDb());
     <div class="wide">
       <h2>The calendar</h2>
       <p class="mt-5">
-        The 2026–2027 calendar is not on this site yet. It is being rebuilt properly rather than
-        retyped — the school runs four separate day tracks, each with its own week numbering, and
-        a flattened version of that would be wrong for three quarters of families.
+        Every class date for the year is on <a href={CALENDAR_PATH}>the calendar</a>, one column
+        per day track — the four do not line up, because each skips only its own holidays, and the
+        page shows them as they really are. There is one file to download or subscribe to, and the
+        sheet prints.
       </p>
       <p class="mt-4 text-ink-2">
-        Until it is here, <a href={INQUIRY_HREF}>ask us</a> for the dates you need and we will send
-        them. We would rather do that than publish a date we are not certain of.
+        A subscribed calendar refreshes on your phone’s own schedule, so if something changes at
+        short notice the school will still text you. Anything else, <a href={INQUIRY_HREF}
+          >ask us</a
+        >.
       </p>
     </div>
   </section>

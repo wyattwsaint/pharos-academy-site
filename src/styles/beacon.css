@@ -1293,3 +1293,40 @@ h3 {
     opacity: 0 !important;
   }
 }
+
+/*
+  Printing (#23).
+
+  The calendar page is the one page anybody prints — a school office pins the
+  year's sheet up — and what comes off a printer should be the calendar, not a
+  website. The site's own chrome comes off here, once, rather than in that
+  page's own styles, because the header and the footer are the layout's and a
+  scoped rule cannot reach them. Everything in this block is print-only and
+  changes nothing on a screen.
+*/
+@media print {
+  .site-header,
+  .site-footer {
+    display: none !important;
+  }
+
+  /* The header is fixed, so every page reserves room for it. Not on paper. */
+  main {
+    padding-top: 0 !important;
+  }
+
+  .band {
+    padding: 0 !important;
+    background: none !important;
+    color: #000 !important;
+  }
+
+  .band + .band {
+    margin-top: 1.25rem;
+  }
+
+  .wide {
+    max-width: none;
+    padding: 0;
+  }
+}

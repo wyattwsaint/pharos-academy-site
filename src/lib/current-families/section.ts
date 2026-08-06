@@ -13,12 +13,23 @@ import { POLICIES_PATH } from '../policies/views.js';
  * exactly that reason.
  *
  * The list is here rather than in the template because two surfaces walk it —
- * the section index and its test — and because what is *missing* from it is
- * load-bearing: the calendar belongs to #23 and #23 is not built, so it is
- * absent rather than linked, and the page says so in words rather than showing
- * a dead link or, worse, dates somebody invented.
+ * the section index and its test.
+ *
+ * The calendar joined it in #23. Until then it was named and deliberately not
+ * linked, because the alternative to a page that did not exist was dates
+ * somebody had invented.
  */
 export const CURRENT_FAMILIES_PATH = '/current-families';
+
+/**
+ * The calendar's address (#23).
+ *
+ * Declared here rather than in `calendar/views.ts` only to keep the imports
+ * pointing one way: this list needs the path, and `calendar/views.ts` needs the
+ * section it hangs under. `calendar/views.ts` re-exports it, and that is the
+ * name the rest of the site imports.
+ */
+export const CALENDAR_PATH = `${CURRENT_FAMILIES_PATH}/calendar`;
 
 /** One thing a current family comes here for. */
 export type CurrentFamiliesLink = {
@@ -29,6 +40,13 @@ export type CurrentFamiliesLink = {
 };
 
 export const CURRENT_FAMILIES_LINKS: readonly CurrentFamiliesLink[] = [
+  {
+    path: CALENDAR_PATH,
+    label: 'The calendar',
+    blurb:
+      'Every class date for the year, by day track, with the days the school is closed and the ' +
+      'year’s events. Subscribe to it, or print the sheet.',
+  },
   {
     path: NEWS_PATH,
     label: 'News',
