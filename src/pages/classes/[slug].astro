@@ -7,6 +7,8 @@ import { coursesOnTrack, timeLabel } from '../../lib/courses/schedule.js';
 import { getCourse, listCourses } from '../../lib/courses/store.js';
 import { classPath, CLASS_VIEWS } from '../../lib/courses/views.js';
 import { getDb } from '../../lib/db/client.js';
+import { getMoneySettings } from '../../lib/money/store.js';
+
 import { INQUIRY_HREF } from '../../lib/home/sections.js';
 import { bySlug, instructorOf } from '../../lib/people/person.js';
 import { listPeople } from '../../lib/people/store.js';
@@ -36,6 +38,7 @@ if (!course) {
 // overlap are exactly what they need to see, so they are shown rather than
 // filtered out, with their times attached.
 const everyCourse = await listCourses(db);
+const { rates } = await getMoneySettings(db);
 // The instructor comes from the one list of people (#26), never from a name
 // typed onto the course, so a correction on the staff page lands here too.
 const instructor = instructorOf(bySlug(await listPeople(db)), course);
@@ -46,7 +49,7 @@ const alongside = course.days
 
 const description = `${course.title} at Pharos Academy — ${ageLine(course)}, ${course.days.join(
   ' and ',
-)} ${timeLabel(course.start, course.end)}, ${priceSummary(course)}.`;
+)} ${timeLabel(course.start, course.end)}, ${priceSummary(course, rates)}.`;
 ---
 
 <BaseLayout title={course.title} description={description}>
@@ -69,7 +72,7 @@ const description = `${course.title} at Pharos Academy — ${ageLine(course)}, $
           <p class="classdetail-lede">{course.description}</p>
           <a class="btn solid" href={INQUIRY_HREF}>Ask us about this class</a>
         </div>
-        <CourseFacts course={course} instructor={instructor} />
+        <CourseFacts course={course} instructor={instructor} rates={rates} />
       </div>
 
       <h2 class="mt-9">Also on {course.days.join(' and ')}</h2>

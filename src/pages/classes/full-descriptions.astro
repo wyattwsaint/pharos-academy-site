@@ -5,6 +5,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { listCourses } from '../../lib/courses/store.js';
 import { classPath, viewFor } from '../../lib/courses/views.js';
 import { getDb } from '../../lib/db/client.js';
+import { getMoneySettings } from '../../lib/money/store.js';
+
 import { bySlug, instructorOf } from '../../lib/people/person.js';
 import { listPeople } from '../../lib/people/store.js';
 
@@ -20,6 +22,7 @@ import { listPeople } from '../../lib/people/store.js';
 const view = viewFor('full-descriptions');
 const db = await getDb();
 const courses = await listCourses(db);
+const { rates } = await getMoneySettings(db);
 // One read of the one list, shared by all nineteen entries below.
 const directory = bySlug(await listPeople(db));
 ---
@@ -42,7 +45,7 @@ const directory = bySlug(await listPeople(db));
           <article class="coursefull" data-course={course.slug}>
             <h2 id={course.slug}>{course.title}</h2>
             <p class="coursefull-lede">{course.description}</p>
-            <CourseFacts course={course} instructor={instructorOf(directory, course)} />
+            <CourseFacts course={course} instructor={instructorOf(directory, course)} rates={rates} />
             <a class="btn" href={classPath(course.slug)}>
               This class on its own page
             </a>

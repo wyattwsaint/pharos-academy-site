@@ -6,6 +6,8 @@ import { ageLine, coursesByBand, hasNumericAges } from '../../lib/courses/ages.j
 import { listCourses } from '../../lib/courses/store.js';
 import { viewFor } from '../../lib/courses/views.js';
 import { getDb } from '../../lib/db/client.js';
+import { getMoneySettings } from '../../lib/money/store.js';
+
 
 /**
  * By Age — the default landing view for `/classes` (#22).
@@ -24,7 +26,11 @@ import { getDb } from '../../lib/db/client.js';
  * catalogue.
  */
 const view = viewFor('by-age');
-const courses = await listCourses(await getDb());
+const db = await getDb();
+const courses = await listCourses(db);
+// The rates the cards price with. Read here so no component below holds
+// its own copy of the school’s hourly rate (#29 AC 1).
+const { rates } = await getMoneySettings(db);
 const bands = coursesByBand(courses);
 ---
 
@@ -52,7 +58,7 @@ const bands = coursesByBand(courses);
             <disclosure-group data-disclosure-group={`classes-${band.id}`}>
               <div class="classcards">
                 {inBand.map((course) => (
-                  <ClassCard course={course} idPrefix={band.id} />
+                  <ClassCard course={course} idPrefix={band.id} rates={rates} />
                 ))}
               </div>
             </disclosure-group>

@@ -18,6 +18,7 @@ import {
 } from '../announcements/announcement.js';
 import { CATALOGUE } from '../courses/catalogue.js';
 import type { Course } from '../courses/course.js';
+import { SEEDED_MONEY_SETTINGS, type MoneySettings } from '../money/settings.js';
 import { PEOPLE, seededName, type SeedPerson } from '../people/person.js';
 import { SEEDED_POLICIES, type SeedPolicy } from '../policies/policy.js';
 
@@ -262,7 +263,86 @@ export const MIGRATIONS: readonly Migration[] = [
       insertPolicies(SEEDED_POLICIES),
     ],
   },
+  {
+    /*
+     * Money settings, and the terms a family agreed to (#29).
+     *
+     * Two tables that hold the same columns, and the duplication is the whole
+     * decision (ADR-0006). `agreed_terms` copies the numbers rather than
+     * pointing at the settings row, so a fee corrected in October cannot reach
+     * back and change what an August family agreed to pay.
+     *
+     * The singleton check is the same shape as `school_details`': there is one
+     * school, and there is one set of numbers it charges.
+     */
+    id: '0006-money-settings',
+    statements: [
+      `create table if not exists money_settings (
+         id integer primary key,
+         standard_rate integer not null,
+         high_school_credit_rate integer not null,
+         registration_fee integer not null,
+         class_deposit integer not null,
+         late_fee integer not null,
+         study_hall_fee integer not null,
+         instalment_dates text[] not null,
+         refund_terms text not null,
+         deposit_credited_against_tuition boolean not null default true,
+         notification_addresses text[] not null,
+         last_edited_by text,
+         last_edited_at timestamptz,
+         constraint money_settings_singleton check (id = 1),
+         constraint money_settings_amounts_are_sane check (
+           standard_rate > 0 and high_school_credit_rate > 0
+           and registration_fee >= 0 and class_deposit >= 0
+           and late_fee >= 0 and study_hall_fee >= 0
+         ),
+         constraint money_settings_four_instalments
+           check (array_length(instalment_dates, 1) = ${SEEDED_MONEY_SETTINGS.instalmentDates.length}),
+         constraint money_settings_has_a_recipient
+           check (array_length(notification_addresses, 1) >= 1)
+       )`,
+      insertMoneySettings(SEEDED_MONEY_SETTINGS),
+      `create table if not exists agreed_terms (
+         id uuid primary key default gen_random_uuid(),
+         family_name text not null,
+         agreed_at timestamptz not null default now(),
+         standard_rate integer not null,
+         high_school_credit_rate integer not null,
+         registration_fee integer not null,
+         class_deposit integer not null,
+         late_fee integer not null,
+         study_hall_fee integer not null,
+         instalment_dates text[] not null,
+         refund_terms text not null,
+         deposit_credited_against_tuition boolean not null,
+         notification_addresses text[] not null
+       )`,
+    ],
+  },
 ];
+
+/** The school's own figures, seeded like everything else it already publishes. */
+function insertMoneySettings(settings: MoneySettings): string {
+  return `insert into money_settings (
+      id, standard_rate, high_school_credit_rate, registration_fee, class_deposit,
+      late_fee, study_hall_fee, instalment_dates, refund_terms,
+      deposit_credited_against_tuition, notification_addresses
+    ) values (
+      1,
+      ${settings.rates.standard},
+      ${settings.rates.highSchoolCredit},
+      ${settings.registrationFee},
+      ${settings.classDeposit},
+      ${settings.lateFee},
+      ${settings.studyHallFee},
+      ${textArray(settings.instalmentDates)},
+      ${literal(settings.refundTerms)},
+      ${settings.depositCreditedAgainstTuition},
+      ${textArray(settings.notificationAddresses)}
+    )
+    on conflict (id) do nothing`;
+}
 
 /**
  * The four published policies, seeded without their files.

@@ -12,14 +12,19 @@
  * another. There is nowhere here to type one.
  */
 
-import type { Course, RateTier } from './course.js';
+import { formatMoney, type RateCard } from '../money/settings.js';
+import type { Course } from './course.js';
 import { contactHours } from './schedule.js';
 
-/** The rate card (`docs/mirror/data/courses.json`, `rateCard`). Dollars an hour. */
-export const RATE_PER_HOUR: Record<RateTier, number> = {
-  standard: 10,
-  highSchoolCredit: 15,
-};
+/**
+ * The rate card is an **argument**, not a constant (#29 AC 1).
+ *
+ * The two rates are money settings the school controls, so nothing here may
+ * hold a copy of them: a surface that has not read the settings cannot price a
+ * course at all. That is what makes "no money figure is typed into page copy"
+ * a property of the types rather than a thing a reviewer has to notice.
+ * The seeded values live in `money/settings.ts`.
+ */
 
 export type Price = {
   /** Contact hours × the rate: the whole cost of the course, always. */
@@ -37,9 +42,9 @@ export type Price = {
   contactHours: number;
 };
 
-export function coursePrice(course: Course): Price {
+export function coursePrice(course: Course, rates: RateCard): Price {
   const hours = contactHours(course);
-  const ratePerHour = RATE_PER_HOUR[course.rateTier];
+  const ratePerHour = rates[course.rateTier];
   const total = hours * ratePerHour;
   const base = { total, ratePerHour, contactHours: hours };
 
@@ -54,23 +59,18 @@ export function coursePrice(course: Course): Price {
   }
 }
 
-/** "$420". Whole dollars, because every figure the school publishes is one. */
-export function formatMoney(amount: number): string {
-  return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
-}
-
 /**
  * The full cost line, in the school's own form:
  * "$210/semester, $420/year ($10/hour)".
  */
-export function priceLine(course: Course): string {
-  const price = coursePrice(course);
-  return `${priceLabel(course)} (${formatMoney(price.ratePerHour)}/hour)`;
+export function priceLine(course: Course, rates: RateCard): string {
+  const price = coursePrice(course, rates);
+  return `${priceLabel(course, rates)} (${formatMoney(price.ratePerHour)}/hour)`;
 }
 
 /** The cost without the rate — "$210/semester, $420/year", "$90". */
-export function priceLabel(course: Course): string {
-  const price = coursePrice(course);
+export function priceLabel(course: Course, rates: RateCard): string {
+  const price = coursePrice(course, rates);
   if (price.flat !== null) return formatMoney(price.flat);
   const parts: string[] = [];
   if (price.semester !== null) parts.push(`${formatMoney(price.semester)}/semester`);
@@ -85,8 +85,8 @@ export function priceLabel(course: Course): string {
  * year course, the semester price for a one-semester course, the flat price for
  * a block. The full line is on the class's own page.
  */
-export function priceSummary(course: Course): string {
-  const price = coursePrice(course);
+export function priceSummary(course: Course, rates: RateCard): string {
+  const price = coursePrice(course, rates);
   if (price.flat !== null) return formatMoney(price.flat);
   if (price.year !== null) return `${formatMoney(price.year)}/yr`;
   return `${formatMoney(price.semester ?? price.total)}/sem`;
