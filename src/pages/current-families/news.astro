@@ -1,8 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import { attachmentPath, postedOnLabel } from '../../lib/announcements/views.js';
 import { listAnnouncements } from '../../lib/announcements/store.js';
-import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import { getDb } from '../../lib/db/client.js';
 import { INQUIRY_HREF } from '../../lib/home/sections.js';
 
