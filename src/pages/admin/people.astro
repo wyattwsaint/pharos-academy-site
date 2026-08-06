@@ -1,0 +1,76 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { formatStamp } from '../../lib/admin/school-details.js';
+import { getDb } from '../../lib/db/client.js';
+import { listPeople } from '../../lib/people/store.js';
+
+/**
+ * Everybody the school has, in the order the staff page renders them (#26).
+ *
+ * A list and nothing else: every edit happens on the person's own screen, so
+ * there is one place a name changes and one thing that can go wrong. The order
+ * is the store's, which is the staff page's, so what Jill sees here is what a
+ * parent sees there.
+ *
+ * There is no delete. Removing somebody who teaches would leave nineteen
+ * courses pointing at a row that is gone — the foreign key refuses it, and a
+ * screen offering a button the database will not honour is a screen that lies.
+ * Somebody who has left is a job for whoever installed the site, as accounts
+ * are.
+ */
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+const people = await listPeople(db);
+---
+
+<AdminLayout title="People" actor={actor}>
+  <h1 class="text-3xl font-semibold text-navy">People</h1>
+  <p class="mt-2">
+    One list. Leadership appear on the staff page in this order; anyone teaching a class has their
+    name printed on that class and in the timetable.
+  </p>
+
+  <p class="mt-8">
+    <a
+      href="/admin/people/new"
+      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+    >
+      Add a person
+    </a>
+  </p>
+
+  <ul class="mt-8 flex flex-col gap-6">
+    {
+      people.map((person) => (
+        <li class="border-t border-navy/15 pt-6">
+          <h2 class="text-xl font-semibold text-navy">
+            <a href={`/admin/people/${person.slug}`} class="underline underline-offset-4">
+              {person.name}
+            </a>
+          </h2>
+          <p class="mt-1">{person.role}</p>
+          <p class="mt-1 text-sm">
+            {person.leadershipRank === null
+              ? 'Not leadership'
+              : `Leadership, number ${person.leadershipRank} on the staff page`}
+            {' · '}
+            {person.bio ? 'Has a written bio' : 'No bio yet'}
+            {' · '}
+            {person.photo ? 'Has a photograph' : 'No photograph yet'}
+          </p>
+          <p class="mt-1 text-sm" data-testid={`stamp-${person.slug}`}>
+            {formatStamp(person.lastEditedBy, person.lastEditedAt)}
+          </p>
+        </li>
+      ))
+    }
+  </ul>
+
+  <p class="mt-10 border-t border-navy/15 pt-6">
+    A bio and a photograph are optional. The staff page shows a person with neither correctly —
+    their name and what they teach — so there is nothing to invent to fill a gap.
+  </p>
+</AdminLayout>

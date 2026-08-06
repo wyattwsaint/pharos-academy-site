@@ -100,7 +100,7 @@ export const CATALOGUE: readonly Course[] = [
     prerequisites:
       'Proficiency in core arithmetic skills. Competency in Pre-Algebra concepts is helpful ' +
       'but not necessary.',
-    instructor: 'Pastor George Jensen',
+    instructorSlug: 'george-jensen',
   },
   {
     slug: 'backyard-botany',
@@ -129,7 +129,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None (just a curious mind)',
-    instructor: 'Mrs. Angela Fecteau',
+    instructorSlug: 'angela-fecteau',
   },
   {
     slug: 'basic-spanish-grades-5-8',
@@ -155,7 +155,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Elizabeth Hayes',
+    instructorSlug: 'elizabeth-hayes',
   },
   {
     slug: 'basic-spanish-grades-9-12',
@@ -184,7 +184,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Elizabeth Hayes',
+    instructorSlug: 'elizabeth-hayes',
   },
   {
     slug: 'beginner-latin-grades-5-6',
@@ -210,7 +210,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Chelsea Miller',
+    instructorSlug: 'chelsea-miller',
   },
   {
     slug: 'beginner-latin-grades-7-8',
@@ -236,7 +236,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Chelsea Miller',
+    instructorSlug: 'chelsea-miller',
   },
   {
     slug: 'god-made-everything',
@@ -268,7 +268,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Mandy Saint',
+    instructorSlug: 'mandy-saint',
   },
   {
     slug: 'insect-explorers',
@@ -299,7 +299,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Mandy Saint',
+    instructorSlug: 'mandy-saint',
   },
   {
     slug: 'introduction-to-church-and-bible-history',
@@ -335,7 +335,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Mandy Saint',
+    instructorSlug: 'mandy-saint',
   },
   {
     slug: 'drawing-and-painting-grades-5-8',
@@ -361,7 +361,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Lanette Johnson',
+    instructorSlug: 'lanette-johnson',
   },
   {
     slug: 'drawing-and-painting-grades-2-4',
@@ -387,7 +387,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Lanette Johnson',
+    instructorSlug: 'lanette-johnson',
   },
   {
     slug: 'kingdom-math',
@@ -418,7 +418,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Mandy Saint',
+    instructorSlug: 'mandy-saint',
   },
   {
     slug: 'letter-of-the-week',
@@ -450,7 +450,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Mandy Saint',
+    instructorSlug: 'mandy-saint',
   },
   {
     slug: 'nocturnal-wonders',
@@ -481,7 +481,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Mandy Saint',
+    instructorSlug: 'mandy-saint',
   },
   {
     slug: 'poetry-plays-and-patterns',
@@ -513,7 +513,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: 50,
     assessmentFeeNote: 'for feedback on writing',
     prerequisites: 'Proficiency in reading.',
-    instructor: 'Ms. Robyn Lach',
+    instructorSlug: 'robyn-lach',
   },
   {
     slug: 'principles-of-drawing',
@@ -547,7 +547,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Chelsea Miller',
+    instructorSlug: 'chelsea-miller',
   },
   {
     slug: 'pilgrims-progress-for-kids',
@@ -598,7 +598,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Rachel Holderman',
+    instructorSlug: 'rachel-holderman',
   },
   {
     slug: 'the-virtue-of-kindness',
@@ -630,7 +630,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Mandy Saint',
+    instructorSlug: 'mandy-saint',
   },
   {
     slug: 'what-is-a-community',
@@ -668,7 +668,7 @@ export const CATALOGUE: readonly Course[] = [
     assessmentFee: null,
     assessmentFeeNote: null,
     prerequisites: 'None',
-    instructor: 'Mrs. Mandy Saint',
+    instructorSlug: 'mandy-saint',
   },
 ];
 

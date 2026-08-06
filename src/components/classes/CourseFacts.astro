@@ -3,6 +3,7 @@ import { ageLine } from '../../lib/courses/ages.js';
 import { durationLabel, type Course } from '../../lib/courses/course.js';
 import { priceLine } from '../../lib/courses/pricing.js';
 import { contactHours, timeLabel } from '../../lib/courses/schedule.js';
+import type { Person } from '../../lib/people/person.js';
 
 /**
  * Everything the school publishes about one class, as a description list.
@@ -22,9 +23,17 @@ import { contactHours, timeLabel } from '../../lib/courses/schedule.js';
  */
 interface Props {
   course: Course;
+  /**
+   * The person who teaches it, resolved from the one list of people (#26).
+   *
+   * Passed in rather than looked up here, because this component renders
+   * nineteen times on the full-descriptions surface and the page has already
+   * read the list once.
+   */
+  instructor: Person;
 }
 
-const { course } = Astro.props;
+const { course, instructor } = Astro.props;
 
 const dateFormat = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
@@ -61,7 +70,7 @@ const facts: Fact[] = [
       ? course.dates.map((date) => dateFormat.format(new Date(`${date}T00:00:00Z`))).join(', ')
       : null,
   ),
-  { term: 'Instructor', value: course.instructor },
+  { term: 'Instructor', value: instructor.name },
 ];
 ---
 

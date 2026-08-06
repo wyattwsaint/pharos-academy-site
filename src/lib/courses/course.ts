@@ -100,7 +100,16 @@ export type Course = {
   /** "for test scoring", "for feedback on writing". */
   assessmentFeeNote: string | null;
   prerequisites: string;
-  instructor: string;
+  /**
+   * Who teaches it, as a `Person.slug` — never a typed name (#26, ADR-0004).
+   *
+   * The name itself is read from the one list of people at render time, so
+   * there is no second copy of a person to keep in sync and correcting a name
+   * corrects it on the class page, in the timetable and on the staff page
+   * together. `instructorOf` in `people/person.ts` is how a surface gets from
+   * this slug to the person.
+   */
+  instructorSlug: string;
 };
 
 /** The duration line the school publishes, rebuilt from the fields above. */

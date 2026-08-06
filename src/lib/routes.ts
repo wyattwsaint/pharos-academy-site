@@ -54,6 +54,16 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
     priority: 0.7,
     changefreq: 'monthly' as const,
   })),
+  /*
+   * The people of the school (#26).
+   *
+   * Here rather than only in the sitemap because this list is what whole-site
+   * republishing walks: an instructor renamed in the admin has to reach the
+   * staff page as well as the class pages that print the same name, and a
+   * surface missing from this list is a surface that keeps the old name until
+   * the hour's ISR expiry catches it.
+   */
+  { path: '/staff', priority: 0.6, changefreq: 'monthly' },
 ] as const;
 
 /** Every public path, in list order. */

@@ -148,6 +148,27 @@ that list is equally theirs.
 Anything not on the list is not editable, and adding to it is a decision, not an
 implementation detail.
 
+### person
+
+Somebody at the school — a name, a role, an **optional** bio and an **optional**
+photograph. There is exactly **one list**: leadership and instructors are the
+same kind of thing and the same rows (ADR-0004). Pastor George Jensen is the
+reason — he is the chaplain *and* teaches Algebra 1, and as two rows his name
+would drift the first time it was corrected in one of them.
+
+**Instructor is not a status a person carries.** It is a fact about the
+catalogue: a person is an instructor exactly when some course names them, so
+assigning a course makes them one on the staff page, the class page and the
+timetable at once. **Leadership** *is* stored, as a rank, because it carries an
+order the staff page renders in that nothing else can derive.
+
+A missing bio and a missing photograph are **null and valid** — the staff page
+renders such a person by showing their name and what they teach, and invents
+neither a paragraph nor a face.
+
+Not: "staff member" (excludes nobody but sounds like it excludes instructors),
+"teacher", "instructor" as an entity.
+
 ### H.O.P.E.
 
 **Helping Our Parents Educate** — the school's own acronym, real copy from the

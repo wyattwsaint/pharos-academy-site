@@ -19,6 +19,7 @@ const current = Astro.url.pathname;
  */
 const NAV = [
   { href: '/admin/school-details', label: 'School details' },
+  { href: '/admin/people', label: 'People' },
   { href: '/admin/users', label: 'Users' },
 ];
 ---
@@ -52,7 +53,13 @@ const NAV = [
               {NAV.map((item) => (
                 <a
                   href={item.href}
-                  aria-current={current === item.href ? 'page' : undefined}
+                  aria-current={
+                    // People has screens under it — a person's own edit page is
+                    // still "People" as far as the nav is concerned.
+                    current === item.href || current.startsWith(`${item.href}/`)
+                      ? 'page'
+                      : undefined
+                  }
                   class="underline underline-offset-4 aria-[current=page]:font-semibold"
                 >
                   {item.label}

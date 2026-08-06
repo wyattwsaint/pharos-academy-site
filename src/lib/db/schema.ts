@@ -126,10 +126,48 @@ export const courses = pgTable('courses', {
   assessmentFee: integer('assessment_fee'),
   assessmentFeeNote: text('assessment_fee_note'),
   prerequisites: text('prerequisites').notNull(),
-  instructor: text('instructor').notNull(),
+  /**
+   * Who teaches it — a `people.slug`, not a typed name (#26, ADR-0004).
+   *
+   * A foreign key rather than text, so the catalogue cannot name somebody who
+   * is not in the one list, and correcting a name on the staff page corrects it
+   * on every class page and in the timetable at the same moment.
+   */
+  instructorSlug: text('instructor_slug')
+    .notNull()
+    .references(() => people.slug),
+});
+
+/**
+ * The school's people — leadership and instructors in one table (#26).
+ *
+ * There is deliberately **no `is_instructor` column**: a person teaches exactly
+ * when a course names them, so the two roles cannot disagree. `leadership_rank`
+ * is a column because it carries an order the staff page renders in, and that
+ * order is the school's decision rather than a derivable fact.
+ *
+ * `bio` and `photo` are nullable and both are null for eight of the ten. That
+ * is the published state, not an unfinished one: the school has written three
+ * bios, and portraits are photographs of real consenting adults that Jill has
+ * yet to supply (#13, slot 4).
+ */
+export const people = pgTable('people', {
+  /** The URL segment on the staff page, and what `courses.instructor_slug` points at. */
+  slug: text('slug').primaryKey(),
+  name: text('name').notNull(),
+  role: text('role').notNull(),
+  bio: text('bio'),
+  /** A path under `public/`. Null for everybody until slot 4 is unblocked. */
+  photo: text('photo'),
+  /** Position on the staff page, low first. Null means not leadership. */
+  leadershipRank: integer('leadership_rank'),
+  /** The stamp: who saved this person last, and when. Overwritten, never appended. */
+  lastEditedBy: text('last_edited_by'),
+  lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
 });
 
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type AdminSession = typeof adminSessions.$inferSelect;
 export type SchoolDetails = typeof schoolDetails.$inferSelect;
 export type CourseRow = typeof courses.$inferSelect;
+export type PersonRow = typeof people.$inferSelect;

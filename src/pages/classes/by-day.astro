@@ -6,6 +6,8 @@ import { layoutWeek } from '../../lib/courses/schedule.js';
 import { listCourses } from '../../lib/courses/store.js';
 import { viewFor } from '../../lib/courses/views.js';
 import { getDb } from '../../lib/db/client.js';
+import { bySlug } from '../../lib/people/person.js';
+import { listPeople } from '../../lib/people/store.js';
 
 /**
  * By Day — the timetable, drawn to scale.
@@ -19,7 +21,10 @@ import { getDb } from '../../lib/db/client.js';
  * See `DayTimetable.astro` for what that costs and why it is worth it.
  */
 const view = viewFor('by-day');
-const week = layoutWeek(await listCourses(await getDb()));
+const db = await getDb();
+const week = layoutWeek(await listCourses(db));
+// Every name in the grid is read from the one list of people (#26).
+const directory = bySlug(await listPeople(db));
 ---
 
 <BaseLayout title={view.title} description={view.description}>
@@ -31,7 +36,7 @@ const week = layoutWeek(await listCourses(await getDb()));
 
   <section class="band" data-section="by-day">
     <div class="wide">
-      {week.map((layout) => <DayTimetable layout={layout} />)}
+      {week.map((layout) => <DayTimetable layout={layout} directory={directory} />)}
 
       <p class="mt-9 text-ink-2">
         Wednesday’s 10:40 hour carries several short electives on purpose — they run in different

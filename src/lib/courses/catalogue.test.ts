@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { seededName } from '../people/person.js';
 import { CATALOGUE } from './catalogue.js';
 import { durationLabel, ENROLMENT_UNITS, RATE_TIERS, STAGES } from './course.js';
 import { DAY_TRACKS, timeLabel } from './schedule.js';
@@ -69,7 +70,9 @@ describe('the catalogue', () => {
   it('keeps the instructor, prerequisites, credit and fees as published', () => {
     for (const course of CATALOGUE) {
       const published = mirrorFor(course.title);
-      expect(course.instructor, course.title).toBe(published.instructor);
+      // Through the one list of people (#26): the course stores a slug, and
+      // the name the school publishes is that person's, in one place.
+      expect(seededName(course.instructorSlug), course.title).toBe(published.instructor);
       expect(course.materialsFee, course.title).toBe(published.materialsFee);
       expect(course.assessmentFee, course.title).toBe(published.assessmentFee);
       // The credit line is reworded only where the capture spells a fraction

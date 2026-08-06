@@ -1,0 +1,285 @@
+---
+export const prerender = false;
+
+import AdminBanner from '../../../components/AdminBanner.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import type { Banner } from '../../../lib/admin/banner.js';
+import { isrBypassToken } from '../../../lib/admin/isr-token.js';
+import { LABELS, parsePerson, type PersonErrors, type PersonFields } from '../../../lib/admin/people.js';
+import {
+  describeRevalidation,
+  revalidateAll,
+  revalidationOrigin,
+} from '../../../lib/admin/revalidate.js';
+import { formatStamp } from '../../../lib/admin/school-details.js';
+import { getDb } from '../../../lib/db/client.js';
+import { slugify, type Person } from '../../../lib/people/person.js';
+import { createPerson, getPerson, savePerson } from '../../../lib/people/store.js';
+
+/**
+ * One person, edited or added (#26).
+ *
+ * `/admin/people/new` is the add form and every other slug is that person's
+ * edit form. One screen rather than two because the fields, the validation and
+ * the publishing story are identical — the only difference is whether the save
+ * is an insert or an update, and a second nearly-identical page is how the two
+ * drift.
+ *
+ * Save writes the row, stamps it, then revalidates **every** public path and
+ * waits for the answer, exactly as school details does (#18 §3). A person's
+ * name is printed on the staff page, on each class they teach and in the
+ * timetable, so a correction that reached only one of those would be the worst
+ * possible outcome: a site that disagrees with itself. What Jill is told
+ * afterwards is the answer, not an assumption.
+ *
+ * Adding does the same. A new instructor exists to be assigned a class, and the
+ * class pages are among the paths republished.
+ */
+/** The one slug that is not a person: the add form's address. */
+const NEW = 'new';
+
+/** What the add form opens on — a name, a role, and three deliberate absences. */
+const EMPTY: PersonFields = {
+  name: '',
+  role: '',
+  bio: null,
+  photo: null,
+  leadershipRank: null,
+};
+
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+const routeSlug = Astro.params.slug ?? '';
+const adding = routeSlug === NEW;
+
+let person = adding ? undefined : await getPerson(db, routeSlug);
+if (!adding && !person) {
+  return new Response(null, { status: 404, statusText: 'Not found' });
+}
+
+let values: PersonFields = person ? fieldsOf(person) : EMPTY;
+let errors: PersonErrors = {};
+let banner: Banner | null = null;
+
+if (Astro.request.method === 'POST') {
+  const parsed = parsePerson(await Astro.request.formData());
+  values = parsed.values;
+  errors = parsed.errors;
+
+  if (Object.keys(errors).length > 0) {
+    banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+  } else {
+    try {
+      person = person
+        ? await savePerson(db, person.slug, values, actor.name)
+        : await createPerson(db, slugFor(values.name), values, actor.name);
+      values = fieldsOf(person);
+      const result = await revalidateAll({
+        origin: revalidationOrigin(Astro.url),
+        bypassToken: isrBypassToken(),
+      });
+      banner = { ok: result.ok, message: describeRevalidation(result) };
+    } catch (error) {
+      banner = { ok: false, message: humanErrorMessage(error) };
+    }
+  }
+}
+
+/*
+ * After an add succeeds this screen becomes that person's edit screen: the
+ * form posts to their own address from here on, so a second Save updates the
+ * row just created rather than trying to insert them again. The URL stays
+ * `/new` until the next navigation, which is the honest cost of showing the
+ * revalidation answer instead of throwing it away in a redirect.
+ */
+const action = person ? `/admin/people/${person.slug}` : '/admin/people/new';
+const heading = person ? person.name : 'Add a person';
+const stamp = person ? formatStamp(person.lastEditedBy, person.lastEditedAt) : null;
+
+/** The form's shape. Type decides the control; nothing else varies. */
+const FIELDS: {
+  name: keyof PersonFields;
+  type: 'text' | 'multiline' | 'number';
+  required?: boolean;
+  hint?: string;
+}[] = [
+  { name: 'name', type: 'text', required: true, hint: 'As the school writes it, honorific and all.' },
+  {
+    name: 'role',
+    type: 'text',
+    required: true,
+    hint: '“Head of School”, “Instructor” — what this person does here.',
+  },
+  {
+    name: 'bio',
+    type: 'multiline',
+    hint: 'Optional. Leave it empty until the school has written one — the staff page looks right without it.',
+  },
+  {
+    name: 'photo',
+    type: 'text',
+    hint: 'Optional, and only a real photograph of this person, uploaded with the site’s images: “/people/their-name.webp”.',
+  },
+  {
+    name: 'leadershipRank',
+    type: 'number',
+    hint: 'Their place in the Leadership section, 1 first. Leave it empty for everybody else.',
+  },
+];
+
+function fieldsOf(row: Person): PersonFields {
+  return {
+    name: row.name,
+    role: row.role,
+    bio: row.bio,
+    photo: row.photo,
+    leadershipRank: row.leadershipRank,
+  };
+}
+
+/**
+ * The address of somebody just hired.
+ *
+ * Derived from the name rather than typed, because a slug is a URL and nobody
+ * should have to think about URLs to add a member of staff. Two names are
+ * refused rather than stored: one that slugifies to nothing — punctuation only
+ * — because it has no page to be reached at, and one that slugifies to `new`,
+ * because this screen's own address is `/admin/people/new` and that person
+ * would be permanently hidden behind the add form.
+ */
+function slugFor(name: string): string {
+  const slug = slugify(name);
+  if (!slug) throw new Error('that name has no letters or numbers in it.');
+  if (slug === NEW) {
+    throw new Error('“New” is the address of this form — give that person a fuller name.');
+  }
+  return slug;
+}
+
+/**
+ * A failed write, said in words Jill can act on.
+ *
+ * The one that actually happens is a duplicate slug: two people whose names
+ * slugify the same, which is a real thing in a school with two Millers.
+ */
+function humanErrorMessage(error: unknown): string {
+  const detail = error instanceof Error ? error.message : String(error);
+  if (/duplicate key|unique/i.test(detail)) {
+    return 'Nothing was saved — somebody with that name is already on the list. Edit them instead.';
+  }
+  return `Nothing was saved — ${detail}`;
+}
+---
+
+<AdminLayout title={heading} actor={actor}>
+  <p><a href="/admin/people" class="underline underline-offset-4">← All people</a></p>
+  <h1 class="mt-2 text-3xl font-semibold text-navy">{heading}</h1>
+  <p class="mt-2">
+    Saved here, this name appears on the staff page and on every class this person teaches.
+  </p>
+
+  {
+    banner && (
+      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
+        {!banner.ok && (
+          <form method="post" action="/admin/republish" class="mt-3">
+            <button
+              type="submit"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+            >
+              Retry
+            </button>
+          </form>
+        )}
+      </AdminBanner>
+    )
+  }
+
+  <form method="post" action={action} class="mt-8 flex flex-col gap-6">
+    {
+      FIELDS.map((field) => {
+        const invalid = Boolean(errors[field.name]);
+        const describedBy =
+          [field.hint ? `${field.name}-hint` : null, invalid ? `${field.name}-error` : null]
+            .filter(Boolean)
+            .join(' ') || undefined;
+        const control =
+          'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
+        const value = values[field.name];
+
+        return (
+          <div class="flex flex-col gap-2">
+            <label for={field.name} class="font-semibold">
+              {LABELS[field.name]}
+            </label>
+            {field.hint && (
+              <p id={`${field.name}-hint`} class="text-sm">
+                {field.hint}
+              </p>
+            )}
+            {field.type === 'multiline' ? (
+              <textarea
+                id={field.name}
+                name={field.name}
+                rows={8}
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={describedBy}
+                class={control}
+              >
+                {value ?? ''}
+              </textarea>
+            ) : (
+              <input
+                id={field.name}
+                name={field.name}
+                type={field.type === 'number' ? 'number' : 'text'}
+                min={field.type === 'number' ? 1 : undefined}
+                step={field.type === 'number' ? 1 : undefined}
+                value={value ?? ''}
+                required={field.required}
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={describedBy}
+                class={control}
+              />
+            )}
+            {invalid && (
+              <p id={`${field.name}-error`} class="font-semibold">
+                {errors[field.name]}
+              </p>
+            )}
+          </div>
+        );
+      })
+    }
+
+    <button
+      type="submit"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+    >
+      Save
+    </button>
+  </form>
+
+  {
+    stamp && (
+      <section class="mt-10 border-t border-navy/15 pt-6">
+        <h2 class="text-xl font-semibold text-navy">Publishing</h2>
+        <p class="mt-2" data-testid="stamp">
+          {stamp}
+        </p>
+        <p class="mt-2">
+          Saving republishes the whole site, because this name is printed in more than one place.
+        </p>
+        <form method="post" action="/admin/republish" class="mt-4">
+          <button
+            type="submit"
+            class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
+          >
+            Republish
+          </button>
+        </form>
+      </section>
+    )
+  }
+</AdminLayout>
