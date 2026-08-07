@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray } from 'drizzle-orm';
+import { asc, desc, inArray } from 'drizzle-orm';
 
 import type { Db } from '../db/client.js';
 import { applicationChildren, applications } from '../db/schema.js';
@@ -121,13 +121,6 @@ export async function listApplications(db: Db): Promise<ApplicationRecord[]> {
       .map((child) => ({ name: child.name, age: child.age, offeringKeys: child.offeringKeys })),
     agreedTermsId: row.agreedTermsId,
   }));
-}
-
-/** One application, or undefined — which the confirmation turns into a fresh form. */
-export async function getApplication(db: Db, id: string): Promise<ApplicationRecord | undefined> {
-  const rows = await db.select().from(applications).where(eq(applications.id, id)).limit(1);
-  if (rows.length === 0) return undefined;
-  return (await listApplications(db)).find((record) => record.id === id);
 }
 
 /**
