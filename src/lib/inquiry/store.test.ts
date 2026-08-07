@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
-import { createInquiry, listInquiries, recordInquiryDelivery } from './store.js';
+import { createInquiry, getInquiry, listInquiries, recordInquiryDelivery } from './store.js';
 import type { InquiryFields } from './inquiry.js';
 
 /**
@@ -96,5 +96,35 @@ describe('the admin list', () => {
     // Nobody has asked yet is a real state, and a seeded fake inquiry is a lead
     // Jill would try to answer.
     expect(await listInquiries(db)).toEqual([]);
+  });
+});
+
+/**
+ * The one-inquiry read the application's prefill runs on (#31 AC 1).
+ *
+ * Jill pastes `/admissions/apply?inquiry=<id>` into her reply, so the id in
+ * that link is whatever survived a round trip through an email client. All
+ * three cases below are things that will actually arrive.
+ */
+describe('reading one inquiry back', () => {
+  it('finds the family that asked', async () => {
+    const id = await createInquiry(db, FIELDS);
+
+    const row = await getInquiry(db, id);
+    expect(row?.name).toBe('Ruth Marsh');
+    expect(row?.ages).toBe('6, 9 and 13');
+  });
+
+  it('answers undefined for an id that is not a row', async () => {
+    expect(await getInquiry(db, '00000000-0000-0000-0000-000000000000')).toBeUndefined();
+  });
+
+  it('answers undefined for something that is not an id at all', async () => {
+    // Postgres raises on a malformed uuid rather than returning no rows, so a
+    // link truncated by an email client would be a 500 on the application page
+    // rather than a clean slate. The prefill is optional; the page is not.
+    await expect(getInquiry(db, 'not-a-uuid')).resolves.toBeUndefined();
+    await expect(getInquiry(db, '')).resolves.toBeUndefined();
+    await expect(getInquiry(db, "'; drop table inquiries; --")).resolves.toBeUndefined();
   });
 });
