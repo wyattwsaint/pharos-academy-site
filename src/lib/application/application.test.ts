@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { BELIEFS_ARTICLES, BELIEFS_CLOSING } from '../about/beliefs.js';
+import { SEEDED_SCHOOL_YEAR } from '../calendar/year.js';
 import { CATALOGUE } from '../courses/catalogue.js';
 import { SEEDED_MONEY_SETTINGS } from '../money/settings.js';
 import {
@@ -10,7 +11,7 @@ import {
   FAITH_QUESTIONS,
   FAITH_RESPONDENTS,
   faithKey,
-  familySelection,
+  familyClashes,
   isFlagged,
   MAX_CHILDREN,
   parseApplication,
@@ -48,6 +49,10 @@ function goodForm(over: Record<string, string | string[]> = {}): FormData {
     ...over,
   });
 }
+
+/** That submission, read back as the fields the page holds. */
+const applied = (over: Record<string, string | string[]> = {}): ApplicationFields =>
+  parseApplication(goodForm(over), OFFERINGS).values;
 
 describe('pre-filling from an inquiry (#31 AC 1)', () => {
   it('carries the name, the email and one child per age', () => {
@@ -210,9 +215,6 @@ describe('the Statement of Faith is disclose-and-discuss (#31 AC 6)', () => {
 });
 
 describe('what the family owes (#31 AC 8)', () => {
-  const applied = (over: Record<string, string | string[]> = {}): ApplicationFields =>
-    parseApplication(goodForm(over), OFFERINGS).values;
-
   it('prices every enrolment unit through the rate card', () => {
     expect(priceUnit('year')).toBe('year');
     expect(priceUnit('fall')).toBe('semester');
@@ -285,18 +287,77 @@ describe('what the family owes (#31 AC 8)', () => {
     expect(cost.perChild[1]!.owed.total).toBe(0);
   });
 
-  it('gathers the family’s whole selection once, for the clash check', () => {
-    const values = applied({
-      'child-1-name': 'Obi',
-      'child-1-age': '9',
-      'child-1-classes': ['algebra-1:year', 'kingdom-math:year'],
-    });
+});
 
-    // Algebra 1 chosen by both children is one class in the family's selection.
-    expect(familySelection(values, OFFERINGS).map((one) => one.course.slug)).toEqual([
-      'algebra-1',
-      'kingdom-math',
-    ]);
+/**
+ * #31 AC 3, 4 and 5 across a *family*. `offerings.test.ts` proves the clash
+ * rule itself over one timetable; this proves the page asks it the right
+ * question — once per child, never once per family.
+ */
+describe('whose timetable a clash belongs to (#31 AC 5)', () => {
+  const MONDAY_1120 = ['algebra-1:year', 'beginner-latin-grades-5-6:year'];
+
+  it('warns about one child who chose two classes at one time', () => {
+    const clashing = familyClashes(
+      applied({ 'child-0-classes': MONDAY_1120 }),
+      OFFERINGS,
+      SEEDED_SCHOOL_YEAR,
+    );
+
+    expect(clashing).toHaveLength(1);
+    expect(clashing[0]!.child.name).toBe('Ada');
+    expect(clashing[0]!.index).toBe(0);
+    expect(clashing[0]!.clashes[0]!.severity).toBe('clash');
+  });
+
+  it('says nothing when two children hold the same slot between them', () => {
+    // Two children can sit in two rooms at 11:20 on a Monday. The family
+    // selection pooled would call this a clash and be plainly wrong.
+    const clashing = familyClashes(
+      applied({
+        'child-0-classes': ['algebra-1:year'],
+        'child-1-name': 'Obi',
+        'child-1-age': '9',
+        'child-1-classes': ['beginner-latin-grades-5-6:year'],
+      }),
+      OFFERINGS,
+      SEEDED_SCHOOL_YEAR,
+    );
+
+    expect(clashing).toEqual([]);
+  });
+
+  it('says nothing when two children pick one class in different units', () => {
+    // Pooled, this reads as the same course clashing with itself — the "nobody
+    // buys the year and the fall" mistake, attributed to a family who made it.
+    const clashing = familyClashes(
+      applied({
+        'child-0-classes': ['algebra-1:year'],
+        'child-1-name': 'Obi',
+        'child-1-age': '9',
+        'child-1-classes': ['algebra-1:fall'],
+      }),
+      OFFERINGS,
+      SEEDED_SCHOOL_YEAR,
+    );
+
+    expect(clashing).toEqual([]);
+  });
+
+  it('names each child who has a clash of their own', () => {
+    const clashing = familyClashes(
+      applied({
+        'child-0-classes': MONDAY_1120,
+        'child-1-name': 'Obi',
+        'child-1-age': '9',
+        'child-1-classes': MONDAY_1120,
+      }),
+      OFFERINGS,
+      SEEDED_SCHOOL_YEAR,
+    );
+
+    expect(clashing.map((one) => one.child.name)).toEqual(['Ada', 'Obi']);
+    expect(clashing.map((one) => one.index)).toEqual([0, 1]);
   });
 });
 
