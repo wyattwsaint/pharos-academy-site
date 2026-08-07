@@ -4,6 +4,7 @@ import { CALENDAR_PATH } from './calendar/views.js';
 import { CATALOGUE } from './courses/catalogue.js';
 import { classPath, CLASS_VIEWS } from './courses/views.js';
 import { CURRENT_FAMILIES_PATH } from './current-families/section.js';
+import { INQUIRY_PATH } from './inquiry/inquiry.js';
 import { STAFF_PATH } from './people/views.js';
 import { POLICIES_PATH } from './policies/views.js';
 import { TEACH_PATH } from './teach/teach.js';
@@ -201,6 +202,20 @@ function publicRoutes(classSlugs: readonly string[]): PublicRoute[] {
      * read it before applying is a family who will search for it.
      */
     { path: '/about/beliefs', priority: 0.7, changefreq: 'yearly' },
+    /*
+     * The inquiry (#25).
+     *
+     * The second `on-request` route, and for the same reason as the first: the
+     * form posts to it, and the answer it renders belongs to one submission —
+     * a cache in front of it is a cache that can hand one family's outcome to
+     * the next.
+     *
+     * High priority and enumerated rather than hidden. It is the primary call
+     * to action on the whole site, it is a real address Jill can send somebody,
+     * and the school's own email and phone are printed on it from the details
+     * row — so a changed address has to reach it.
+     */
+    { path: INQUIRY_PATH, priority: 0.9, changefreq: 'monthly', delivery: 'on-request' },
   ];
 }
 

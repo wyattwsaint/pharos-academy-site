@@ -7,6 +7,7 @@ import { unzipSync } from 'fflate';
 import { LABELS } from '../src/lib/admin/policies.js';
 import { SUITE_ADMIN, signIn } from './suite-admin.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
+import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
 import { POLICIES_PATH } from '../src/lib/policies/views.js';
 
@@ -724,6 +725,75 @@ test.describe('Download everything', () => {
   });
 });
 
+/**
+ * Inquiries, as Jill reads them (#25 AC 7, and the other half of AC 2).
+ *
+ * Folded into this file rather than given its own, because a spec of its own
+ * would have to be named in the `admin` project's `testMatch` list — and that
+ * list is enumerated one file at a time for a reason
+ * (`admin-revalidation.spec.ts` needs a different server), so a file added to
+ * `e2e/` and forgotten there would silently never run.
+ *
+ * The inquiry is submitted through the public form on the same dev server, so
+ * this is genuinely end to end: what the admin shows is what a parent typed,
+ * not a row this test inserted. The suite has no `RESEND_API_KEY`, so it also
+ * lands on the case the ticket cares most about — saved, but nobody emailed —
+ * which is invisible everywhere else on the site, because the parent was
+ * correctly told we have their question.
+ */
+test.describe('inquiries', () => {
+  test('shows what a family asked, and says when nobody was emailed', async ({ page }) => {
+    const name = 'Suite Admin Reader';
+    const email = 'suite-admin-reader@example.com';
+
+    await page.goto(INQUIRY_PATH);
+    await page.fill('#ask-name', name);
+    await page.fill('#ask-email', email);
+    await page.fill('#ask-ages', '7 and 15');
+    await page.fill('#ask-message', 'Do you take a child mid-year?');
+    await page.getByRole('button', { name: 'Send my question' }).click();
+    await expect(page.locator('[data-outcome="received"]')).toBeVisible();
+
+    // Found by navigating, because a screen nobody can find is not a screen
+    // Jill can read.
+    await signIn(page, '/admin/school-details');
+    await page.getByRole('link', { name: 'Inquiries' }).click();
+    await expect(page).toHaveURL(/\/admin\/inquiries$/);
+
+    // Newest first, so the one just submitted is the one at the top.
+    const entry = page.getByTestId('inquiry').first();
+    await expect(entry.getByTestId('inquiry-name')).toHaveText(name);
+    await expect(entry.getByTestId('inquiry-email')).toHaveText(email);
+    await expect(entry.getByTestId('inquiry-ages')).toContainText('7 and 15');
+    await expect(entry.getByTestId('inquiry-message')).toHaveText('Do you take a child mid-year?');
+
+    // AC 2's other direction: the send failed, and the screen says so rather
+    // than letting the school assume an email went out.
+    await expect(entry.getByTestId('inquiry-delivery')).toContainText('Nobody was emailed');
+    await expect(entry.getByTestId('inquiry-delivery')).toContainText('RESEND_API_KEY');
+  });
+
+  test('names the address list it is read at, and where that list is edited', async ({ page }) => {
+    // AC 3 as the school sees it: the recipients are settings, and the screen
+    // says which settings — so the two cannot drift apart in Jill's head.
+    await signIn(page, '/admin/money');
+    const addresses = await page.getByLabel('Application notifications go to').inputValue();
+
+    await page.goto('/admin/inquiries');
+    for (const address of addresses.split('\n').filter(Boolean)) {
+      await expect(page.locator('main')).toContainText(address.trim());
+    }
+    await expect(page.locator('main')).toContainText('Money screen');
+  });
+
+  test('offers no way to edit or delete what a family typed', async ({ page }) => {
+    await signIn(page, '/admin/inquiries');
+
+    await expect(page.getByRole('button', { name: /delete/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /save/i })).toHaveCount(0);
+  });
+});
+
 test.describe('accessibility', () => {
   for (const path of [
     '/admin/login',
@@ -753,6 +823,10 @@ test.describe('accessibility', () => {
     '/admin/courses',
     '/admin/courses/algebra-1',
     '/admin/courses/new',
+    // #25. A list of what families typed, with a warning line on any inquiry
+    // the school was not emailed about — and the one admin screen whose content
+    // comes from the public site rather than from an admin form.
+    '/admin/inquiries',
   ]) {
     for (const width of ADMIN_WIDTHS) {
       test(`${path} has zero axe violations at ${width}px`, async ({ page }) => {

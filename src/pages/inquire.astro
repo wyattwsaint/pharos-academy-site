@@ -1,0 +1,185 @@
+---
+export const prerender = false;
+
+import InquiryForm from '../components/InquiryForm.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getSchoolDetails, telHref } from '../lib/admin/school-details.js';
+import { resendSender } from '../lib/backup/monthly.js';
+import { getDb } from '../lib/db/client.js';
+import {
+  parseInquiry,
+  submitInquiry,
+  type InquiryErrors,
+  type InquiryFields,
+  type InquiryOutcome,
+} from '../lib/inquiry/inquiry.js';
+import { createInquiry, recordInquiryDelivery } from '../lib/inquiry/store.js';
+import { getMoneySettings } from '../lib/money/store.js';
+import { SITE_URL } from '../lib/site.js';
+
+/**
+ * The inquiry, as a page (#25).
+ *
+ * It exists because the form has to post somewhere. Every public page is ISR
+ * (#18 §1) and a cached page cannot take a POST, so the copy on the homepage
+ * submits across to this one — which is also where the answer belongs, since
+ * the answer is specific to a single submission and a cache in front of it
+ * could hand one family's outcome to the next. `prerender = false`, and the
+ * route list marks it `on-request` so the adapter excludes it from ISR.
+ *
+ * It is a real address as well as a target: a form-only page is what the
+ * "Ask us about Pharos" button can reach from anywhere, and what Jill can send
+ * somebody who asked in a car park.
+ *
+ * The three deliveries — the row, the school's email, the family's — are
+ * `submitInquiry`'s business, not this file's. What happens here is the reading
+ * of settings and credentials, which is the part that is specific to a running
+ * deployment.
+ */
+const db = await getDb();
+const details = await getSchoolDetails(db);
+
+let values: InquiryFields | null = null;
+let errors: InquiryErrors = {};
+let outcome: InquiryOutcome | null = null;
+
+if (Astro.request.method === 'POST') {
+  const parsed = parseInquiry(await Astro.request.formData());
+  values = parsed.values;
+  errors = parsed.errors;
+
+  if (Object.keys(errors).length === 0) {
+    /*
+     * The recipients come from the money settings row, which is where the
+     * school already keeps "who is emailed when something arrives" — settings,
+     * never code (#25 AC 3). One list rather than two, because an inquiry and
+     * an application are read by the same people and a second list is the one
+     * that goes stale.
+     */
+    const settings = await getMoneySettings(db);
+
+    /*
+     * The mailer is built here rather than imported as a singleton, so a
+     * deployment with no credentials is an absent sender rather than a crash on
+     * import — and an absent sender is a case `submitInquiry` already handles
+     * honestly.
+     */
+    const apiKey = import.meta.env.RESEND_API_KEY;
+    const from = import.meta.env.MAIL_FROM;
+
+    outcome = await submitInquiry(values, {
+      store: (fields) => createInquiry(db, fields),
+      sender: apiKey && from ? resendSender(apiKey) : undefined,
+      to: settings.notificationAddresses,
+      from: typeof from === 'string' ? from : '',
+      site: Astro.site?.toString() ?? SITE_URL,
+      schoolEmail: details.email.trim(),
+    });
+
+    if (outcome.id) await recordInquiryDelivery(db, outcome.id, outcome);
+
+    /*
+     * The operator's copy of what went wrong. A parent must not read the
+     * mailer's words, and a deployment whose notifications are silently failing
+     * must not be discoverable only by opening the admin.
+     */
+    if (outcome.storeError) console.error('[inquiry] not stored:', outcome.storeError);
+    if (outcome.notificationError) console.error('[inquiry] not notified:', outcome.notificationError);
+    if (outcome.confirmationError) {
+      console.error('[inquiry] no confirmation:', outcome.confirmationError);
+    }
+
+    if (outcome.held) values = null;
+  } else {
+    outcome = null;
+  }
+}
+
+const rejected = Object.keys(errors).length > 0;
+
+const description =
+  'Ask Pharos Academy about your children — tell us their ages and we will tell you honestly whether we fit.';
+---
+
+<BaseLayout details={details} title="Ask us about Pharos" description={description}>
+  <section class="band band-quiet" data-section="inquiry">
+    <div class="wrap">
+      <p class="label">Ask us about Pharos</p>
+      <h1 class="mt-4">Tell us your children's ages.</h1>
+      <p class="sub mt-5">
+        We'll tell you honestly whether Pharos fits. No commitment, and no application yet.
+      </p>
+
+      {
+        /*
+         * The outcome, and nothing about how long a reply takes (#25). A named
+         * clock would need George's sign-off; who answers an inquiry and how
+         * fast is a real question for the school, and it does not gate this.
+         */
+        outcome && (
+          <p class="notice mt-7" data-outcome={outcome.held ? 'received' : 'failed'} role="status">
+            {outcome.message}
+          </p>
+        )
+      }
+
+      {
+        rejected && (
+          <p class="notice mt-7" data-outcome="failed" role="status">
+            Nothing was sent — the fields below need fixing first.
+          </p>
+        )
+      }
+
+      {
+        outcome?.held ? (
+          <div class="mt-7">
+            <p class="sub">
+              We've sent a note to <strong>{outcome.confirmed ? 'your email' : 'the address you gave'}</strong>{' '}
+              with the class list and what we believe, so there is something to read in the
+              meantime.
+            </p>
+            <p class="mt-6">
+              <a class="btn" href="/classes">See the classes</a>
+              {' '}
+              <a class="btn" href="/about/beliefs">Read what we believe</a>
+            </p>
+          </div>
+        ) : (
+          <div class="mt-7">
+            <InquiryForm idPrefix="ask" values={values} errors={errors} />
+          </div>
+        )
+      }
+
+      <p class="sub mt-8 text-sm">
+        Or reach us directly:
+        <a class="text-gold-ink underline underline-offset-4" href={`mailto:${details.email}`}>
+          {details.email}
+        </a>
+        {' · '}
+        <a class="text-gold-ink underline underline-offset-4" href={telHref(details.phone)}>
+          {details.phone}
+        </a>
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /*
+    The outcome line. Colour is not the only signal — the words say what
+    happened, and a failure names the address to write to — because colour alone
+    is not a status a screen reader or a colour-blind reader gets.
+  */
+  .notice {
+    max-width: 46rem;
+    border-left: 3px solid var(--color-gold-orn);
+    padding: 0.75rem 0 0.75rem 1rem;
+    font-weight: 500;
+  }
+
+  .notice[data-outcome='failed'] {
+    border-left-color: #a3341f;
+  }
+</style>

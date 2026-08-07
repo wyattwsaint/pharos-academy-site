@@ -3,6 +3,7 @@ import { getSchoolDetails } from '../admin/school-details.js';
 import { getAttachment, listAnnouncements } from '../announcements/store.js';
 import { getSchoolYear, listEvents } from '../calendar/store.js';
 import { listCourses } from '../courses/store.js';
+import { listInquiries } from '../inquiry/store.js';
 import { getMoneySettings, listAgreedTerms } from '../money/store.js';
 import { listPeople } from '../people/store.js';
 import { getPolicyFile, listPolicies, listPolicyVersions } from '../policies/store.js';
@@ -57,6 +58,7 @@ export const EXPORTED_TABLES = [
   'school_year_terms',
   'school_year_closures',
   'calendar_events',
+  'inquiries',
 ] as const;
 
 /**
@@ -81,6 +83,7 @@ export const EXPORTED_TABLE_LABELS: Record<(typeof EXPORTED_TABLES)[number], str
   school_year_terms: 'Each day track’s first class date and week count, per semester',
   school_year_closures: 'Every day the school is closed, with what it is closed for',
   calendar_events: 'One-off events — open houses, concerts, picture days',
+  inquiries: 'Every family who has asked about the school, and what they asked',
 };
 
 /**
@@ -160,6 +163,18 @@ export async function buildExport(db: Db, at = new Date()): Promise<BackupArchiv
   const money = await getMoneySettings(db);
   files.push(jsonEntry('content/money-settings.json', money));
   tables.push({ table: 'money_settings', file: 'content/money-settings.json', rows: 1 });
+
+  /*
+   * The inquiries (#25).
+   *
+   * Content in the sense that matters: these are the school's leads, they are
+   * what the application flow pre-fills from, and losing them loses families
+   * rather than settings. They are exported for the same reason `agreed_terms`
+   * is — nothing edits them, and that makes them more worth keeping, not less.
+   */
+  const inquiryRows = await listInquiries(db);
+  files.push(jsonEntry('content/inquiries.json', inquiryRows));
+  tables.push({ table: 'inquiries', file: 'content/inquiries.json', rows: inquiryRows.length });
 
   const agreed = await listAgreedTerms(db);
   files.push(jsonEntry('content/agreed-terms.json', agreed));

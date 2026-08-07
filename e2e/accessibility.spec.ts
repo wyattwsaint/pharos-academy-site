@@ -4,6 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { SUPPORT_PATH } from '../src/lib/about/story.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
 import { CALENDAR_PATH, CURRENT_FAMILIES_PATH } from '../src/lib/current-families/section.js';
+import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
 import { POLICIES_PATH } from '../src/lib/policies/views.js';
 import { TEACH_PATH } from '../src/lib/teach/teach.js';
@@ -56,6 +57,20 @@ async function openCatalogueCard(page: Page) {
 async function openRefundTerms(page: Page) {
   await page.locator('.refunds summary').click();
   await expect(page.locator('.refunds[open]')).toBeVisible();
+}
+
+/**
+ * Post the inquiry form with nothing in it, so axe measures the refused state.
+ *
+ * An empty submission is refused by `parseInquiry` before anything is stored or
+ * emailed, so this is safe to run against a real deployment — which matters,
+ * because that is where CI points this suite. The *accepted* state is left to
+ * `inquiry.spec.ts`: it writes a row, and five widths of junk rows on every
+ * axe run is a worse trade than the coverage is worth.
+ */
+async function rejectInquiry(page: Page) {
+  await page.getByRole('button', { name: 'Send my question' }).click();
+  await expect(page.locator('[data-outcome="failed"]').first()).toBeVisible();
 }
 
 const noop = async (_page: Page) => {};
@@ -133,6 +148,20 @@ const SURFACES = [
   // #30 AC 8. Short, and off the parent path — but a nav-less page is exactly
   // the one that stops being measured.
   { name: 'the teach page', path: TEACH_PATH, state: 'closed', open: noop },
+  /*
+   * #25 AC 8. The primary call to action on the whole site, and the one page
+   * that renders on request. Measured twice: as it is reached, and with every
+   * field refused — the second is where axe finds real violations, because a
+   * rejected form is where `aria-describedby`, `aria-invalid` and a status
+   * region either wire up or do not.
+   */
+  { name: 'the inquiry page', path: INQUIRY_PATH, state: 'closed', open: noop },
+  {
+    name: 'the inquiry page',
+    path: INQUIRY_PATH,
+    state: 'with every field refused',
+    open: rejectInquiry,
+  },
   // #30 AC 8. The longest unbroken run of prose on the site — eleven numbered
   // articles set in a measure, then two permission notes — and the page a
   // family is most likely to read on a phone, because they were sent to it

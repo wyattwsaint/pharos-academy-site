@@ -58,7 +58,15 @@ export type MoneySettings = {
    * a change in the admin rather than a rebuild.
    */
   depositCreditedAgainstTuition: boolean;
-  /** Who is emailed when an application arrives. At least one, often two. */
+  /**
+   * Who is emailed when an inquiry or an application arrives. At least one,
+   * often two.
+   *
+   * One list for both (#25 AC 3). The inquiry is not an application, but it is
+   * read by the same people, and the alternative — a second list of the same
+   * two addresses on a second screen — is the one that is wrong on the day the
+   * Pharos Gmail changes hands.
+   */
   notificationAddresses: string[];
 };
 
@@ -128,7 +136,11 @@ export const LABELS: Record<MoneyField, string> = {
   instalmentDates: 'Quarterly payment dates',
   refundTerms: 'Refund terms',
   depositCreditedAgainstTuition: 'Deposit is credited against tuition',
-  notificationAddresses: 'Application notifications go to',
+  // Inquiries as well as applications since #25: they are read by the same
+  // people, and a second list of the same two addresses is the one that goes
+  // stale. This is the "held in settings rather than hard-coded" the inquiry
+  // ticket requires.
+  notificationAddresses: 'Inquiry and application notifications go to',
 };
 
 export type ParsedMoneySettings = {

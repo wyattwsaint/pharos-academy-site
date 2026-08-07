@@ -1,0 +1,142 @@
+---
+import { INQUIRY_PATH, type InquiryErrors, type InquiryFields } from '../lib/inquiry/inquiry.js';
+
+/**
+ * The inquiry form itself — one component, rendered on the homepage and again
+ * on `/inquire` (#25).
+ *
+ * One component because there is one form. Two copies of these five controls
+ * would be two sets of labels, two `aria-describedby` wirings and two chances
+ * for one of them to grow a phone field; the ticket's "no phone number" is a
+ * property of this file and of nothing else.
+ *
+ * **It always posts to `/inquire`, never to the page it is on.** The public site
+ * is ISR (#18 §1) and a cached page cannot take a POST, so the homepage's copy
+ * submits across to the one page that renders on request — which is also where
+ * the answer belongs, since that answer is specific to one submission.
+ *
+ * `idPrefix` exists because two copies of a form on one document would be two
+ * elements sharing an `id`, which is both an axe violation and a label that
+ * points at the wrong input.
+ */
+interface Props {
+  /** Namespaces every `id` on the form. Unique per instance on a page. */
+  idPrefix: string;
+  /** What was typed, when a rejected submission is being redisplayed. */
+  values?: InquiryFields | null;
+  errors?: InquiryErrors;
+  /** The submit button's words. */
+  submitLabel?: string;
+}
+
+const { idPrefix, values = null, errors = {}, submitLabel = 'Send my question' } = Astro.props;
+
+const id = (field: string) => `${idPrefix}-${field}`;
+const errorId = (field: string) => `${idPrefix}-${field}-error`;
+const typed = (field: keyof InquiryFields): string => values?.[field] ?? '';
+---
+
+<form class="inquiry-form" method="post" action={INQUIRY_PATH} novalidate data-inquiry-form>
+  <div>
+    <label for={id('name')}>Your name</label>
+    <input
+      id={id('name')}
+      name="name"
+      autocomplete="name"
+      value={typed('name')}
+      aria-describedby={errors.name ? errorId('name') : undefined}
+      aria-invalid={errors.name ? 'true' : undefined}
+    />
+    {errors.name && <p class="error" id={errorId('name')}>{errors.name}</p>}
+  </div>
+
+  <div>
+    <label for={id('email')}>Email</label>
+    <input
+      id={id('email')}
+      name="email"
+      type="email"
+      autocomplete="email"
+      value={typed('email')}
+      aria-describedby={errors.email ? errorId('email') : undefined}
+      aria-invalid={errors.email ? 'true' : undefined}
+    />
+    {errors.email && <p class="error" id={errorId('email')}>{errors.email}</p>}
+  </div>
+
+  {
+    /*
+     * Free text and required — the one field that earns its friction. A
+     * dropdown cannot hold "6, 9 and 13", and Pharos serves a fourteen-year
+     * span, so without this every first reply from Jill is a question.
+     *
+     * There is deliberately no phone field anywhere below this comment.
+     */
+  }
+  <div class="full">
+    <label for={id('ages')}>Children’s ages</label>
+    <input
+      id={id('ages')}
+      name="ages"
+      placeholder="e.g. 6, 9 and 13"
+      value={typed('ages')}
+      aria-describedby={errors.ages ? errorId('ages') : undefined}
+      aria-invalid={errors.ages ? 'true' : undefined}
+    />
+    {errors.ages && <p class="error" id={errorId('ages')}>{errors.ages}</p>}
+  </div>
+
+  <div class="full">
+    <label for={id('message')}>Anything you’d like to ask (optional)</label>
+    <textarea id={id('message')} name="message">{typed('message')}</textarea>
+  </div>
+
+  <div class="full">
+    <button class="btn solid" type="submit">{submitLabel}</button>
+  </div>
+</form>
+
+<style>
+  .inquiry-form {
+    display: grid;
+    gap: 1.5rem;
+    max-width: 46rem;
+  }
+
+  @media (min-width: 44rem) {
+    .inquiry-form {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .full {
+    grid-column: 1 / -1;
+  }
+
+  label {
+    display: block;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--color-gold-orn);
+    background: white;
+    font: inherit;
+    color: var(--color-ink);
+  }
+
+  textarea {
+    min-height: 7rem;
+  }
+
+  .error {
+    margin-top: 0.35rem;
+    color: #8c2b19;
+    font-weight: 500;
+  }
+</style>

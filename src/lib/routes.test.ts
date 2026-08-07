@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CATALOGUE } from './courses/catalogue.js';
 import { SUPPORT_PATH } from './about/story.js';
+import { INQUIRY_PATH } from './inquiry/inquiry.js';
 import {
   PUBLIC_ROUTES,
   absoluteUrl,
@@ -89,11 +90,12 @@ describe('the public route list', () => {
 describe('how each route is delivered', () => {
   /*
    * ISR is the delivery model (#18 §1) and the exception has to earn itself.
-   * `/about/support` is the one page that takes a POST — the volunteer form —
-   * and a cache in front of it can hand one visitor's outcome to the next.
+   * Two pages take a POST — the volunteer form on `/about/support` (#30) and
+   * the inquiry on `/inquire` (#25) — and a cache in front of either can hand
+   * one visitor's outcome to the next.
    */
   it('renders on request only where a page takes a POST', () => {
-    expect(onRequestPaths()).toEqual([SUPPORT_PATH]);
+    expect(onRequestPaths().sort()).toEqual([INQUIRY_PATH, SUPPORT_PATH].sort());
   });
 
   // The sitemap still carries it: how a page is delivered is not whether it
@@ -107,7 +109,8 @@ describe('how each route is delivered', () => {
   // replace and the count Jill is shown should mean something.
   it('leaves an on-request page out of what republishing re-requests', () => {
     expect(revalidatablePaths()).not.toContain(SUPPORT_PATH);
-    expect(revalidatablePaths().length).toBe(publicPaths().length - 1);
+    expect(revalidatablePaths()).not.toContain(INQUIRY_PATH);
+    expect(revalidatablePaths().length).toBe(publicPaths().length - onRequestPaths().length);
   });
 });
 
