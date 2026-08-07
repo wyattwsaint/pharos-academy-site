@@ -1,5 +1,5 @@
 import { BELIEFS_PATH } from '../about/beliefs.js';
-import type { Mail, Sender } from '../backup/monthly.js';
+import { describeFailure, sendAll, type Mail, type Sender } from '../backup/monthly.js';
 import { isEmailAddress, textField as text } from '../forms.js';
 import { SCHOOL_NAME } from '../site.js';
 
@@ -246,16 +246,22 @@ export async function submitInquiry(
   try {
     id = await options.store(values);
   } catch (error) {
-    storeError = describe(error);
+    storeError = describeFailure(error);
   }
 
-  const notification = await send(options.sender, () =>
+  /*
+   * The rule — any rather than all, an absent sender as a refusal — is
+   * `sendAll`'s, shared with the application (#32) so the two forms cannot
+   * disagree about what "the school was told" means.
+   */
+  const notification = await sendAll(
+    options.sender,
     options.to.map((address) =>
       inquiryNotification(values, { to: address, from: options.from, stored: id !== undefined }),
     ),
   );
 
-  const confirmation = await send(options.sender, () => [
+  const confirmation = await sendAll(options.sender, [
     inquiryConfirmation(values, { from: options.from, site: options.site }),
   ]);
 
@@ -274,41 +280,4 @@ export async function submitInquiry(
     confirmed: confirmation.sent,
     confirmationError: confirmation.error,
   };
-}
-
-/**
- * Send a batch and report whether any of it landed.
- *
- * "Any" rather than "all" because the school's notification list is a list: two
- * addresses where one bounces is a school that was told, and reporting that as
- * a failure would put a false alarm on the admin screen for ever.
- */
-async function send(
-  sender: Sender | undefined,
-  build: () => Mail[],
-): Promise<{ sent: boolean; error?: string }> {
-  if (!sender) {
-    return { sent: false, error: 'No mailer is configured on this deployment (RESEND_API_KEY).' };
-  }
-
-  const mails = build();
-  if (mails.length === 0) {
-    return { sent: false, error: 'There is nobody to send this to.' };
-  }
-
-  let sent = false;
-  let error: string | undefined;
-  for (const mail of mails) {
-    try {
-      await sender(mail);
-      sent = true;
-    } catch (failure) {
-      error ??= `${mail.to}: ${describe(failure)}`;
-    }
-  }
-  return { sent, error: sent && !error ? undefined : error };
-}
-
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

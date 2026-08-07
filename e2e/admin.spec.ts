@@ -6,6 +6,7 @@ import { unzipSync } from 'fflate';
 
 import { LABELS } from '../src/lib/admin/policies.js';
 import { SUITE_ADMIN, signIn } from './suite-admin.js';
+import { APPLICATION_PATH } from '../src/lib/application/application.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
 import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
@@ -794,6 +795,154 @@ test.describe('inquiries', () => {
   });
 });
 
+/**
+ * Applications, as the school reads them (#32).
+ *
+ * Folded into this file for the reason the inquiries are: a spec of its own
+ * would have to be named in the `admin` project's `testMatch` list, and a file
+ * added to `e2e/` and forgotten there silently never runs.
+ *
+ * Every application here is submitted through the public form on the same dev
+ * server, so what the admin shows is what a family sent rather than a row the
+ * test inserted — which is the only way the tally is genuinely being tested,
+ * since the tally's whole job is to reconcile rows nobody wrote on purpose.
+ */
+test.describe('applications', () => {
+  /** Send one application through the public form, as a family would. */
+  async function apply(
+    page: Page,
+    family: { name: string; email: string; child: string; offering: string; objection?: string },
+  ): Promise<void> {
+    await page.goto(APPLICATION_PATH);
+    await page.fill('#apply-family-name', family.name);
+    await page.fill('#apply-email', family.email);
+    await page.fill('#apply-child-0-name', family.child);
+    await page.fill('#apply-child-0-age', '13');
+    await page.check(`input[name="child-0-classes"][value="${family.offering}"]`);
+    if (family.objection) await page.fill('#apply-objections', family.objection);
+
+    await page.getByRole('button', { name: 'Send the application' }).click();
+    await expect(page.locator('[data-outcome="received"]')).toBeVisible();
+  }
+
+  /** The application the school is looking at, found by the family's name. */
+  const rowFor = (page: Page, family: string) =>
+    page.getByTestId('application').filter({ hasText: family }).first();
+
+  test('moves the money without moving the application, and back (AC 2)', async ({ page }) => {
+    const family = 'Suite Two Axes';
+    await apply(page, {
+      name: family,
+      email: 'suite-two-axes@example.com',
+      child: 'Axis Child',
+      offering: 'algebra-1:year',
+    });
+
+    // Found by navigating: a screen nobody can find is not a screen Jill reads.
+    await signIn(page, '/admin/school-details');
+    await page.getByRole('link', { name: 'Applications' }).click();
+    await expect(page).toHaveURL(/\/admin\/applications$/);
+
+    const row = rowFor(page, family);
+    await expect(row.getByTestId('application-state')).toContainText('Submitted');
+    await expect(row.getByTestId('application-payment')).toContainText('Awaiting cheque');
+
+    // The cheque arrives. The application has not moved.
+    await row.getByRole('button', { name: 'Cheque has arrived' }).click();
+    await expect(rowFor(page, family).getByTestId('application-payment')).toContainText(
+      'Cheque received',
+    );
+    await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
+
+    // The family enrols. The money has not moved.
+    await rowFor(page, family).getByRole('button', { name: 'Enrol this family' }).click();
+    await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Enrolled');
+    await expect(rowFor(page, family).getByTestId('application-payment')).toContainText(
+      'Cheque received',
+    );
+  });
+
+  test('counts a family that applied twice once, and says so (AC 1)', async ({ page }) => {
+    const family = 'Suite Twice';
+    const once = {
+      name: family,
+      email: 'suite-twice@example.com',
+      child: 'Twice Child',
+      offering: 'beginner-latin-grades-5-6:year',
+    };
+
+    await apply(page, once);
+    await apply(page, once);
+
+    await signIn(page, '/admin/applications');
+
+    // Both applications are kept — nothing was blocked on the email address.
+    await expect(page.getByTestId('application').filter({ hasText: family })).toHaveCount(2);
+
+    // And the tally counts the child once, with the note that explains it.
+    await expect(page.getByTestId('class-tally')).toContainText('second submission');
+    await expect(rowFor(page, family).getByTestId('application-resubmitted')).toBeVisible();
+  });
+
+  test('raises the conversation flag, and never calls it a rejection (AC 5)', async ({ page }) => {
+    const family = 'Suite Objection';
+    await apply(page, {
+      name: family,
+      email: 'suite-objection@example.com',
+      child: 'Objecting Child',
+      offering: 'algebra-1:year',
+      objection: 'We would like to talk about article 9.',
+    });
+
+    await signIn(page, '/admin/applications');
+    const flag = rowFor(page, family).getByTestId('application-flag');
+
+    await expect(flag).toBeVisible();
+    await expect(flag).toContainText('article 9');
+    await expect(flag).toContainText('not a refusal');
+    // The family is told the same thing on the way out — an objection routes to
+    // a conversation and stops nothing.
+    await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
+  });
+
+  test('says when nobody at the school was emailed', async ({ page }) => {
+    // The suite has no `RESEND_API_KEY`, which is exactly the case #32 AC 6
+    // cares about: the application saved, the family was told on screen, and
+    // only this line says the school's own copy never went.
+    const family = 'Suite Undelivered';
+    await apply(page, {
+      name: family,
+      email: 'suite-undelivered@example.com',
+      child: 'Quiet Child',
+      offering: 'algebra-1:year',
+    });
+
+    await signIn(page, '/admin/applications');
+    const delivery = rowFor(page, family).getByTestId('application-delivery');
+
+    await expect(delivery).toContainText('Nobody at the school was emailed');
+    await expect(delivery).toContainText('RESEND_API_KEY');
+  });
+
+  test('names the address list it is read at, and where that list is edited', async ({ page }) => {
+    await signIn(page, '/admin/money');
+    const addresses = await page.getByLabel('Application notifications go to').inputValue();
+
+    await page.goto('/admin/applications');
+    for (const address of addresses.split('\n').filter(Boolean)) {
+      await expect(page.locator('main')).toContainText(address.trim());
+    }
+    await expect(page.locator('main')).toContainText('Money screen');
+  });
+
+  test('offers no way to edit or delete what a family sent', async ({ page }) => {
+    await signIn(page, '/admin/applications');
+
+    await expect(page.getByRole('button', { name: /delete/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /save/i })).toHaveCount(0);
+  });
+});
+
 test.describe('accessibility', () => {
   for (const path of [
     '/admin/login',
@@ -827,6 +976,10 @@ test.describe('accessibility', () => {
     // the school was not emailed about — and the one admin screen whose content
     // comes from the public site rather than from an admin form.
     '/admin/inquiries',
+    // #32. Two rows of buttons under every application — the application's own
+    // state and the money's — which is the screen's densest interactive region
+    // and the one where a screen reader has to be able to tell them apart.
+    '/admin/applications',
   ]) {
     for (const width of ADMIN_WIDTHS) {
       test(`${path} has zero axe violations at ${width}px`, async ({ page }) => {

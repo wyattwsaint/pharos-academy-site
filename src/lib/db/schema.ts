@@ -571,6 +571,48 @@ export const applications = pgTable('applications', {
   faith: text('faith').array().notNull(),
   /** The money terms frozen for this family, when they were recorded. */
   agreedTermsId: uuid('agreed_terms_id').references(() => agreedTerms.id),
+  /**
+   * Where the application itself is — `application/lifecycle.ts` (#32).
+   *
+   * One of seven, and **`stale` is deliberately two of them**: a draft nobody
+   * finished (`abandoned`) and a submission the site could not accept
+   * (`refused`) are different events, and only the second is told about.
+   */
+  status: text('status').notNull().default('submitted'),
+  /**
+   * The payment axis, and it is three columns rather than a word inside
+   * `status` on purpose.
+   *
+   * Applied and paid are separate facts about a family: an application is
+   * `submitted` while its cheque is awaited, then overdue, then received, and
+   * none of that moves the column above. Folding them together would mean
+   * inventing "submitted, unpaid" and then needing "enrolled, unpaid" the same
+   * afternoon.
+   *
+   * **`overdue` is never stored here.** It is what the clock says about an
+   * awaited cheque past its grace period, computed on read from
+   * `payment_since` — so a cheque goes overdue with nobody acting and with no
+   * nightly job that can quietly stop running (ADR-0008).
+   *
+   * `payment_mode` is the payment slot: today every row reads `cheque`, and the
+   * Vanco stage flips it to `online` without any surrounding state changing
+   * shape.
+   */
+  paymentMode: text('payment_mode').notNull().default('cheque'),
+  paymentStatus: text('payment_status').notNull().default('awaiting'),
+  /** When the payment axis last moved. What the grace period is measured from. */
+  paymentSince: timestamp('payment_since', { withTimezone: true }),
+  /**
+   * What became of the two emails, exactly as the inquiries record it.
+   *
+   * Null `notified_at` is the failure that is invisible everywhere else: the
+   * family was correctly told their application arrived, and only this column
+   * says nobody at the school was emailed about it.
+   */
+  notifiedAt: timestamp('notified_at', { withTimezone: true }),
+  notificationError: text('notification_error'),
+  confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+  confirmationError: text('confirmation_error'),
 });
 
 /**

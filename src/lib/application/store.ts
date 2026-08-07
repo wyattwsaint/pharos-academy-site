@@ -1,8 +1,22 @@
-import { asc, desc, inArray } from 'drizzle-orm';
+import { asc, desc, eq, inArray } from 'drizzle-orm';
 
 import type { Db } from '../db/client.js';
-import { applicationChildren, applications } from '../db/schema.js';
+import { applicationChildren, applications, type ApplicationRow } from '../db/schema.js';
 import type { ApplicationChild, ApplicationFields, FaithAnswer, FaithAnswers } from './application.js';
+import {
+  APPLICATION_STATES,
+  RECORDED_PAYMENT_STATUSES,
+  PAYMENT_MODES,
+  nextApplicationState,
+  nextPayment,
+  paymentOnSubmission,
+  type ApplicationEvent,
+  type ApplicationState,
+  type Payment,
+  type PaymentEvent,
+  type PaymentMode,
+  type RecordedPaymentStatus,
+} from './lifecycle.js';
 
 /**
  * The applications, as rows (#31).
@@ -18,8 +32,11 @@ import type { ApplicationChild, ApplicationFields, FaithAnswer, FaithAnswers } f
  * `isFlagged(values)` at the moment of submission, and a row that recomputed it
  * on read would change its own meaning the day somebody edited the rule.
  *
- * Nothing here updates a row. An application is what a family sent; the school
- * answers it in a conversation, not by editing it.
+ * **Nothing here rewrites what a family sent.** The three writers that came
+ * with #32 move the two axes and record what became of the emails, and that is
+ * the whole of what a second write may touch: the family's own words, their
+ * children and their choices are written once and are the record of what they
+ * asked for. An application is answered in a conversation, not by editing it.
  */
 
 /** What was recorded, as the admin and the confirmation read it back. */
@@ -34,6 +51,16 @@ export type ApplicationRecord = {
   faith: FaithAnswers;
   children: ApplicationChild[];
   agreedTermsId: string | null;
+  /** Where the application itself is (#32). Never moved by the payment. */
+  state: ApplicationState;
+  /** Where the money is. Never moves the state. `overdue` is read, not stored. */
+  payment: Payment;
+  /** When the school was told. Null means it was not — and the admin says so. */
+  notifiedAt: Date | null;
+  notificationError: string | null;
+  /** When the family was written to, with a confirmation or a refusal notice. */
+  confirmedAt: Date | null;
+  confirmationError: string | null;
 };
 
 /**
@@ -71,6 +98,14 @@ export async function createApplication(
       statementVersion: facts.statementVersion,
       faith: encodeFaith(values.faith),
       agreedTermsId: facts.agreedTermsId ?? null,
+      /*
+       * Submitted, and awaiting whatever the payment slot takes today (#32).
+       * The mode is read from `paymentOnSubmission` rather than typed here, so
+       * the Vanco stage flips one constant and this row starts `paid online`
+       * with nothing else in the codebase moving.
+       */
+      status: 'submitted' satisfies ApplicationState,
+      ...paymentColumns(paymentOnSubmission(now)),
     })
     .returning();
 
@@ -115,6 +150,140 @@ export async function listApplications(db: Db): Promise<ApplicationRecord[]> {
     .orderBy(asc(applicationChildren.position));
 
   return rows.map((row) => ({
+    ...toRecord(row),
+    children: children
+      .filter((child) => child.applicationId === row.id)
+      .map((child) => ({ name: child.name, age: child.age, offeringKeys: child.offeringKeys })),
+  }));
+}
+
+/**
+ * Move the application, and only the application (#32 AC 2).
+ *
+ * It writes one column. There is no payment argument, no payment default and
+ * nothing in the update that could reach the money side — which is the reason
+ * the two axes cannot be moved together by accident rather than a promise that
+ * nobody will.
+ *
+ * Null when the move does not exist from where the application is standing: a
+ * second click on "Enrol" is an ordinary thing for a person to do.
+ */
+export async function moveApplication(
+  db: Db,
+  id: string,
+  event: ApplicationEvent,
+): Promise<ApplicationState | null> {
+  const row = await getApplicationRow(db, id);
+  if (!row) return null;
+
+  const state = nextApplicationState(applicationState(row.status), event);
+  if (!state) return null;
+
+  await db.update(applications).set({ status: state }).where(eq(applications.id, id));
+  return state;
+}
+
+/**
+ * Move the money, and only the money (#32 AC 2).
+ *
+ * The mirror of `moveApplication`, and deliberately as narrow: three columns,
+ * none of them `status`. `since` is restamped on every move, which is what
+ * gives a re-expected cheque its own grace period rather than making it overdue
+ * the instant it is asked for again.
+ */
+export async function moveApplicationPayment(
+  db: Db,
+  id: string,
+  event: PaymentEvent,
+  now = new Date(),
+): Promise<Payment | null> {
+  const row = await getApplicationRow(db, id);
+  if (!row) return null;
+
+  const payment = nextPayment(paymentOf(row), event, now);
+  if (!payment) return null;
+
+  await db.update(applications).set(paymentColumns(payment)).where(eq(applications.id, id));
+  return payment;
+}
+
+/**
+ * Stamp the row with what became of the two emails.
+ *
+ * Swallows its own failure, exactly as the inquiry's does and for the same
+ * reason: it runs after the application is already safe, and throwing here
+ * would turn "the notification did not send" into "the family was told their
+ * application was lost".
+ */
+export async function recordApplicationDelivery(
+  db: Db,
+  id: string,
+  outcome: {
+    notified: boolean;
+    notificationError?: string;
+    confirmed: boolean;
+    confirmationError?: string;
+  },
+  now = new Date(),
+): Promise<void> {
+  try {
+    await db
+      .update(applications)
+      .set({
+        notifiedAt: outcome.notified ? now : null,
+        notificationError: outcome.notificationError ?? null,
+        confirmedAt: outcome.confirmed ? now : null,
+        confirmationError: outcome.confirmationError ?? null,
+      })
+      .where(eq(applications.id, id));
+  } catch {
+    // Nothing to do and nothing to say: the application is stored and the
+    // emails have already gone or already failed.
+  }
+}
+
+/**
+ * One application, children attached.
+ *
+ * The admin lists rather than drills in — an application is short enough to
+ * read in the list — so this is the by-id reader a screen for one would use,
+ * and today it is what the tests read a single row back through. Undefined for
+ * anything that is not a row, **including an id that is not an id**, for the
+ * reason `getInquiry` guards the same way: a malformed uuid is an error from
+ * Postgres rather than an empty result.
+ */
+export async function getApplication(db: Db, id: string): Promise<ApplicationRecord | undefined> {
+  const row = await getApplicationRow(db, id);
+  if (!row) return undefined;
+
+  const children = await db
+    .select()
+    .from(applicationChildren)
+    .where(eq(applicationChildren.applicationId, id))
+    .orderBy(asc(applicationChildren.position));
+
+  return {
+    ...toRecord(row),
+    children: children.map((child) => ({
+      name: child.name,
+      age: child.age,
+      offeringKeys: child.offeringKeys,
+    })),
+  };
+}
+
+async function getApplicationRow(db: Db, id: string): Promise<ApplicationRow | undefined> {
+  if (!UUID.test(id)) return undefined;
+  const [row] = await db.select().from(applications).where(eq(applications.id, id)).limit(1);
+  return row;
+}
+
+/** The shape `gen_random_uuid()` produces, which is the only shape worth querying. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A row as the record, minus the children the caller fetches its own way. */
+function toRecord(row: ApplicationRow): Omit<ApplicationRecord, 'children'> {
+  return {
     id: row.id,
     familyName: row.familyName,
     email: row.email,
@@ -123,11 +292,57 @@ export async function listApplications(db: Db): Promise<ApplicationRecord[]> {
     objections: row.objections,
     statementVersion: row.statementVersion,
     faith: decodeFaith(row.faith),
-    children: children
-      .filter((child) => child.applicationId === row.id)
-      .map((child) => ({ name: child.name, age: child.age, offeringKeys: child.offeringKeys })),
     agreedTermsId: row.agreedTermsId,
-  }));
+    state: applicationState(row.status),
+    payment: paymentOf(row),
+    notifiedAt: row.notifiedAt,
+    notificationError: row.notificationError,
+    confirmedAt: row.confirmedAt,
+    confirmationError: row.confirmationError,
+  };
+}
+
+/** The payment axis as columns. The one place the three are written together. */
+function paymentColumns(payment: Payment) {
+  return {
+    paymentMode: payment.mode,
+    paymentStatus: payment.status,
+    paymentSince: payment.since,
+  };
+}
+
+/**
+ * The payment axis as the domain shape.
+ *
+ * `payment_since` falls back to the day the application arrived, which is what
+ * a row written before #32 holds — the cheque was awaited from the moment the
+ * family applied, so the grace period was already running.
+ */
+function paymentOf(row: ApplicationRow): Payment {
+  return {
+    mode: PAYMENT_MODES.includes(row.paymentMode as PaymentMode)
+      ? (row.paymentMode as PaymentMode)
+      : 'cheque',
+    status: RECORDED_PAYMENT_STATUSES.includes(row.paymentStatus as RecordedPaymentStatus)
+      ? (row.paymentStatus as RecordedPaymentStatus)
+      : 'awaiting',
+    since: row.paymentSince ?? row.receivedAt,
+  };
+}
+
+/**
+ * A stored word as a state.
+ *
+ * A column of free text read back into a closed set, so a value the schema
+ * could hold but the lifecycle does not know — a hand-edited row, a state
+ * removed in a later version — reads as `submitted` rather than making every
+ * screen that lists applications throw. Being visible and wrong beats being
+ * absent.
+ */
+function applicationState(value: string): ApplicationState {
+  return APPLICATION_STATES.includes(value as ApplicationState)
+    ? (value as ApplicationState)
+    : 'submitted';
 }
 
 /**

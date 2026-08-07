@@ -1,0 +1,346 @@
+/**
+ * What leaves the site when an application arrives (#32, #18 §13 sends 3 and 4).
+ *
+ * Three messages, and which of them goes is decided by one fact — whether the
+ * application was written down:
+ *
+ * - **The school is always told.** Every address in the money settings, never a
+ *   hard-coded one, because the list is the school's to change and a second
+ *   list in code is the one that goes stale.
+ * - **A stored application confirms to the family**, listing what they chose
+ *   and what to post.
+ * - **A refused submission tells the family it was refused** — the half of the
+ *   `stale` split that used to age out with nobody told (#32 AC 4). An
+ *   *abandoned* draft sends nothing, and there is nothing here that could send
+ *   it anything: a family who closed the tab chose to, and mail about it would
+ *   be the site nagging somebody who already said no.
+ *
+ * The module is mailer-free and database-free. `deliverApplication` takes a
+ * `Sender` and the already-computed submission, so the tests beside it assert
+ * the messages the school and the family actually receive rather than that some
+ * function was called.
+ */
+
+import { sendAll, type Mail, type Sender } from '../backup/monthly.js';
+import { formatMoney, type MoneySettings } from '../money/settings.js';
+import { unitPrice } from '../money/owed.js';
+import { SCHOOL_NAME } from '../site.js';
+import {
+  APPLICATION_PATH,
+  FAITH_QUESTIONS,
+  FAITH_RESPONDENTS,
+  faithAnswer,
+  priceUnit,
+  type ApplicationCost,
+  type ApplicationFields,
+} from './application.js';
+import { title as offeringTitle } from './offerings.js';
+import { tallyLines, type TallyEntry } from './tally.js';
+
+/** One submission, as everything downstream of the form sees it. */
+export type ApplicationSubmission = {
+  values: ApplicationFields;
+  cost: ApplicationCost;
+  /** The terms this family applied at — frozen ones if they were recorded. */
+  settings: MoneySettings;
+  /** The class tally *including* this application, deduplicated (#32 AC 1). */
+  tally: readonly TallyEntry[];
+  /** Whether anybody objected. Never a rejection — it starts a conversation. */
+  flagged: boolean;
+  /** The row's id, or null when the write failed and this is a refusal. */
+  reference: string | null;
+};
+
+/**
+ * The message the school receives (#32 AC 6).
+ *
+ * Everything #18 §11 says the school gets on submission: the application, the
+ * selections with their units and prices, the Statement of Faith record, the
+ * amount owed, the conversation flag, and the tally.
+ *
+ * The **conversation flag goes first**, above the family's name, because it is
+ * the one line that changes what somebody does about this email — and an email
+ * whose important line is at the bottom is an email that gets skimmed.
+ *
+ * `stored` is why this takes an option as well as the submission: when the
+ * write failed, this email is the only copy of the application that exists, and
+ * it has to say so in words somebody acts on.
+ */
+export function applicationNotification(
+  submission: ApplicationSubmission,
+  options: { to: string; from: string },
+): Mail {
+  const { values, cost, settings, flagged, reference } = submission;
+  const lines: string[] = [];
+
+  if (flagged) {
+    lines.push(
+      'CONVERSATION FLAG: somebody on this application answered "no" to one of the Statement ' +
+        'of Faith questions, or wrote something they want to talk about. It is not a refusal — ' +
+        'the family is asking to speak to you.',
+      '',
+    );
+  }
+
+  lines.push(`${values.familyName} has applied to ${SCHOOL_NAME}.`, '', `Email:  ${values.email}`);
+  if (reference) lines.push(`Reference:  ${reference}`);
+
+  lines.push('', 'WHO IS APPLYING, AND FOR WHAT', ...chosen(cost, settings));
+
+  lines.push(
+    '',
+    'WHAT THEY OWE',
+    `  Registration:            ${formatMoney(cost.total.registration)}`,
+    `  Deposits:                ${formatMoney(cost.total.deposits)}`,
+    `  Cheque they are posting: ${formatMoney(cost.total.dueNow)}`,
+    `  Tuition to instructors:  ${formatMoney(cost.total.dueToInstructors)}`,
+    '',
+    'THE STATEMENT OF FAITH',
+    ...faithRecord(values),
+  );
+
+  if (values.objections.trim()) {
+    lines.push('', 'What they said they want to talk about:', values.objections.trim());
+  }
+
+  lines.push('', 'THE CLASS TALLY, WITH THIS APPLICATION IN IT');
+  const tally = tallyLines(submission.tally);
+  lines.push(...(tally.length > 0 ? tally.map((line) => `  ${line}`) : ['  Nothing chosen yet.']));
+
+  lines.push(
+    '',
+    reference
+      ? 'This application is also saved on the website — it is on the Applications screen in the admin.'
+      : 'WARNING: this application could NOT be saved on the website. This email is the only ' +
+          'copy of it. The family has been told it did not go through and asked to send it ' +
+          'again; reply to them, or copy this somewhere, before this message is lost.',
+    '',
+    `Sent from the application form on the ${SCHOOL_NAME} website.`,
+  );
+
+  return {
+    to: options.to,
+    from: options.from,
+    subject: `${flagged ? 'Application (conversation flag) — ' : 'Application — '}${values.familyName}`,
+    text: lines.join('\n'),
+  };
+}
+
+/**
+ * Who is applying and for what, as every one of the three messages lists it.
+ *
+ * One writer, because the three are the same list read by different people and
+ * a family that found their confirmation disagreed with what the school was
+ * sent would have no way to tell which was right. `settings` is what turns it
+ * into a priced list: with none — the family's own copies — it is the choices
+ * alone, since a parent reads the totals a few lines further down and does not
+ * need each class costed twice.
+ *
+ * A child with no name and no classes is skipped: a blank row on an
+ * eight-row form is not a person to list.
+ */
+function chosen(cost: ApplicationCost, settings?: MoneySettings): string[] {
+  const lines: string[] = [];
+  for (const one of cost.perChild) {
+    if (!one.child.name && one.offerings.length === 0) continue;
+    lines.push(`  ${one.child.name || 'A child'}${one.child.age ? `, age ${one.child.age}` : ''}`);
+
+    if (one.offerings.length === 0) {
+      lines.push('    No classes chosen.');
+      continue;
+    }
+
+    for (const offering of one.offerings) {
+      const price = settings
+        ? ` — ${formatMoney(unitPrice({ course: offering.course, unit: priceUnit(offering.unit) }, settings))}`
+        : '';
+      lines.push(`    ${offeringTitle(offering)}${price}`);
+    }
+  }
+  return lines;
+}
+
+/**
+ * The Statement of Faith record, as the school reads it.
+ *
+ * Only the cells that were answered. A household with no legal guardian left
+ * that column alone, and printing "Legal guardian: not answered" three times
+ * would put the loudest thing on the page where the quietest fact is.
+ */
+function faithRecord(values: ApplicationFields): string[] {
+  const lines: string[] = [];
+  for (const respondent of FAITH_RESPONDENTS) {
+    const answers = FAITH_QUESTIONS.map((question) => ({
+      question,
+      answer: faithAnswer(values.faith, respondent, question.id),
+    })).filter((one) => one.answer !== '');
+
+    if (answers.length === 0) continue;
+    lines.push(
+      `  ${respondent}: ${answers
+        .map((one) => `${one.question.id} — ${one.answer}`)
+        .join(', ')}`,
+    );
+  }
+  return lines.length > 0 ? lines : ['  Nobody answered any of the three questions.'];
+}
+
+/**
+ * The message the family receives when it worked (#18 §13, send 4).
+ *
+ * The same three things the confirmation screen says — what they chose, what to
+ * post and where, and that a place is held when the cheque arrives — because
+ * the screen is closed within the minute and this is the copy they keep.
+ *
+ * **No response-time promise**, consistent with the inquiry's confirmation and
+ * with #9: who answers an application and how fast is the school's own
+ * operational question and this email must not invent an answer to it.
+ */
+export function applicationConfirmation(
+  submission: ApplicationSubmission,
+  options: { from: string; postTo: string },
+): Mail {
+  const { values, cost, reference } = submission;
+  const lines = [
+    `Thank you — we have your application, ${values.familyName}.`,
+    '',
+    'What you chose:',
+    ...chosen(cost),
+  ];
+
+  lines.push(
+    '',
+    `Please post a cheque for ${formatMoney(cost.total.dueNow)} — ${formatMoney(cost.total.registration)} ` +
+      `in registration and ${formatMoney(cost.total.deposits)} in deposits — made out to ${SCHOOL_NAME}, to:`,
+    '',
+    options.postTo,
+    '',
+    'A place is held for each class as soon as your cheque reaches us.',
+    '',
+    `Tuition is paid to your instructors rather than to the school: ${formatMoney(cost.total.dueToInstructors)} ` +
+      'across the year at today’s rates.',
+  );
+
+  if (submission.flagged) {
+    lines.push(
+      '',
+      'You told us there is something you would like to talk about. That does not hold your ' +
+        'application up — we will be in touch about it.',
+    );
+  }
+
+  if (reference) lines.push('', `Your reference is ${reference}.`);
+
+  return {
+    to: values.email,
+    from: options.from,
+    subject: `${SCHOOL_NAME} — we have your application`,
+    text: lines.join('\n'),
+  };
+}
+
+/**
+ * The message the family receives when the site could not take it (#32 AC 4).
+ *
+ * This is the whole remedy for a refused submission. The family believes they
+ * have applied — they filled in a long form and pressed a button — and without
+ * this they find out in September. So it says plainly that it did not go
+ * through, gives the address to send it to instead, and carries what they chose
+ * so retyping it is a copy rather than a memory test.
+ */
+export function refusedSubmissionNotice(
+  submission: ApplicationSubmission,
+  options: { from: string; schoolEmail: string; site: string },
+): Mail {
+  const { values, cost } = submission;
+  const at = new URL(APPLICATION_PATH, options.site).toString();
+
+  const lines = [
+    `${values.familyName} — your application to ${SCHOOL_NAME} did not reach us.`,
+    '',
+    'Something went wrong on our website while it was being saved. Nothing you did caused it, ' +
+      'and nothing has been lost from your side — but we do not have your application, so ' +
+      'please do one of these two things:',
+    '',
+    `  Send it again:  ${at}`,
+    `  Or reply to this email, or write to ${options.schoolEmail}, and we will enter it ourselves.`,
+    '',
+    'This is what you had chosen, so you do not have to remember it:',
+    ...chosen(cost),
+  ];
+
+  lines.push('', 'We are sorry — this is our fault and not yours.');
+
+  return {
+    to: values.email,
+    from: options.from,
+    subject: `${SCHOOL_NAME} — your application did not go through`,
+    text: lines.join('\n'),
+  };
+}
+
+/** What became of the two sends, in the shape the row records. */
+export type ApplicationDelivery = {
+  /** Whether the school was told. */
+  notified: boolean;
+  notificationError?: string;
+  /** Whether the family was written to — a confirmation, or a refusal notice. */
+  confirmed: boolean;
+  confirmationError?: string;
+  /** Which of the two the family got, so the caller can say so honestly. */
+  familyWasTold: 'confirmation' | 'refusal';
+};
+
+/**
+ * Tell the school, then tell the family.
+ *
+ * The two are independent, as they are on the inquiry (#25 AC 2): a refused
+ * confirmation must not hide the notification, and neither may throw. The
+ * application row is already written — or already lost — before this runs, and
+ * nothing here can change that.
+ *
+ * The school is told **whether or not** the write succeeded, and that is the
+ * point of the `stored` line inside the notification: a lost application that
+ * nobody was emailed about is the failure this whole path exists to prevent.
+ */
+export async function deliverApplication(
+  submission: ApplicationSubmission,
+  options: {
+    sender: Sender | undefined;
+    /** The settings list, never a hard-coded address (#32 AC 6). */
+    to: readonly string[];
+    from: string;
+    /** Where a cheque is posted — the school's own address, from its details. */
+    postTo: string;
+    /** The address a family is given when nothing worked. */
+    schoolEmail: string;
+    /** The absolute origin an emailed link is built against. */
+    site: string;
+  },
+): Promise<ApplicationDelivery> {
+  const notification = await sendAll(
+    options.sender,
+    options.to.map((address) =>
+      applicationNotification(submission, { to: address, from: options.from }),
+    ),
+  );
+
+  const refused = submission.reference === null;
+  const toFamily = refused
+    ? refusedSubmissionNotice(submission, {
+        from: options.from,
+        schoolEmail: options.schoolEmail,
+        site: options.site,
+      })
+    : applicationConfirmation(submission, { from: options.from, postTo: options.postTo });
+
+  const family = await sendAll(options.sender, [toFamily]);
+
+  return {
+    notified: notification.sent,
+    notificationError: notification.error,
+    confirmed: family.sent,
+    confirmationError: family.error,
+    familyWasTold: refused ? 'refusal' : 'confirmation',
+  };
+}

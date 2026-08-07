@@ -1,0 +1,320 @@
+---
+export const prerender = false;
+
+import AdminBanner from '../../components/AdminBanner.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import {
+  applyApplicationAction,
+  parseApplicationAction,
+} from '../../lib/application/admin-flow.js';
+import { applicationCost } from '../../lib/application/application.js';
+import {
+  APPLICATION_EVENT_LABELS,
+  APPLICATION_STATE_LABELS,
+  PAYMENT_EVENTS,
+  PAYMENT_EVENT_LABELS,
+  PAYMENT_STATUS_LABELS,
+  chequeDueBy,
+  eventsFrom,
+  paymentStatusNow,
+} from '../../lib/application/lifecycle.js';
+import { offeringsOf, title as offeringTitle } from '../../lib/application/offerings.js';
+import { listApplications, type ApplicationRecord } from '../../lib/application/store.js';
+import { classTally, tallyLines } from '../../lib/application/tally.js';
+import type { Banner } from '../../lib/admin/banner.js';
+import { listCourses } from '../../lib/courses/store.js';
+import { getDb } from '../../lib/db/client.js';
+import { formatMoney } from '../../lib/money/settings.js';
+import { getMoneySettings, listAgreedTerms } from '../../lib/money/store.js';
+
+/**
+ * What the school received, and the two states that keep it honest (#32).
+ *
+ * The screen is built around one sentence: **applied and paid are separate
+ * states on separate axes.** So there are two rows of buttons under every
+ * application and never one dropdown holding both — a family can be enrolled
+ * and still owe a cheque, and that is an ordinary Tuesday rather than a
+ * contradiction to be resolved.
+ *
+ * **The tally is first**, above the applications, because it is the number Jill
+ * opens this screen to read: whether a class runs. It is deduplicated by
+ * family, child and course, so a family that applied twice is one seat with a
+ * note rather than two seats and a decision made on a wrong number.
+ *
+ * **Overdue is not a column anybody sets.** It is what the grace period says
+ * about a cheque that has not arrived, computed here from the row's own
+ * timestamps, so the screen tells the truth on a deployment where no scheduled
+ * job ever ran (ADR-0008).
+ *
+ * Nothing on this screen edits what a family typed. The two moves and the
+ * delivery stamp are the whole of what a second write touches.
+ */
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+let banner: Banner | null = null;
+
+if (Astro.request.method === 'POST') {
+  const action = parseApplicationAction(await Astro.request.formData());
+  banner = action
+    ? await applyApplicationAction(db, action)
+    : { ok: false, message: 'Nothing happened — that form did not say what it wanted.' };
+}
+
+const applications = await listApplications(db);
+const settings = await getMoneySettings(db);
+const offerings = offeringsOf(await listCourses(db));
+const tally = classTally(applications, offerings);
+const now = new Date();
+
+/**
+ * What each application costs, **at the terms that family agreed to**.
+ *
+ * Read from the frozen `agreed_terms` row written in the same submit, never
+ * from today's settings: the price a family applied at is the price they pay
+ * (ADR-0006), and a screen that recomputed at current fees would disagree with
+ * the family's own confirmation email the first time the board raised the
+ * deposit — with the school's copy being the wrong one.
+ *
+ * Today's settings are the fallback for a row whose terms were not recorded,
+ * and the screen says so rather than passing the guess off as the figure.
+ */
+const termsById = new Map((await listAgreedTerms(db)).map((terms) => [terms.id, terms]));
+
+const owedOn = (application: ApplicationRecord) => {
+  const agreed = application.agreedTermsId ? termsById.get(application.agreedTermsId) : undefined;
+  return {
+    frozen: agreed !== undefined,
+    cost: applicationCost(
+      // The faith answers and the objection are not priced; the cost is over
+      // the children and their classes, which is all this shape is for.
+      { ...application, faith: {}, objections: '' },
+      offerings,
+      agreed ?? settings,
+    ),
+  };
+};
+
+/** "5 August 2026, 09:14" — the day and the time, in the school's own zone. */
+const when = (at: Date): string =>
+  new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/New_York',
+  }).format(at);
+
+const day = (at: Date): string =>
+  new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'America/New_York',
+  }).format(at);
+
+/** Which applications asked for a seat more than once, for the note on the row. */
+const resubmittedIds = new Set(
+  tally.flatMap((entry) =>
+    entry.seats.filter((seat) => seat.resubmitted).flatMap((seat) => seat.applicationIds),
+  ),
+);
+---
+
+<AdminLayout title="Applications" actor={actor}>
+  <h1 class="text-3xl font-semibold text-navy">Applications</h1>
+  <p class="mt-2">
+    Every family who has applied through the website, newest first. Each one was also emailed to {
+      settings.notificationAddresses.join(' and ')
+    } — change that list on the Money screen.
+  </p>
+
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="applications-banner" />}
+
+  <section class="mt-8 border-t border-navy/15 pt-6" data-testid="class-tally">
+    <h2 class="text-2xl font-semibold text-navy">The class tally</h2>
+    <p class="mt-2">
+      How many children are in each class, counted once each. A family that applied twice is one
+      child here, not two — the note says so.
+    </p>
+    {
+      tally.length === 0 ? (
+        <p class="mt-4" data-testid="no-tally">Nobody has chosen a class yet.</p>
+      ) : (
+        <ul class="mt-4 flex flex-col gap-2">
+          {tallyLines(tally).map((line) => (
+            <li data-testid="tally-line">{line}</li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+
+  {
+    applications.length === 0 ? (
+      <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-applications">
+        Nobody has applied yet. When somebody does, they appear here and an email goes out at the
+        same moment — this screen is the record, not the notification. Keep the Google Form open
+        until the first application lands here; retire it once one has.
+      </p>
+    ) : (
+      <ul class="mt-8 flex flex-col gap-10">
+        {applications.map((application) => {
+          const owed = owedOn(application);
+          const paid = paymentStatusNow(application.payment, now);
+
+          return (
+            <li class="border-t border-navy/15 pt-6" data-testid="application">
+              <h2 class="text-xl font-semibold text-navy" data-testid="application-family">
+                {application.familyName}
+              </h2>
+              <p class="mt-1">
+                <a
+                  href={`mailto:${application.email}`}
+                  class="underline underline-offset-4"
+                  data-testid="application-email"
+                >
+                  {application.email}
+                </a>
+              </p>
+              <p class="mt-1 text-sm">{when(application.receivedAt)}</p>
+
+              {application.flagged && (
+                <p class="mt-3 border-l-4 border-navy pl-3 font-semibold" data-testid="application-flag">
+                  Conversation flag — somebody answered “no” to one of the Statement of Faith
+                  questions, or wrote something they want to talk about. It is not a refusal.
+                  {application.objections && (
+                    <span class="mt-1 block font-normal whitespace-pre-line">
+                      {application.objections}
+                    </span>
+                  )}
+                </p>
+              )}
+
+              {resubmittedIds.has(application.id) && (
+                <p class="mt-3 text-sm" data-testid="application-resubmitted">
+                  This family has applied for at least one of these classes more than once. The
+                  tally above counts each child once.
+                </p>
+              )}
+
+              <ul class="mt-4 flex flex-col gap-3">
+                {application.children.map((child) => (
+                  <li data-testid="application-child">
+                    <span class="font-semibold">{child.name || 'A child'}</span>
+                    {child.age && <span> — age {child.age}</span>}
+                    <ul class="mt-1 ml-4 list-disc">
+                      {child.offeringKeys.length === 0 ? (
+                        <li>No classes chosen.</li>
+                      ) : (
+                        offerings
+                          .filter((offering) =>
+                            child.offeringKeys.includes(
+                              `${offering.course.slug}:${offering.unit}`,
+                            ),
+                          )
+                          .map((offering) => <li>{offeringTitle(offering)}</li>)
+                      )}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+
+              <p class="mt-4" data-testid="application-owed">
+                Cheque of <span class="font-semibold">{formatMoney(owed.cost.total.dueNow)}</span> —{' '}
+                {formatMoney(owed.cost.total.registration)} registration and{' '}
+                {formatMoney(owed.cost.total.deposits)} in deposits. Tuition to instructors:{' '}
+                {formatMoney(owed.cost.total.dueToInstructors)}.
+                {owed.frozen ? (
+                  <span> These are the fees this family agreed to when they applied.</span>
+                ) : (
+                  <span>
+                    {' '}⚠ This family’s agreed fees were not recorded, so these are today’s — they
+                    may not be what the family was quoted.
+                  </span>
+                )}
+              </p>
+
+              {/*
+                The two axes, as two forms. They post different field values to
+                the same page and neither carries the other's — a screen where
+                one control moved both would put back exactly what the store
+                keeps apart.
+              */}
+              <div class="mt-5 flex flex-col gap-4">
+                <div data-testid="application-state">
+                  <p>
+                    The application: <span class="font-semibold">{APPLICATION_STATE_LABELS[application.state]}</span>
+                  </p>
+                  {eventsFrom(application.state).length > 0 && (
+                    <div class="mt-2 flex flex-wrap gap-2">
+                      {eventsFrom(application.state).map((event) => (
+                        <form method="post">
+                          <input type="hidden" name="id" value={application.id} />
+                          <input type="hidden" name="event" value={event} />
+                          <button
+                            type="submit"
+                            class="rounded border border-navy px-3 py-1 underline-offset-4 hover:underline"
+                          >
+                            {APPLICATION_EVENT_LABELS[event]}
+                          </button>
+                        </form>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div data-testid="application-payment">
+                  <p>
+                    The money: <span class="font-semibold">{PAYMENT_STATUS_LABELS[paid]}</span>
+                    {paid === 'awaiting' && (
+                      <span> — due by {day(chequeDueBy(application.payment))}</span>
+                    )}
+                    {paid === 'overdue' && (
+                      <span> — expected by {day(chequeDueBy(application.payment))}, and it has not arrived</span>
+                    )}
+                  </p>
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    {PAYMENT_EVENTS.map((event) => (
+                      <form method="post">
+                        <input type="hidden" name="id" value={application.id} />
+                        <input type="hidden" name="event" value={event} />
+                        <button
+                          type="submit"
+                          class="rounded border border-navy px-3 py-1 underline-offset-4 hover:underline"
+                        >
+                          {PAYMENT_EVENT_LABELS[event]}
+                        </button>
+                      </form>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {application.notifiedAt ? (
+                <p class="mt-4 text-sm" data-testid="application-delivery">
+                  Emailed to the school.
+                  {application.confirmedAt
+                    ? ' The family was emailed too.'
+                    : ' ⚠ The family’s own copy did not send.'}
+                </p>
+              ) : (
+                <p class="mt-4 text-sm font-semibold" data-testid="application-delivery">
+                  ⚠ Nobody at the school was emailed about this one — it is only here.
+                  {application.notificationError && ` (${application.notificationError})`}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    )
+  }
+
+  <p class="mt-10 border-t border-navy/15 pt-6">
+    There is nothing to edit and nothing to delete. What a family sent is the record of what they
+    asked for; the two rows of buttons say where the application and the cheque have got to, and
+    nothing else on this screen writes.
+  </p>
+</AdminLayout>

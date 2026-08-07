@@ -26,7 +26,15 @@ import {
   offeringsOf,
   title as offeringTitle,
 } from '../../lib/application/offerings.js';
-import { createApplication } from '../../lib/application/store.js';
+import { deliverApplication } from '../../lib/application/notices.js';
+import {
+  createApplication,
+  listApplications,
+  recordApplicationDelivery,
+} from '../../lib/application/store.js';
+import { classTally } from '../../lib/application/tally.js';
+import { resendSender } from '../../lib/backup/monthly.js';
+import { SITE_URL } from '../../lib/site.js';
 import { getSchoolYear } from '../../lib/calendar/store.js';
 import { SEEDED_SCHOOL_YEAR } from '../../lib/calendar/year.js';
 import { timeLabel } from '../../lib/courses/schedule.js';
@@ -34,7 +42,7 @@ import { listCourses } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
 import { INQUIRY_PATH } from '../../lib/inquiry/inquiry.js';
 import { getInquiry } from '../../lib/inquiry/store.js';
-import { formatMoney } from '../../lib/money/settings.js';
+import { formatMoney, type MoneySettings } from '../../lib/money/settings.js';
 import { getMoneySettings, recordAgreedTerms } from '../../lib/money/store.js';
 
 /**
@@ -87,6 +95,23 @@ const offerings = offeringsOf(courses);
  */
 const year = (await getSchoolYear(db)) ?? SEEDED_SCHOOL_YEAR;
 
+/**
+ * Every application, or none of them.
+ *
+ * The tally rides on an email, and a read that failed must not turn a stored
+ * application into an error page for the family who just sent it. A
+ * notification carrying an empty tally is a worse email; a 500 over a form this
+ * long is a worse afternoon.
+ */
+const applicationsForTally = async () => {
+  try {
+    return await listApplications(db);
+  } catch (cause) {
+    console.error('[application] tally not read:', cause);
+    return [];
+  }
+};
+
 let values: ApplicationFields;
 let errors: ApplicationErrors = {};
 let sentId: string | null = null;
@@ -112,9 +137,12 @@ if (Astro.request.method === 'POST') {
      * delivery stamp is: the application itself is the thing that must not be
      * lost, and a missing terms row is bookkeeping the school can reconstruct.
      */
+    let agreed: MoneySettings | null = null;
     let agreedTermsId: string | null = null;
     try {
-      agreedTermsId = (await recordAgreedTerms(db, values.familyName, settings)).id;
+      const terms = await recordAgreedTerms(db, values.familyName, settings);
+      agreed = terms;
+      agreedTermsId = terms.id;
     } catch (cause) {
       console.error('[application] terms not frozen:', cause);
     }
@@ -130,6 +158,57 @@ if (Astro.request.method === 'POST') {
       // to write to, rather than shown a 500 over a form this long.
       console.error('[application] not stored:', cause);
       storeFailed = true;
+    }
+
+    /*
+     * Telling the school (#32 AC 6), and telling the family.
+     *
+     * Both are attempted whether or not the row was written, which is the half
+     * of "neither failure silently loses the other" that points outwards: a
+     * refused write makes the school's email the only copy of the application,
+     * and it says so — and it is what turns a refused submission into a family
+     * who was told rather than one who finds out in September (AC 4).
+     *
+     * The figures are the ones frozen for this family a moment ago, so the
+     * email quotes what they agreed to rather than what the settings say by the
+     * time somebody opens it (ADR-0006).
+     */
+    const applied = agreed ?? settings;
+    const submission = {
+      values,
+      cost: applicationCost(values, offerings, applied),
+      settings: applied,
+      // Read back including this application, so the count in the email is the
+      // count Jill would see on the admin screen a second later — deduplicated,
+      // never the raw number of rows.
+      tally: classTally(await applicationsForTally(), offerings),
+      flagged: parsed.flagged,
+      reference: sentId,
+    };
+
+    const apiKey = import.meta.env.RESEND_API_KEY;
+    const from = import.meta.env.MAIL_FROM;
+
+    const delivery = await deliverApplication(submission, {
+      // The list the school keeps on its own Money screen, never an address in
+      // this file (#32 AC 6).
+      sender: apiKey && from ? resendSender(apiKey) : undefined,
+      to: settings.notificationAddresses,
+      from: typeof from === 'string' ? from : '',
+      postTo: details.address,
+      schoolEmail: details.email.trim(),
+      site: Astro.site?.toString() ?? SITE_URL,
+    });
+
+    if (sentId) await recordApplicationDelivery(db, sentId, delivery);
+
+    // The operator's copy: a deployment whose notifications are silently
+    // failing must not be discoverable only by opening the admin.
+    if (delivery.notificationError) {
+      console.error('[application] school not notified:', delivery.notificationError);
+    }
+    if (delivery.confirmationError) {
+      console.error('[application] family not told:', delivery.confirmationError);
     }
   }
 } else {

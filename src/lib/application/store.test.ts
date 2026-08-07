@@ -8,7 +8,15 @@ import {
   statementVersion,
   type ApplicationFields,
 } from './application.js';
-import { createApplication, listApplications } from './store.js';
+import { CHEQUE_GRACE_DAYS, paymentStatusNow } from './lifecycle.js';
+import {
+  createApplication,
+  getApplication,
+  listApplications,
+  moveApplication,
+  moveApplicationPayment,
+  recordApplicationDelivery,
+} from './store.js';
 
 /**
  * The application against real Postgres (#31 AC 6).
@@ -118,5 +126,96 @@ describe('an application', () => {
     for (const forbidden of ['dob', 'birth', 'address', 'street', 'zip', 'allerg', 'medical', 'diagnos', 'custody', 'iep', 'adhd', 'evaluation']) {
       expect(names.filter((name) => name.includes(forbidden))).toEqual([]);
     }
+  });
+});
+
+/**
+ * The two axes against real Postgres (#32 AC 2, AC 3).
+ *
+ * `lifecycle.test.ts` has the rules; this is the wiring, which is where the
+ * criterion can actually be broken — a writer that set both column groups, or a
+ * reader that folded them into one word, would pass every pure test and lose
+ * the distinction on the way to the table.
+ */
+describe('applied and paid', () => {
+  const days = (from: Date, count: number): Date =>
+    new Date(from.getTime() + count * 24 * 60 * 60 * 1000);
+
+  async function submitted(now = new Date('2026-08-01T10:00:00Z')): Promise<string> {
+    return createApplication(db, fields(), { statementVersion: statementVersion() }, now);
+  }
+
+  it('opens submitted, awaiting a cheque', async () => {
+    const id = await submitted();
+    const row = await getApplication(db, id);
+
+    expect(row!.state).toBe('submitted');
+    expect(row!.payment.mode).toBe('cheque');
+    expect(row!.payment.status).toBe('awaiting');
+  });
+
+  it('changing the payment never changes the application state (AC 2)', async () => {
+    const id = await submitted();
+
+    await moveApplicationPayment(db, id, 'receive', new Date('2026-08-09T10:00:00Z'));
+
+    const row = await getApplication(db, id);
+    expect(row!.payment.status).toBe('received');
+    expect(row!.state).toBe('submitted');
+  });
+
+  it('changing the application state never changes the payment (AC 2)', async () => {
+    const id = await submitted();
+    const before = (await getApplication(db, id))!.payment;
+
+    await moveApplication(db, id, 'discuss');
+    await moveApplication(db, id, 'enrol');
+
+    const row = await getApplication(db, id);
+    expect(row!.state).toBe('enrolled');
+    // Enrolled and still owing: the school enrols on a conversation, and the
+    // cheque arrives when it arrives.
+    expect(row!.payment).toEqual(before);
+  });
+
+  it('refuses a move the application cannot make, and leaves the row alone', async () => {
+    const id = await submitted();
+    await moveApplication(db, id, 'withdraw');
+
+    expect(await moveApplication(db, id, 'enrol')).toBeNull();
+    expect((await getApplication(db, id))!.state).toBe('withdrawn');
+  });
+
+  it('goes overdue on the clock, with nothing written and nobody acting (AC 3)', async () => {
+    const applied = new Date('2026-08-01T10:00:00Z');
+    const id = await submitted(applied);
+
+    const row = await getApplication(db, id);
+    // The stored word never says overdue — the row is unchanged since the
+    // submission, and the grace period is what makes it late.
+    expect(row!.payment.status).toBe('awaiting');
+    expect(paymentStatusNow(row!.payment, days(applied, CHEQUE_GRACE_DAYS - 1))).toBe('awaiting');
+    expect(paymentStatusNow(row!.payment, days(applied, CHEQUE_GRACE_DAYS + 1))).toBe('overdue');
+  });
+
+  it('records what became of the two emails, and swallows a bad id', async () => {
+    const id = await submitted();
+    await recordApplicationDelivery(
+      db,
+      id,
+      { notified: true, confirmed: false, confirmationError: 'okonkwo@example.com: bounced' },
+      new Date('2026-08-01T10:00:05Z'),
+    );
+
+    const row = await getApplication(db, id);
+    expect(row!.notifiedAt).toEqual(new Date('2026-08-01T10:00:05Z'));
+    expect(row!.confirmedAt).toBeNull();
+    expect(row!.confirmationError).toContain('bounced');
+
+    // A delivery stamp for a row that is not there must not become the error the
+    // family sees; there is nothing left to save by then.
+    await expect(
+      recordApplicationDelivery(db, 'not-a-uuid', { notified: true, confirmed: true }),
+    ).resolves.toBeUndefined();
   });
 });
