@@ -1,6 +1,6 @@
 import type { SchoolYear } from '../calendar/year.js';
 import {
-  ENROLMENT_UNITS,
+  isEnrolmentUnit,
   RATE_TIERS,
   STAGES,
   type Course,
@@ -8,7 +8,7 @@ import {
   type RateTier,
   type Stage,
 } from '../courses/course.js';
-import { minutesOfDay, type DayTrack } from '../courses/schedule.js';
+import { isClockTime, minutesOfDay, type DayTrack } from '../courses/schedule.js';
 import { blockMeetingDates, runningTracks } from '../courses/slots.js';
 import type { CourseEdit } from '../courses/store.js';
 
@@ -440,17 +440,8 @@ function isStage(value: string): value is Stage {
   return (STAGES as readonly string[]).includes(value);
 }
 
-function isEnrolmentUnit(value: string): value is EnrolmentUnit {
-  return (ENROLMENT_UNITS as readonly string[]).includes(value);
-}
-
 function isRateTier(value: string): value is RateTier {
   return (RATE_TIERS as readonly string[]).includes(value);
-}
-
-/** `HH:MM` on a 24-hour clock — the shape every stored time already has. */
-function isClockTime(value: string): boolean {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
 function text(form: FormData, name: string): string {

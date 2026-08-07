@@ -4,6 +4,7 @@ export const prerender = false;
 import AdminBanner from '../../../components/AdminBanner.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import type { Banner } from '../../../lib/admin/banner.js';
+import { courseFormView } from '../../../lib/admin/course-form.js';
 import {
   CUSTOM_TIME,
   emptyFields,
@@ -27,13 +28,7 @@ import { getSchoolYear } from '../../../lib/calendar/store.js';
 import { ENROLMENT_UNITS, RATE_TIERS, STAGES } from '../../../lib/courses/course.js';
 import { priceLine } from '../../../lib/courses/pricing.js';
 import { contactHours, timeLabel, type DayTrack } from '../../../lib/courses/schedule.js';
-import {
-  blockStartChoices,
-  clashWarnings,
-  meetingSlots,
-  runningTracks,
-  type ClashWarning,
-} from '../../../lib/courses/slots.js';
+import { meetingSlots, runningTracks, type ClashWarning } from '../../../lib/courses/slots.js';
 import { createCourse, getCourse, listCourses, saveCourse } from '../../../lib/courses/store.js';
 import { getDb } from '../../../lib/db/client.js';
 import { getMoneySettings } from '../../../lib/money/store.js';
@@ -61,8 +56,14 @@ import { listPeople } from '../../../lib/people/store.js';
  * first course on an empty track has no slot to pick.
  *
  * **A clash warns and never blocks.** The Wednesday 10:40 slot carries five
- * electives on purpose, so an occupied slot is a fact Jill is told after the
- * save, not a save she is refused.
+ * electives on purpose, so an occupied slot is a fact Jill is told, not a save
+ * she is refused.
+ *
+ * The clash, the block's end date and the block's start dates are all read from
+ * the form as it currently stands rather than from the saved row (#59, #60,
+ * #61) — `courseFormView` answers all three, and reading them from the store
+ * was the same mistake three times over: nothing shown until a save had already
+ * happened.
  */
 /** The one slug that is not a course: the add form's address. */
 const NEW = 'new';
@@ -103,7 +104,6 @@ const courses = await listCourses(db);
 let values: CourseFields = course ? fieldsOf(course) : emptyFields();
 let errors: CourseErrors = {};
 let banner: Banner | null = null;
-let warnings: ClashWarning[] = [];
 
 if (Astro.request.method === 'POST') {
   const parsed = parseCourse(await Astro.request.formData(), { year, instructorSlugs });
@@ -113,24 +113,6 @@ if (Astro.request.method === 'POST') {
   if (Object.keys(errors).length > 0) {
     banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
   } else {
-    /*
-     * Worked out before the save and shown whatever the save does. The warning
-     * is about the timetable, not about the write: a course that saved into an
-     * occupied slot is exactly the case Jill most needs to be told about.
-     */
-    warnings = clashWarnings(
-      {
-        slug: course?.slug ?? null,
-        days: parsed.edit.days,
-        start: parsed.edit.start,
-        end: parsed.edit.end,
-        enrolment: parsed.edit.enrolment,
-        dates: parsed.edit.dates,
-      },
-      courses,
-      year,
-    );
-
     try {
       course = course
         ? await saveCourse(db, course.slug, parsed.edit, actor.name)
@@ -186,17 +168,19 @@ const timeOptions = [
 const timeIsSlot = timeOptions.some((option) => option.value === values.time);
 const selectedTime = values.time && !timeIsSlot ? CUSTOM_TIME : values.time;
 
-/** Each running track's real meeting dates, for the block start picker. */
-const blockChoices = offeredDays.map((track) => ({
-  track,
-  meetings: blockStartChoices(year, track),
-}));
+/**
+ * The clash warning, the block's start dates and its computed end, all read
+ * from `values` — the form as it stands, whether that is a saved course, an add
+ * form part-way through, or a rejected post being redisplayed.
+ *
+ * Read after the POST branch, so a successful save answers about the row just
+ * written and a failed one about what is still on screen.
+ */
+const form = courseFormView(values, { year, courses, slug: course?.slug ?? null });
+const warnings: ClashWarning[] = form.warnings;
 
-/** The computed end of a saved block — the last of its dates, never typed. */
-const blockEnd =
-  course && course.enrolment === 'block' && course.dates.length > 0
-    ? fullDateLabel(course.dates.at(-1)!)
-    : null;
+/** The computed end of the block being typed — worked out, never entered. */
+const blockEnd = form.blockEnd ? fullDateLabel(form.blockEnd) : null;
 
 /**
  * The fields that are one typed string.
@@ -577,8 +561,11 @@ function warningLine(warning: ClashWarning): string {
     <div class="flex flex-col gap-2">
       <label for="blockStart" class="font-semibold">{LABELS.blockStart}</label>
       <p id="blockStart-hint" class="text-sm">
-        Blocks only, and only the real meeting dates of the track it meets on — so a block cannot
-        begin on a day the school does not meet. The end date is worked out from the weeks.
+        {
+          form.blockTrack
+            ? `The ${form.blockTrack} track’s own meeting dates — so a block cannot begin on a day the school does not meet. The end date is worked out from the weeks.`
+            : 'Blocks only. Choose Block above and tick the one day it meets on, then Save — that track’s real meeting dates appear here.'
+        }
       </p>
       <select
         id="blockStart"
@@ -589,14 +576,17 @@ function warningLine(warning: ClashWarning): string {
       >
         <option value="">Not picked yet</option>
         {
-          blockChoices.map((choice) => (
-            <optgroup label={choice.track}>
-              {choice.meetings.map((meeting) => (
-                <option value={meeting.date} selected={values.blockStart === meeting.date}>
-                  {fullDateLabel(meeting.date)} — week {meeting.week}
-                </option>
-              ))}
-            </optgroup>
+          /*
+            One track's dates and no others (#61). Every date outside the ticked
+            track is an option that cannot be right — `blockMeetingDates` refuses
+            it on submit, which is a correct message one save too late.
+          */
+        }
+        {
+          form.blockMeetings.map((meeting) => (
+            <option value={meeting.date} selected={values.blockStart === meeting.date}>
+              {fullDateLabel(meeting.date)} — week {meeting.week}
+            </option>
           ))
         }
       </select>

@@ -45,6 +45,11 @@ export type Stage = (typeof STAGES)[number];
 export const ENROLMENT_UNITS = ['year', 'fall', 'spring', 'block'] as const;
 export type EnrolmentUnit = (typeof ENROLMENT_UNITS)[number];
 
+/** Is this string one of the four? Asked wherever a typed form becomes a course. */
+export function isEnrolmentUnit(value: string): value is EnrolmentUnit {
+  return (ENROLMENT_UNITS as readonly string[]).includes(value);
+}
+
 /**
  * The two rates the school charges (`docs/mirror/data/courses.json`,
  * `rateCard`). Named rather than numeric on the course so the numbers live in
