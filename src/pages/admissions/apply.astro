@@ -68,7 +68,8 @@ import { getMoneySettings, recordAgreedTerms } from '../../lib/money/store.js';
  * age and the classes, and nothing else — no date of birth, no home address,
  * no allergies, no medical or evaluation history, no custody arrangement.
  * Those move to paper signed at enrolment, and `application.test.ts` reads this
- * file back and fails if a field named for any of them appears.
+ * file back and fails if a field named for any of them appears. ADR-0007 is
+ * why, and what adding one back would cost.
  */
 const db = await getDb();
 const details = await getSchoolDetails(db);

@@ -23,7 +23,8 @@
  * deliberately absent here — they move to paper signed at enrolment. This is
  * what deletes the stricter storage tier rather than building it, and
  * `application.test.ts` reads this file and the form component back and fails if
- * either grows one of those words.
+ * either grows one of those words. **ADR-0007** holds the decision and what
+ * reversing it would cost.
  */
 
 import { BELIEFS_ARTICLES, BELIEFS_CLOSING } from '../about/beliefs.js';
