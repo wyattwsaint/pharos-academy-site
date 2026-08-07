@@ -458,7 +458,7 @@ export const MIGRATIONS: readonly Migration[] = [
      * and this table refuses, because the site collects a name, an age and the
      * classes and the rest is paper signed at enrolment. A migration that adds
      * one of them back is the change to argue about, which is why they are
-     * named here rather than merely absent.
+     * named here rather than merely absent — and the argument is ADR-0007's.
      *
      * `agreed_terms_id` is the join #29 built `agreed_terms` for: the fees this
      * family applied at, frozen in the same submit that wrote this row.

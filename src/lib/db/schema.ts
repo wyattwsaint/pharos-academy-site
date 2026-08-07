@@ -537,7 +537,8 @@ export const inquiries = pgTable('inquiries', {
  * stricter storage tier rather than building it, and it is a decision about
  * children's data rather than a shortcut — a column added here is the thing a
  * later form field would be added to fill. `store.test.ts` reads
- * `information_schema` back and fails if one appears.
+ * `information_schema` back and fails if one appears, and **ADR-0007** is the
+ * decision to reopen rather than the assertion to delete.
  *
  * `flagged` is not a rejection. An objection to the Statement of Faith routes
  * the application to a conversation and is recorded beside `statement_version`,

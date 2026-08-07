@@ -36,8 +36,15 @@ export type ApplicationRecord = {
   agreedTermsId: string | null;
 };
 
-/** The two things the submit knows that the form does not. */
-export type ApplicationStamp = {
+/**
+ * What the submit knows that the form does not.
+ *
+ * Not a **stamp** (CONTEXT.md): a stamp is the "last edited by" line an
+ * editable record carries, and an application is never edited — the school
+ * answers it in a conversation. These are facts true at submission and never
+ * again, which is the opposite property.
+ */
+export type SubmissionFacts = {
   /** `statementVersion()` as the page rendered it, not as it is read back. */
   statementVersion: string;
   /** `isFlagged(values)`, decided at submission. */
@@ -50,7 +57,7 @@ export type ApplicationStamp = {
 export async function createApplication(
   db: Db,
   values: ApplicationFields,
-  stamp: ApplicationStamp,
+  facts: SubmissionFacts,
   now = new Date(),
 ): Promise<string> {
   const [row] = await db
@@ -59,11 +66,11 @@ export async function createApplication(
       familyName: values.familyName,
       email: values.email,
       receivedAt: now,
-      flagged: stamp.flagged ?? false,
+      flagged: facts.flagged ?? false,
       objections: values.objections,
-      statementVersion: stamp.statementVersion,
+      statementVersion: facts.statementVersion,
       faith: encodeFaith(values.faith),
-      agreedTermsId: stamp.agreedTermsId ?? null,
+      agreedTermsId: facts.agreedTermsId ?? null,
     })
     .returning();
 
