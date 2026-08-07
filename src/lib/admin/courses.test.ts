@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { SEEDED_SCHOOL_YEAR, type SchoolYear } from '../calendar/year.js';
-import { parseCourse, type CourseContext } from './courses.js';
+import { ENROLMENT_UNITS, RATE_TIERS } from '../courses/course.js';
+import { parseCourse, RATE_LABELS, UNIT_LABELS, type CourseContext } from './courses.js';
 
 /**
  * The course form (#24).
@@ -223,5 +224,15 @@ describe('the course form', () => {
   it('refuses an instructor who is not on the people list', () => {
     const parsed = parseCourse(postedCourse({ instructorSlug: 'nobody' }), CONTEXT);
     expect(parsed.errors.instructorSlug).toMatch(/people list/);
+  });
+
+  /*
+   * The form renders one control per unit and one per rate, from the domain's
+   * own lists. A value with no label would render an empty box that still
+   * posts — a control nobody can read but anybody can tick.
+   */
+  it('has a human label for every enrolment unit and every rate', () => {
+    for (const unit of ENROLMENT_UNITS) expect(UNIT_LABELS[unit]).toBeTruthy();
+    for (const tier of RATE_TIERS) expect(RATE_LABELS[tier]).toBeTruthy();
   });
 });

@@ -109,6 +109,27 @@ export const LABELS: Record<keyof CourseFields, string> = {
   instructorSlug: 'Instructor',
 };
 
+/**
+ * The four enrolment units in the school's own words.
+ *
+ * The stored value is the vocabulary (`year`, `fall`, …); this is what a person
+ * reads beside a checkbox. Both the shape radios and the units checkboxes use
+ * it, because they are the same four things asked twice — what the course *is*,
+ * and what a family may *buy*.
+ */
+export const UNIT_LABELS: Record<EnrolmentUnit, string> = {
+  year: 'Year',
+  fall: 'Fall semester',
+  spring: 'Spring semester',
+  block: 'Block',
+};
+
+/** The two rates, named for the form rather than for the rate card. */
+export const RATE_LABELS: Record<RateTier, string> = {
+  standard: 'Standard',
+  highSchoolCredit: 'High school credit',
+};
+
 /** An empty form: what `/admin/courses/new` opens on. */
 export function emptyFields(): CourseFields {
   return {

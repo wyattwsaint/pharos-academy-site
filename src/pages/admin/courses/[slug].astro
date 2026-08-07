@@ -1,0 +1,717 @@
+---
+export const prerender = false;
+
+import AdminBanner from '../../../components/AdminBanner.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import type { Banner } from '../../../lib/admin/banner.js';
+import {
+  CUSTOM_TIME,
+  emptyFields,
+  fieldsOf,
+  LABELS,
+  parseCourse,
+  RATE_LABELS,
+  UNIT_LABELS,
+  type CourseErrors,
+  type CourseFields,
+} from '../../../lib/admin/courses.js';
+import { isrBypassToken } from '../../../lib/admin/isr-token.js';
+import {
+  describeRevalidation,
+  revalidateAll,
+  revalidationOrigin,
+} from '../../../lib/admin/revalidate.js';
+import { formatStamp } from '../../../lib/admin/school-details.js';
+import { fullDateLabel, type SchoolYear } from '../../../lib/calendar/year.js';
+import { getSchoolYear } from '../../../lib/calendar/store.js';
+import { ENROLMENT_UNITS, RATE_TIERS, STAGES } from '../../../lib/courses/course.js';
+import { coursePrice, priceLine } from '../../../lib/courses/pricing.js';
+import { contactHours, timeLabel, type DayTrack } from '../../../lib/courses/schedule.js';
+import {
+  blockStartChoices,
+  collisionWarnings,
+  meetingSlots,
+  runningTracks,
+  type CollisionWarning,
+} from '../../../lib/courses/slots.js';
+import { createCourse, getCourse, listCourses, saveCourse } from '../../../lib/courses/store.js';
+import { getDb } from '../../../lib/db/client.js';
+import { getMoneySettings } from '../../../lib/money/store.js';
+import { slugify } from '../../../lib/people/person.js';
+import { listPeople } from '../../../lib/people/store.js';
+
+/**
+ * One course, added or edited (#24).
+ *
+ * `/admin/courses/new` is the add form and every other slug is that course's
+ * own screen — one page rather than two, as people and announcements are,
+ * because the fields, the validation and the publishing story are identical.
+ *
+ * Three things make this screen different from the other editors, and all three
+ * are the ticket:
+ *
+ * **The price is not here.** It is contact hours × the rate tier, computed and
+ * shown read-only. There is no input to type it into, which is how "cannot be
+ * typed over" is a property of the form rather than a promise about it.
+ *
+ * **The days and times are the school's own.** The day checkboxes are the
+ * year's running tracks — a track the School Year screen gives no term is a day
+ * the school does not meet — and the time list is the distinct times the
+ * catalogue already runs on those tracks. "Another time" exists because the
+ * first course on an empty track has no slot to pick.
+ *
+ * **A clash warns and never blocks.** The Wednesday 10:40 slot carries five
+ * electives on purpose, so an occupied slot is a fact Jill is told after the
+ * save, not a save she is refused.
+ */
+/** The one slug that is not a course: the add form's address. */
+const NEW = 'new';
+
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+const routeSlug = Astro.params.slug ?? '';
+const adding = routeSlug === NEW;
+
+let course = adding ? undefined : await getCourse(db, routeSlug);
+if (!adding && !course) {
+  return new Response(null, { status: 404, statusText: 'Not found' });
+}
+
+/*
+ * The year is what the day checkboxes, the slot list and every block date are
+ * drawn from, so a database without one cannot render this screen at all. Said
+ * out loud rather than rendered as an empty form whose every day is missing.
+ */
+const year: SchoolYear | undefined = await getSchoolYear(db);
+if (!year) {
+  throw new Error('There is no school year yet — run `npm run db:migrate`.');
+}
+
+const settings = await getMoneySettings(db);
+const people = await listPeople(db);
+const instructorSlugs = people.map((person) => person.slug);
+/*
+ * Read before the save, and used for both the slot list and the collision
+ * check. Pre-save is the correct reading for either: on the add form this
+ * course is not in it yet, and on the edit form the row still holds the times
+ * it had when Jill opened the screen — and `collisionWarnings` drops the
+ * candidate's own slug regardless.
+ */
+const courses = await listCourses(db);
+
+let values: CourseFields = course ? fieldsOf(course) : emptyFields();
+let errors: CourseErrors = {};
+let banner: Banner | null = null;
+let warnings: CollisionWarning[] = [];
+
+if (Astro.request.method === 'POST') {
+  const parsed = parseCourse(await Astro.request.formData(), { year, instructorSlugs });
+  values = parsed.values;
+  errors = parsed.errors;
+
+  if (Object.keys(errors).length > 0) {
+    banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+  } else {
+    /*
+     * Worked out before the save and shown whatever the save does. The warning
+     * is about the timetable, not about the write: a course that saved into an
+     * occupied slot is exactly the case Jill most needs to be told about.
+     */
+    warnings = collisionWarnings(
+      {
+        slug: course?.slug ?? null,
+        days: parsed.edit.days,
+        start: parsed.edit.start,
+        end: parsed.edit.end,
+        enrolment: parsed.edit.enrolment,
+        dates: parsed.edit.dates,
+      },
+      courses,
+      year,
+    );
+
+    try {
+      course = course
+        ? await saveCourse(db, course.slug, parsed.edit, actor.name)
+        : await createCourse(db, slugFor(parsed.edit.title), parsed.edit, actor.name);
+      values = fieldsOf(course);
+      const result = await revalidateAll({
+        origin: revalidationOrigin(Astro.url),
+        bypassToken: isrBypassToken(),
+      });
+      banner = { ok: result.ok, message: describeRevalidation(result) };
+    } catch (error) {
+      banner = { ok: false, message: humanErrorMessage(error) };
+    }
+  }
+}
+
+/*
+ * After an add succeeds this screen becomes that course's edit screen, so a
+ * second Save updates the row just written rather than inserting it again.
+ */
+const action = course ? `/admin/courses/${course.slug}` : '/admin/courses/new';
+const heading = course ? course.title : 'Add a course';
+const stamp = course ? formatStamp(course.lastEditedBy, course.lastEditedAt) : null;
+const control =
+  'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
+
+/** The days on offer: the year's, never a hard-coded week. */
+const offeredDays = runningTracks(year);
+
+/**
+ * The pickable times: every distinct time the school already meets at, on any
+ * running track, earliest first.
+ *
+ * Deduped across tracks because a time is a time — Monday's 10:40 and
+ * Wednesday's are the same choice as far as this select is concerned, and
+ * offering it twice would ask Jill to pick between two identical options.
+ */
+const timeOptions = [
+  ...new Map(
+    meetingSlots(year, courses).map((slot) => [
+      `${slot.start}-${slot.end}`,
+      { value: `${slot.start}-${slot.end}`, label: timeLabel(slot.start, slot.end) },
+    ]),
+  ).values(),
+].sort((a, b) => a.value.localeCompare(b.value));
+
+/*
+ * A course whose own time is not one of the offered slots — the first on a
+ * track, or one whose track the year has since stopped running — opens on
+ * "Another time" with its two ends filled in, rather than on a select with
+ * nothing selected and a time that silently disappears on the next save.
+ */
+const timeIsSlot = timeOptions.some((option) => option.value === values.time);
+const selectedTime = values.time && !timeIsSlot ? CUSTOM_TIME : values.time;
+
+/** Each running track's real meeting dates, for the block start picker. */
+const blockChoices = offeredDays.map((track) => ({
+  track,
+  meetings: blockStartChoices(year, track),
+}));
+
+/** The computed end of a saved block — the last of its dates, never typed. */
+const blockEnd =
+  course && course.enrolment === 'block' && course.dates.length > 0
+    ? fullDateLabel(course.dates.at(-1)!)
+    : null;
+
+/** The price, computed. Displayed on a saved course; described on the add form. */
+const price = course ? coursePrice(course, settings.rates) : null;
+
+/** The plain fields, in the order they are asked for. */
+const FIELDS: {
+  name: keyof CourseFields;
+  type: 'text' | 'multiline' | 'number';
+  required?: boolean;
+  hint?: string;
+}[] = [
+  { name: 'title', type: 'text', required: true, hint: 'As the school writes it, including any “(Grades 5-8)”.' },
+  {
+    name: 'description',
+    type: 'multiline',
+    required: true,
+    hint: 'The full description, as it appears on the class’s own page.',
+  },
+  {
+    name: 'ageLabel',
+    type: 'text',
+    required: true,
+    hint: 'In the school’s own words — “5-10 (approximately K-6th grades)”.',
+  },
+  {
+    name: 'ageMin',
+    type: 'number',
+    hint: 'The numeric gate, when the school publishes one. Both ends or neither — a class with no numbers shows in every age band.',
+  },
+  { name: 'ageMax', type: 'number' },
+  {
+    name: 'credit',
+    type: 'text',
+    hint: 'Optional — “1 High School Algebra 1 credit with completed homework”.',
+  },
+  { name: 'requiredText', type: 'multiline', hint: 'Optional. The books a family must have.' },
+  { name: 'optionalText', type: 'multiline', hint: 'Optional.' },
+  {
+    name: 'materialsToBuy',
+    type: 'multiline',
+    hint: 'Optional — what the family buys and brings, as distinct from a fee paid to the school.',
+  },
+  {
+    name: 'materialsFee',
+    type: 'number',
+    hint: 'Whole dollars, paid to the instructor. Leave it empty when there is none — an empty box prints nothing, a $0 fee prints a free fee.',
+  },
+  { name: 'materialsFeeNote', type: 'text', hint: 'Optional — “per year”. Only with a fee.' },
+  { name: 'assessmentFee', type: 'number', hint: 'Whole dollars. Same rule as above.' },
+  {
+    name: 'assessmentFeeNote',
+    type: 'text',
+    hint: 'Optional — “for test scoring”, “for feedback on writing”.',
+  },
+  {
+    name: 'prerequisites',
+    type: 'multiline',
+    required: true,
+    hint: 'The school writes “None” when there are none — so say something either way.',
+  },
+];
+
+/**
+ * The address of a course just added.
+ *
+ * Derived from the title rather than typed, because a slug is a URL and nobody
+ * should have to think about URLs to add a class. Two titles are refused rather
+ * than stored: one that slugifies to nothing, which has no page to be reached
+ * at, and one that slugifies to `new`, which would be permanently hidden behind
+ * this screen's own address.
+ */
+function slugFor(title: string): string {
+  const slug = slugify(title);
+  if (!slug) throw new Error('that title has no letters or numbers in it.');
+  if (slug === NEW) {
+    throw new Error('“New” is the address of this form — give the class a fuller title.');
+  }
+  return slug;
+}
+
+/**
+ * A failed write, said in words Jill can act on.
+ *
+ * The one that actually happens is a duplicate slug: two classes whose titles
+ * slugify the same, which is a real thing in a catalogue with two Latins.
+ */
+function humanErrorMessage(error: unknown): string {
+  const detail = error instanceof Error ? error.message : String(error);
+  if (/duplicate key|unique/i.test(detail)) {
+    return 'Nothing was saved — there is already a class with that title. Edit that one instead.';
+  }
+  return `Nothing was saved — ${detail}`;
+}
+
+/** Which day a warning is about, said the way the timetable says it. */
+function warningLine(warning: CollisionWarning): string {
+  const when =
+    warning.severity === 'certain'
+      ? `${warning.sharedDates.length} shared meeting${warning.sharedDates.length === 1 ? '' : 's'}, from ${fullDateLabel(warning.sharedDates[0]!)}`
+      : 'possibly — this block has no start date yet, so the dates are not known';
+  return `${warning.track}, ${timeLabel(warning.course.start, warning.course.end)} — ${warning.course.title} (${when}).`;
+}
+---
+
+<AdminLayout title={heading} actor={actor}>
+  <p><a href="/admin/courses" class="underline underline-offset-4">← All classes</a></p>
+  <h1 class="mt-2 text-3xl font-semibold text-navy">{heading}</h1>
+  <p class="mt-2">
+    Saved here, this class appears by age, by day, in the full descriptions and on its own page.
+  </p>
+
+  {
+    banner && (
+      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
+        {!banner.ok && (
+          <form method="post" action="/admin/republish" class="mt-3">
+            <button
+              type="submit"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+            >
+              Retry
+            </button>
+          </form>
+        )}
+      </AdminBanner>
+    )
+  }
+
+  {
+    warnings.length > 0 && (
+      <div
+        role="status"
+        data-testid="collision-warnings"
+        class="mt-6 border-l-4 border-gold bg-parchment px-4 py-3"
+      >
+        <p class="font-semibold">This class shares a time with another.</p>
+        <p class="mt-1 text-sm">
+          Not a mistake by itself — the school runs several electives in one slot on purpose. It is
+          here so a family is never the one to find it.
+        </p>
+        <ul class="mt-2 flex flex-col gap-1">
+          {warnings.map((warning) => (
+            <li>{warningLine(warning)}</li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
+  <form method="post" action={action} class="mt-8 flex flex-col gap-6">
+    {
+      FIELDS.map((field) => {
+        const invalid = Boolean(errors[field.name]);
+        const describedBy =
+          [field.hint ? `${field.name}-hint` : null, invalid ? `${field.name}-error` : null]
+            .filter(Boolean)
+            .join(' ') || undefined;
+        const value = values[field.name] as string;
+
+        return (
+          <div class="flex flex-col gap-2">
+            <label for={field.name} class="font-semibold">
+              {LABELS[field.name]}
+            </label>
+            {field.hint && (
+              <p id={`${field.name}-hint`} class="text-sm">
+                {field.hint}
+              </p>
+            )}
+            {field.type === 'multiline' ? (
+              <textarea
+                id={field.name}
+                name={field.name}
+                rows={field.name === 'description' ? 8 : 4}
+                required={field.required}
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={describedBy}
+                class={control}
+              >
+                {value}
+              </textarea>
+            ) : (
+              <input
+                id={field.name}
+                name={field.name}
+                type={field.type === 'number' ? 'number' : 'text'}
+                min={field.type === 'number' ? 1 : undefined}
+                step={field.type === 'number' ? 1 : undefined}
+                value={value}
+                required={field.required}
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={describedBy}
+                class={control}
+              />
+            )}
+            {invalid && (
+              <p id={`${field.name}-error`} class="font-semibold">
+                {errors[field.name]}
+              </p>
+            )}
+          </div>
+        );
+      })
+    }
+
+    <fieldset class="flex flex-col gap-2">
+      <legend class="font-semibold">{LABELS.stages}</legend>
+      <p id="stages-hint" class="text-sm">Which classical stages this class is filed under. A class may sit in two.</p>
+      {
+        STAGES.map((stage, index) => (
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="stages"
+              value={stage}
+              id={`stages-${index}`}
+              checked={values.stages.includes(stage)}
+            />
+            {stage}
+          </label>
+        ))
+      }
+      {errors.stages && <p class="font-semibold">{errors.stages}</p>}
+    </fieldset>
+
+    <fieldset class="flex flex-col gap-2">
+      <legend class="font-semibold">{LABELS.days}</legend>
+      <p class="text-sm">
+        The days the school meets this year, from the <a
+          href="/admin/school-year"
+          class="underline underline-offset-4">School year</a
+        > screen. A day missing from this list is a day the school gives no term.
+      </p>
+      {
+        offeredDays.map((track: DayTrack) => (
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="days"
+              value={track}
+              id={`days-${track}`}
+              checked={values.days.includes(track)}
+            />
+            {track}
+          </label>
+        ))
+      }
+      {errors.days && <p class="font-semibold">{errors.days}</p>}
+    </fieldset>
+
+    <div class="flex flex-col gap-2">
+      <label for="time" class="font-semibold">{LABELS.time}</label>
+      <p id="time-hint" class="text-sm">
+        The times the school already meets at. Pick “Another time” to type a slot the timetable does
+        not run yet.
+      </p>
+      <select
+        id="time"
+        name="time"
+        aria-invalid={errors.time ? 'true' : undefined}
+        aria-describedby={errors.time ? 'time-hint time-error' : 'time-hint'}
+        class={control}
+      >
+        <option value="">Not picked yet</option>
+        {
+          timeOptions.map((option) => (
+            <option value={option.value} selected={selectedTime === option.value}>
+              {option.label}
+            </option>
+          ))
+        }
+        <option value={CUSTOM_TIME} selected={selectedTime === CUSTOM_TIME}>Another time</option>
+      </select>
+      {errors.time && <p id="time-error" class="font-semibold">{errors.time}</p>}
+
+      <div class="mt-2 flex flex-wrap gap-6">
+        <div class="flex flex-col gap-2">
+          <label for="start" class="font-semibold">{LABELS.start}</label>
+          <input
+            id="start"
+            name="start"
+            type="time"
+            value={values.start}
+            aria-invalid={errors.start ? 'true' : undefined}
+            class="rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
+          />
+          {errors.start && <p class="font-semibold">{errors.start}</p>}
+        </div>
+        <div class="flex flex-col gap-2">
+          <label for="end" class="font-semibold">{LABELS.end}</label>
+          <input
+            id="end"
+            name="end"
+            type="time"
+            value={values.end}
+            aria-invalid={errors.end ? 'true' : undefined}
+            class="rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
+          />
+          {errors.end && <p class="font-semibold">{errors.end}</p>}
+        </div>
+      </div>
+      <p class="text-sm">These two are read only when “Another time” is picked above.</p>
+    </div>
+
+    <fieldset class="flex flex-col gap-2">
+      <legend class="font-semibold">{LABELS.enrolment}</legend>
+      <p class="text-sm">The shape of the course itself — how long it runs for.</p>
+      {
+        ENROLMENT_UNITS.map((unit) => (
+          <label class="flex items-center gap-2">
+            <input
+              type="radio"
+              name="enrolment"
+              value={unit}
+              id={`enrolment-${unit}`}
+              checked={values.enrolment === unit}
+            />
+            {UNIT_LABELS[unit]}
+          </label>
+        ))
+      }
+      {errors.enrolment && <p class="font-semibold">{errors.enrolment}</p>}
+    </fieldset>
+
+    <fieldset class="flex flex-col gap-2">
+      <legend class="font-semibold">{LABELS.enrolmentUnits}</legend>
+      <p class="text-sm">
+        What a family may actually buy. This is exactly what the application offers them — never
+        worked out from the shape above, because a class can publish a semester price without
+        offering a semester.
+      </p>
+      {
+        ENROLMENT_UNITS.map((unit) => (
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="enrolmentUnits"
+              value={unit}
+              id={`enrolmentUnits-${unit}`}
+              checked={values.enrolmentUnits.includes(unit)}
+            />
+            {UNIT_LABELS[unit]}
+          </label>
+        ))
+      }
+      {errors.enrolmentUnits && <p class="font-semibold">{errors.enrolmentUnits}</p>}
+    </fieldset>
+
+    <div class="flex flex-col gap-2">
+      <label for="weeks" class="font-semibold">{LABELS.weeks}</label>
+      <p id="weeks-hint" class="text-sm">
+        Meeting weeks per day track. The price is worked out from this, the meeting length and the
+        rate below.
+      </p>
+      <input
+        id="weeks"
+        name="weeks"
+        type="number"
+        min="1"
+        step="1"
+        value={values.weeks}
+        required
+        aria-invalid={errors.weeks ? 'true' : undefined}
+        aria-describedby={errors.weeks ? 'weeks-hint weeks-error' : 'weeks-hint'}
+        class={control}
+      />
+      {errors.weeks && <p id="weeks-error" class="font-semibold">{errors.weeks}</p>}
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="blockStart" class="font-semibold">{LABELS.blockStart}</label>
+      <p id="blockStart-hint" class="text-sm">
+        Blocks only, and only the real meeting dates of the track it meets on — so a block cannot
+        begin on a day the school does not meet. The end date is worked out from the weeks.
+      </p>
+      <select
+        id="blockStart"
+        name="blockStart"
+        aria-invalid={errors.blockStart ? 'true' : undefined}
+        aria-describedby={errors.blockStart ? 'blockStart-hint blockStart-error' : 'blockStart-hint'}
+        class={control}
+      >
+        <option value="">Not picked yet</option>
+        {
+          blockChoices.map((choice) => (
+            <optgroup label={choice.track}>
+              {choice.meetings.map((meeting) => (
+                <option value={meeting.date} selected={values.blockStart === meeting.date}>
+                  {fullDateLabel(meeting.date)} — week {meeting.week}
+                </option>
+              ))}
+            </optgroup>
+          ))
+        }
+      </select>
+      {errors.blockStart && <p id="blockStart-error" class="font-semibold">{errors.blockStart}</p>}
+      {
+        blockEnd && (
+          <p class="text-sm" data-testid="block-end">
+            Ends {blockEnd}.
+          </p>
+        )
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="rateTier" class="font-semibold">{LABELS.rateTier}</label>
+      <p id="rateTier-hint" class="text-sm">Which hourly rate this class is charged at.</p>
+      <select
+        id="rateTier"
+        name="rateTier"
+        aria-invalid={errors.rateTier ? 'true' : undefined}
+        aria-describedby={errors.rateTier ? 'rateTier-hint rateTier-error' : 'rateTier-hint'}
+        class={control}
+      >
+        <option value="">Not picked yet</option>
+        {
+          RATE_TIERS.map((tier) => (
+            <option value={tier} selected={values.rateTier === tier}>
+              {RATE_LABELS[tier]}
+            </option>
+          ))
+        }
+      </select>
+      {errors.rateTier && <p id="rateTier-error" class="font-semibold">{errors.rateTier}</p>}
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="instructorSlug" class="font-semibold">{LABELS.instructorSlug}</label>
+      <p id="instructorSlug-hint" class="text-sm">
+        From the <a href="/admin/people" class="underline underline-offset-4">people list</a> — never
+        a typed name, so correcting a name corrects it here too.
+      </p>
+      <select
+        id="instructorSlug"
+        name="instructorSlug"
+        aria-invalid={errors.instructorSlug ? 'true' : undefined}
+        aria-describedby={
+          errors.instructorSlug ? 'instructorSlug-hint instructorSlug-error' : 'instructorSlug-hint'
+        }
+        class={control}
+      >
+        <option value="">Not picked yet</option>
+        {
+          people.map((person) => (
+            <option value={person.slug} selected={values.instructorSlug === person.slug}>
+              {person.name}
+            </option>
+          ))
+        }
+      </select>
+      {
+        errors.instructorSlug && (
+          <p id="instructorSlug-error" class="font-semibold">
+            {errors.instructorSlug}
+          </p>
+        )
+      }
+    </div>
+
+    {
+      /*
+        The price, and no way to type it. Contact hours × the rate from the
+        Money screen, worked out on every save — which is why this is a
+        paragraph and not an input.
+      */
+    }
+    <div class="border-t border-navy/15 pt-6">
+      <h2 class="text-xl font-semibold text-navy">Cost</h2>
+      {
+        price && course ? (
+          <p class="mt-2" data-testid="computed-price">
+            {priceLine(course, settings.rates)} — {contactHours(course)} contact hours.
+          </p>
+        ) : (
+          <p class="mt-2" data-testid="computed-price">
+            Worked out on save, from the meeting time, the weeks and the rate. There is nothing to
+            type.
+          </p>
+        )
+      }
+      <p class="mt-2 text-sm">
+        The rates themselves are on the <a href="/admin/money" class="underline underline-offset-4"
+          >Money</a
+        > screen. Changing one there changes every class that uses it.
+      </p>
+    </div>
+
+    <button
+      type="submit"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+    >
+      Save
+    </button>
+  </form>
+
+  {
+    stamp && (
+      <section class="mt-10 border-t border-navy/15 pt-6">
+        <h2 class="text-xl font-semibold text-navy">Publishing</h2>
+        <p class="mt-2" data-testid="stamp">
+          {stamp}
+        </p>
+        <p class="mt-2">
+          Saving republishes the whole site, because a class is on four surfaces at once.
+        </p>
+        <form method="post" action="/admin/republish" class="mt-4">
+          <button
+            type="submit"
+            class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
+          >
+            Republish
+          </button>
+        </form>
+      </section>
+    )
+  }
+</AdminLayout>
