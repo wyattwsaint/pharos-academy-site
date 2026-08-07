@@ -27,6 +27,19 @@ import { STAFF_PATH } from '../src/lib/people/views.js';
  */
 
 /**
+ * Whether this run is allowed to submit anything.
+ *
+ * `PLAYWRIGHT_BASE_URL` points the suite at a real deployment, and
+ * `deployed-accessibility.yml` sets it for **production** as well as for
+ * previews. A valid submission there is a junk lead in the list Jill reads and,
+ * once Resend is provisioned, a real email to the school and to a made-up
+ * address at example.com. So the tests that write are local only; everything
+ * that merely reads — including a *refused* submission, which stores and mails
+ * nothing — runs against the deployment, where it is worth far more.
+ */
+const MAY_SUBMIT = !process.env.PLAYWRIGHT_BASE_URL;
+
+/**
  * A response-time promise, in the shapes it would actually be written in.
  * Mirrors the scan in `inquiry.test.ts`, which covers the emails; this covers
  * the page, which is the other place the sentence could be added.
@@ -95,6 +108,7 @@ test.describe('the inquiry page', () => {
   });
 
   test('takes a real submission and says we have it', async ({ page }) => {
+    test.skip(!MAY_SUBMIT, 'a real submission writes a row and emails the school');
     await page.goto(INQUIRY_PATH);
 
     await fill(page, 'ask', {
@@ -132,7 +146,11 @@ test.describe('the inquiry page', () => {
   test('carries a submission from the home page across to the answer', async ({ page }) => {
     await page.goto('/');
 
+    // The `action` is the half that can be checked anywhere, and it is the half
+    // that regresses: a form that quietly posts to itself is a form on an ISR
+    // page that reaches nothing.
     await expect(page.locator('#inquiry form')).toHaveAttribute('action', INQUIRY_PATH);
+    test.skip(!MAY_SUBMIT, 'a real submission writes a row and emails the school');
 
     await fill(page, 'inquiry', {
       name: 'Suite Homepage Parent',
@@ -145,11 +163,19 @@ test.describe('the inquiry page', () => {
     await expect(page.locator('[data-outcome="received"]')).toHaveText(RECEIVED_MESSAGE);
   });
 
-  test('promises no response time, in any state of the page', async ({ page }) => {
+  test('promises no response time on the page as it is reached', async ({ page }) => {
     // AC 5. A named clock would need George's sign-off; the ticket says the
     // words must not appear, so this reads the page rather than one string.
     await page.goto(INQUIRY_PATH);
     expect(await page.locator('main').innerText()).not.toMatch(CLOCKS);
+  });
+
+  test('promises no response time in the answer either', async ({ page }) => {
+    // The state the promise would actually be written into — "thanks, we'll
+    // reply within two days" is a sentence somebody adds to a thank-you, not to
+    // a form.
+    test.skip(!MAY_SUBMIT, 'a real submission writes a row and emails the school');
+    await page.goto(INQUIRY_PATH);
 
     await fill(page, 'ask', {
       name: 'Suite Clockwatcher',
