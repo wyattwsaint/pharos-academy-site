@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { BELIEFS_ARTICLES, BELIEFS_CLOSING } from '../about/beliefs.js';
@@ -316,4 +318,45 @@ describe('the children’s sensitive data does not enter the site (#31 AC 9)', (
       'objections',
     ].sort());
   });
+
+  /*
+   * The same criterion against the form itself.
+   *
+   * The types above cannot be the whole test: a field on the page that posts
+   * to a name the parser ignores still *collects* a date of birth, and the
+   * harm the criterion is about is the collecting. So this reads the page off
+   * disk and looks at what it asks for.
+   *
+   * **Attribute names, not prose.** The doc comments in `application.ts`,
+   * `schema.ts`, `migrations.ts` and the page itself deliberately use every one
+   * of these words to explain why the fields are absent, so a plain text grep
+   * over any of them fails on its own explanation.
+   */
+  it('asks for no date of birth, address, medical, evaluation or custody field', () => {
+    const page = readFileSync(
+      fileURLToPath(new URL('../../pages/admissions/apply.astro', import.meta.url)),
+      'utf8',
+    );
+
+    const asked = [...page.matchAll(/(?:name|id|for)=(?:"([^"]*)"|\{`([^`]*)`\})/g)].map(
+      (match) => (match[1] ?? match[2] ?? '').toLowerCase(),
+    );
+    expect(asked.length).toBeGreaterThan(0);
+
+    for (const field of asked) {
+      expect(field, `the form asks for ${field}`).not.toMatch(FORBIDDEN);
+    }
+  });
 });
+
+/**
+ * What the site does not collect (#31 AC 9).
+ *
+ * Date of birth, home address, allergies, medical conditions, evaluation
+ * history and custody arrangements are all on the school's live Google Form and
+ * are all deliberately absent here — they move to paper signed at enrolment.
+ * This is what deletes the stricter storage tier rather than building it, and
+ * it is not a shortcut to be quietly reversed.
+ */
+const FORBIDDEN =
+  /\b(dob|birth|address|street|zip|postcode|allerg|medical|medicat|diagnos|custody|iep|adhd|evaluation)/;
