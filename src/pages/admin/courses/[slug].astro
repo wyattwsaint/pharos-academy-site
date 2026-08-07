@@ -25,7 +25,7 @@ import { formatStamp } from '../../../lib/admin/school-details.js';
 import { fullDateLabel, type SchoolYear } from '../../../lib/calendar/year.js';
 import { getSchoolYear } from '../../../lib/calendar/store.js';
 import { ENROLMENT_UNITS, RATE_TIERS, STAGES } from '../../../lib/courses/course.js';
-import { coursePrice, priceLine } from '../../../lib/courses/pricing.js';
+import { priceLine } from '../../../lib/courses/pricing.js';
 import { contactHours, timeLabel, type DayTrack } from '../../../lib/courses/schedule.js';
 import {
   blockStartChoices,
@@ -198,12 +198,20 @@ const blockEnd =
     ? fullDateLabel(course.dates.at(-1)!)
     : null;
 
-/** The price, computed. Displayed on a saved course; described on the add form. */
-const price = course ? coursePrice(course, settings.rates) : null;
+/**
+ * The fields that are one typed string.
+ *
+ * Narrowed to those rather than to `keyof CourseFields`, so the loop below
+ * cannot be handed `stages` or `days` — the lists have their own controls, and
+ * a cast here is how one of them would quietly render as an empty text box.
+ */
+type TextField = {
+  [K in keyof CourseFields]: CourseFields[K] extends string ? K : never;
+}[keyof CourseFields];
 
 /** The plain fields, in the order they are asked for. */
 const FIELDS: {
-  name: keyof CourseFields;
+  name: TextField;
   type: 'text' | 'multiline' | 'number';
   required?: boolean;
   hint?: string;
@@ -354,7 +362,7 @@ function warningLine(warning: CollisionWarning): string {
           [field.hint ? `${field.name}-hint` : null, invalid ? `${field.name}-error` : null]
             .filter(Boolean)
             .join(' ') || undefined;
-        const value = values[field.name] as string;
+        const value = values[field.name];
 
         return (
           <div class="flex flex-col gap-2">
@@ -404,7 +412,7 @@ function warningLine(warning: CollisionWarning): string {
 
     <fieldset class="flex flex-col gap-2">
       <legend class="font-semibold">{LABELS.stages}</legend>
-      <p id="stages-hint" class="text-sm">Which classical stages this class is filed under. A class may sit in two.</p>
+      <p class="text-sm">Which classical stages this class is filed under. A class may sit in two.</p>
       {
         STAGES.map((stage, index) => (
           <label class="flex items-center gap-2">
@@ -667,7 +675,7 @@ function warningLine(warning: CollisionWarning): string {
     <div class="border-t border-navy/15 pt-6">
       <h2 class="text-xl font-semibold text-navy">Cost</h2>
       {
-        price && course ? (
+        course ? (
           <p class="mt-2" data-testid="computed-price">
             {priceLine(course, settings.rates)} — {contactHours(course)} contact hours.
           </p>
