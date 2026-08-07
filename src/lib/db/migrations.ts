@@ -448,6 +448,51 @@ export const MIGRATIONS: readonly Migration[] = [
       `create index if not exists inquiries_received_at_idx on inquiries (received_at desc)`,
     ],
   },
+  {
+    /*
+     * The applications (#31).
+     *
+     * Read the column list for what it does **not** have: no date of birth, no
+     * address, no allergies, no medical conditions, no evaluation history, no
+     * custody arrangement. Six things the school's live Google Form asks for
+     * and this table refuses, because the site collects a name, an age and the
+     * classes and the rest is paper signed at enrolment. A migration that adds
+     * one of them back is the change to argue about, which is why they are
+     * named here rather than merely absent.
+     *
+     * `agreed_terms_id` is the join #29 built `agreed_terms` for: the fees this
+     * family applied at, frozen in the same submit that wrote this row.
+     *
+     * The children are a second table because a child has fields and one of
+     * them is itself a list. `on delete cascade`, so a deleted application
+     * takes its children with it rather than leaving them behind — the one
+     * deletion path this schema allows anywhere.
+     */
+    id: '0010-applications',
+    statements: [
+      `create table if not exists applications (
+         id uuid primary key default gen_random_uuid(),
+         family_name text not null,
+         email text not null,
+         received_at timestamptz not null default now(),
+         flagged boolean not null default false,
+         objections text not null default '',
+         statement_version text not null,
+         faith text[] not null,
+         agreed_terms_id uuid references agreed_terms(id)
+       )`,
+      `create table if not exists application_children (
+         application_id uuid not null references applications(id) on delete cascade,
+         position integer not null,
+         name text not null,
+         age text not null,
+         offering_keys text[] not null,
+         primary key (application_id, position)
+       )`,
+      // The one read this table has is "newest first", on the admin screen.
+      `create index if not exists applications_received_at_idx on applications (received_at desc)`,
+    ],
+  },
 ];
 
 /** The eight terms of the published year, idempotent like every other seed. */

@@ -526,6 +526,80 @@ export const inquiries = pgTable('inquiries', {
   confirmationError: text('confirmation_error'),
 });
 
+/**
+ * A family's application — the thing the whole site is for (#31).
+ *
+ * **Look at what is not here.** No date of birth, no home address, no
+ * allergies, no medical conditions, no evaluation history, no custody
+ * arrangement. All six are on the school's live Google Form and all six are
+ * deliberately absent: the site collects a name, an age and the classes, and
+ * the rest moves to paper signed at enrolment. That absence is what deletes the
+ * stricter storage tier rather than building it, and it is a decision about
+ * children's data rather than a shortcut — a column added here is the thing a
+ * later form field would be added to fill. `store.test.ts` reads
+ * `information_schema` back and fails if one appears.
+ *
+ * `flagged` is not a rejection. An objection to the Statement of Faith routes
+ * the application to a conversation and is recorded beside `statement_version`,
+ * so a family's agreement is never silently reinterpreted against a revision
+ * they never read.
+ *
+ * `agreed_terms_id` points at the frozen copy of the money settings written in
+ * the same submit — the table built for exactly this in #29 and unused until
+ * now.
+ */
+export const applications = pgTable('applications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  familyName: text('family_name').notNull(),
+  email: text('email').notNull(),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  /** Needs a conversation before it is accepted. Never a refusal. */
+  flagged: boolean('flagged').notNull().default(false),
+  /** The family's own words. Optional, matching the school's live form. */
+  objections: text('objections').notNull().default(''),
+  /** `sof-xxxxxxxx` — which text of the Statement they were actually shown. */
+  statementVersion: text('statement_version').notNull(),
+  /**
+   * The nine cells as `faith-Father-agree=yes` strings, answered ones only.
+   *
+   * An array rather than nine columns because it is one grid the form renders
+   * as one repeated control, the way `instalment_dates` is one ordered fact —
+   * and because an *absent* cell must stay absent: a household with no legal
+   * guardian leaves that column blank, and a null column would read as a "no".
+   */
+  faith: text('faith').array().notNull(),
+  /** The money terms frozen for this family, when they were recorded. */
+  agreedTermsId: uuid('agreed_terms_id').references(() => agreedTerms.id),
+});
+
+/**
+ * One child on one application: a name, an age and the classes (#31).
+ *
+ * A child table rather than three parallel arrays on the row above, because a
+ * child is a thing with fields rather than a position in three lists — and
+ * because `offering_keys` is itself a list, which a parallel array cannot hold.
+ * `position` keeps the form's own order, so a confirmation lists the children
+ * the way the family typed them.
+ */
+export const applicationChildren = pgTable(
+  'application_children',
+  {
+    applicationId: uuid('application_id')
+      .notNull()
+      .references(() => applications.id, { onDelete: 'cascade' }),
+    /** The form row this child was typed into, from zero. */
+    position: integer('position').notNull(),
+    name: text('name').notNull(),
+    /** As typed. Free text, because the inquiry's ages are free text. */
+    age: text('age').notNull(),
+    /** `<slug>:<unit>` keys. Empty is real — a child chosen for nothing yet. */
+    offeringKeys: text('offering_keys').array().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.applicationId, table.position] })],
+);
+
+export type ApplicationRow = typeof applications.$inferSelect;
+export type ApplicationChildRow = typeof applicationChildren.$inferSelect;
 export type InquiryRow = typeof inquiries.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type SchoolYearRow = typeof schoolYear.$inferSelect;
