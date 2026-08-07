@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { SUPPORT_PATH } from '../src/lib/about/story.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
+import { APPLICATION_PATH } from '../src/lib/application/application.js';
 import { CALENDAR_PATH, CURRENT_FAMILIES_PATH } from '../src/lib/current-families/section.js';
 import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
@@ -71,6 +72,19 @@ async function openRefundTerms(page: Page) {
 async function rejectInquiry(page: Page) {
   await page.getByRole('button', { name: 'Send my question' }).click();
   await expect(page.locator('[data-outcome="failed"]').first()).toBeVisible();
+}
+
+/**
+ * Tick the #31 AC 3 pair — Algebra 1 (year) and Beginner Latin 5-6 (year) both
+ * meet Monday 11:20–12:20 — and ask for a check, so axe measures the page with
+ * the clash warnings displayed. A check re-renders the warnings and **writes
+ * nothing**, so like `rejectInquiry` this is safe against a real deployment.
+ */
+async function showClashes(page: Page) {
+  await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+  await page.check('input[name="child-0-classes"][value="beginner-latin-grades-5-6:year"]');
+  await page.getByRole('button', { name: 'Check these choices' }).click();
+  await expect(page.locator('li[data-severity="clash"]').first()).toBeVisible();
 }
 
 const noop = async (_page: Page) => {};
@@ -167,6 +181,21 @@ const SURFACES = [
   // family is most likely to read on a phone, because they were sent to it
   // before deciding.
   { name: 'the statement of faith', path: '/about/beliefs', state: 'closed', open: noop },
+  /*
+   * #31 AC 11. The longest form on the site — three radio grids asked of three
+   * respondents, eight-way child rows of checkboxes, totals and two submits —
+   * measured as it is reached and with the clash warnings displayed, because
+   * the warnings are a `role="status"` region with severity borders and they
+   * only exist in the checked state. Forms are where axe finds real
+   * violations, and this one is the site's biggest.
+   */
+  { name: 'the application page', path: APPLICATION_PATH, state: 'closed', open: noop },
+  {
+    name: 'the application page',
+    path: APPLICATION_PATH,
+    state: 'with clash warnings displayed',
+    open: showClashes,
+  },
 ];
 
 for (const surface of SURFACES) {
