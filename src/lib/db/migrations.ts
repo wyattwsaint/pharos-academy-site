@@ -420,6 +420,34 @@ export const MIGRATIONS: readonly Migration[] = [
       `alter table courses add column if not exists last_edited_at timestamptz`,
     ],
   },
+  {
+    /*
+     * The inquiries (#25).
+     *
+     * A table rather than an email alone, because an email is not a store: the
+     * school's copy has to survive a spam filter, and the application flow
+     * pre-fills from these rows. The four delivery columns are what make a
+     * failed notification visible on the admin screen rather than only in a log.
+     */
+    id: '0009-inquiries',
+    statements: [
+      `create table if not exists inquiries (
+         id uuid primary key default gen_random_uuid(),
+         name text not null,
+         email text not null,
+         ages text not null,
+         message text not null default '',
+         received_at timestamptz not null default now(),
+         notified_at timestamptz,
+         notification_error text,
+         confirmed_at timestamptz,
+         confirmation_error text
+       )`,
+      // The one read this table has is "newest first", on every render of the
+      // admin screen.
+      `create index if not exists inquiries_received_at_idx on inquiries (received_at desc)`,
+    ],
+  },
 ];
 
 /** The eight terms of the published year, idempotent like every other seed. */

@@ -1,20 +1,20 @@
 ---
+import InquiryForm from '../InquiryForm.astro';
 import { getSchoolDetails, telHref } from '../../lib/admin/school-details.js';
 import { getDb } from '../../lib/db/client.js';
 
 /**
- * The inquiry, at the foot of the page and again from the hero (#9 item 1 and
- * item 7).
+ * The inquiry, at the foot of the home page (#9 item 7, wired by #25).
  *
- * **The form deliberately has no `action`.** Routing an inquiry somewhere is
- * #25's whole ticket — it has to reach Jill *and* persist, and #9 requires
- * both. An earlier pass here posted to `mailto:` with `enctype="text/plain"`,
- * which does neither: it hands the parent's question to whatever mail client
- * the browser can find, mangles it, persists nothing, and silently does nothing
- * at all on most phones. A form that looks like it worked and did not is worse
- * than one that plainly has not been wired yet, because the parent never finds
- * out. Until #25, the school's real email and phone sit directly under it, read
- * from the one row Jill edits rather than typed here.
+ * The form has no `action` of its own — `InquiryForm` posts to `/inquire`,
+ * which is the only page on the public site that renders on request. This page
+ * is ISR and cannot take a POST; the earlier pass here had no action at all,
+ * and the pass before *that* posted to `mailto:` with `enctype="text/plain"`,
+ * which persisted nothing and silently did nothing on most phones.
+ *
+ * The school's real email and phone stay directly under it, read from the one
+ * row Jill edits. They are not a fallback for a broken form — a parent who
+ * would rather write than fill anything in is an ordinary parent.
  */
 const details = await getSchoolDetails(await getDb());
 ---
@@ -27,27 +27,9 @@ const details = await getSchoolDetails(await getDb());
       We'll tell you honestly whether Pharos fits. No commitment, and no application yet.
     </p>
 
-    <form class="form" method="post" data-inquiry-form>
-      <div>
-        <label for="inquiry-name">Your name</label>
-        <input id="inquiry-name" name="name" autocomplete="name" required />
-      </div>
-      <div>
-        <label for="inquiry-email">Email</label>
-        <input id="inquiry-email" name="email" type="email" autocomplete="email" required />
-      </div>
-      <div class="full">
-        <label for="inquiry-ages">Children's ages</label>
-        <input id="inquiry-ages" name="ages" placeholder="e.g. 6, 9 and 13" />
-      </div>
-      <div class="full">
-        <label for="inquiry-message">Anything you'd like to ask (optional)</label>
-        <textarea id="inquiry-message" name="message"></textarea>
-      </div>
-      <div class="full">
-        <button class="btn solid" type="submit">Send my question</button>
-      </div>
-    </form>
+    <div class="mt-7">
+      <InquiryForm idPrefix="inquiry" />
+    </div>
 
     <p class="sub mt-6 text-sm">
       Or reach us directly:

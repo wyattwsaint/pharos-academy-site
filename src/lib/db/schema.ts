@@ -489,6 +489,44 @@ export const calendarEvents = pgTable('calendar_events', {
   lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
 });
 
+/**
+ * A family's first question, and the record that it was asked (#25).
+ *
+ * The row exists because an email is not a store: "check the admin panel" is
+ * not a notification, but a spam-filtered lead is a lost family, so the inquiry
+ * is written here *and* mailed and neither failure may take the other with it.
+ * The application flow (#18 §11) pre-fills from these rows, which is the second
+ * reason they are rows.
+ *
+ * **There is no phone column**, and its absence is the decision the ticket
+ * makes most loudly. `ages` is free text and required: families have several
+ * children, the school serves a fourteen-year span, and without it every first
+ * reply is a question rather than an answer.
+ *
+ * The four delivery columns are what makes a failed send visible. They are the
+ * only thing a second write touches — the family's own words are written once
+ * and never updated, so what they asked has one answer for as long as the row
+ * exists.
+ */
+export const inquiries = pgTable('inquiries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  /** Free text, never a dropdown. "6, 9 and 13" is the normal shape. */
+  ages: text('ages').notNull(),
+  /** The one optional field. Empty is a real state, not a missing one. */
+  message: text('message').notNull().default(''),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  /** When the school was told. Null means it was not — and the admin says so. */
+  notifiedAt: timestamp('notified_at', { withTimezone: true }),
+  /** Why not, in the mailer's own words, for whoever has to fix it. */
+  notificationError: text('notification_error'),
+  /** When the family's confirmation went. Null means it did not. */
+  confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+  confirmationError: text('confirmation_error'),
+});
+
+export type InquiryRow = typeof inquiries.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type SchoolYearRow = typeof schoolYear.$inferSelect;
 export type SchoolYearTermRow = typeof schoolYearTerms.$inferSelect;

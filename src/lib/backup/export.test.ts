@@ -8,6 +8,7 @@ import { saveAnnouncement } from '../announcements/store.js';
 import { createEvent } from '../calendar/store.js';
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import * as schema from '../db/schema.js';
+import { createInquiry } from '../inquiry/store.js';
 import { getMoneySettings, recordAgreedTerms } from '../money/store.js';
 import { replacePolicyFile } from '../policies/store.js';
 import {
@@ -245,6 +246,14 @@ describe('coverage of the editable set', () => {
       },
       'Jill',
     );
+    // And one inquiry (#25), for the same reason again: nobody has asked on a
+    // fresh database, which is a real state and a useless one here.
+    await createInquiry(db, {
+      name: 'Ruth Marsh',
+      email: 'ruth@example.com',
+      ages: '6, 9 and 13',
+      message: '',
+    });
 
     const files = await open();
     const manifest = json(files, 'manifest.json') as {
