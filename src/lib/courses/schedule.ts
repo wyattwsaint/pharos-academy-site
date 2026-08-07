@@ -33,6 +33,18 @@ import type { Course } from './course.js';
 export const DAY_TRACKS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'] as const;
 export type DayTrack = (typeof DAY_TRACKS)[number];
 
+/**
+ * `HH:MM` on a 24-hour clock — the shape every stored time already has.
+ *
+ * Here rather than in the admin parser because two callers now ask it: the
+ * parser, to refuse a badly typed time, and the editor's form view, to know
+ * whether there is yet a real slot to check for clashes. `minutesOfDay` throws
+ * on anything else, so asking first is how a half-typed form stays quiet.
+ */
+export function isClockTime(value: string): boolean {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
 /** `HH:MM` on a 24-hour clock to minutes past midnight. */
 export function minutesOfDay(time: string): number {
   const match = /^(\d{2}):(\d{2})$/.exec(time);

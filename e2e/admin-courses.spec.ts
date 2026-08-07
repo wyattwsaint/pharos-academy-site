@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { SEEDED_SCHOOL_YEAR, trackColumn } from '../src/lib/calendar/year.js';
+import { fullDateLabel, SEEDED_SCHOOL_YEAR, trackColumn } from '../src/lib/calendar/year.js';
 import { CATALOGUE } from '../src/lib/courses/catalogue.js';
 import { timeLabel } from '../src/lib/courses/schedule.js';
 import { clashWarnings, meetingSlots, runningTracks } from '../src/lib/courses/slots.js';
@@ -103,19 +103,87 @@ test.describe('the add form', () => {
     await expect(page.locator('#time')).toContainText(timeLabel(first[0]!, first[1]!));
   });
 
-  test('offers only real meeting dates as a block’s start', async ({ page }) => {
-    // AC 6. Every option is one of that track's own meeting dates, so a block
-    // cannot begin on a day the school does not meet.
+  test('offers no block start dates until a day is ticked', async ({ page }) => {
+    // #61. The add form knows no track yet, and every date it could offer would
+    // belong to some track this block does not meet on. An empty picker that
+    // says what to do is the honest state; offering all four is not.
     await page.goto('/admin/courses/new');
 
-    for (const track of runningTracks(SEEDED_SCHOOL_YEAR)) {
-      const dates = trackColumn(SEEDED_SCHOOL_YEAR, track).map((meeting) => meeting.date);
-      const offered = await page
-        .locator(`#blockStart optgroup[label="${track}"] option`)
-        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('value')));
+    const offered = await page
+      .locator('#blockStart option')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('value')));
 
-      expect(offered.length, track).toBeGreaterThan(0);
-      expect(offered, track).toEqual(dates);
+    expect(offered).toEqual(['']);
+    await expect(page.locator('#blockStart-hint')).toContainText('tick the one day it meets on');
+  });
+
+  test('shows no computed end date on an empty form', async ({ page }) => {
+    // #60's other end: nothing picked is not an end date of nothing.
+    await page.goto('/admin/courses/new');
+
+    await expect(page.getByTestId('block-end')).toHaveCount(0);
+  });
+});
+
+/**
+ * The three things the screen used to work out only after a save (#59, #60,
+ * #61). Each is asserted on a **GET** — opening the screen and touching
+ * nothing — because that is exactly what was broken: the answers existed, and
+ * arrived one save later than the authoring they were for.
+ */
+test.describe('what the screen says before anything is saved', () => {
+  /** The seeded block: six Wednesdays, in the crowded 10:40 slot. */
+  const BLOCK = CATALOGUE.find((course) => course.slug === 'insect-explorers')!;
+
+  test('warns about an occupied slot on opening the course, with no save', async ({ page }) => {
+    // #59. AC 4 wants a clash found at authoring time; pressing Save to be told
+    // about it is one save later than that.
+    await page.goto(`/admin/courses/${SUBJECT.slug}`);
+
+    await expect(page.getByTestId('save-banner')).toHaveCount(0);
+    const warnings = page.getByTestId('clash-warnings');
+    await expect(warnings).toBeVisible();
+    await expect(warnings).toContainText(EXPECTED_WARNINGS[0]!.course.title);
+  });
+
+  test('shows a block’s computed end date on opening it', async ({ page }) => {
+    // #60. Computed and shown after the fact is half of AC 6 — the point of
+    // showing it is to check the run before committing to it.
+    await page.goto(`/admin/courses/${BLOCK.slug}`);
+
+    await expect(page.getByTestId('block-end')).toContainText(fullDateLabel(BLOCK.dates.at(-1)!));
+  });
+
+  test('keeps the computed end date through a rejected save', async ({ page }) => {
+    // The redisplay after a validation error is exactly when Jill is looking at
+    // the dates she just picked, and is where the line used to disappear.
+    // Refused by the parser rather than by the browser — `novalidate` is not
+    // set, so a cleared required field never reaches the server at all.
+    await page.goto(`/admin/courses/${BLOCK.slug}`);
+    await page.locator('#ageMax').fill('');
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
+    await expect(page.getByTestId('block-end')).toContainText(fullDateLabel(BLOCK.dates.at(-1)!));
+  });
+
+  test('offers a saved block only its own track’s meeting dates', async ({ page }) => {
+    // #61. Every date outside the ticked track is an option that cannot be
+    // right — refused on submit, which is a correct message a save too late.
+    await page.goto(`/admin/courses/${BLOCK.slug}`);
+
+    const track = BLOCK.days[0]!;
+    const dates = trackColumn(SEEDED_SCHOOL_YEAR, track).map((meeting) => meeting.date);
+    const offered = await page
+      .locator('#blockStart option')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('value')));
+
+    expect(offered).toEqual(['', ...dates]);
+    for (const other of runningTracks(SEEDED_SCHOOL_YEAR).filter((one) => one !== track)) {
+      const foreign = trackColumn(SEEDED_SCHOOL_YEAR, other)
+        .map((meeting) => meeting.date)
+        .filter((date) => !dates.includes(date));
+      expect(offered.some((date) => foreign.includes(date!)), other).toBe(false);
     }
   });
 });
