@@ -54,6 +54,17 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          # An unset secret expands to the empty string, and `pg_dump ""` does
+          # not fail — it falls back to a local socket that does not exist on the
+          # runner, so the job dies eleven lines later complaining about
+          # /var/run/postgresql. That is what two nights of failures looked like.
+          # Name the actual cause instead.
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL is empty. Set the repository secret" \
+                 "DATABASE_URL to the Neon *unpooled* connection string" \
+                 "(pg_dump cannot run through the pooler)."
+            exit 1
+          fi
           BACKUP_DATE="$(date +%F)"
           BACKUP_FILE="backup-${BACKUP_DATE}.dump"
           # Call the v17 binary directly so pg_wrapper can't pick an older client.
