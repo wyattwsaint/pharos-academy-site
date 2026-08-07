@@ -147,6 +147,11 @@ export const courses = pgTable('courses', {
   endTime: text('end_time').notNull(),
   /** `year` | `fall` | `spring` | `block` (CONTEXT.md, "enrolment unit"). */
   enrolment: text('enrolment').notNull(),
+  /**
+   * The units ticked as purchasable (#24) — admin data, never inferred from
+   * `enrolment`. Non-empty, values among the four; a check enforces both.
+   */
+  enrolmentUnits: text('enrolment_units').array().notNull(),
   /** Meeting weeks per day track. */
   weeks: integer('weeks').notNull(),
   /** A block's published meeting dates, `YYYY-MM-DD`. Empty for anything else. */
@@ -176,6 +181,9 @@ export const courses = pgTable('courses', {
   instructorSlug: text('instructor_slug')
     .notNull()
     .references(() => people.slug),
+  /** The stamp: who saved this course last, and when. Overwritten, never appended. */
+  lastEditedBy: text('last_edited_by'),
+  lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
 });
 
 /**

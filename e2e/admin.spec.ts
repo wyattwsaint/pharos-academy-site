@@ -746,6 +746,13 @@ test.describe('accessibility', () => {
     '/admin/school-year',
     '/admin/events',
     '/admin/events/new',
+    // #24. The course editor is the School Year screen's rival for density —
+    // three groups of checkboxes, four selects and a computed price that is
+    // read-only text rather than a disabled input, which is the part a
+    // screen reader has to be told correctly.
+    '/admin/courses',
+    '/admin/courses/algebra-1',
+    '/admin/courses/new',
   ]) {
     for (const width of ADMIN_WIDTHS) {
       test(`${path} has zero axe violations at ${width}px`, async ({ page }) => {

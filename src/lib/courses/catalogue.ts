@@ -57,7 +57,15 @@ const DRAWING_AND_PAINTING_DESCRIPTION =
   'Similarly, the second half of the semester will focus on technical painting skills using ' +
   'both photographs, three dimensional objects, and works of great art (especially landscapes).';
 
-export const CATALOGUE: readonly Course[] = [
+/**
+ * A seed row: everything the school published, minus what only the editor
+ * manages. `enrolmentUnits` and the stamp are derived below rather than written
+ * nineteen times, because the seed's rule is one rule: a course starts
+ * purchasable only as its own shape.
+ */
+type SeedCourse = Omit<Course, 'enrolmentUnits' | 'lastEditedBy' | 'lastEditedAt'>;
+
+const SEEDS: readonly SeedCourse[] = [
   {
     slug: 'algebra-1',
     title: 'Algebra 1',
@@ -671,6 +679,19 @@ export const CATALOGUE: readonly Course[] = [
     instructorSlug: 'mandy-saint',
   },
 ];
+
+/**
+ * The seed with the editor's fields filled in conservatively: each course is
+ * purchasable as its own shape and nothing more, until Jill ticks otherwise in
+ * the admin (#24). The nine year courses that publish a semester price get only
+ * `['year']` here — the site must not guess a $420 offering into existence.
+ */
+export const CATALOGUE: readonly Course[] = SEEDS.map((seed) => ({
+  ...seed,
+  enrolmentUnits: [seed.enrolment],
+  lastEditedBy: null,
+  lastEditedAt: null,
+}));
 
 /** Alphabetical by title — the order the full-descriptions surface reads in. */
 export function byTitle(courses: readonly Course[]): Course[] {

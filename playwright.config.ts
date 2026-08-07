@@ -87,7 +87,11 @@ export default defineConfig({
             // needs a server pointed at a dead origin and runs from its own
             // config, so a `**/admin*.spec.ts` here would start it against a
             // working one and assert the opposite of what it means.
-            testMatch: ['**/admin.spec.ts', '**/admin-calendar.spec.ts'],
+            testMatch: [
+              '**/admin.spec.ts',
+              '**/admin-calendar.spec.ts',
+              '**/admin-courses.spec.ts',
+            ],
             use: { ...devices['Desktop Chrome'], baseURL: LOCAL_URL },
           },
         ]

@@ -1,3 +1,4 @@
+import { livePublicRoutes } from '../live-routes.js';
 import { revalidatablePaths } from '../routes.js';
 
 /**
@@ -28,13 +29,19 @@ export type RevalidateOptions = {
   origin: string;
   /** The adapter's ISR bypass token. Empty means "cannot revalidate". */
   bypassToken: string;
-  /** Defaults to every enumerated public path. */
+  /**
+   * Defaults to every public path the school offers **now** — the enumerated
+   * list with its class routes read from the store rather than from the seed,
+   * so a class added in the course editor is republished by the same save that
+   * created it (#24).
+   */
   paths?: string[];
   fetchImpl?: typeof fetch;
 };
 
 export async function revalidateAll(options: RevalidateOptions): Promise<RevalidationResult> {
-  const { origin, bypassToken, paths = revalidatablePaths(), fetchImpl = fetch } = options;
+  const { origin, bypassToken, fetchImpl = fetch } = options;
+  const paths = options.paths ?? revalidatablePaths(await livePublicRoutes());
 
   // No token means every request would be served from the cache and report
   // success while changing nothing. Fail closed and say so, rather than lie.

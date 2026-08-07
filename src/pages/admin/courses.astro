@@ -1,0 +1,88 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { UNIT_LABELS } from '../../lib/admin/courses.js';
+import { formatStamp } from '../../lib/admin/school-details.js';
+import { durationLabel } from '../../lib/courses/course.js';
+import { priceSummary } from '../../lib/courses/pricing.js';
+import { timeLabel } from '../../lib/courses/schedule.js';
+import { listCourses } from '../../lib/courses/store.js';
+import { getDb } from '../../lib/db/client.js';
+import { getMoneySettings } from '../../lib/money/store.js';
+
+/**
+ * The whole catalogue, in the order the store keeps it (#24).
+ *
+ * A list and nothing else, as People is: every edit happens on the class's own
+ * screen, so there is one place a class changes and one thing that can go
+ * wrong. The line under each title is the same derived vocabulary the public
+ * pages print — the day, the time, the duration and the price — so what Jill
+ * reads here is what a parent reads there, rather than a second summary that
+ * could disagree.
+ *
+ * There is no delete, for the reason People has none: a class a family has
+ * already applied to is a row other rows point at, and a button the database
+ * would refuse is a button that lies. Withdrawing a class is a job for whoever
+ * installed the site until the application flow says otherwise (#31).
+ */
+const db = await getDb();
+const actor = Astro.locals.actor!;
+
+const courses = await listCourses(db);
+const settings = await getMoneySettings(db);
+---
+
+<AdminLayout title="Classes" actor={actor}>
+  <h1 class="text-3xl font-semibold text-navy">Classes</h1>
+  <p class="mt-2">
+    One list, alphabetical. Each class appears by age, by day, in the full descriptions and on its
+    own page — all four from this one row.
+  </p>
+
+  <p class="mt-8">
+    <a
+      href="/admin/courses/new"
+      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+    >
+      Add a course
+    </a>
+  </p>
+
+  <ul class="mt-8 flex flex-col gap-6">
+    {
+      courses.map((course) => (
+        <li class="border-t border-navy/15 pt-6">
+          <h2 class="text-xl font-semibold text-navy">
+            <a href={`/admin/courses/${course.slug}`} class="underline underline-offset-4">
+              {course.title}
+            </a>
+          </h2>
+          <p class="mt-1">
+            {course.days.join(', ')}
+            {' · '}
+            {timeLabel(course.start, course.end)}
+            {' · '}
+            {durationLabel(course)}
+            {' · '}
+            {priceSummary(course, settings.rates)}
+          </p>
+          <p class="mt-1 text-sm" data-testid={`units-${course.slug}`}>
+            Families can enrol for:{' '}
+            {course.enrolmentUnits.map((unit) => UNIT_LABELS[unit]).join(', ')}
+          </p>
+          <p class="mt-1 text-sm" data-testid={`stamp-${course.slug}`}>
+            {formatStamp(course.lastEditedBy, course.lastEditedAt)}
+          </p>
+        </li>
+      ))
+    }
+  </ul>
+
+  <p class="mt-10 border-t border-navy/15 pt-6">
+    The price is never typed. It is the meeting length × the weeks × the rate on the <a
+      href="/admin/money"
+      class="underline underline-offset-4">Money</a
+    > screen, worked out fresh every time a class is saved or shown.
+  </p>
+</AdminLayout>
