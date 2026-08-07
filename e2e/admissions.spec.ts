@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { APPLICATION_PATH } from '../src/lib/application/application.js';
+
 /**
  * The Admissions page, as a family reads it (#29 AC 6).
  *
@@ -76,11 +78,12 @@ test.describe('the admissions page', () => {
     await expect(startSection).toHaveAttribute('data-section', 'admissions-start');
     await expect(startSection.getByRole('link', { name: 'Start your application' })).toBeVisible();
 
-    // And it does not lead to a 404 while the application flow is still a
-    // later ticket — today it is the conversation that flow begins from.
+    // Until #31 this landed on `/#inquiry`, because the application flow did
+    // not exist yet and a conversation was where it began. #31 built the flow,
+    // so the button now reaches the application itself.
     await start.click();
-    await expect(page).toHaveURL(/\/#inquiry$/);
-    await expect(page.locator('#inquiry')).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`${APPLICATION_PATH}$`));
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
   test('is reachable from the header on every page', async ({ page }) => {
