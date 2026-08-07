@@ -182,6 +182,13 @@ const warnings: ClashWarning[] = form.warnings;
 /** The computed end of the block being typed — worked out, never entered. */
 const blockEnd = form.blockEnd ? fullDateLabel(form.blockEnd) : null;
 
+/*
+ * The parser's complaint where there is one, and otherwise the view's. They are
+ * the same refusal from the same function; the parser only gets to make it on a
+ * POST, and a block the year has since stopped holding is found on a GET (#60).
+ */
+const blockStartError = errors.blockStart ?? form.blockError;
+
 /**
  * The fields that are one typed string.
  *
@@ -570,8 +577,8 @@ function warningLine(warning: ClashWarning): string {
       <select
         id="blockStart"
         name="blockStart"
-        aria-invalid={errors.blockStart ? 'true' : undefined}
-        aria-describedby={errors.blockStart ? 'blockStart-hint blockStart-error' : 'blockStart-hint'}
+        aria-invalid={blockStartError ? 'true' : undefined}
+        aria-describedby={blockStartError ? 'blockStart-hint blockStart-error' : 'blockStart-hint'}
         class={control}
       >
         <option value="">Not picked yet</option>
@@ -590,7 +597,7 @@ function warningLine(warning: ClashWarning): string {
           ))
         }
       </select>
-      {errors.blockStart && <p id="blockStart-error" class="font-semibold">{errors.blockStart}</p>}
+      {blockStartError && <p id="blockStart-error" class="font-semibold">{blockStartError}</p>}
       {
         blockEnd && (
           <p class="text-sm" data-testid="block-end">

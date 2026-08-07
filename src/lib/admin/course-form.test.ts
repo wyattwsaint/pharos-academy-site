@@ -113,8 +113,8 @@ describe('the computed end date, before any save (#60)', () => {
   });
 
   it('shows no end date for a run the year cannot hold', () => {
-    // `blockMeetingDates` refuses this outright; the complaint belongs beside
-    // the start field, where the parser already puts it, not here.
+    // `blockMeetingDates` refuses this outright, so there is no end to show.
+    // The refusal itself is carried as `blockError` — see below.
     const end = view(
       typing({
         days: ['Wednesday'],
@@ -131,6 +131,66 @@ describe('the computed end date, before any save (#60)', () => {
     const end = view({ ...fieldsOf(BLOCK), enrolment: 'year' }, BLOCK.slug).blockEnd;
 
     expect(end).toBeNull();
+  });
+});
+
+describe('a start the year cannot honour, on a GET (#60)', () => {
+  /**
+   * The parser makes this complaint on a POST. On a GET there is no parser, and
+   * a block saved before the School Year screen moved its term is found exactly
+   * there — so the view carries the same refusal rather than dropping it.
+   */
+  const refused = typing({
+    days: ['Wednesday'],
+    start: '10:40',
+    end: '12:10',
+    enrolment: 'block',
+    weeks: '99',
+    blockStart: BLOCK.dates[0]!,
+  });
+
+  it('says why the start gives no run, rather than saying nothing', () => {
+    expect(view(refused).blockError).toBeTruthy();
+  });
+
+  it('refuses a start that is not one of the track’s meeting dates', () => {
+    const offColumn = view(
+      typing({
+        days: ['Wednesday'],
+        enrolment: 'block',
+        weeks: '6',
+        blockStart: '2027-03-02', // a Tuesday: the Wednesday track never meets on it
+      }),
+    );
+
+    expect(offColumn.blockError).toBeTruthy();
+    expect(offColumn.blockEnd).toBeNull();
+  });
+
+  it('does not call a refused block a possible clash', () => {
+    /*
+     * The slot is occupied and the form would otherwise warn. A *possible
+     * clash* means the school has not set the start yet (CONTEXT.md); this
+     * block has a start, and it is wrong. Saying "possible" would report the
+     * wrong fault and hide the real one.
+     */
+    expect(view(refused).warnings).toEqual([]);
+  });
+
+  it('is not a complaint about a start that has simply not been picked', () => {
+    const unpicked = view(
+      typing({ days: ['Wednesday'], start: '10:40', end: '12:10', enrolment: 'block', weeks: '6' }),
+    );
+
+    // Non-empty on purpose: it is what makes the refused case above a silence
+    // the fix creates rather than one the slot was empty of all along.
+    expect(unpicked.blockError).toBeNull();
+    expect(unpicked.warnings.length).toBeGreaterThan(0);
+    expect(unpicked.warnings.every((warning) => warning.severity === 'possible')).toBe(true);
+  });
+
+  it('is not a complaint about a saved block the year still holds', () => {
+    expect(view(fieldsOf(BLOCK), BLOCK.slug).blockError).toBeNull();
   });
 });
 

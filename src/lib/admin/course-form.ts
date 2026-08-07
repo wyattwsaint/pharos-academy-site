@@ -28,9 +28,18 @@ import type { CourseFields } from './courses.js';
  * ones a saved course is rendered into — and answers all three from there. It
  * is deliberately **lenient where `parseCourse` is strict**: a half-filled form
  * is the ordinary state of this screen, and every question here has an honest
- * "not yet" (no warnings, no end date, an empty picker). Nothing here refuses
- * anything or produces a message; refusal is the parser's, and its complaints
- * already land beside the fields they are about.
+ * "not yet" (no warnings, no end date, an empty picker).
+ *
+ * One refusal it does carry, because on a GET there is no parser to carry it.
+ * `blockMeetingDates` throws when the start is off its track's column or the
+ * year is too short for the weeks, and #60 puts that message beside the start
+ * field. A block saved before the School Year screen moved its term is exactly
+ * that case, and swallowing the throw would leave the screen saying nothing at
+ * all. It would also feed the clash check `dates: []`, which means "the start
+ * is not chosen yet" and reports a *possible clash* — asserting the school has
+ * not picked a start for a block that has one. A run the year cannot hold is
+ * not an unknown run: it is a refused one, so this reports the refusal and
+ * leaves the clash question alone until the start is a real date again.
  */
 
 /** Everything beyond the form itself that the three answers depend on. */
@@ -53,6 +62,12 @@ export type CourseFormView = {
   blockMeetings: Meeting[];
   /** The block's computed last meeting, `YYYY-MM-DD`, or null when it is not knowable. */
   blockEnd: string | null;
+  /**
+   * Why the picked start gives no run — off its track's column, or a year too
+   * short for the weeks. Null when the form has not picked a start yet, which
+   * is a valid state and not a complaint. Belongs beside the start field (#60).
+   */
+  blockError: string | null;
 };
 
 export function courseFormView(
@@ -81,26 +96,33 @@ export function courseFormView(
 
   /*
    * The run the form describes, and empty when it does not describe one yet.
-   * `blockMeetingDates` refuses a start off the track's column and a block the
-   * year is too short for; both are the parser's complaint to make, beside the
-   * start field, so here they are simply not an end date.
+   * A refused start is kept as its message rather than discarded: the parser
+   * says the same thing on a POST, and on a GET nothing else would say it.
    */
   let dates: string[] = [];
+  let blockError: string | null = null;
   if (blockTrack && values.blockStart && weeks > 0) {
     try {
       dates = blockMeetingDates(year, blockTrack, values.blockStart, weeks);
-    } catch {
-      dates = [];
+    } catch (error) {
+      blockError = error instanceof Error ? error.message : String(error);
     }
   }
 
   /*
    * A clash needs a day, a real time and a shape to be a fact about. Without
    * all three there is nothing to compare, and warning anyway would mean
-   * guessing the missing half of a slot.
+   * guessing the missing half of a slot. A refused block is the same kind of
+   * silence: its dates are unknowable rather than unpicked, and `clashWarnings`
+   * reads no dates as no start yet, so it would call a *possible clash* on a
+   * block whose start is picked and wrong.
    */
   const sayable =
-    days.length > 0 && enrolment !== null && isClockTime(values.start) && isClockTime(values.end);
+    days.length > 0 &&
+    enrolment !== null &&
+    isClockTime(values.start) &&
+    isClockTime(values.end) &&
+    blockError === null;
 
   return {
     warnings: sayable
@@ -113,5 +135,6 @@ export function courseFormView(
     blockTrack,
     blockMeetings,
     blockEnd: dates.at(-1) ?? null,
+    blockError,
   };
 }
