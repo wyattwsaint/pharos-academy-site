@@ -1,5 +1,6 @@
 import type { Db } from '../db/client.js';
 import { getSchoolDetails } from '../admin/school-details.js';
+import { listApplications } from '../application/store.js';
 import { getAttachment, listAnnouncements } from '../announcements/store.js';
 import { getSchoolYear, listEvents } from '../calendar/store.js';
 import { listCourses } from '../courses/store.js';
@@ -59,6 +60,8 @@ export const EXPORTED_TABLES = [
   'school_year_closures',
   'calendar_events',
   'inquiries',
+  'applications',
+  'application_children',
 ] as const;
 
 /**
@@ -84,6 +87,10 @@ export const EXPORTED_TABLE_LABELS: Record<(typeof EXPORTED_TABLES)[number], str
   school_year_closures: 'Every day the school is closed, with what it is closed for',
   calendar_events: 'One-off events — open houses, concerts, picture days',
   inquiries: 'Every family who has asked about the school, and what they asked',
+  applications:
+    'Every application a family has sent — who applied, what they answered about the Statement of Faith, and any objection they raised',
+  application_children:
+    'The children on each application: a name, an age and the classes chosen. Nothing else — no dates of birth, no addresses and no medical history',
 };
 
 /**
@@ -175,6 +182,32 @@ export async function buildExport(db: Db, at = new Date()): Promise<BackupArchiv
   const inquiryRows = await listInquiries(db);
   files.push(jsonEntry('content/inquiries.json', inquiryRows));
   tables.push({ table: 'inquiries', file: 'content/inquiries.json', rows: inquiryRows.length });
+
+  /*
+   * The applications (#31).
+   *
+   * The least reproducible content the school holds: what each parent answered
+   * about the Statement of Faith, which text of it they were shown, any
+   * objection they raised, and the classes they chose for each child. Nothing
+   * edits these rows — which is the reason they are here rather than a reason
+   * to leave them out, exactly as it is for `agreed_terms` below.
+   *
+   * The children are counted as their own table against the same file, so an
+   * export that dropped them fails the coverage test rather than quietly
+   * shipping applications with no applicants on them.
+   */
+  const applicationRows = await listApplications(db);
+  files.push(jsonEntry('content/applications.json', applicationRows));
+  tables.push({
+    table: 'applications',
+    file: 'content/applications.json',
+    rows: applicationRows.length,
+  });
+  tables.push({
+    table: 'application_children',
+    file: 'content/applications.json',
+    rows: applicationRows.reduce((count, row) => count + row.children.length, 0),
+  });
 
   const agreed = await listAgreedTerms(db);
   files.push(jsonEntry('content/agreed-terms.json', agreed));
