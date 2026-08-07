@@ -60,6 +60,49 @@ export type Mail = {
  */
 export type Sender = (mail: Mail) => Promise<void>;
 
+/**
+ * Send a batch and report whether **any** of it landed.
+ *
+ * "Any" rather than "all" because the school's notification list is a list: two
+ * addresses where one bounces is a school that was told, and reporting that as
+ * a failure would put a false alarm on the admin screen for ever.
+ *
+ * An absent sender — a deployment with no mail credentials — is a refused send
+ * rather than a quiet success, because both mean the school was not told.
+ *
+ * It lives beside `Mail` and `Sender` rather than in either of the two forms
+ * that use it, so the inquiry (#25) and the application (#32) cannot drift into
+ * two different answers to "did that email go?".
+ */
+export async function sendAll(
+  sender: Sender | undefined,
+  mails: readonly Mail[],
+): Promise<{ sent: boolean; error?: string }> {
+  if (!sender) {
+    return { sent: false, error: 'No mailer is configured on this deployment (RESEND_API_KEY).' };
+  }
+  if (mails.length === 0) {
+    return { sent: false, error: 'There is nobody to send this to.' };
+  }
+
+  let sent = false;
+  let error: string | undefined;
+  for (const mail of mails) {
+    try {
+      await sender(mail);
+      sent = true;
+    } catch (failure) {
+      error ??= `${mail.to}: ${describeFailure(failure)}`;
+    }
+  }
+  return { sent, error: sent && !error ? undefined : error };
+}
+
+/** An error as a line somebody can act on, whatever was actually thrown. */
+export function describeFailure(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export type MonthlySendResult = {
   to: string;
   filename: string;

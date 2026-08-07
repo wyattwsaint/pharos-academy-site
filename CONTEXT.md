@@ -131,6 +131,49 @@ slot rather than a hole.
 `submitted` while its payment is `awaiting cheque`, then `overdue`, then
 `received`; none of those changes the application's own state.
 
+The word `overdue` is **never stored**. What the row holds is that a cheque was
+awaited, and from when; a payment past its three-week grace period is overdue
+because the clock says so, which is how it happens "with no human action" and no
+nightly job that can quietly stop running (ADR-0008).
+
+### class tally
+
+How many children are in each class, counted **once per family, per child, per
+course**. It is the number the school decides whether a class runs on, and the
+deduplication is the whole of why it is a term: a family applies twice for
+ordinary reasons — a second child added, a change of unit, a form sent again
+because nobody replied — and every one of those doubles that family's own rows
+in a raw count.
+
+Both applications are kept and both are listed, because each is a record of
+something a family actually sent. What is deduplicated is the **count**: one row
+in the tally, carrying a **second-submission note** that exists to explain a
+number that would otherwise look wrong.
+
+**Blocking a second application on the email address is wrong**: two households
+share one, and re-applying is a real thing to do.
+
+Nothing about it is stored — no `supersedes` column, no pointer written at
+submission. It is recomputed from the applications each time, so a correction is
+a correction rather than a migration, and the record of what each family sent
+stays exactly what they sent.
+
+Not: "enrolment numbers" (a seat in the tally is not an enrolment), "roll",
+"class list".
+
+### conversation flag
+
+The mark an application carries when somebody answered "no" to one of the three
+Statement of Faith questions, or wrote something in the objections field. It
+routes the application to a conversation.
+
+**It is not a rejection, and nothing in the codebase may make it one.** The flag
+is recorded at submission, printed above the family's name in the school's
+notification email and shown on the admin screen — first, because it is the one
+line that changes what somebody does about the application.
+
+Not: "rejected", "failed the Statement", "review required".
+
 ### money settings
 
 The single row holding every number about money the school controls: the two

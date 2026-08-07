@@ -493,6 +493,44 @@ export const MIGRATIONS: readonly Migration[] = [
       `create index if not exists applications_received_at_idx on applications (received_at desc)`,
     ],
   },
+  {
+    /*
+     * The school's side of the application (#32).
+     *
+     * Two axes, and the column list is where that decision becomes structural.
+     * `status` is where the application is; the three `payment_*` columns are
+     * where the money is; nothing joins them, so moving one cannot move the
+     * other.
+     *
+     * **There is no `overdue` written anywhere.** A cheque past its grace
+     * period is overdue because `payment_since` says so, computed on read
+     * (`paymentStatusNow`). The alternative is a nightly job that writes the
+     * word, and a nightly job that stops running leaves the school looking at a
+     * screen that says every cheque is fine (ADR-0008).
+     *
+     * There is also **no `supersedes` column**, and its absence is the AC 1
+     * decision: a second application is reconciled in the tally, by family,
+     * child and course, at read time. A pointer written at submission would
+     * decide "is this the same family?" once, on the family's own spelling of
+     * their name, and be wrong for ever after.
+     *
+     * The defaults backfill the rows #31 already wrote: every one of them was a
+     * real submission awaiting a real cheque, and `payment_since` starts at the
+     * day they applied.
+     */
+    id: '0011-application-lifecycle',
+    statements: [
+      `alter table applications add column if not exists status text not null default 'submitted'`,
+      `alter table applications add column if not exists payment_mode text not null default 'cheque'`,
+      `alter table applications add column if not exists payment_status text not null default 'awaiting'`,
+      `alter table applications add column if not exists payment_since timestamptz`,
+      `alter table applications add column if not exists notified_at timestamptz`,
+      `alter table applications add column if not exists notification_error text`,
+      `alter table applications add column if not exists confirmed_at timestamptz`,
+      `alter table applications add column if not exists confirmation_error text`,
+      `update applications set payment_since = received_at where payment_since is null`,
+    ],
+  },
 ];
 
 /** The eight terms of the published year, idempotent like every other seed. */
