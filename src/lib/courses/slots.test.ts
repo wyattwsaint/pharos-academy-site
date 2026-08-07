@@ -7,7 +7,7 @@ import {
   blockEndDate,
   blockMeetingDates,
   blockStartChoices,
-  collisionWarnings,
+  clashWarnings,
   meetingSlots,
   runningTracks,
   type CandidateSchedule,
@@ -15,7 +15,7 @@ import {
 
 /**
  * #24 AC 3, AC 4 and AC 6 — the slot generation the editor picks from, the
- * authoring-time collision check, and a block's dates computed from its start.
+ * authoring-time clash check, and a block's dates computed from its start.
  */
 
 const year = SEEDED_SCHOOL_YEAR;
@@ -83,24 +83,24 @@ describe('slot generation (#24 AC 3)', () => {
   });
 });
 
-describe('the authoring-time collision check (#24 AC 4)', () => {
+describe('the authoring-time clash check (#24 AC 4)', () => {
   it('warns when the new class really meets at an occupied time', () => {
-    const warnings = collisionWarnings(
+    const warnings = clashWarnings(
       candidate({ days: ['Monday'], start: '10:00', end: '10:10' }),
       CATALOGUE,
       year,
     );
     expect(warnings.map((warning) => warning.course.slug)).toEqual(['god-made-everything']);
-    expect(warnings[0]!.severity).toBe('certain');
+    expect(warnings[0]!.severity).toBe('clash');
     // The shared days are real Monday meeting dates, so the warning can say one.
     expect(warnings[0]!.sharedDates[0]).toBe('2026-08-31');
   });
 
   it('measures real overlap, not adjacency', () => {
     // Monday 10:30-11:00: God Made Everything ends at 10:30 sharp and Beginner
-    // Latin starts at 11:20 — back to back is not a collision. What it does
+    // Latin starts at 11:20 — back to back is not a clash. What it does
     // cross, it is told about.
-    const warnings = collisionWarnings(
+    const warnings = clashWarnings(
       candidate({ days: ['Monday'], start: '10:30', end: '11:00' }),
       CATALOGUE,
       year,
@@ -115,9 +115,9 @@ describe('the authoring-time collision check (#24 AC 4)', () => {
 
   it('does not warn when the semesters never share a day', () => {
     // Monday 10:40-12:10 in the fall: every year course it crosses and the
-    // fall drawing run are real collisions; the spring drawing run, at exactly
+    // fall drawing run are real clashes; the spring drawing run, at exactly
     // the same time on the same track, shares no date at all and is not one.
-    const warnings = collisionWarnings(
+    const warnings = clashWarnings(
       candidate({ days: ['Monday'], start: '10:40', end: '12:10', enrolment: 'fall' }),
       CATALOGUE,
       year,
@@ -137,7 +137,7 @@ describe('the authoring-time collision check (#24 AC 4)', () => {
     // Nocturnal Wonders runs September; a block on Virtue of Kindness's October
     // dates misses it entirely and lands squarely on Virtue of Kindness itself.
     const kindness = bySlug('the-virtue-of-kindness');
-    const warnings = collisionWarnings(
+    const warnings = clashWarnings(
       candidate({
         days: ['Wednesday'],
         start: '10:40',
@@ -152,14 +152,14 @@ describe('the authoring-time collision check (#24 AC 4)', () => {
     expect(slugs).not.toContain('nocturnal-wonders');
     expect(slugs).toContain('the-virtue-of-kindness');
     expect(warnings.find((one) => one.course.slug === 'the-virtue-of-kindness')!.severity).toBe(
-      'certain',
+      'clash',
     );
   });
 
-  it('calls a block with no start date yet a possible collision, not a certain one', () => {
+  it('calls a block with no start date yet a possible clash, not a certain one', () => {
     // CONTEXT.md, "possible clash": the truth is genuinely unknown, and saying
-    // either "collision" or nothing would be inventing an answer.
-    const warnings = collisionWarnings(
+    // either "clash" or nothing would be inventing an answer.
+    const warnings = clashWarnings(
       candidate({ days: ['Wednesday'], start: '10:40', end: '12:10', enrolment: 'block', dates: [] }),
       CATALOGUE,
       year,
@@ -169,9 +169,9 @@ describe('the authoring-time collision check (#24 AC 4)', () => {
     expect(wonders.sharedDates).toEqual([]);
   });
 
-  it('never reports a course as colliding with itself while it is edited', () => {
+  it('never reports a course as clashing with itself while it is edited', () => {
     const math = bySlug('kingdom-math');
-    const warnings = collisionWarnings(
+    const warnings = clashWarnings(
       candidate({ slug: math.slug, days: [...math.days], start: math.start, end: math.end }),
       CATALOGUE,
       year,

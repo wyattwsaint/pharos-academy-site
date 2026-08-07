@@ -313,7 +313,7 @@ export function parseCourse(form: FormData, context: CourseContext): ParsedCours
 
   /*
    * A block's dates come from its track's real meeting dates, or are honestly
-   * absent. No start picked yet is a valid state — the collision check calls it
+   * absent. No start picked yet is a valid state — the clash check calls it
    * a *possible* clash rather than guessing — so `blockStart` is never required
    * here; a bad one is refused with the domain's own words.
    */

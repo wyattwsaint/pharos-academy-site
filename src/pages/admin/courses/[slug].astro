@@ -29,10 +29,10 @@ import { priceLine } from '../../../lib/courses/pricing.js';
 import { contactHours, timeLabel, type DayTrack } from '../../../lib/courses/schedule.js';
 import {
   blockStartChoices,
-  collisionWarnings,
+  clashWarnings,
   meetingSlots,
   runningTracks,
-  type CollisionWarning,
+  type ClashWarning,
 } from '../../../lib/courses/slots.js';
 import { createCourse, getCourse, listCourses, saveCourse } from '../../../lib/courses/store.js';
 import { getDb } from '../../../lib/db/client.js';
@@ -92,10 +92,10 @@ const settings = await getMoneySettings(db);
 const people = await listPeople(db);
 const instructorSlugs = people.map((person) => person.slug);
 /*
- * Read before the save, and used for both the slot list and the collision
+ * Read before the save, and used for both the slot list and the clash
  * check. Pre-save is the correct reading for either: on the add form this
  * course is not in it yet, and on the edit form the row still holds the times
- * it had when Jill opened the screen — and `collisionWarnings` drops the
+ * it had when Jill opened the screen — and `clashWarnings` drops the
  * candidate's own slug regardless.
  */
 const courses = await listCourses(db);
@@ -103,7 +103,7 @@ const courses = await listCourses(db);
 let values: CourseFields = course ? fieldsOf(course) : emptyFields();
 let errors: CourseErrors = {};
 let banner: Banner | null = null;
-let warnings: CollisionWarning[] = [];
+let warnings: ClashWarning[] = [];
 
 if (Astro.request.method === 'POST') {
   const parsed = parseCourse(await Astro.request.formData(), { year, instructorSlugs });
@@ -118,7 +118,7 @@ if (Astro.request.method === 'POST') {
      * is about the timetable, not about the write: a course that saved into an
      * occupied slot is exactly the case Jill most needs to be told about.
      */
-    warnings = collisionWarnings(
+    warnings = clashWarnings(
       {
         slug: course?.slug ?? null,
         days: parsed.edit.days,
@@ -300,9 +300,9 @@ function humanErrorMessage(error: unknown): string {
 }
 
 /** Which day a warning is about, said the way the timetable says it. */
-function warningLine(warning: CollisionWarning): string {
+function warningLine(warning: ClashWarning): string {
   const when =
-    warning.severity === 'certain'
+    warning.severity === 'clash'
       ? `${warning.sharedDates.length} shared meeting${warning.sharedDates.length === 1 ? '' : 's'}, from ${fullDateLabel(warning.sharedDates[0]!)}`
       : 'possibly — this block has no start date yet, so the dates are not known';
   return `${warning.track}, ${timeLabel(warning.course.start, warning.course.end)} — ${warning.course.title} (${when}).`;
@@ -337,7 +337,7 @@ function warningLine(warning: CollisionWarning): string {
     warnings.length > 0 && (
       <div
         role="status"
-        data-testid="collision-warnings"
+        data-testid="clash-warnings"
         class="mt-6 border-l-4 border-gold bg-parchment px-4 py-3"
       >
         <p class="font-semibold">This class shares a time with another.</p>

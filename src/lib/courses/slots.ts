@@ -1,5 +1,5 @@
 /**
- * The meeting slots the course editor picks from, and the collision check it
+ * The meeting slots the course editor picks from, and the clash check it
  * runs while Jill types (#24).
  *
  * "Day and time selected from real meeting slots" (spec #18 §10) has two
@@ -10,10 +10,10 @@
  * already runs on that track — because those are the school's real slots, not
  * a grid this site invented.
  *
- * The collision check **warns and never blocks**. The Wednesday 10:40 slot
+ * The clash check **warns and never blocks**. The Wednesday 10:40 slot
  * carries five electives by design (CONTEXT.md, "clash"), so an occupied slot
  * is a fact Jill is told, not a save she is refused. What makes the warning
- * exact rather than approximate is dates: two courses collide only when they
+ * exact rather than approximate is dates: two courses clash only when they
  * would meet at the same time **on the same real day**, which is why a fall
  * course and a spring course sharing a time never warn, and why a block whose
  * start date is not set yet warns as *possible* — the truthful third state —
@@ -64,9 +64,9 @@ export function meetingSlots(year: SchoolYear, courses: readonly Course[]): Meet
  * What the editor knows about the course being typed, before it is saved.
  *
  * `slug` is null on the add form; on the edit form it is the course's own,
- * so a class is never reported as colliding with itself. `dates` is a block's
+ * so a class is never reported as clashing with itself. `dates` is a block's
  * picked meeting dates, and empty means the start date is not chosen yet —
- * which is exactly the state that makes a collision *possible* rather than
+ * which is exactly the state that makes a clash *possible* rather than
  * certain.
  */
 export type CandidateSchedule = {
@@ -81,36 +81,36 @@ export type CandidateSchedule = {
 /**
  * One occupied slot the candidate lands on.
  *
- * `certain` means the two would really meet at once — same track, overlapping
+ * `clash` means the two would really meet at once — same track, overlapping
  * times, and at least one shared meeting date. `possible` means the times
  * overlap but one side is a block with no dates yet, so the truth is unknown
  * (CONTEXT.md, "possible clash").
  */
-export type CollisionWarning = {
+export type ClashWarning = {
   track: DayTrack;
   course: Course;
-  severity: 'certain' | 'possible';
+  severity: 'clash' | 'possible';
   /** The real days both would meet, oldest first. Empty when `possible`. */
   sharedDates: string[];
 };
 
 /**
- * The authoring-time collision check (#24 AC 4).
+ * The authoring-time clash check (#24 AC 4).
  *
  * Time overlap is real overlap, not adjacency, exactly as the timetable
  * measures it. Term overlap is measured in **meeting dates**, not semester
  * names: a year course's dates are its track's whole column, a semester
  * course's are that semester's, a block's are the dates it was given. Two
  * courses whose date sets never touch — fall against spring, or two blocks
- * run back to back — share a time slot without colliding, which is the
+ * run back to back — share a time slot without clashing, which is the
  * distinction that keeps this warning honest enough to leave on.
  */
-export function collisionWarnings(
+export function clashWarnings(
   candidate: CandidateSchedule,
   courses: readonly Course[],
   year: SchoolYear,
-): CollisionWarning[] {
-  const warnings: CollisionWarning[] = [];
+): ClashWarning[] {
+  const warnings: ClashWarning[] = [];
 
   for (const track of DAY_TRACKS) {
     if (!candidate.days.includes(track)) continue;
@@ -128,7 +128,7 @@ export function collisionWarnings(
 
       const shared = candidateDates.filter((date) => courseDates.includes(date));
       if (shared.length > 0) {
-        warnings.push({ track, course, severity: 'certain', sharedDates: shared });
+        warnings.push({ track, course, severity: 'clash', sharedDates: shared });
       }
     }
   }
@@ -191,7 +191,7 @@ export function blockEndDate(
  *
  * Null is only ever a block with no dates yet. An empty list is different and
  * real: a semester course on a track the year gives no term meets on no days,
- * and no days means no collision — the school is not meeting, so nobody is
+ * and no days means no clash — the school is not meeting, so nobody is
  * double-booked.
  */
 function meetingDatesOn(

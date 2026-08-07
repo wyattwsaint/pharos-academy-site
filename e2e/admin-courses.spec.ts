@@ -3,13 +3,13 @@ import { expect, test } from '@playwright/test';
 import { SEEDED_SCHOOL_YEAR, trackColumn } from '../src/lib/calendar/year.js';
 import { CATALOGUE } from '../src/lib/courses/catalogue.js';
 import { timeLabel } from '../src/lib/courses/schedule.js';
-import { collisionWarnings, meetingSlots, runningTracks } from '../src/lib/courses/slots.js';
+import { clashWarnings, meetingSlots, runningTracks } from '../src/lib/courses/slots.js';
 import { signIn } from './suite-admin.js';
 
 /**
  * The course editor, driven the way Jill drives it (#24).
  *
- * The parser, the slot generation, the collision rule and the store's writes
+ * The parser, the slot generation, the clash rule and the store's writes
  * are all proved without a browser (`src/lib/admin/courses.test.ts`,
  * `src/lib/courses/slots.test.ts`, `src/lib/courses/store.test.ts`). What is
  * only true in a browser is here: that the controls really are drawn from the
@@ -35,7 +35,7 @@ import { signIn } from './suite-admin.js';
 const SUBJECT = CATALOGUE.find((course) => course.slug === 'basic-spanish-grades-9-12')!;
 
 /** What the domain says about that slot, which is what the screen must print. */
-const EXPECTED_WARNINGS = collisionWarnings(
+const EXPECTED_WARNINGS = clashWarnings(
   {
     slug: SUBJECT.slug,
     days: SUBJECT.days,
@@ -138,7 +138,7 @@ test.describe('saving a class', () => {
     // Saved — the warning is a thing Jill is told, never a save she is refused.
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
 
-    const warnings = page.getByTestId('collision-warnings');
+    const warnings = page.getByTestId('clash-warnings');
     await expect(warnings).toBeVisible();
     await expect(warnings).toContainText(EXPECTED_WARNINGS[0]!.course.title);
     // Told, not alarmed: an oversubscribed slot is the school's own design.
