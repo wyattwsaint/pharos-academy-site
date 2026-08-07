@@ -1,5 +1,6 @@
 import { SUPPORT_PATH } from './about/story.js';
 import { NEWS_PATH } from './announcements/views.js';
+import { APPLICATION_PATH } from './application/application.js';
 import { CALENDAR_PATH } from './calendar/views.js';
 import { CATALOGUE } from './courses/catalogue.js';
 import { classPath, CLASS_VIEWS } from './courses/views.js';
@@ -216,6 +217,22 @@ function publicRoutes(classSlugs: readonly string[]): PublicRoute[] {
      * row — so a changed address has to reach it.
      */
     { path: INQUIRY_PATH, priority: 0.9, changefreq: 'monthly', delivery: 'on-request' },
+    /*
+     * The application (#31).
+     *
+     * The third `on-request` route, and the sharpest case of the three: the
+     * page is pre-filled from *one family's* inquiry, so a cached copy would
+     * show the next family the last one's name and email — and it takes a POST
+     * whose answer is a single application's reference number.
+     *
+     * Enumerated all the same, and not hidden. It is a real address Jill
+     * pastes into an email, the fees on it are read from the money settings, and
+     * the school's own posting address is printed on it from the details row —
+     * so a changed deposit or a changed address has to reach it. Priority under
+     * `/admissions`, which is the page a search should land on: this one is
+     * reached from a conversation rather than from a search.
+     */
+    { path: APPLICATION_PATH, priority: 0.7, changefreq: 'monthly', delivery: 'on-request' },
   ];
 }
 

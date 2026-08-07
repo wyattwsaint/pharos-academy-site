@@ -1,0 +1,791 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { BELIEFS_ARTICLES, BELIEFS_CLOSING, BELIEFS_PATH } from '../../lib/about/beliefs.js';
+import { getSchoolDetails } from '../../lib/admin/school-details.js';
+import {
+  APPLICATION_STAGES,
+  applicationCost,
+  FAITH_QUESTIONS,
+  FAITH_RESPONDENTS,
+  faithAnswer,
+  faithKey,
+  familySelection,
+  MAX_CHILDREN,
+  parseApplication,
+  prefillFrom,
+  statementVersion,
+  type ApplicationChild,
+  type ApplicationErrors,
+  type ApplicationFields,
+} from '../../lib/application/application.js';
+import {
+  clashSentence,
+  clashesAmong,
+  offeringKey,
+  offeringsOf,
+  title as offeringTitle,
+} from '../../lib/application/offerings.js';
+import { createApplication } from '../../lib/application/store.js';
+import { getSchoolYear } from '../../lib/calendar/store.js';
+import { SEEDED_SCHOOL_YEAR } from '../../lib/calendar/year.js';
+import { timeLabel } from '../../lib/courses/schedule.js';
+import { listCourses } from '../../lib/courses/store.js';
+import { getDb } from '../../lib/db/client.js';
+import { INQUIRY_PATH } from '../../lib/inquiry/inquiry.js';
+import { getInquiry } from '../../lib/inquiry/store.js';
+import { formatMoney } from '../../lib/money/settings.js';
+import { getMoneySettings, recordAgreedTerms } from '../../lib/money/store.js';
+
+/**
+ * The family's application (#31).
+ *
+ * Four stages on one long document — the Statement of Faith, the classes, what
+ * to post, and sending it — with the `APPLICATION_STAGES` ids as anchors. One
+ * page rather than a stepped flow because the entry point is warm: a family
+ * reaches this from a conversation and from a link Jill pasted into an email,
+ * so the abandonment argument that favours splitting is weak, and headed
+ * sections keep a stepped variant a CSS decision rather than a rebuild.
+ *
+ * `prerender = false`, because the form posts here and because the page is
+ * pre-filled from *one family's* inquiry: a cached copy would show the next
+ * family the last one's name and email.
+ *
+ * **Two buttons, not one.** "Check these choices" re-renders the warnings and
+ * the totals and writes nothing; "Send the application" writes the row. A
+ * clash is a warning and never a block (#31 AC 3–5), so the family has to be
+ * able to see it *before* they commit — a page that only ever warns on the way
+ * out is a page that tells a family about a $280 collision after they have
+ * posted the cheque.
+ *
+ * **There is no scroll-gate** (#31 AC 7) and nothing here could implement one:
+ * no submit is disabled, nothing is behind an `overflow` container, and the
+ * Statement's disclosure opens with a click rather than with a scroll to the
+ * bottom. A gate is a WCAG 2.2 AA hazard for keyboard and screen-reader users
+ * that buys no evidence anybody read anything.
+ *
+ * **The children's sensitive data does not enter this form** (#31 AC 9). Name,
+ * age and the classes, and nothing else — no date of birth, no home address,
+ * no allergies, no medical or evaluation history, no custody arrangement.
+ * Those move to paper signed at enrolment, and `application.test.ts` reads this
+ * file back and fails if a field named for any of them appears.
+ */
+const db = await getDb();
+const details = await getSchoolDetails(db);
+const settings = await getMoneySettings(db);
+const courses = await listCourses(db);
+const offerings = offeringsOf(courses);
+
+/*
+ * The year the clash rule measures against.
+ *
+ * `getSchoolYear` is undefined only before the first migration seeds the row,
+ * and the seeded year is exactly what that migration writes — so falling back
+ * to it warns from the school's own published dates rather than going quiet.
+ * Silence would be the worse failure: no warning reads as "no clash".
+ */
+const year = (await getSchoolYear(db)) ?? SEEDED_SCHOOL_YEAR;
+
+let values: ApplicationFields;
+let errors: ApplicationErrors = {};
+let sentId: string | null = null;
+let storeFailed = false;
+let checked = false;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const parsed = parseApplication(form, offerings);
+  const sending = form.get('intent') === 'send';
+
+  values = parsed.values;
+  checked = !sending;
+  // A check is "did I pick two classes that collide", not "you forgot your
+  // name". Reporting missing fields against a button that submits nothing is
+  // an error message about a form the family is still filling in.
+  errors = sending ? parsed.errors : {};
+
+  if (sending && Object.keys(errors).length === 0) {
+    /*
+     * The fees this family applied at, frozen before the application is
+     * written (ADR-0006). Its failure is swallowed the way the inquiry's
+     * delivery stamp is: the application itself is the thing that must not be
+     * lost, and a missing terms row is bookkeeping the school can reconstruct.
+     */
+    let agreedTermsId: string | null = null;
+    try {
+      agreedTermsId = (await recordAgreedTerms(db, values.familyName, settings)).id;
+    } catch (cause) {
+      console.error('[application] terms not frozen:', cause);
+    }
+
+    try {
+      sentId = await createApplication(db, values, {
+        statementVersion: statementVersion(),
+        flagged: parsed.flagged,
+        agreedTermsId,
+      });
+    } catch (cause) {
+      // The operator's copy. The family is told plainly, and given the address
+      // to write to, rather than shown a 500 over a form this long.
+      console.error('[application] not stored:', cause);
+      storeFailed = true;
+    }
+  }
+} else {
+  /*
+   * The prefill (#31 AC 1). `?inquiry=<id>` is the link Jill pastes into an
+   * email; `getInquiry` already answers undefined for a stale id *and* for a
+   * malformed one, so no link, a dead link and a link an email client wrapped
+   * all land on the same clean slate.
+   */
+  const row = await getInquiry(db, Astro.url.searchParams.get('inquiry') ?? '');
+  values = prefillFrom(row ? { name: row.name, email: row.email, ages: row.ages } : null);
+}
+
+const rejected = Object.keys(errors).length > 0;
+const cost = applicationCost(values, offerings, settings);
+const clashes = clashesAmong(familySelection(values, offerings), year);
+
+/**
+ * How many child rows to render.
+ *
+ * The children the family has already named, plus one spare, and never fewer
+ * than two. `MAX_CHILDREN` rows unconditionally would be eight copies of a
+ * picker carrying every offering the school sells — a page a family scrolls
+ * past rather than reads. The parser reads all eight indexes regardless, so
+ * the cap is the only thing this number has to respect.
+ */
+const rows = Math.min(MAX_CHILDREN, Math.max(values.children.length + 1, 2));
+const childAt = (index: number): ApplicationChild =>
+  values.children[index] ?? { name: '', age: '', offeringKeys: [] };
+
+const stage = (id: string): string =>
+  APPLICATION_STAGES.find((one) => one.id === id)?.title ?? '';
+
+const description =
+  'Apply to Pharos Academy — what we believe, the classes your children would take, and what to post.';
+---
+
+<BaseLayout details={details} title="Apply to Pharos" description={description}>
+  <section class="band band-quiet" data-section="apply-header">
+    <div class="wide">
+      <p class="label">Applying</p>
+      <h1 class="mt-4">Your application</h1>
+      <p class="sub mt-5">
+        Four parts, on one page: what we believe, the classes you are choosing, what to post, and
+        sending it. Nothing here is a test — the questions about what we believe exist so we can
+        talk, not so we can turn anyone away.
+      </p>
+
+      {
+        sentId && (
+          <p class="notice mt-7" data-outcome="received" role="status">
+            Your application is with us. Reference {sentId}.
+          </p>
+        )
+      }
+
+      {
+        storeFailed && (
+          <p class="notice mt-7" data-outcome="failed" role="status">
+            Something went wrong at our end and your application was not saved. Nothing was lost
+            from the form below — please try again, or send it to {details.email} and we will enter
+            it ourselves.
+          </p>
+        )
+      }
+
+      {
+        rejected && (
+          <p class="notice mt-7" data-outcome="failed" role="status">
+            Nothing was sent — the fields below need fixing first.
+          </p>
+        )
+      }
+
+      {
+        checked && (
+          <p class="notice mt-7" data-outcome="checked" role="status">
+            {clashes.length === 0
+              ? 'Nothing in that selection collides. The totals below are what you would post.'
+              : 'Have a look at the warnings under Choosing classes before you send this.'}
+          </p>
+        )
+      }
+    </div>
+  </section>
+
+  {
+    sentId ? (
+      <section class="band" id="confirmation" data-section="apply-confirmation">
+        <div class="wide">
+          <h2>{stage('confirmation')}</h2>
+          <p class="sub mt-4">
+            We have your application for {values.familyName}, and we will be in touch. A place is
+            held for each class as soon as your cheque reaches us.
+          </p>
+
+          <h3 class="mt-8">What you chose</h3>
+          <ul class="chosen mt-4">
+            {cost.perChild
+              .filter((one) => one.child.name || one.offerings.length > 0)
+              .map((one) => (
+                <li>
+                  <strong>{one.child.name || 'A child'}</strong>
+                  {one.child.age && <span class="detail">age {one.child.age}</span>}
+                  <ul class="picked">
+                    {one.offerings.length === 0 ? (
+                      <li>No classes chosen yet.</li>
+                    ) : (
+                      one.offerings.map((offering) => <li>{offeringTitle(offering)}</li>)
+                    )}
+                  </ul>
+                </li>
+              ))}
+          </ul>
+
+          <h3 class="mt-8">What to post</h3>
+          <p class="mt-4">
+            A cheque for <strong>{formatMoney(cost.total.dueNow)}</strong> — that is{' '}
+            {formatMoney(cost.total.registration)} in registration and{' '}
+            {formatMoney(cost.total.deposits)} in deposits — made out to Pharos Academy, to:
+          </p>
+          <p class="address mt-4">{details.address}</p>
+          <p class="mt-6 text-ink-2">
+            Tuition is paid to your instructors, not to the school:{' '}
+            {formatMoney(cost.total.dueToInstructors)} across the year at today's rates.
+          </p>
+
+          <p class="mt-8">
+            <a class="btn" href="/classes">See the classes again</a>{' '}
+            <a class="btn" href={BELIEFS_PATH}>Read what we believe</a>
+          </p>
+        </div>
+      </section>
+    ) : (
+      <form method="post" novalidate data-application-form>
+        <section class="band" id="faith" data-section="apply-faith">
+          <div class="wide">
+            <h2>{stage('faith')}</h2>
+            <p class="sub mt-4">{BELIEFS_CLOSING}</p>
+            <p class="mt-5">
+              <a href={BELIEFS_PATH}>Our Statement of Faith and Practice in full</a> — the same
+              eleven articles are below, so you can read them without leaving this page.
+            </p>
+
+            {/*
+              A disclosure, not a gate. It opens with a click or with the
+              keyboard, it is open to anyone who wants it, and nothing on this
+              page waits on it — no button is disabled and no field is hidden
+              until it has been scrolled through (#31 AC 7).
+            */}
+            <details class="statement mt-6">
+              <summary>Read the eleven articles here</summary>
+              <ol class="articles mt-5">
+                {BELIEFS_ARTICLES.map((article) => (
+                  <li>{article}</li>
+                ))}
+              </ol>
+            </details>
+
+            <p class="mt-7 text-ink-2">
+              We ask each parent or guardian separately, because a household where one of you is
+              not sure is exactly the conversation these questions exist to start. Leave a column
+              alone if it does not apply to your family — an unanswered question is not a "no".
+            </p>
+
+            <div class="faith mt-7">
+              {FAITH_QUESTIONS.map((question) => (
+                <fieldset class="question">
+                  <legend>{question.text}</legend>
+                  <div class="respondents">
+                    {FAITH_RESPONDENTS.map((respondent) => (
+                      <fieldset class="respondent">
+                        <legend>{respondent}</legend>
+                        {(
+                          [
+                            { value: 'yes', label: 'Yes' },
+                            { value: 'no', label: 'No' },
+                            { value: '', label: 'Not answered' },
+                          ] as const
+                        ).map((choice) => (
+                          <label class="check">
+                            <input
+                              type="radio"
+                              name={faithKey(respondent, question.id)}
+                              value={choice.value}
+                              checked={
+                                faithAnswer(values.faith, respondent, question.id) === choice.value
+                              }
+                            />
+                            <span>{choice.label}</span>
+                          </label>
+                        ))}
+                      </fieldset>
+                    ))}
+                  </div>
+                </fieldset>
+              ))}
+            </div>
+
+            <div class="field mt-7">
+              <label for="apply-objections">
+                Anything you disagree with, or want to talk about (optional)
+              </label>
+              <textarea id="apply-objections" name="objections">{values.objections}</textarea>
+              <p class="hint" id="apply-objections-hint">
+                Writing something here does not stop your application. It routes it to a
+                conversation with us, which is what we would rather have.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="band band-quiet" id="classes" data-section="apply-classes">
+          <div class="wide">
+            <h2>{stage('classes')}</h2>
+            <p class="sub mt-4">
+              Who is applying, and what they would take. Only the classes we are actually enrolling
+              are listed.
+            </p>
+
+            <div class="form mt-7">
+              <div>
+                <label for="apply-family-name">Family name</label>
+                <input
+                  id="apply-family-name"
+                  name="familyName"
+                  autocomplete="family-name"
+                  value={values.familyName}
+                  aria-describedby={errors.familyName ? 'apply-family-name-error' : undefined}
+                  aria-invalid={errors.familyName ? 'true' : undefined}
+                />
+                {errors.familyName && (
+                  <p class="error" id="apply-family-name-error">
+                    {errors.familyName}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label for="apply-email">Email</label>
+                <input
+                  id="apply-email"
+                  name="email"
+                  type="email"
+                  autocomplete="email"
+                  value={values.email}
+                  aria-describedby={errors.email ? 'apply-email-error' : undefined}
+                  aria-invalid={errors.email ? 'true' : undefined}
+                />
+                {errors.email && (
+                  <p class="error" id="apply-email-error">
+                    {errors.email}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {errors.children && (
+              <p class="error mt-6" id="apply-children-error">
+                {errors.children}
+              </p>
+            )}
+            {errors.classes && (
+              <p class="error mt-4" id="apply-classes-error">
+                {errors.classes}
+              </p>
+            )}
+
+            {Array.from({ length: rows }, (_unused, index) => index).map((index) => (
+              <fieldset class="child mt-8">
+                <legend>Child {index + 1}</legend>
+                <div class="form">
+                  <div>
+                    <label for={`apply-child-${index}-name`}>Name</label>
+                    <input
+                      id={`apply-child-${index}-name`}
+                      name={`child-${index}-name`}
+                      value={childAt(index).name}
+                      aria-describedby={errors.children ? 'apply-children-error' : undefined}
+                    />
+                  </div>
+                  <div>
+                    <label for={`apply-child-${index}-age`}>Age</label>
+                    <input
+                      id={`apply-child-${index}-age`}
+                      name={`child-${index}-age`}
+                      inputmode="numeric"
+                      value={childAt(index).age}
+                      aria-describedby={errors.children ? 'apply-children-error' : undefined}
+                    />
+                  </div>
+                </div>
+
+                <fieldset class="picker mt-6">
+                  <legend>Classes for this child</legend>
+                  {offerings.length === 0 ? (
+                    <p class="hint">
+                      Nothing is open for enrolment at the moment. Please{' '}
+                      <a href={INQUIRY_PATH}>write to us</a> and we will tell you when it is.
+                    </p>
+                  ) : (
+                    <ul class="offerings">
+                      {offerings.map((offering) => (
+                        <li>
+                          <label class="check">
+                            <input
+                              type="checkbox"
+                              name={`child-${index}-classes`}
+                              value={offeringKey(offering)}
+                              checked={childAt(index).offeringKeys.includes(offeringKey(offering))}
+                              aria-describedby={errors.classes ? 'apply-classes-error' : undefined}
+                            />
+                            <span>
+                              <strong>{offeringTitle(offering)}</strong>
+                              <span class="blurb">
+                                {offering.course.days.join(' and ')},{' '}
+                                {timeLabel(offering.course.start, offering.course.end)}
+                              </span>
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </fieldset>
+              </fieldset>
+            ))}
+
+            {/*
+              The clash warnings (#31 AC 3, 4, 5). Warnings and never a block:
+              a family may have a reason, and the school would rather they made
+              the choice knowing. The Wednesday 10:40 slot's five electives
+              produce nothing here unless one family selects two of them.
+            */}
+            <div class="warnings mt-8" data-clashes={clashes.length} role="status">
+              {clashes.length > 0 && (
+                <>
+                  <h3>Two of these do not fit together</h3>
+                  <ul class="mt-4">
+                    {clashes.map((clash) => (
+                      <li data-severity={clash.severity}>{clashSentence(clash)}</li>
+                    ))}
+                  </ul>
+                  <p class="mt-4 text-ink-2">
+                    You can send this anyway — nothing here stops you. We would rather sort it out
+                    with you before term than after.
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section class="band" id="payment" data-section="apply-payment">
+          <div class="wide">
+            <h2>{stage('payment')}</h2>
+            <p class="sub mt-4">
+              Every figure here comes from the school's current fee settings, and it changes when
+              they do.
+            </p>
+
+            <ul class="totals mt-7">
+              <li>
+                <span class="amount">{formatMoney(cost.total.registration)}</span>
+                <span>Registration — once per student, not refundable</span>
+              </li>
+              <li>
+                <span class="amount">{formatMoney(cost.total.deposits)}</span>
+                <span>Deposits — one per class, holding the seats</span>
+              </li>
+              <li class="due">
+                <span class="amount">{formatMoney(cost.total.dueNow)}</span>
+                <span>The cheque you post with this application</span>
+              </li>
+              <li>
+                <span class="amount">{formatMoney(cost.total.dueToInstructors)}</span>
+                <span>
+                  Tuition, paid to your instructors across the year
+                  {cost.total.creditedAgainstTuition > 0 &&
+                    ` — the deposits come off this, ${formatMoney(cost.total.creditedAgainstTuition)} of it`}
+                </span>
+              </li>
+            </ul>
+
+            <p class="mt-7">Make the cheque out to Pharos Academy and post it to:</p>
+            <p class="address mt-4">{details.address}</p>
+
+            {/*
+              The payment slot, designed in and deliberately empty (#31). There
+              is no provider here and no card field. When one lands, the only
+              thing that changes for a family is that this paragraph offers a
+              second way to pay — and the only thing that changes in the row is
+              that the next submission reads "paid online" rather than
+              "awaiting cheque".
+            */}
+            <p class="mt-6 text-ink-2">
+              There is no way to pay online yet. When there is, it will appear here, and posting a
+              cheque will still work.
+            </p>
+          </div>
+        </section>
+
+        <section class="band band-quiet" id="confirmation" data-section="apply-send">
+          <div class="wide">
+            <h2>{stage('confirmation')}</h2>
+            <p class="sub mt-4">
+              Check what you have chosen first if you would like to — it saves nothing and sends
+              nothing. When you send it, we will read it and be in touch.
+            </p>
+
+            <p class="mt-7">
+              <button class="btn" type="submit" name="intent" value="check">
+                Check these choices
+              </button>{' '}
+              <button class="btn solid" type="submit" name="intent" value="send">
+                Send the application
+              </button>
+            </p>
+
+            <p class="mt-6 text-ink-2">
+              Not ready? <a href={INQUIRY_PATH}>Ask us a question instead</a> — we would far rather
+              answer one now than have you find the answer halfway through this.
+            </p>
+          </div>
+        </section>
+      </form>
+    )
+  }
+</BaseLayout>
+
+<style>
+  /*
+    The outcome line. Colour is not the only signal — the words say what
+    happened, and a failure names the address to write to — because colour
+    alone is not a status a screen reader or a colour-blind reader gets.
+  */
+  .notice {
+    max-width: 46rem;
+    border-left: 3px solid var(--color-gold-orn);
+    padding: 0.75rem 0 0.75rem 1rem;
+    font-weight: 500;
+  }
+
+  .notice[data-outcome='failed'] {
+    border-left-color: #a3341f;
+  }
+
+  .form {
+    display: grid;
+    gap: 1.5rem;
+    max-width: 46rem;
+  }
+
+  @media (min-width: 44rem) {
+    .form {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  label,
+  legend {
+    display: block;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--color-gold-orn);
+    background: white;
+    font: inherit;
+  }
+
+  textarea {
+    min-height: 7rem;
+  }
+
+  .field {
+    max-width: 46rem;
+  }
+
+  fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+
+  .child {
+    border-top: 1px solid var(--color-gold-orn);
+    padding-top: 1.5rem;
+  }
+
+  .child > legend {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+  }
+
+  .faith {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    max-width: 52rem;
+  }
+
+  .respondents {
+    display: grid;
+    gap: 1rem;
+    margin-top: 0.75rem;
+  }
+
+  @media (min-width: 44rem) {
+    .respondents {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .respondent > legend {
+    font-weight: 400;
+    color: var(--color-ink-2);
+  }
+
+  .offerings {
+    display: grid;
+    gap: 0.9rem;
+    list-style: none;
+    padding: 0;
+    margin: 0.6rem 0 0;
+  }
+
+  @media (min-width: 56rem) {
+    .offerings {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  /*
+    The label wraps the control, so the whole row is the hit target — a column
+    of small squares on a phone is the difference between a form filled in and
+    one abandoned.
+  */
+  .check {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.65rem;
+    align-items: start;
+    font-weight: 400;
+    margin: 0 0 0.35rem;
+  }
+
+  .check input {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-top: 0.25rem;
+  }
+
+  .check strong {
+    display: block;
+    font-family: var(--font-sans);
+  }
+
+  .blurb,
+  .hint {
+    display: block;
+    color: var(--color-ink-2);
+  }
+
+  .hint {
+    margin-top: 0.35rem;
+  }
+
+  .statement > summary {
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-weight: 600;
+  }
+
+  .articles {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 46rem;
+  }
+
+  .warnings {
+    max-width: 46rem;
+  }
+
+  .warnings ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    list-style: none;
+    padding: 0;
+  }
+
+  .warnings li {
+    border-left: 3px solid #a3341f;
+    padding-left: 1rem;
+  }
+
+  .warnings li[data-severity='possible'] {
+    border-left-color: var(--color-gold-orn);
+  }
+
+  .totals,
+  .chosen {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    list-style: none;
+    padding: 0;
+    max-width: 46rem;
+  }
+
+  .totals > li {
+    display: grid;
+    grid-template-columns: minmax(5rem, auto) 1fr;
+    column-gap: 1.5rem;
+    align-items: baseline;
+  }
+
+  .amount {
+    font-family: var(--font-serif);
+    font-size: 1.35rem;
+    color: var(--color-navy);
+  }
+
+  .totals > li.due .amount {
+    font-weight: 600;
+  }
+
+  .picked {
+    list-style: none;
+    padding: 0;
+    margin: 0.35rem 0 0;
+    color: var(--color-ink-2);
+  }
+
+  .detail {
+    color: var(--color-ink-2);
+    margin-left: 0.5rem;
+  }
+
+  .address {
+    white-space: pre-line;
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+  }
+
+  .error {
+    margin-top: 0.35rem;
+    color: #8c2b19;
+    font-weight: 500;
+  }
+</style>

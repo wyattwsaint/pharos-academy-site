@@ -8,6 +8,7 @@ import { saveAnnouncement } from '../announcements/store.js';
 import { createEvent } from '../calendar/store.js';
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import * as schema from '../db/schema.js';
+import { createApplication } from '../application/store.js';
 import { createInquiry } from '../inquiry/store.js';
 import { getMoneySettings, recordAgreedTerms } from '../money/store.js';
 import { replacePolicyFile } from '../policies/store.js';
@@ -254,6 +255,21 @@ describe('coverage of the editable set', () => {
       ages: '6, 9 and 13',
       message: '',
     });
+
+    // And one application with one child on it (#31), for the same reason a
+    // third time — and because `application_children` is counted separately, so
+    // an application with no children could not tell the two apart.
+    await createApplication(
+      db,
+      {
+        familyName: 'Marsh',
+        email: 'ruth@example.com',
+        children: [{ name: 'Tamar', age: '13', offeringKeys: ['algebra-1:year'] }],
+        faith: { 'faith-Mother-agree': 'yes' },
+        objections: '',
+      },
+      { statementVersion: 'sof-00000000' },
+    );
 
     const files = await open();
     const manifest = json(files, 'manifest.json') as {

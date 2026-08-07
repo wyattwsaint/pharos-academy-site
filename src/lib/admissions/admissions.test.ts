@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { APPLICATION_PATH } from '../application/application.js';
 import { CATALOGUE } from '../courses/catalogue.js';
 import { SEEDED_MONEY_SETTINGS } from '../money/settings.js';
 import {
@@ -82,10 +83,17 @@ describe('who it is for', () => {
 });
 
 describe('the Start your application button', () => {
-  it('points somewhere that exists today', () => {
-    // The application flow is a later ticket. Until it lands this is the
-    // conversation the flow itself starts from, which is honest rather than a
-    // button leading to a 404.
-    expect(APPLICATION_HREF).toBe('/#inquiry');
+  it('points at the application flow', () => {
+    // The flow landed (#31), so the one constant that was always going to move
+    // has moved. Asserted against `APPLICATION_PATH` rather than the string, so
+    // the button and the page cannot part company.
+    expect(APPLICATION_HREF).toBe(APPLICATION_PATH);
+  });
+
+  it('opens the flow on a clean slate rather than one family’s prefill', () => {
+    // A family who reached Admissions by browsing has no inquiry behind them.
+    // A query string here would be a link that pre-fills every visitor with
+    // whichever inquiry id somebody once pasted into the source.
+    expect(APPLICATION_HREF).not.toContain('?');
   });
 });

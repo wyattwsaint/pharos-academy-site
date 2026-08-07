@@ -12,6 +12,7 @@
  * the worst moment on this site.
  */
 
+import { APPLICATION_PATH } from '../application/application.js';
 import type { Course } from '../courses/course.js';
 import { activeTracks } from '../courses/schedule.js';
 import { formatMoney, INSTALMENT_COUNT, type MoneySettings } from '../money/settings.js';
@@ -19,14 +20,17 @@ import { formatMoney, INSTALMENT_COUNT, type MoneySettings } from '../money/sett
 /**
  * Where "Start your application" goes.
  *
- * One constant, because it is going to move exactly once. The application flow
- * is its own ticket (#18 §11) and its entry point is warm and pre-filled from
- * the inquiry — so until it exists this points at the inquiry form, which is
- * genuinely where applying starts today rather than a placeholder. When the
- * flow lands, this one value becomes `/admissions/apply` and nothing else on
- * the page changes.
+ * One constant, because it moved exactly once. It pointed at the inquiry form
+ * while the application flow was unbuilt — genuinely where applying started,
+ * rather than a placeholder — and now that the flow has landed (#31) it is the
+ * flow's own address. Nothing else on the page changed with it, which is what
+ * the constant was for.
+ *
+ * The bare path, with no `?inquiry=` on it: this button is reached by a family
+ * browsing the site rather than by one following a link Jill sent, so there is
+ * no inquiry to pre-fill from and the flow opens on a clean slate.
  */
-export const APPLICATION_HREF = '/#inquiry';
+export const APPLICATION_HREF: string = APPLICATION_PATH;
 
 /** One thing a family pays, as the page lists it. */
 export type AdmissionCost = {

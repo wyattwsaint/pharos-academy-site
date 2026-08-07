@@ -3,6 +3,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { APPLICATION_PATH } from './application/application.js';
 import { CATALOGUE } from './courses/catalogue.js';
 import { SUPPORT_PATH } from './about/story.js';
 import { INQUIRY_PATH } from './inquiry/inquiry.js';
@@ -90,12 +91,15 @@ describe('the public route list', () => {
 describe('how each route is delivered', () => {
   /*
    * ISR is the delivery model (#18 §1) and the exception has to earn itself.
-   * Two pages take a POST — the volunteer form on `/about/support` (#30) and
-   * the inquiry on `/inquire` (#25) — and a cache in front of either can hand
-   * one visitor's outcome to the next.
+   * Three pages take a POST — the volunteer form on `/about/support` (#30),
+   * the inquiry on `/inquire` (#25) and the application on `/admissions/apply`
+   * (#31) — and a cache in front of any of them can hand one visitor's outcome
+   * to the next. The application is the sharpest of the three: its page is
+   * pre-filled from *one family's* inquiry, so a cached copy would show the
+   * next family the last one's name and email.
    */
   it('renders on request only where a page takes a POST', () => {
-    expect(onRequestPaths().sort()).toEqual([INQUIRY_PATH, SUPPORT_PATH].sort());
+    expect(onRequestPaths().sort()).toEqual([APPLICATION_PATH, INQUIRY_PATH, SUPPORT_PATH].sort());
   });
 
   // The sitemap still carries it: how a page is delivered is not whether it

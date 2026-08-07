@@ -80,3 +80,23 @@ export async function recordInquiryDelivery(
 export async function listInquiries(db: Db): Promise<InquiryRow[]> {
   return db.select().from(inquiries).orderBy(desc(inquiries.receivedAt));
 }
+
+/**
+ * One inquiry, by id — what the application's prefill opens with (#31 AC 1).
+ *
+ * Undefined for anything that is not a row, **including an id that is not an
+ * id**. The id arrives in a link Jill pasted into an email, so the malformed
+ * case is not hypothetical: a client that wraps a long URL delivers half a
+ * uuid, and Postgres answers a malformed uuid with an error rather than with
+ * no rows. Guarding it here rather than at the page keeps "no prefill" a
+ * single outcome — the family gets the same clean slate whether they arrived
+ * without a link, with a stale one, or with a broken one.
+ */
+export async function getInquiry(db: Db, id: string): Promise<InquiryRow | undefined> {
+  if (!UUID.test(id)) return undefined;
+  const [row] = await db.select().from(inquiries).where(eq(inquiries.id, id)).limit(1);
+  return row;
+}
+
+/** The shape `gen_random_uuid()` produces, which is the only shape worth querying. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

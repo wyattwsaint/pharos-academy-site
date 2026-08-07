@@ -193,8 +193,13 @@ export function blockEndDate(
  * real: a semester course on a track the year gives no term meets on no days,
  * and no days means no clash — the school is not meeting, so nobody is
  * double-booked.
+ *
+ * Exported because the application flow's clash check (#31) has to measure term
+ * overlap by exactly this rule. Two implementations of "do these two share a
+ * real day?" is how the editor comes to warn Jill about a pair the family's
+ * picker clears, or the reverse.
  */
-function meetingDatesOn(
+export function meetingDatesOn(
   year: SchoolYear,
   track: DayTrack,
   enrolment: EnrolmentUnit,
