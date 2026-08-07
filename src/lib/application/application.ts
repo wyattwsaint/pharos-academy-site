@@ -31,7 +31,8 @@ import type { EnrolmentUnit } from '../courses/course.js';
 import { isEmailAddress, textField as text } from '../forms.js';
 import { amountOwed, type AmountOwed, type Selection } from '../money/owed.js';
 import type { MoneySettings } from '../money/settings.js';
-import { findOffering, offeringKey, type Offering } from './offerings.js';
+import type { SchoolYear } from '../calendar/year.js';
+import { clashesAmong, findOffering, type Offering, type OfferingClash } from './offerings.js';
 
 /** The address of the page that holds the flow and takes its POST. */
 export const APPLICATION_PATH = '/admissions/apply';
@@ -383,22 +384,54 @@ export function applicationCost(
   settings: MoneySettings,
 ): ApplicationCost {
   const perChild = values.children.map((child) => {
-    const chosen = child.offeringKeys
-      .map((key) => findOffering(offerings, key))
-      .filter((offering): offering is Offering => offering !== null);
+    const chosen = childOfferings(child, offerings);
     return { child, offerings: chosen, owed: amountOwed(selectionsOf(chosen), settings) };
   });
 
   return { perChild, total: sumOwed(perChild.map((one) => one.owed)) };
 }
 
-/** Every offering anybody in the family chose, deduplicated, in picker order. */
-export function familySelection(
-  values: ApplicationFields,
+/** One child's chosen offerings, resolved against the catalogue and in their picked order. */
+export function childOfferings(
+  child: ApplicationChild,
   offerings: readonly Offering[],
 ): Offering[] {
-  const chosen = new Set(values.children.flatMap((child) => child.offeringKeys));
-  return offerings.filter((offering) => chosen.has(offeringKey(offering)));
+  return child.offeringKeys
+    .map((key) => findOffering(offerings, key))
+    .filter((offering): offering is Offering => offering !== null);
+}
+
+/** One child and the clashes in their own timetable. Only children who have one. */
+export type ChildClashes = {
+  child: ApplicationChild;
+  /** The child's position in the form, so an unnamed child can still be addressed. */
+  index: number;
+  clashes: OfferingClash[];
+};
+
+/**
+ * The clashes in a family's application, child by child (#31 AC 3, 4, 5).
+ *
+ * Per child, because a **clash** is a fact about one child's timetable: "the
+ * family cannot attend both" is never true of two children — two siblings can
+ * sit in two rooms at 10:40 on a Wednesday, and telling them otherwise invents
+ * a collision the school would then have to talk them out of. Pooling the
+ * family's selections also reports the same course as clashing with itself
+ * whenever two children pick it in different units, which is not a mistake at
+ * all.
+ */
+export function familyClashes(
+  values: ApplicationFields,
+  offerings: readonly Offering[],
+  year: SchoolYear,
+): ChildClashes[] {
+  return values.children
+    .map((child, index) => ({
+      child,
+      index,
+      clashes: clashesAmong(childOfferings(child, offerings), year),
+    }))
+    .filter((one) => one.clashes.length > 0);
 }
 
 function sumOwed(parts: readonly AmountOwed[]): AmountOwed {

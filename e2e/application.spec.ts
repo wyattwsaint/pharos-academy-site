@@ -136,6 +136,39 @@ test.describe('the application page', () => {
     ).toBeChecked();
   });
 
+  test('says nothing when two children hold that slot between them', async ({ page }) => {
+    // AC 5, the sibling case. Two children in two rooms at 11:20 on a Monday is
+    // not a collision, and a family of two told it was would be talked out of a
+    // choice that was right all along.
+    await page.goto(APPLICATION_PATH);
+
+    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+    await page.check('input[name="child-1-classes"][value="beginner-latin-grades-5-6:year"]');
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+
+    await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
+    await expect(page.locator('[data-clashes]')).toHaveAttribute('data-clashes', '0');
+    await expect(page.locator('li[data-severity]')).toHaveCount(0);
+  });
+
+  test('names the child a warning belongs to when both have one', async ({ page }) => {
+    await page.goto(APPLICATION_PATH);
+
+    await page.fill('input[name="child-0-name"]', 'Ada');
+    await page.fill('input[name="child-1-name"]', 'Obi');
+    for (const index of [0, 1]) {
+      await page.check(`input[name="child-${index}-classes"][value="algebra-1:year"]`);
+      await page.check(
+        `input[name="child-${index}-classes"][value="beginner-latin-grades-5-6:year"]`,
+      );
+    }
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+
+    await expect(page.locator('[data-child-clashes]')).toHaveCount(2);
+    await expect(page.locator('[data-child-clashes="0"]')).toContainText('Ada');
+    await expect(page.locator('[data-child-clashes="1"]')).toContainText('Obi');
+  });
+
   test('a check reports no missing fields on a form still being filled in', async ({ page }) => {
     // The check is "did I pick two classes that collide", not "you forgot your
     // name" — an empty check must come back clean, not covered in errors.

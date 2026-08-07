@@ -11,7 +11,7 @@ import {
   FAITH_RESPONDENTS,
   faithAnswer,
   faithKey,
-  familySelection,
+  familyClashes,
   MAX_CHILDREN,
   parseApplication,
   prefillFrom,
@@ -22,7 +22,6 @@ import {
 } from '../../lib/application/application.js';
 import {
   clashSentence,
-  clashesAmong,
   offeringKey,
   offeringsOf,
   title as offeringTitle,
@@ -145,7 +144,17 @@ if (Astro.request.method === 'POST') {
 
 const rejected = Object.keys(errors).length > 0;
 const cost = applicationCost(values, offerings, settings);
-const clashes = clashesAmong(familySelection(values, offerings), year);
+const clashing = familyClashes(values, offerings, year);
+const clashCount = clashing.reduce((sum, one) => sum + one.clashes.length, 0);
+
+/**
+ * Who a warning is about. The name the family typed, or their place in the form
+ * — a family often picks classes before they finish typing names, and "your
+ * second child" is still an address.
+ */
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
+const childLabel = (child: ApplicationChild, index: number): string =>
+  child.name.trim() || `Your ${ORDINALS[index] ?? `${index + 1}th`} child`;
 
 /**
  * How many child rows to render.
@@ -207,7 +216,7 @@ const description =
       {
         checked && (
           <p class="notice mt-7" data-outcome="checked" role="status">
-            {clashes.length === 0
+            {clashCount === 0
               ? 'Nothing in that selection collides. The totals below are what you would post.'
               : 'Have a look at the warnings under Choosing classes before you send this.'}
           </p>
@@ -462,17 +471,24 @@ const description =
               The clash warnings (#31 AC 3, 4, 5). Warnings and never a block:
               a family may have a reason, and the school would rather they made
               the choice knowing. The Wednesday 10:40 slot's five electives
-              produce nothing here unless one family selects two of them.
+              produce nothing here unless *one child* selects two of them —
+              grouped per child, because siblings in two rooms at one time is
+              not a clash and must never be reported as one.
             */}
-            <div class="warnings mt-8" data-clashes={clashes.length} role="status">
-              {clashes.length > 0 && (
+            <div class="warnings mt-8" data-clashes={clashCount} role="status">
+              {clashing.length > 0 && (
                 <>
-                  <h3>Two of these do not fit together</h3>
-                  <ul class="mt-4">
-                    {clashes.map((clash) => (
-                      <li data-severity={clash.severity}>{clashSentence(clash)}</li>
-                    ))}
-                  </ul>
+                  <h3>Some of these do not fit together</h3>
+                  {clashing.map(({ child, index, clashes }) => (
+                    <div class="mt-4" data-child-clashes={index}>
+                      <p><strong>{childLabel(child, index)}</strong></p>
+                      <ul class="mt-2">
+                        {clashes.map((clash) => (
+                          <li data-severity={clash.severity}>{clashSentence(clash)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
                   <p class="mt-4 text-ink-2">
                     You can send this anyway — nothing here stops you. We would rather sort it out
                     with you before term than after.
