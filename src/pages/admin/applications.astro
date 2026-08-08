@@ -7,6 +7,7 @@ import {
   applyApplicationAction,
   parseApplicationAction,
 } from '../../lib/application/admin-flow.js';
+import { AGREEMENT_DOCUMENTS, agreementLabel } from '../../lib/application/agreements.js';
 import { applicationCost } from '../../lib/application/application.js';
 import {
   APPLICATION_EVENT_LABELS,
@@ -86,9 +87,10 @@ const owedOn = (application: ApplicationRecord) => {
   return {
     frozen: agreed !== undefined,
     cost: applicationCost(
-      // The faith answers and the objection are not priced; the cost is over
-      // the children and their classes, which is all this shape is for.
-      { ...application, faith: {}, objections: '' },
+      // The faith answers, the objection and the two agreements are not priced;
+      // the cost is over the children and their classes, which is all this
+      // shape is for.
+      { ...application, faith: {}, objections: '', agreements: {} },
       offerings,
       agreed ?? settings,
     ),
@@ -191,6 +193,27 @@ const resubmittedIds = new Set(
                   )}
                 </p>
               )}
+
+              {/*
+                The two agreements (#71 AC 6). Read by hand here, because until
+                #64 lands a mailer this screen is how every application is read.
+                Both are listed even when unanswered — "not answered" is the
+                fact Jill needs, and a row that simply omitted it would read as
+                a question nobody asked. The version is the one the family was
+                shown, which is the whole point of recording it.
+              */}
+              <ul class="mt-3 flex flex-col gap-1 text-sm" data-testid="application-agreements">
+                {AGREEMENT_DOCUMENTS.map((document) => {
+                  const agreement = application.agreements[document.slug];
+                  return (
+                    <li data-agreement={document.slug}>
+                      <span class="font-semibold">{document.title}</span>:{' '}
+                      {agreementLabel(agreement?.answer ?? '')}
+                      {agreement?.version != null && <span> (version {agreement.version})</span>}
+                    </li>
+                  );
+                })}
+              </ul>
 
               {resubmittedIds.has(application.id) && (
                 <p class="mt-3 text-sm" data-testid="application-resubmitted">

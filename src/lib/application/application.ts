@@ -28,6 +28,7 @@
  */
 
 import { BELIEFS_ARTICLES, BELIEFS_CLOSING } from '../about/beliefs.js';
+import { parseAgreements, type Agreements, type AskableAgreement } from './agreements.js';
 import type { EnrolmentUnit } from '../courses/course.js';
 import { isEmailAddress, textField as text } from '../forms.js';
 import { amountOwed, type AmountOwed, type Selection } from '../money/owed.js';
@@ -39,7 +40,13 @@ import { clashesAmong, findOffering, type Offering, type OfferingClash } from '.
 export const APPLICATION_PATH = '/admissions/apply';
 
 /**
- * The four stages, as anchors on one document.
+ * The stages, as anchors on one document.
+ *
+ * Five since #71, and the fifth is conditional on the school having published
+ * the documents it asks about: the Code of Conduct and Handbook agreements need
+ * somewhere to live that is neither the Statement of Faith (a different question
+ * entirely) nor the class picker. A stage that renders only when there is a
+ * document behind it is the honest shape — see `agreements.ts`.
  *
  * One long page rather than a stepped flow (#31): the entry point is warm — a
  * family that has already spoken to the school — so the abandonment argument
@@ -50,6 +57,7 @@ export const APPLICATION_PATH = '/admissions/apply';
 export const APPLICATION_STAGES = [
   { id: 'faith', title: 'What we believe' },
   { id: 'classes', title: 'Choosing classes' },
+  { id: 'agreements', title: 'What you agree to' },
   { id: 'payment', title: 'What to post' },
   { id: 'confirmation', title: 'Sending it' },
 ] as const;
@@ -135,6 +143,15 @@ export type ApplicationFields = {
    * than as one they must type something into to proceed.
    */
   objections: string;
+  /**
+   * The Code of Conduct and Handbook agreements (#71), per family.
+   *
+   * Per family and not per child, because the live form asks once. Absent means
+   * unanswered — or not asked, when the school has not published that document —
+   * and neither is an error: `validateApplication` cannot see this field and
+   * `isFlagged` deliberately does not consult it. See `agreements.ts`.
+   */
+  agreements: Agreements;
 };
 
 export type ApplicationErrors = {
@@ -170,10 +187,16 @@ export const MAX_CHILDREN = 8;
  * `offerings` is what is on sale right now, so a key posted from a form that a
  * republish has since staled is dropped rather than thrown on — the same rule
  * `selectedOfferings` applies, for the same reason.
+ *
+ * `askable` is the same rule for the two agreements (#71): the documents the
+ * page could actually ask about, so an answer to an unpublished Handbook is
+ * dropped rather than recorded against a version nobody was shown. Defaulted to
+ * none, because a form with neither document published is a real form.
  */
 export function parseApplication(
   form: FormData,
   offerings: readonly Offering[],
+  askable: readonly AskableAgreement[] = [],
 ): ParsedApplication {
   const children: ApplicationChild[] = [];
   for (let index = 0; index < MAX_CHILDREN; index += 1) {
@@ -204,6 +227,7 @@ export function parseApplication(
     children,
     faith,
     objections: text(form, 'objections'),
+    agreements: parseAgreements(form, askable),
   };
 
   return { values, errors: validateApplication(values), flagged: isFlagged(values) };
@@ -246,6 +270,12 @@ export function validateApplication(values: ApplicationFields): ApplicationError
  * An unanswered cell does not flag: a household with no legal guardian leaves
  * that column blank, and treating silence as dissent would flag most of the
  * intake and make the flag mean nothing.
+ *
+ * **The two agreements are deliberately not read here** (#71). "Neither agrees"
+ * is an answer the school's own form has always allowed, and flagging it would
+ * put the routine case in the same queue as an objection to article 9 — which
+ * is how a flag stops meaning anything. Reversing that is this function, one
+ * line, once Jill says so.
  */
 export function isFlagged(values: ApplicationFields): boolean {
   if (values.objections.trim().length > 0) return true;
@@ -271,6 +301,7 @@ export function prefillFrom(inquiry: InquiryPrefill | null): ApplicationFields {
     children: (ages.length > 0 ? ages : ['']).map((age) => ({ name: '', age, offeringKeys: [] })),
     faith: {},
     objections: '',
+    agreements: {},
   };
 }
 

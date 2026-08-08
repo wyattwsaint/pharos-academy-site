@@ -313,6 +313,34 @@ Not: "document" alone (the file is a document; the policy is the thing that has
 one), "attachment" (that is an [announcement](#announcement)'s optional PDF),
 "revision" (a version is the file, not a diff).
 
+### agreement
+
+A family's answer to "who agrees to this document?", asked on the
+[application](#conversation-flag) about the two [policies](#policy) families
+sign — the Code of Conduct and the Handbook. Three answers, in the school's own
+words from its live form: **Student agrees**, **Parent agrees**, **Neither
+agrees**.
+
+**It is asked once, of the family.** The live form asks once, and an application
+carrying three children still records one answer per document. The singular word
+"student" is the form's phrasing, not a per-child question.
+
+**Unanswered is not "neither".** A family may leave either question alone, and
+the record says nothing rather than saying they refused — the same distinction
+the Statement of Faith grid keeps between a blank column and a "no".
+
+**It carries the policy version it was given against**, so a later upload cannot
+reinterpret what a family agreed to. The link a family reads goes to the policy's
+fixed address; only the record keeps the number.
+
+**It never blocks a submission and never raises the
+[conversation flag](#conversation-flag).** "Neither agrees" is an ordinary
+answer. Whether it should route to a conversation is the school's call, not the
+site's (#71).
+
+Not: "signature" (nothing is signed here — the paper at enrolment is), "consent",
+"acceptance".
+
 ### H.O.P.E.
 
 **Helping Our Parents Educate** — the school's own acronym, real copy from the
