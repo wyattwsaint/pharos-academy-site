@@ -176,18 +176,17 @@ const selectedTime = values.time && !timeIsSlot ? CUSTOM_TIME : values.time;
  * Read after the POST branch, so a successful save answers about the row just
  * written and a failed one about what is still on screen.
  */
-const form = courseFormView(values, { year, courses, slug: course?.slug ?? null });
-const warnings: ClashWarning[] = form.warnings;
+const view = courseFormView(values, { year, courses, slug: course?.slug ?? null });
 
 /** The computed end of the block being typed — worked out, never entered. */
-const blockEnd = form.blockEnd ? fullDateLabel(form.blockEnd) : null;
+const blockEnd = view.blockEnd ? fullDateLabel(view.blockEnd) : null;
 
 /*
  * The parser's complaint where there is one, and otherwise the view's. They are
  * the same refusal from the same function; the parser only gets to make it on a
  * POST, and a block the year has since stopped holding is found on a GET (#60).
  */
-const blockStartError = errors.blockStart ?? form.blockError;
+const blockStartError = errors.blockStart ?? view.blockError;
 
 /**
  * The fields that are one typed string.
@@ -325,7 +324,7 @@ function warningLine(warning: ClashWarning): string {
   }
 
   {
-    warnings.length > 0 && (
+    view.warnings.length > 0 && (
       <div
         role="status"
         data-testid="clash-warnings"
@@ -337,7 +336,7 @@ function warningLine(warning: ClashWarning): string {
           here so a family is never the one to find it.
         </p>
         <ul class="mt-2 flex flex-col gap-1">
-          {warnings.map((warning) => (
+          {view.warnings.map((warning) => (
             <li>{warningLine(warning)}</li>
           ))}
         </ul>
@@ -569,8 +568,8 @@ function warningLine(warning: ClashWarning): string {
       <label for="blockStart" class="font-semibold">{LABELS.blockStart}</label>
       <p id="blockStart-hint" class="text-sm">
         {
-          form.blockTrack
-            ? `The ${form.blockTrack} track’s own meeting dates — so a block cannot begin on a day the school does not meet. The end date is worked out from the weeks.`
+          view.blockTrack
+            ? `The ${view.blockTrack} track’s own meeting dates — so a block cannot begin on a day the school does not meet. The end date is worked out from the weeks.`
             : 'Blocks only. Choose Block above and tick the one day it meets on, then Save — that track’s real meeting dates appear here.'
         }
       </p>
@@ -590,7 +589,7 @@ function warningLine(warning: ClashWarning): string {
           */
         }
         {
-          form.blockMeetings.map((meeting) => (
+          view.blockMeetings.map((meeting) => (
             <option value={meeting.date} selected={values.blockStart === meeting.date}>
               {fullDateLabel(meeting.date)} — week {meeting.week}
             </option>

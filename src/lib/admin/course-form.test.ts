@@ -52,7 +52,7 @@ describe('the clash warning, before any save (#59)', () => {
   });
 
   it('says nothing at all on an empty add form', () => {
-    // No day, no time: there is no schedule to be double-booked yet.
+    // No day, no time: there is no slot for anything to clash with yet.
     expect(view(emptyFields()).warnings).toEqual([]);
   });
 
