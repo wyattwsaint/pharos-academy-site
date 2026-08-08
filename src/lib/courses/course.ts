@@ -29,6 +29,11 @@ export const STAGES = [
 ] as const;
 export type Stage = (typeof STAGES)[number];
 
+/** Is this string one of the three? Asked where a typed form becomes a course. */
+export function isStage(value: string): value is Stage {
+  return (STAGES as readonly string[]).includes(value);
+}
+
 /**
  * What a course sells (CONTEXT.md, "enrolment unit").
  *
@@ -57,6 +62,11 @@ export function isEnrolmentUnit(value: string): value is EnrolmentUnit {
  */
 export const RATE_TIERS = ['standard', 'highSchoolCredit'] as const;
 export type RateTier = (typeof RATE_TIERS)[number];
+
+/** Is this string one of the two? Asked where a typed form becomes a course. */
+export function isRateTier(value: string): value is RateTier {
+  return (RATE_TIERS as readonly string[]).includes(value);
+}
 
 export type Course = {
   /** URL segment: `/classes/<slug>`. Unique, stable, and the store's key. */

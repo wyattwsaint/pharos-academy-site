@@ -1,15 +1,14 @@
 import type { SchoolYear } from '../calendar/year.js';
 import {
   isEnrolmentUnit,
-  RATE_TIERS,
-  STAGES,
+  isRateTier,
+  isStage,
   type Course,
   type EnrolmentUnit,
   type RateTier,
-  type Stage,
 } from '../courses/course.js';
 import { isClockTime, minutesOfDay, type DayTrack } from '../courses/schedule.js';
-import { blockRun, runningTracks } from '../courses/slots.js';
+import { blockRun, runningTracks, type BlockRun } from '../courses/slots.js';
 import type { CourseEdit } from '../courses/store.js';
 
 /**
@@ -64,7 +63,7 @@ export type CourseFields = {
 
 export type CourseErrors = Partial<Record<keyof CourseFields, string>>;
 
-/** The three posted fields that decide what else the form can be asked. */
+/** The posted fields that decide what else the form can be asked. */
 export type CourseFormFields = {
   /** The ticked days the year actually runs — a day it does not is not a day. */
   days: DayTrack[];
@@ -72,31 +71,57 @@ export type CourseFormFields = {
   enrolment: EnrolmentUnit | null;
   /** The meeting weeks, and 0 for "not a whole number of them yet". */
   weeks: number;
+  /** The one track a block meets on, or null when the form has not said yet. */
+  blockTrack: DayTrack | null;
+  /** The run that track and start describe, or the reason they describe none. */
+  run: BlockRun;
 };
 
 /**
  * The posted strings read as what they mean, for both callers (#59, #60, #61).
  *
- * `parseCourse` reads these three to save the form; `courseFormView` reads them
- * to answer questions about it before the save. Read twice they can be read two
+ * `parseCourse` reads them to save the form; `courseFormView` reads them to
+ * answer questions about it before the save. Read twice they can be read two
  * ways, and then the editor's warning and the parser's refusal disagree about
  * one form — which is the bug the view was built to end, reappearing one level
  * down. So the coercion lives here and each caller adds only its own strictness:
  * the parser turns a "not yet" into a complaint, the view leaves it as a "not
  * yet".
+ *
+ * The block's track and its run are read here for the same reason (#75), and
+ * not only to save a repeated rule: `blockRun` walks the year's calendar, and
+ * on a POST both callers want the answer for one form. Reading it once is what
+ * lets the page hand the parser's reading to the view rather than have the walk
+ * made twice for one request.
  */
 export function readCourseFormFields(values: CourseFields, year: SchoolYear): CourseFormFields {
   const offered = runningTracks(year);
-  return {
-    days: values.days.filter((day): day is DayTrack => offered.includes(day as DayTrack)),
-    enrolment: isEnrolmentUnit(values.enrolment) ? values.enrolment : null,
-    weeks: /^\d+$/.test(values.weeks) && Number(values.weeks) >= 1 ? Number(values.weeks) : 0,
-  };
+  const days = values.days.filter((day): day is DayTrack => offered.includes(day as DayTrack));
+  const enrolment = isEnrolmentUnit(values.enrolment) ? values.enrolment : null;
+  const weeks = /^\d+$/.test(values.weeks) && Number(values.weeks) >= 1 ? Number(values.weeks) : 0;
+
+  /*
+   * A block meets on one track — the parser enforces it — and that track is
+   * where its dates come from. Two ticked, or none, is a form that has not said
+   * yet, which is no run described rather than a run refused.
+   */
+  const blockTrack = enrolment === 'block' && days.length === 1 ? days[0]! : null;
+  const run = blockTrack
+    ? blockRun(year, blockTrack, values.blockStart, weeks)
+    : { dates: [], refusal: null };
+
+  return { days, enrolment, weeks, blockTrack, run };
 }
 
 export type ParsedCourse = {
   /** Always populated, valid or not, so a rejected form redisplays what was typed. */
   values: CourseFields;
+  /**
+   * Those strings read as what they mean. Handed back so the page can give it
+   * to `courseFormView` rather than have one form read twice for one request
+   * (#75) — the block's calendar walk especially.
+   */
+  fields: CourseFormFields;
   /** The course to save. Only meaningful when `errors` is empty. */
   edit: CourseEdit;
   errors: CourseErrors;
@@ -279,7 +304,8 @@ export function parseCourse(form: FormData, context: CourseContext): ParsedCours
    * course posted onto it — a stale form, or a year edited since — is refused
    * with the reason rather than saved onto a day that never comes.
    */
-  const { days, enrolment, weeks } = readCourseFormFields(values, context.year);
+  const fields = readCourseFormFields(values, context.year);
+  const { days, enrolment, weeks } = fields;
   if (days.length !== values.days.length) {
     const rejected = values.days.filter((day) => !days.includes(day as DayTrack));
     errors.days = `The school does not meet on ${rejected.join(', ')} this year — see the School year screen.`;
@@ -342,14 +368,11 @@ export function parseCourse(form: FormData, context: CourseContext): ParsedCours
    * a *possible* clash rather than guessing — so `blockStart` is never required
    * here; a bad one is refused with the domain's own words.
    */
-  let dates: string[] = [];
   if (enrolment === 'block') {
     if (days.length !== 1) {
       errors.days = 'A block meets on one day track — tick exactly one.';
-    } else {
-      const run = blockRun(context.year, days[0]!, values.blockStart, weeks);
-      dates = run.dates;
-      if (run.refusal) errors.blockStart = run.refusal;
+    } else if (fields.run.refusal) {
+      errors.blockStart = fields.run.refusal;
     }
   }
 
@@ -363,7 +386,7 @@ export function parseCourse(form: FormData, context: CourseContext): ParsedCours
     enrolment: enrolment ?? 'year',
     enrolmentUnits: units,
     weeks,
-    dates,
+    dates: fields.run.dates,
     ageLabel: values.ageLabel,
     ageMin,
     ageMax,
@@ -380,7 +403,7 @@ export function parseCourse(form: FormData, context: CourseContext): ParsedCours
     instructorSlug: values.instructorSlug,
   };
 
-  return { values, edit, errors };
+  return { values, fields, edit, errors };
 }
 
 /**
@@ -457,14 +480,6 @@ function readFee(
     return null;
   }
   return Number(amount);
-}
-
-function isStage(value: string): value is Stage {
-  return (STAGES as readonly string[]).includes(value);
-}
-
-function isRateTier(value: string): value is RateTier {
-  return (RATE_TIERS as readonly string[]).includes(value);
 }
 
 function text(form: FormData, name: string): string {

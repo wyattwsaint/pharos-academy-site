@@ -15,6 +15,7 @@ import {
   UNIT_LABELS,
   type CourseErrors,
   type CourseFields,
+  type CourseFormFields,
 } from '../../../lib/admin/courses.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
 import {
@@ -104,11 +105,18 @@ const courses = await listCourses(db);
 let values: CourseFields = course ? fieldsOf(course) : emptyFields();
 let errors: CourseErrors = {};
 let banner: Banner | null = null;
+/*
+ * The parser's reading of the posted form, kept so the view below is not a
+ * second reading of the same strings (#75). Null on a GET, where there is no
+ * parser and the view reads for itself.
+ */
+let fields: CourseFormFields | null = null;
 
 if (Astro.request.method === 'POST') {
   const parsed = parseCourse(await Astro.request.formData(), { year, instructorSlugs });
   values = parsed.values;
   errors = parsed.errors;
+  fields = parsed.fields;
 
   if (Object.keys(errors).length > 0) {
     banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
@@ -174,9 +182,17 @@ const selectedTime = values.time && !timeIsSlot ? CUSTOM_TIME : values.time;
  * form part-way through, or a rejected post being redisplayed.
  *
  * Read after the POST branch, so a successful save answers about the row just
- * written and a failed one about what is still on screen.
+ * written and a failed one about what is still on screen. On a POST the parser
+ * has already read those strings and its reading is handed over rather than
+ * made again — and the row a successful save writes *is* what it read, field
+ * for field, so the reading still describes what is on screen afterwards.
  */
-const view = courseFormView(values, { year, courses, slug: course?.slug ?? null });
+const view = courseFormView(values, {
+  year,
+  courses,
+  slug: course?.slug ?? null,
+  fields: fields ?? undefined,
+});
 
 /** The computed end of the block being typed — worked out, never entered. */
 const blockEnd = view.blockEnd ? fullDateLabel(view.blockEnd) : null;
