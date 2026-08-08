@@ -200,9 +200,8 @@ describe('a block’s start date and computed run (#24 AC 6)', () => {
 
   it('skips a closure rather than meeting on it, so the block runs a week longer', () => {
     const dates = blockMeetingDates(year, 'Wednesday', '2026-11-04', 4);
+    // The last of the run is the end date the editor shows, derived where it is needed.
     expect(dates).toEqual(['2026-11-04', '2026-11-11', '2026-11-18', '2026-12-02']);
-    // The end date the editor shows is the last of that run, derived where it is needed.
-    expect(dates.at(-1)).toBe('2026-12-02');
   });
 
   it('refuses a start the track does not meet on', () => {
