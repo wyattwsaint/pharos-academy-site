@@ -75,15 +75,37 @@ async function tickClashingPair(page: Page) {
 }
 
 test.describe('the application page', () => {
-  test('answers 200 and is four stages on one document', async ({ page }) => {
+  test('answers 200 and is the stages on one document', async ({ page }) => {
     const response = await page.goto(APPLICATION_PATH);
 
     expect(response?.status()).toBe(200);
     await expect(page.locator('form[data-application-form]')).toHaveCount(1);
-    // The four stage anchors — the ids a stepped variant would navigate by.
-    for (const anchor of ['#faith', '#classes', '#payment', '#confirmation']) {
+    // The stage anchors — the ids a stepped variant would navigate by.
+    for (const anchor of ['#faith', '#classes', '#agreements', '#payment', '#confirmation']) {
       await expect(page.locator(anchor)).toHaveCount(1);
     }
+  });
+
+  test('asks who agrees to the Code of Conduct and the Handbook, and blocks nothing', async ({
+    page,
+  }) => {
+    // #71 AC 1, 2 and 4, as a family meets them: three answers in the school's
+    // own words, a link to the *fixed* address of each document, and a form
+    // that stays sendable whatever is picked.
+    await page.goto(APPLICATION_PATH);
+
+    for (const slug of ['code-of-conduct', 'handbook']) {
+      const question = page.locator(`[data-agreement="${slug}"]`);
+      await expect(question).toHaveCount(1);
+      await expect(question.locator(`a[href="/policies/${slug}.pdf"]`)).toBeVisible();
+
+      for (const label of ['Student agrees', 'Parent agrees', 'Neither agrees', 'Not answered']) {
+        await expect(question.getByRole('radio', { name: label })).toBeVisible();
+      }
+    }
+
+    await page.check('[data-agreement="handbook"] input[value="neither"]');
+    await expect(page.getByRole('button', { name: 'Send the application' })).toBeEnabled();
   });
 
   test('gates nothing behind a scroll', async ({ page }) => {

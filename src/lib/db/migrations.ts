@@ -531,6 +531,25 @@ export const MIGRATIONS: readonly Migration[] = [
       `update applications set payment_since = received_at where payment_since is null`,
     ],
   },
+  {
+    /*
+     * The Code of Conduct and Handbook agreements (#71).
+     *
+     * One column, and an array like `faith` rather than four columns, because
+     * an unanswered question has to be able to be absent: a null column would
+     * read as "Neither agrees", which is an answer the family did not give.
+     * Each cell carries the policy version it was answered against, so the
+     * question "what did the family who enrolled in August sign?" survives the
+     * next upload.
+     *
+     * The default backfills every row #31 and #32 wrote: none of them were ever
+     * asked, and an empty array says exactly that.
+     */
+    id: '0012-application-agreements',
+    statements: [
+      `alter table applications add column if not exists agreements text[] not null default '{}'`,
+    ],
+  },
 ];
 
 /** The eight terms of the published year, idempotent like every other seed. */

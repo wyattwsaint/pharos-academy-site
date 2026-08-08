@@ -21,6 +21,13 @@ import {
   type ApplicationFields,
 } from '../../lib/application/application.js';
 import {
+  AGREEMENT_CHOICES,
+  agreementAnswer,
+  agreementHref,
+  agreementKey,
+  askableAgreements,
+} from '../../lib/application/agreements.js';
+import {
   clashSentence,
   offeringKey,
   offeringsOf,
@@ -44,12 +51,15 @@ import { INQUIRY_PATH } from '../../lib/inquiry/inquiry.js';
 import { getInquiry } from '../../lib/inquiry/store.js';
 import { formatMoney, type MoneySettings } from '../../lib/money/settings.js';
 import { getMoneySettings, recordAgreedTerms } from '../../lib/money/store.js';
+import { publishedPolicies } from '../../lib/policies/policy.js';
+import { listPolicies } from '../../lib/policies/store.js';
 
 /**
  * The family's application (#31).
  *
- * Four stages on one long document — the Statement of Faith, the classes, what
- * to post, and sending it — with the `APPLICATION_STAGES` ids as anchors. One
+ * Stages on one long document — the Statement of Faith, the classes, the two
+ * agreements a family signs (#71), what to post, and sending it — with the
+ * `APPLICATION_STAGES` ids as anchors. One
  * page rather than a stepped flow because the entry point is warm: a family
  * reaches this from a conversation and from a link Jill pasted into an email,
  * so the abandonment argument that favours splitting is weak, and headed
@@ -95,6 +105,15 @@ const offerings = offeringsOf(courses);
  */
 const year = (await getSchoolYear(db)) ?? SEEDED_SCHOOL_YEAR;
 
+/*
+ * The two documents the family agrees to (#71), and only the ones with a file
+ * behind them. `publishedPolicies` is the same filter the public policies page
+ * uses — a policy that exists in the admin but has never been uploaded is a
+ * title with nothing to download, and asking a family to agree to a link to
+ * nothing is the failure this ticket names.
+ */
+const askable = askableAgreements(publishedPolicies(await listPolicies(db)));
+
 /**
  * Every application, or none of them.
  *
@@ -120,7 +139,7 @@ let checked = false;
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
-  const parsed = parseApplication(form, offerings);
+  const parsed = parseApplication(form, offerings, askable);
   const sending = form.get('intent') === 'send';
 
   values = parsed.values;
@@ -262,9 +281,9 @@ const description =
       <p class="label">Applying</p>
       <h1 class="mt-4">Your application</h1>
       <p class="sub mt-5">
-        Four parts, on one page: what we believe, the classes you are choosing, what to post, and
-        sending it. Nothing here is a test — the questions about what we believe exist so we can
-        talk, not so we can turn anyone away.
+        All of it on one page: what we believe, the classes you are choosing, the documents families
+        sign, what to post, and sending it. Nothing here is a test — the questions about what we
+        believe exist so we can talk, not so we can turn anyone away.
       </p>
 
       {
@@ -579,7 +598,63 @@ const description =
           </div>
         </section>
 
-        <section class="band" id="payment" data-section="apply-payment">
+        {/*
+          The two agreements (#71). Rendered only for documents the school has
+          actually published: the section disappears rather than asking a family
+          to agree to a link to nothing.
+
+          The links go to each policy's *fixed* address, because a family reads
+          the current document. The version they were shown travels in a hidden
+          field's stead — it is on `askable`, and the parser records it — so what
+          this family agreed to survives the next upload.
+
+          Nothing here can block a submission. "Neither agrees" is an answer the
+          school's own form allows, "Not answered" leaves the row absent, and no
+          error can be attached to either.
+        */}
+        {askable.length > 0 && (
+          <section class="band" id="agreements" data-section="apply-agreements">
+            <div class="wide">
+              <h2>{stage('agreements')}</h2>
+              <p class="sub mt-4">
+                Two documents families sign. Read them here — they open in full — and tell us who
+                agrees. You can send the application whatever you answer, and "Neither agrees" is a
+                real answer rather than a problem.
+              </p>
+
+              <div class="faith mt-7">
+                {askable.map((document) => (
+                  <fieldset class="question" data-agreement={document.slug}>
+                    <legend>{document.question}</legend>
+                    <p class="hint">
+                      <a href={agreementHref(document.slug)}>Read the {document.title}</a> — the
+                      version published today.
+                    </p>
+                    <div class="mt-4">
+                      {[...AGREEMENT_CHOICES, { value: '', label: 'Not answered' } as const].map(
+                        (choice) => (
+                          <label class="check">
+                            <input
+                              type="radio"
+                              name={agreementKey(document.slug)}
+                              value={choice.value}
+                              checked={
+                                agreementAnswer(values.agreements, document.slug) === choice.value
+                              }
+                            />
+                            <span>{choice.label}</span>
+                          </label>
+                        ),
+                      )}
+                    </div>
+                  </fieldset>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section class="band band-quiet" id="payment" data-section="apply-payment">
           <div class="wide">
             <h2>{stage('payment')}</h2>
             <p class="sub mt-4">
@@ -628,7 +703,7 @@ const description =
           </div>
         </section>
 
-        <section class="band band-quiet" id="confirmation" data-section="apply-send">
+        <section class="band" id="confirmation" data-section="apply-send">
           <div class="wide">
             <h2>{stage('confirmation')}</h2>
             <p class="sub mt-4">

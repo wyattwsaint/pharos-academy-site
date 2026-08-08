@@ -32,6 +32,7 @@ function fields(over: Partial<ApplicationFields> = {}): ApplicationFields {
     children: [{ name: 'Ada', age: '13', offeringKeys: ['algebra-1:year'] }],
     faith: { [faithKey('Father', 'read')]: 'yes', [faithKey('Mother', 'agree')]: 'no' },
     objections: '',
+    agreements: {},
     ...over,
   };
 }

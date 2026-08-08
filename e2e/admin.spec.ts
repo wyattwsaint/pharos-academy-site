@@ -811,7 +811,15 @@ test.describe('applications', () => {
   /** Send one application through the public form, as a family would. */
   async function apply(
     page: Page,
-    family: { name: string; email: string; child: string; offering: string; objection?: string },
+    family: {
+      name: string;
+      email: string;
+      child: string;
+      offering: string;
+      objection?: string;
+      /** One of the two agreements (#71), when the test is about them. */
+      handbook?: 'student' | 'parent' | 'neither';
+    },
   ): Promise<void> {
     await page.goto(APPLICATION_PATH);
     await page.fill('#apply-family-name', family.name);
@@ -820,6 +828,9 @@ test.describe('applications', () => {
     await page.fill('#apply-child-0-age', '13');
     await page.check(`input[name="child-0-classes"][value="${family.offering}"]`);
     if (family.objection) await page.fill('#apply-objections', family.objection);
+    if (family.handbook) {
+      await page.check(`[data-agreement="handbook"] input[value="${family.handbook}"]`);
+    }
 
     await page.getByRole('button', { name: 'Send the application' }).click();
     await expect(page.locator('[data-outcome="received"]')).toBeVisible();
@@ -902,6 +913,37 @@ test.describe('applications', () => {
     await expect(flag).toContainText('not a refusal');
     // The family is told the same thing on the way out — an objection routes to
     // a conversation and stops nothing.
+    await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
+  });
+
+  test('reads both agreements by hand, including the one nobody answered (#71 AC 6)', async ({
+    page,
+  }) => {
+    const family = 'Suite Agreements';
+    await apply(page, {
+      name: family,
+      email: 'suite-agreements@example.com',
+      child: 'Agreeing Child',
+      offering: 'algebra-1:year',
+      handbook: 'neither',
+    });
+
+    await signIn(page, '/admin/applications');
+    const agreements = rowFor(page, family).getByTestId('application-agreements');
+
+    // The answer in the family's own words, against the version they were shown.
+    await expect(agreements.locator('[data-agreement="handbook"]')).toContainText('Neither agrees');
+    await expect(agreements.locator('[data-agreement="handbook"]')).toContainText('version');
+
+    // And the one they left alone says so, rather than being absent from the
+    // screen or quietly reading as "neither".
+    await expect(agreements.locator('[data-agreement="code-of-conduct"]')).toContainText(
+      'Not answered',
+    );
+
+    // "Neither agrees" is not a conversation flag, and never was on the live
+    // form either — the application goes through like any other.
+    await expect(rowFor(page, family).getByTestId('application-flag')).toHaveCount(0);
     await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
   });
 

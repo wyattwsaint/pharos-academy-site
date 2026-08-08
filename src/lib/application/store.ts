@@ -2,6 +2,7 @@ import { asc, desc, eq, inArray } from 'drizzle-orm';
 
 import type { Db } from '../db/client.js';
 import { applicationChildren, applications, type ApplicationRow } from '../db/schema.js';
+import { decodeAgreements, encodeAgreements, type Agreements } from './agreements.js';
 import type { ApplicationChild, ApplicationFields, FaithAnswer, FaithAnswers } from './application.js';
 import {
   APPLICATION_STATES,
@@ -49,6 +50,8 @@ export type ApplicationRecord = {
   objections: string;
   statementVersion: string;
   faith: FaithAnswers;
+  /** The two agreements and the policy version each was given against (#71). */
+  agreements: Agreements;
   children: ApplicationChild[];
   agreedTermsId: string | null;
   /** Where the application itself is (#32). Never moved by the payment. */
@@ -97,6 +100,7 @@ export async function createApplication(
       objections: values.objections,
       statementVersion: facts.statementVersion,
       faith: encodeFaith(values.faith),
+      agreements: encodeAgreements(values.agreements),
       agreedTermsId: facts.agreedTermsId ?? null,
       /*
        * Submitted, and awaiting whatever the payment slot takes today (#32).
@@ -292,6 +296,7 @@ function toRecord(row: ApplicationRow): Omit<ApplicationRecord, 'children'> {
     objections: row.objections,
     statementVersion: row.statementVersion,
     faith: decodeFaith(row.faith),
+    agreements: decodeAgreements(row.agreements),
     agreedTermsId: row.agreedTermsId,
     state: applicationState(row.status),
     payment: paymentOf(row),

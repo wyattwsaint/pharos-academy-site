@@ -267,6 +267,7 @@ describe('coverage of the editable set', () => {
         children: [{ name: 'Tamar', age: '13', offeringKeys: ['algebra-1:year'] }],
         faith: { 'faith-Mother-agree': 'yes' },
         objections: '',
+        agreements: { handbook: { answer: 'parent', version: 1 } },
       },
       { statementVersion: 'sof-00000000' },
     );

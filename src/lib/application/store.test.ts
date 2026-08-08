@@ -46,6 +46,7 @@ function fields(overrides: Partial<ApplicationFields> = {}): ApplicationFields {
       [faithKey('Mother', 'agree')]: 'no',
     },
     objections: '',
+    agreements: {},
     ...overrides,
   };
 }
@@ -89,6 +90,34 @@ describe('an application', () => {
     // A household with no legal guardian left that column alone; the row says
     // so rather than saying "no".
     expect(row!.faith[faithKey('Legal guardian', 'agree')]).toBeUndefined();
+  });
+
+  it('keeps each agreement against the policy version the family was shown', async () => {
+    // #71 AC 3, at the table. A later upload appends a version; this row still
+    // says the Handbook was agreed to at version 5, which is the school's own
+    // question — "what did the family who enrolled in August sign?"
+    await createApplication(
+      db,
+      fields({
+        agreements: {
+          handbook: { answer: 'parent', version: 5 },
+          'code-of-conduct': { answer: 'neither', version: 2 },
+        },
+      }),
+      { statementVersion: statementVersion() },
+    );
+
+    const [row] = await listApplications(db);
+    expect(row!.agreements.handbook).toEqual({ answer: 'parent', version: 5 });
+    expect(row!.agreements['code-of-conduct']).toEqual({ answer: 'neither', version: 2 });
+  });
+
+  it('leaves an unasked or unanswered agreement absent, never "neither"', async () => {
+    await createApplication(db, fields(), { statementVersion: statementVersion() });
+
+    const [row] = await listApplications(db);
+    expect(row!.agreements).toEqual({});
+    expect(row!.agreements.handbook).toBeUndefined();
   });
 
   it('points at the money terms frozen for that family', async () => {

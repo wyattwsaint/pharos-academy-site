@@ -569,6 +569,24 @@ export const applications = pgTable('applications', {
    * guardian leaves that column blank, and a null column would read as a "no".
    */
   faith: text('faith').array().notNull(),
+  /**
+   * The Code of Conduct and Handbook agreements as `handbook=parent@3` (#71).
+   *
+   * **A new column on a table ADR-0007 keeps narrow, and it is argued for
+   * rather than assumed.** It is not sensitive data about a student: an
+   * agreement is a position a family takes about two documents the school
+   * publishes, in the same class of fact as `faith` and `objections`, and it
+   * carries nothing about any child's person. `store.test.ts` reads this table
+   * back and fails on a column named for anything ADR-0007 excludes — this one
+   * is meant to meet that guard and pass it on its merits.
+   *
+   * One array rather than four columns, for `faith`'s reason: an unanswered
+   * question must stay *absent*, where a null column reads as "neither". The
+   * version rides in the cell so an agreement is always readable against the
+   * text that was on screen — a later upload appends a version and cannot
+   * change what this row says was agreed.
+   */
+  agreements: text('agreements').array().notNull().default([]),
   /** The money terms frozen for this family, when they were recorded. */
   agreedTermsId: uuid('agreed_terms_id').references(() => agreedTerms.id),
   /**

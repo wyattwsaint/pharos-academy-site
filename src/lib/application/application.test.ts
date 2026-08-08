@@ -370,8 +370,14 @@ describe('the children’s sensitive data does not enter the site (#31 AC 9)', (
   });
 
   it('holds a family name, an email, the children and the Statement, and nothing else', () => {
+    // `agreements` is the one field added since (#71), and it is met here
+    // deliberately rather than edited around: an agreement to the Code of
+    // Conduct or the Handbook is a position the *family* takes about two
+    // published documents, not a fact about a child's person. ADR-0007 excludes
+    // the second and has nothing to say about the first.
     const { values } = parseApplication(goodForm(), OFFERINGS);
     expect(Object.keys(values).sort()).toEqual([
+      'agreements',
       'children',
       'email',
       'familyName',
