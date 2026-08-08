@@ -1,13 +1,8 @@
 import type { Meeting, SchoolYear } from '../calendar/year.js';
 import type { Course } from '../courses/course.js';
 import { isClockTime, type DayTrack } from '../courses/schedule.js';
-import {
-  blockRun,
-  blockStartChoices,
-  clashWarnings,
-  type ClashWarning,
-} from '../courses/slots.js';
-import { readCourseFormFields, type CourseFields } from './courses.js';
+import { blockStartChoices, clashWarnings, type ClashWarning } from '../courses/slots.js';
+import { readCourseFormFields, type CourseFields, type CourseFormFields } from './courses.js';
 
 /**
  * What the course editor can say about the form **as it currently stands**
@@ -65,6 +60,16 @@ export type CourseFormContext = {
   courses: readonly Course[];
   /** This course's own slug, or null on the add form, so it never clashes with itself. */
   slug: string | null;
+  /**
+   * `readCourseFormFields(values, year)`, when the caller has already run it —
+   * on a POST the parser has, and one form is not worth reading twice for one
+   * request (#75). Omitted, it is read here, which is every GET.
+   *
+   * It must be that reading of *these* `values`: it is the same function either
+   * way, so handing it in is a saving and never a second opinion. The test
+   * "answers the same either way" holds this end of the bargain.
+   */
+  fields?: CourseFormFields;
 };
 
 /** The three answers, each with its own honest "not yet". */
@@ -96,24 +101,18 @@ export function courseFormView(
    * track the School Year screen gives no term is a day the school does not
    * meet, so a stale form naming one is not a schedule to warn about.
    */
-  const { days, enrolment, weeks } = readCourseFormFields(values, year);
+  const {
+    days,
+    enrolment,
+    blockTrack,
+    run: { dates, refusal: blockError },
+  } = context.fields ?? readCourseFormFields(values, year);
 
   /*
-   * A block meets on one track — the parser enforces it — and that track is
-   * where its dates come from. Two ticked, or none, is a form that has not said
-   * yet, and an empty picker is the honest rendering of not knowing.
+   * Only the ticked track's own dates are offered, and an empty picker is the
+   * honest rendering of a form that has not said which track yet.
    */
-  const blockTrack = enrolment === 'block' && days.length === 1 ? days[0]! : null;
   const blockMeetings = blockTrack ? blockStartChoices(year, blockTrack) : [];
-
-  /*
-   * The run the form describes, and empty when it does not describe one yet.
-   * A refused start is kept as its message rather than discarded: the parser
-   * says the same thing on a POST, and on a GET nothing else would say it.
-   */
-  const { dates, refusal: blockError } = blockTrack
-    ? blockRun(year, blockTrack, values.blockStart, weeks)
-    : { dates: [], refusal: null };
 
   /*
    * A clash needs a day, a real time and a shape to be a fact about. Without

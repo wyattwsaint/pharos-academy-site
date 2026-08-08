@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { SEEDED_SCHOOL_YEAR } from '../calendar/year.js';
 import { CATALOGUE } from '../courses/catalogue.js';
 import { courseFormView } from './course-form.js';
-import { emptyFields, fieldsOf, type CourseFields } from './courses.js';
+import {
+  emptyFields,
+  fieldsOf,
+  readCourseFormFields,
+  type CourseFields,
+} from './courses.js';
 
 /**
  * #59, #60 and #61 — the three things the editor showed from the saved row and
@@ -232,5 +237,44 @@ describe('the block start picker (#61)', () => {
 
     expect(picker.blockTrack).toBe('Wednesday');
     expect(picker.blockMeetings.some((meeting) => meeting.date === BLOCK.dates[0])).toBe(true);
+  });
+});
+
+describe('the reading handed in by the parser (#75)', () => {
+  /*
+   * On a POST the page hands over `readCourseFormFields`'s answer rather than
+   * have this function read the same strings again. That is only ever a saving,
+   * so both ways round must agree — including on the cases the rest of this
+   * file is about, where the honest answer is a silence or a refusal.
+   */
+  it.each([
+    ['an empty add form', emptyFields()],
+    ['a saved block', fieldsOf(BLOCK)],
+    ['a saved course sharing its slot', fieldsOf(bySlug('basic-spanish-grades-9-12'))],
+    ['a half-typed form', typing({ days: ['Wednesday'], enrolment: 'block' })],
+    [
+      'a refused block start',
+      typing({
+        days: ['Wednesday'],
+        start: '10:40',
+        end: '12:10',
+        enrolment: 'block',
+        weeks: '99', // more Wednesdays than the year holds
+        blockStart: BLOCK.dates[0]!,
+      }),
+    ],
+    [
+      'a block with no start picked',
+      typing({ days: ['Wednesday'], start: '10:40', end: '12:10', enrolment: 'block', weeks: '6' }),
+    ],
+  ])('answers the same either way — %s', (_case, values) => {
+    const handed = courseFormView(values, {
+      year,
+      courses: CATALOGUE,
+      slug: null,
+      fields: readCourseFormFields(values, year),
+    });
+
+    expect(handed).toEqual(view(values));
   });
 });
