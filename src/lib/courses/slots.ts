@@ -176,16 +176,6 @@ export function blockMeetingDates(
   return dates;
 }
 
-/** The computed end date the form shows — the block's last meeting (#24 AC 6). */
-export function blockEndDate(
-  year: SchoolYear,
-  track: DayTrack,
-  startDate: string,
-  weeks: number,
-): string {
-  return blockMeetingDates(year, track, startDate, weeks).at(-1)!;
-}
-
 /**
  * The days one course actually meets on one track, or null for "unknown".
  *
