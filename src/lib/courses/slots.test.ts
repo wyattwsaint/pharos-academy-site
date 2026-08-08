@@ -4,8 +4,8 @@ import { SEEDED_SCHOOL_YEAR, type SchoolYear } from '../calendar/year.js';
 import { CATALOGUE } from './catalogue.js';
 import type { Course } from './course.js';
 import {
-  blockEndDate,
   blockMeetingDates,
+  blockRun,
   blockStartChoices,
   clashWarnings,
   meetingSlots,
@@ -202,7 +202,20 @@ describe('a block’s start date and computed run (#24 AC 6)', () => {
   it('skips a closure rather than meeting on it, so the block runs a week longer', () => {
     const dates = blockMeetingDates(year, 'Wednesday', '2026-11-04', 4);
     expect(dates).toEqual(['2026-11-04', '2026-11-11', '2026-11-18', '2026-12-02']);
-    expect(blockEndDate(year, 'Wednesday', '2026-11-04', 4)).toBe('2026-12-02');
+  });
+
+  it('hands back the run, or the refusal, rather than throwing at either caller', () => {
+    expect(blockRun(year, 'Wednesday', '2026-11-04', 4)).toEqual({
+      dates: ['2026-11-04', '2026-11-11', '2026-11-18', '2026-12-02'],
+      refusal: null,
+    });
+    expect(blockRun(year, 'Wednesday', '2026-09-05', 6).refusal).toMatch(/does not meet/);
+  });
+
+  it('calls a start not picked yet no run rather than a refused one', () => {
+    // The parser and the editor both read this as "the form has not asked".
+    expect(blockRun(year, 'Wednesday', '', 4)).toEqual({ dates: [], refusal: null });
+    expect(blockRun(year, 'Wednesday', '2026-11-04', 0)).toEqual({ dates: [], refusal: null });
   });
 
   it('refuses a start the track does not meet on', () => {
