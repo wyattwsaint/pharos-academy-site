@@ -14,8 +14,8 @@ import type { CourseFields } from './courses.js';
  * What the course editor can say about the form **as it currently stands**
  * (#59, #60, #61).
  *
- * The editor used to answer three questions from the saved row: is this class
- * double-booked, when does this block end, and which dates may it start on.
+ * The editor used to answer three questions from the saved row: does this class
+ * clash, when does this block end, and which dates may it start on.
  * All three are questions about the form, and reading them from the store gave
  * the same wrong shape three times — nothing on the add form, nothing on a
  * redisplay after a validation error, and on the edit screen the answer to the
@@ -117,7 +117,7 @@ export function courseFormView(
    * reads no dates as no start yet, so it would call a *possible clash* on a
    * block whose start is picked and wrong.
    */
-  const sayable =
+  const slotIsKnown =
     days.length > 0 &&
     enrolment !== null &&
     isClockTime(values.start) &&
@@ -125,7 +125,7 @@ export function courseFormView(
     blockError === null;
 
   return {
-    warnings: sayable
+    warnings: slotIsKnown
       ? clashWarnings(
           { slug, days, start: values.start, end: values.end, enrolment, dates },
           courses,

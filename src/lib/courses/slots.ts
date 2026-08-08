@@ -191,8 +191,8 @@ export function blockEndDate(
  *
  * Null is only ever a block with no dates yet. An empty list is different and
  * real: a semester course on a track the year gives no term meets on no days,
- * and no days means no clash — the school is not meeting, so nobody is
- * double-booked.
+ * and no days means no clash — the school is not meeting, so nothing can be
+ * held twice over.
  *
  * Exported because the application flow's clash check (#31) has to measure term
  * overlap by exactly this rule. Two implementations of "do these two share a
