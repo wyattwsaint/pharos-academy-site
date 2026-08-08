@@ -40,6 +40,16 @@ import type { CourseFields } from './courses.js';
  * not picked a start for a block that has one. A run the year cannot hold is
  * not an unknown run: it is a refused one, so this reports the refusal and
  * leaves the clash question alone until the start is a real date again.
+ *
+ * **How current "current" is.** The clash warnings, the computed end date and
+ * the refusal message are answers to the form as the server last received it,
+ * which on a redisplay is the form as it is being typed. The picker's options
+ * are the one exception: the editor screen carries no client script, so
+ * ticking a day does not re-offer that track's dates on the tick — the
+ * narrowed picker arrives with the next render of the form. Until then the
+ * picker is empty and says so. Narrowing it live would be a client script and
+ * a second place that knows which dates belong to which track (#76 records the
+ * decision not to add one).
  */
 
 /** Everything beyond the form itself that the three answers depend on. */
