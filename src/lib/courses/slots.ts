@@ -176,14 +176,40 @@ export function blockMeetingDates(
   return dates;
 }
 
-/** The computed end date the form shows — the block's last meeting (#24 AC 6). */
-export function blockEndDate(
+/** A block's run, or the domain's own words for why the picked start gives none. */
+export type BlockRun = {
+  /** The block's real meeting dates, and empty when the form has not described a run. */
+  dates: string[];
+  /** Why the picked start gives no run, or null — including for a start not picked yet. */
+  refusal: string | null;
+};
+
+/**
+ * The run a form describes, asked in the one way both callers need it (#60).
+ *
+ * `blockMeetingDates` throws, which is right for a parser and wrong for the
+ * editor's GET, where the same refusal has to be rendered beside the field. Both
+ * the parser and `courseFormView` want the dates when there are dates and the
+ * message when there are not, so they ask here rather than each wrapping the
+ * throw — two `catch` blocks are two chances for the POST and the GET to say
+ * different things about one form.
+ *
+ * A start not picked yet, or a week count not typed yet, is not a refusal: it is
+ * a form that has not asked. That is `{ dates: [], refusal: null }`, and the
+ * callers read it as "no run described" rather than "no run possible".
+ */
+export function blockRun(
   year: SchoolYear,
   track: DayTrack,
   startDate: string,
   weeks: number,
-): string {
-  return blockMeetingDates(year, track, startDate, weeks).at(-1)!;
+): BlockRun {
+  if (!startDate || weeks < 1) return { dates: [], refusal: null };
+  try {
+    return { dates: blockMeetingDates(year, track, startDate, weeks), refusal: null };
+  } catch (error) {
+    return { dates: [], refusal: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 /**

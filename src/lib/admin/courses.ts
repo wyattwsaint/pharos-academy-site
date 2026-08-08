@@ -9,7 +9,7 @@ import {
   type Stage,
 } from '../courses/course.js';
 import { isClockTime, minutesOfDay, type DayTrack } from '../courses/schedule.js';
-import { blockMeetingDates, runningTracks } from '../courses/slots.js';
+import { blockRun, runningTracks } from '../courses/slots.js';
 import type { CourseEdit } from '../courses/store.js';
 
 /**
@@ -63,6 +63,36 @@ export type CourseFields = {
 };
 
 export type CourseErrors = Partial<Record<keyof CourseFields, string>>;
+
+/** The three posted fields that decide what else the form can be asked. */
+export type CourseFormFields = {
+  /** The ticked days the year actually runs — a day it does not is not a day. */
+  days: DayTrack[];
+  /** The shape the course runs as, or null when the form has not said. */
+  enrolment: EnrolmentUnit | null;
+  /** The meeting weeks, and 0 for "not a whole number of them yet". */
+  weeks: number;
+};
+
+/**
+ * The posted strings read as what they mean, for both callers (#59, #60, #61).
+ *
+ * `parseCourse` reads these three to save the form; `courseFormView` reads them
+ * to answer questions about it before the save. Read twice they can be read two
+ * ways, and then the editor's warning and the parser's refusal disagree about
+ * one form — which is the bug the view was built to end, reappearing one level
+ * down. So the coercion lives here and each caller adds only its own strictness:
+ * the parser turns a "not yet" into a complaint, the view leaves it as a "not
+ * yet".
+ */
+export function readCourseFormFields(values: CourseFields, year: SchoolYear): CourseFormFields {
+  const offered = runningTracks(year);
+  return {
+    days: values.days.filter((day): day is DayTrack => offered.includes(day as DayTrack)),
+    enrolment: isEnrolmentUnit(values.enrolment) ? values.enrolment : null,
+    weeks: /^\d+$/.test(values.weeks) && Number(values.weeks) >= 1 ? Number(values.weeks) : 0,
+  };
+}
 
 export type ParsedCourse = {
   /** Always populated, valid or not, so a rejected form redisplays what was typed. */
@@ -249,16 +279,14 @@ export function parseCourse(form: FormData, context: CourseContext): ParsedCours
    * course posted onto it — a stale form, or a year edited since — is refused
    * with the reason rather than saved onto a day that never comes.
    */
-  const offered = runningTracks(context.year);
-  const days = values.days.filter((day): day is DayTrack => offered.includes(day as DayTrack));
+  const { days, enrolment, weeks } = readCourseFormFields(values, context.year);
   if (days.length !== values.days.length) {
-    const rejected = values.days.filter((day) => !offered.includes(day as DayTrack));
+    const rejected = values.days.filter((day) => !days.includes(day as DayTrack));
     errors.days = `The school does not meet on ${rejected.join(', ')} this year — see the School year screen.`;
   } else if (days.length === 0) {
     errors.days = 'Tick the day track this class meets on.';
   }
 
-  const enrolment = isEnrolmentUnit(values.enrolment) ? values.enrolment : null;
   if (!enrolment) {
     errors.enrolment = 'Say what shape the course runs as — a year, a semester or a block.';
   }
@@ -275,11 +303,8 @@ export function parseCourse(form: FormData, context: CourseContext): ParsedCours
     errors.rateTier = 'Pick which hourly rate this class is charged at.';
   }
 
-  let weeks = 0;
-  if (!/^\d+$/.test(values.weeks) || Number(values.weeks) < 1) {
+  if (weeks === 0) {
     errors.weeks = 'How many weeks of classes — a whole number, at least 1.';
-  } else {
-    weeks = Number(values.weeks);
   }
 
   const { start, end } = readTime(values, form, errors);
@@ -321,12 +346,10 @@ export function parseCourse(form: FormData, context: CourseContext): ParsedCours
   if (enrolment === 'block') {
     if (days.length !== 1) {
       errors.days = 'A block meets on one day track — tick exactly one.';
-    } else if (values.blockStart && weeks > 0) {
-      try {
-        dates = blockMeetingDates(context.year, days[0]!, values.blockStart, weeks);
-      } catch (error) {
-        errors.blockStart = error instanceof Error ? error.message : String(error);
-      }
+    } else {
+      const run = blockRun(context.year, days[0]!, values.blockStart, weeks);
+      dates = run.dates;
+      if (run.refusal) errors.blockStart = run.refusal;
     }
   }
 
