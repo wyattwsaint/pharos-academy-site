@@ -82,6 +82,14 @@ import { listPolicies } from '../../lib/policies/store.js';
  * bottom. A gate is a WCAG 2.2 AA hazard for keyboard and screen-reader users
  * that buys no evidence anybody read anything.
  *
+ * **How many children is a question, not a guess.** The family picks the number
+ * from a dropdown and that many rows are shown; all eight are rendered and the
+ * spare ones are `hidden` *and* `disabled`, so they neither clutter the page nor
+ * post. The picker is the only script this page ships, and it is an enhancement
+ * rather than a dependency: with scripting off every row is visible and the
+ * count still changes — one "Check these choices" behind, because `child-count`
+ * round-trips through the POST like everything else here.
+ *
  * **The children's sensitive data does not enter this form** (#31 AC 9). Name,
  * age and the classes, and nothing else — no date of birth, no home address,
  * no allergies, no medical or evaluation history, no custody arrangement.
@@ -131,11 +139,27 @@ const applicationsForTally = async () => {
   }
 };
 
+/**
+ * How many child rows to show.
+ *
+ * UI state and nothing else. `child-count` posts and comes back so the picker
+ * survives a check, but `parseApplication` never reads it — a child is still a
+ * row with something in it, and the count cannot add one or take one away. A
+ * missing field, a garbled one, or a count smaller than the rows actually
+ * filled in all fall back to the children that are there: shrinking the form
+ * must never be a way to silently drop a child somebody typed in.
+ */
+const childRows = (posted: FormDataEntryValue | null, filled: number): number => {
+  const asked = Number(typeof posted === 'string' ? posted : NaN);
+  return Math.min(MAX_CHILDREN, Math.max(Number.isInteger(asked) ? asked : 0, filled, 1));
+};
+
 let values: ApplicationFields;
 let errors: ApplicationErrors = {};
 let sentId: string | null = null;
 let storeFailed = false;
 let checked = false;
+let rows: number;
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
@@ -143,6 +167,7 @@ if (Astro.request.method === 'POST') {
   const sending = form.get('intent') === 'send';
 
   values = parsed.values;
+  rows = childRows(form.get('child-count'), values.children.length);
   checked = !sending;
   // A check is "did I pick two classes that collide", not "you forgot your
   // name". Reporting missing fields against a button that submits nothing is
@@ -239,6 +264,9 @@ if (Astro.request.method === 'POST') {
    */
   const row = await getInquiry(db, Astro.url.searchParams.get('inquiry') ?? '');
   values = prefillFrom(row ? { name: row.name, email: row.email, ages: row.ages } : null);
+  // "6, 9 and 13" on the inquiry opens the form on three, so the family sees
+  // the number they already told us rather than being asked it twice.
+  rows = childRows(null, values.children.length);
 }
 
 const rejected = Object.keys(errors).length > 0;
@@ -255,16 +283,6 @@ const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seven
 const childLabel = (child: ApplicationChild, index: number): string =>
   child.name.trim() || `Your ${ORDINALS[index] ?? `${index + 1}th`} child`;
 
-/**
- * How many child rows to render.
- *
- * The children the family has already named, plus one spare, and never fewer
- * than two. `MAX_CHILDREN` rows unconditionally would be eight copies of a
- * picker carrying every offering the school sells — a page a family scrolls
- * past rather than reads. The parser reads all eight indexes regardless, so
- * the cap is the only thing this number has to respect.
- */
-const rows = Math.min(MAX_CHILDREN, Math.max(values.children.length + 1, 2));
 const childAt = (index: number): ApplicationChild =>
   values.children[index] ?? { name: '', age: '', offeringKeys: [] };
 
@@ -506,8 +524,41 @@ const description =
               </p>
             )}
 
-            {Array.from({ length: rows }, (_unused, index) => index).map((index) => (
-              <fieldset class="child mt-8">
+            {/*
+              The count, above the rows it governs.
+
+              Eight rows are always rendered and the spare ones carry both
+              `hidden` and `disabled` — `hidden` so the page is not eight copies
+              of a picker carrying every offering the school sells, `disabled`
+              so a row nobody is applying for posts nothing, costs nothing and
+              clashes with nothing. Raising the count again finds whatever was
+              typed in the row still sitting there — until the next POST, which
+              carries back only the children the family is applying for.
+            */}
+            <div class="field count mt-8">
+              <label for="apply-child-count">How many children are you applying for?</label>
+              <select id="apply-child-count" name="child-count" data-child-count>
+                {Array.from({ length: MAX_CHILDREN }, (_unused, index) => index + 1).map(
+                  (count) => (
+                    <option value={String(count)} selected={count === rows}>
+                      {count}
+                    </option>
+                  ),
+                )}
+              </select>
+              <p class="hint">
+                Change it whenever you like. Lowering it hides the rows you are not using, and
+                only the children you are applying for are sent to us.
+              </p>
+            </div>
+
+            {Array.from({ length: MAX_CHILDREN }, (_unused, index) => index).map((index) => (
+              <fieldset
+                class="child mt-8"
+                data-child-row={index}
+                hidden={index >= rows}
+                disabled={index >= rows}
+              >
                 <legend>Child {index + 1}</legend>
                 <div class="form">
                   <div>
@@ -731,6 +782,33 @@ const description =
   }
 </BaseLayout>
 
+<script>
+  /*
+    The count picker, and the whole of the client behaviour on this page.
+
+    It moves `hidden` and `disabled` together, never one without the other: a
+    row that is out of sight but still posting would put a child on the
+    application the family cannot see, and one that is disabled but still
+    visible would silently ignore what they typed into it. The server sets both
+    on the way out, so the page is already correct before this runs — and stays
+    correct if it never does. A family with scripting off changes the number
+    with "Check these choices" instead, which is a round trip rather than a
+    dead control.
+  */
+  const form = document.querySelector<HTMLFormElement>('form[data-application-form]');
+  const picker = form?.querySelector<HTMLSelectElement>('select[data-child-count]');
+  const rows = [...(form?.querySelectorAll<HTMLFieldSetElement>('fieldset[data-child-row]') ?? [])];
+
+  picker?.addEventListener('change', () => {
+    const wanted = Number(picker.value);
+    for (const row of rows) {
+      const spare = Number(row.dataset.childRow) >= wanted;
+      row.hidden = spare;
+      row.disabled = spare;
+    }
+  });
+</script>
+
 <style>
   /*
     The outcome line. Colour is not the only signal — the words say what
@@ -769,12 +847,19 @@ const description =
   }
 
   input,
-  textarea {
+  textarea,
+  select {
     width: 100%;
     padding: 0.6rem 0.7rem;
     border: 1px solid var(--color-gold-orn);
     background: white;
     font: inherit;
+  }
+
+  /* Eight one-digit choices do not need forty-six rems to sit in. */
+  .count select {
+    width: auto;
+    min-width: 6rem;
   }
 
   textarea {
