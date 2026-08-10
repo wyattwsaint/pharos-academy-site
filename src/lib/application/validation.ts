@@ -133,6 +133,11 @@ export type ApplicationFields = {
  * thing that needs attention" means to a family scrolling down: focus goes to
  * the first outstanding field in this list, and the still-needed list is
  * rendered in it.
+ *
+ * `children` before `classes` is the reading order of *one* row, which is the
+ * order the still-needed list wants. It is not always the reading order of the
+ * page, because the rows repeat and the class list is inside them — see
+ * `firstError`, which is the one place that difference matters.
  */
 export const ERROR_FIELDS = [
   'faith',
@@ -227,7 +232,30 @@ export function faithColumn(answers: FaithAnswers): FaithRespondent | null {
   );
 }
 
-/** The first outstanding field in reading order, or null when nothing is. */
-export function firstError(errors: ApplicationErrors): ErrorField | null {
-  return ERROR_FIELDS.find((field) => errors[field] !== undefined) ?? null;
+/**
+ * The first outstanding field in reading order, or null when nothing is (#88).
+ *
+ * `childRow` is the row the `children` rule is about — the first one short of a
+ * name or an age. It is needed because the children's section is the one place
+ * where `ERROR_FIELDS` and the page disagree: each child's class list is inside
+ * that child's fieldset, so the first child's classes are above the *second*
+ * child's name. A family whose first child is complete but classless and whose
+ * second child has no age meets the empty class list first on the way down, and
+ * sending them past it to the age box is exactly the hunt this ticket removes.
+ *
+ * Only the first row can be the one `classes` is about: the rule fires only when
+ * no child anywhere has chosen a class, so row 0's list is always the first
+ * empty one. That is why one row number settles it.
+ */
+export function firstError(errors: ApplicationErrors, childRow = 0): ErrorField | null {
+  // The two swap places and nothing else moves, so the order stays one list
+  // with one exception in it rather than two lists to keep in step.
+  const order =
+    childRow > 0
+      ? ERROR_FIELDS.map((field) =>
+          field === 'children' ? 'classes' : field === 'classes' ? 'children' : field,
+        )
+      : ERROR_FIELDS;
+
+  return order.find((field) => errors[field] !== undefined) ?? null;
 }

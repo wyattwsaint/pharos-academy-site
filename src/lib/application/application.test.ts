@@ -284,6 +284,20 @@ describe('what an application must carry before it can be sent (#85)', () => {
     expect(firstError(errorsOf(AGREED, ASKABLE))).toBeNull();
   });
 
+  it('reads a class list as being inside the child row it belongs to (#88)', () => {
+    // The classes are not a section of their own: each child's list sits inside
+    // that child's fieldset, so the first child's classes are *above* the second
+    // child's name. A family whose first child is complete but classless and
+    // whose second child has no age is short of a class first, however the two
+    // rules are ordered among themselves.
+    const errors = { children: 'needs an age', classes: 'choose one' };
+
+    expect(firstError(errors, 1)).toBe('classes');
+    // And on the first row there is nothing to step over: that child's own name
+    // and age come before their class list.
+    expect(firstError(errors, 0)).toBe('children');
+  });
+
   it('passes a whole application, with both documents answered', () => {
     expect(errorsOf(AGREED, ASKABLE)).toEqual({});
   });
