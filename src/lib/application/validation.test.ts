@@ -63,10 +63,50 @@ describe('the rules are a leaf', () => {
       'forms.ts',
     ]);
   });
+
+  /**
+   * The other end of the same guarantee (#89).
+   *
+   * A leaf nobody imports from the browser saves nothing. What ships is what
+   * the page's `<script>` reaches, and one `import { applicationCost }` added
+   * there for a total or a clash sentence would put the rate card, the
+   * catalogue, the timetable and the Statement of Faith on the wire — while
+   * every assertion above still passed. So the browser's own graph is measured,
+   * from the file the browser is built from.
+   *
+   * Every block, not the first one: a second `<script>` added beside the gate
+   * ships just as much, and a guard that only reads one of them would go quiet
+   * on exactly the change it exists to catch.
+   */
+  it('is all the page ships to the browser', () => {
+    const page = moduleUrl('../../pages/admissions/apply.astro');
+    const source = readFileSync(fileURLToPath(page), 'utf8');
+    const blocks = [...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(
+      ([, body]) => body!,
+    );
+
+    // A page that stopped shipping a script would pass an emptiness check by
+    // accident, and #89's gate is a script. It has to be there to be measured.
+    expect(blocks.length).toBeGreaterThan(0);
+
+    const shipped = new Set<string>();
+    for (const specifier of blocks.flatMap(valueImportsOf)) {
+      const entry = moduleUrl(specifier.replace(/\.js$/, '.ts'), page);
+      shipped.add(nameOf(entry));
+      for (const name of reachableFrom(entry)) shipped.add(name);
+    }
+
+    expect([...shipped].sort()).toEqual(['agreements.ts', 'forms.ts', 'validation.ts']);
+  });
 });
 
 function moduleUrl(specifier: string, from: string | URL = import.meta.url): URL {
   return new URL(specifier, from);
+}
+
+/** What a module is called, which is how both lists below name one. */
+function nameOf(url: URL): string {
+  return url.pathname.split('/').pop()!;
 }
 
 /** Every module a browser would have to load for this one, by file name. */
@@ -78,9 +118,8 @@ function reachableFrom(entry: URL): Set<string> {
     const url = queue.shift()!;
     for (const specifier of valueImportsOf(readFileSync(fileURLToPath(url), 'utf8'))) {
       const next = moduleUrl(specifier.replace(/\.js$/, '.ts'), url);
-      const name = next.pathname.split('/').pop()!;
-      if (seen.has(name)) continue;
-      seen.add(name);
+      if (seen.has(nameOf(next))) continue;
+      seen.add(nameOf(next));
       queue.push(next);
     }
   }
@@ -93,12 +132,17 @@ function reachableFrom(entry: URL): Set<string> {
  *
  * `import type { … }` is dropped whole. A named `type` inside a value import —
  * `import { findOffering, type Offering }` — still loads the module, so the
- * import counts.
+ * import counts. So does `import '…'` for its side effects alone, which names
+ * nothing and loads everything.
  */
 function valueImportsOf(source: string): string[] {
-  const imports = [...source.matchAll(/^import\s+([\s\S]*?)\s*from\s*'([^']+)'/gm)];
+  // Indented because the page's imports sit inside a `<script>` block; the
+  // modules' own imports start at column zero and match either way.
+  const imports = [...source.matchAll(/^[ \t]*import\s+([\s\S]*?)\s*from\s*'([^']+)'/gm)];
+  const bare = [...source.matchAll(/^[ \t]*import\s*'([^']+)'/gm)];
 
-  return imports
-    .filter(([, clause]) => !/^type\b/.test(clause!))
-    .map(([, , specifier]) => specifier!);
+  return [
+    ...imports.filter(([, clause]) => !/^type\b/.test(clause!)).map(([, , specifier]) => specifier!),
+    ...bare.map(([, specifier]) => specifier!),
+  ];
 }
