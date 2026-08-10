@@ -303,6 +303,35 @@ test.describe('the application page', () => {
     expect(await greyed(page)).toBe(true);
   });
 
+  test('lands on the child who is short, not on the first child there is', async ({ page }) => {
+    // The one place the two gates could quietly disagree: the browser walks the
+    // rows and the server used to answer row 0 whatever the form said. A family
+    // whose first child is done and whose second has no age must not be sent
+    // back to a box they already filled in. Counterpart below, scripting off.
+    await open(page);
+
+    await fillSendable(page);
+    await page.selectOption('#apply-child-count', '2');
+    await page.fill('#apply-child-1-name', 'Second Child');
+
+    await clickSend(page);
+    await expect(page.locator('#apply-child-1-age')).toBeFocused();
+    await expect(stillNeeded(page, 'children').locator('a')).toHaveAttribute(
+      'href',
+      '#apply-child-1-age',
+    );
+  });
+
+  test('lands on the document nobody has answered, not on the first one', async ({ page }) => {
+    await open(page);
+
+    await fillSendable(page, 'agreements');
+    await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
+
+    await clickSend(page);
+    await expect(page.locator('[data-agreement="handbook"] input').first()).toBeFocused();
+  });
+
   test('asks for none of what moves to paper', async ({ page }) => {
     // AC 9, over the rendered DOM. The source scan in `application.test.ts`
     // covers the template; this covers what a browser actually built.
@@ -549,6 +578,38 @@ test.describe('the application page without scripting', () => {
 
     await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
     await expect(page.locator('#apply-email')).toBeFocused();
+  });
+
+  test('lands on the child who is short, not on the first child there is', async ({ page }) => {
+    await page.goto(APPLICATION_PATH);
+
+    // No script, so the second row arrives by round trip. A check writes
+    // nothing, which is why it is the one used to open it.
+    await fillSendable(page);
+    await page.selectOption('#apply-child-count', '2');
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+
+    await page.fill('#apply-child-1-name', 'Second Child');
+    await clickSend(page);
+
+    await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
+    await expect(page.locator('#apply-child-1-age')).toBeFocused();
+    // And the still-needed line points there too, rather than at a filled box.
+    await expect(stillNeeded(page, 'children').locator('a')).toHaveAttribute(
+      'href',
+      '#apply-child-1-age',
+    );
+  });
+
+  test('lands on the document nobody has answered, not on the first one', async ({ page }) => {
+    await page.goto(APPLICATION_PATH);
+
+    await fillSendable(page, 'agreements');
+    await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
+    await clickSend(page);
+
+    await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
+    await expect(page.locator('[data-agreement="handbook"] input').first()).toBeFocused();
   });
 
   test('sends a complete application by round trip', async ({ page }) => {

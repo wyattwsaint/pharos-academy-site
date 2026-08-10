@@ -334,18 +334,51 @@ const focus: ErrorField | null = rejected ? firstError(errors) : null;
  * so the browser has only to flip `hidden` — a server-raised line and a
  * browser-raised one are then the same element, not two spellings of one.
  */
+const childAt = (index: number): ApplicationChild =>
+  values.children[index] ?? { name: '', age: '', offeringKeys: [] };
+
+/**
+ * Which box on which child row a refused send should land in.
+ *
+ * The first *shown* row short of a name, else short of an age — the same walk
+ * `FOCUS.children` makes in the browser, over the same rows: a row past the
+ * count is `disabled`, posts nothing, and is skipped by both halves. Landing on
+ * row 0 whatever the count would be the two paths disagreeing, and a family
+ * whose second child has no age would be sent to their first child's filled-in
+ * age box.
+ */
+const childNeeds = ((): { index: number; box: 'name' | 'age' } => {
+  for (let index = 0; index < rows; index += 1) {
+    const child = childAt(index);
+    if (!child.name.trim()) return { index, box: 'name' };
+    if (!child.age.trim()) return { index, box: 'age' };
+  }
+  return { index: 0, box: 'name' };
+})();
+
+/**
+ * Which document a refused send should land on — the first one nobody has
+ * answered, matching `FOCUS.agreements`. "Not answered" posts an empty value,
+ * so an explicit "Not answered" and an untouched question are the same thing
+ * here, exactly as the rules read them.
+ */
+const agreementNeeds = Math.max(
+  askable.findIndex((document) => !agreementAnswer(values.agreements, document.slug)),
+  0,
+);
+
 const NEEDED: { field: ErrorField; href: string; label: string }[] = [
   { field: 'faith', href: '#apply-faith', label: 'One parent or guardian’s answers to the three questions' },
   { field: 'familyName', href: '#apply-family-name', label: 'Your family name' },
   { field: 'email', href: '#apply-email', label: 'An email address we can reply to' },
-  { field: 'children', href: '#apply-child-0-name', label: 'Each child’s name and their age' },
+  {
+    field: 'children',
+    href: `#apply-child-${childNeeds.index}-${childNeeds.box}`,
+    label: 'Each child’s name and their age',
+  },
   { field: 'classes', href: '#apply-classes', label: 'At least one class, for one child' },
   { field: 'agreements', href: '#apply-agreements', label: 'Who agrees to each of the documents' },
 ];
-
-/** Which of the two boxes on a child row a refused send should land in. */
-const childFocus = (index: number): 'name' | 'age' =>
-  index === 0 && !childAt(0).name ? 'name' : 'age';
 
 const cost = applicationCost(values, offerings, settings);
 const clashing = familyClashes(values, offerings, year);
@@ -359,9 +392,6 @@ const clashCount = clashing.reduce((sum, one) => sum + one.clashes.length, 0);
 const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
 const childLabel = (child: ApplicationChild, index: number): string =>
   child.name.trim() || `Your ${ORDINALS[index] ?? `${index + 1}th`} child`;
-
-const childAt = (index: number): ApplicationChild =>
-  values.children[index] ?? { name: '', age: '', offeringKeys: [] };
 
 const stage = (id: string): string =>
   APPLICATION_STAGES.find((one) => one.id === id)?.title ?? '';
@@ -659,7 +689,11 @@ const description =
                       name={`child-${index}-name`}
                       value={childAt(index).name}
                       aria-describedby={errors.children ? 'apply-children-error' : undefined}
-                      autofocus={focus === 'children' && index === 0 && childFocus(0) === 'name'}
+                      autofocus={
+                        focus === 'children' &&
+                        index === childNeeds.index &&
+                        childNeeds.box === 'name'
+                      }
                     />
                   </div>
                   <div>
@@ -670,7 +704,11 @@ const description =
                       inputmode="numeric"
                       value={childAt(index).age}
                       aria-describedby={errors.children ? 'apply-children-error' : undefined}
-                      autofocus={focus === 'children' && index === 0 && childFocus(0) === 'age'}
+                      autofocus={
+                        focus === 'children' &&
+                        index === childNeeds.index &&
+                        childNeeds.box === 'age'
+                      }
                     />
                   </div>
                 </div>
@@ -792,7 +830,9 @@ const description =
                               aria-describedby={
                                 errors.agreements ? 'apply-agreements-error' : undefined
                               }
-                              autofocus={focus === 'agreements' && at === 0 && choiceAt === 0}
+                              autofocus={
+                                focus === 'agreements' && at === agreementNeeds && choiceAt === 0
+                              }
                             />
                             <span>{choice.label}</span>
                           </label>
@@ -1139,6 +1179,18 @@ const description =
         const item = missing?.querySelector<HTMLElement>(`[data-missing-for="${field}"]`);
         if (item) item.hidden = errors[field] === undefined;
       }
+
+      /*
+        The children line names a row, so it has to move as the rows do.
+        The server points it at the row it would focus; here that row can
+        change on a keystroke, and a link to a box the family already filled in
+        is the hunt the list exists to save them.
+      */
+      const childLink = missing?.querySelector<HTMLAnchorElement>(
+        '[data-missing-for="children"] a',
+      );
+      const childTarget = FOCUS.children();
+      if (childLink && childTarget?.id) childLink.href = `#${childTarget.id}`;
 
       const intro = missing?.querySelector<HTMLElement>('[data-missing-intro]');
       const done = missing?.querySelector<HTMLElement>('[data-missing-done]');
