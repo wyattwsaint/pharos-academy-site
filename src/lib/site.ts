@@ -19,7 +19,7 @@ export const SCHOOL_NAME = 'Pharos Academy';
  * of "go live" as far as crawlers are concerned — `robots.txt` and the
  * `X-Robots-Tag` header both follow it, so the two can never disagree.
  */
-export const INDEXABLE = false;
+export const INDEXABLE = true;
 
 /**
  * `Cache-Control` for the machine-readable artefacts — `robots.txt`, the
