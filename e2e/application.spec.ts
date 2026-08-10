@@ -329,7 +329,28 @@ test.describe('the application page', () => {
     await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
 
     await clickSend(page);
-    await expect(page.locator('[data-agreement="handbook"] input').first()).toBeFocused();
+
+    const handbook = page.locator('[data-agreement="handbook"] input').first();
+    await expect(handbook).toBeFocused();
+    // Near the bottom of a long document, and on screen rather than scrolled
+    // past — the banner is above and stays there (#88). Counterpart below.
+    await expect(handbook).toBeInViewport();
+    await expect(page.locator('[data-outcome="failed"]')).not.toBeInViewport();
+  });
+
+  test('lands on the empty class list above the child who is short (#88)', async ({ page }) => {
+    // The children's section is the one place where "first in reading order"
+    // and the rule order part company: each child's classes are inside that
+    // child's row, so the first child's empty list is above the second child's
+    // age box. Counterpart below, scripting off.
+    await open(page);
+
+    await fillSendable(page, 'classes');
+    await page.selectOption('#apply-child-count', '2');
+    await page.fill('#apply-child-1-name', 'Second Child');
+
+    await clickSend(page);
+    await expect(page.locator('input[name="child-0-classes"]').first()).toBeFocused();
   });
 
   test('asks for none of what moves to paper', async ({ page }) => {
@@ -568,6 +589,10 @@ test.describe('the application page without scripting', () => {
     // Not the banner. The first thing that needs them, in reading order — which
     // on this form is the Statement of Faith grid, above everything else.
     await expect(page.locator('[data-faith-grid] input').first()).toBeFocused();
+
+    // The banner is still there and still announced — it is what a screen
+    // reader hears. It is just no longer where the family is put (#88).
+    await expect(page.locator('[data-outcome="failed"]')).toHaveAttribute('role', 'status');
   });
 
   test('lands on the field that is missing, not on the first field there is', async ({ page }) => {
@@ -578,6 +603,8 @@ test.describe('the application page without scripting', () => {
 
     await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
     await expect(page.locator('#apply-email')).toBeFocused();
+    // An error near the top of the document, and it is on screen (#88).
+    await expect(page.locator('#apply-email')).toBeInViewport();
   });
 
   test('lands on the child who is short, not on the first child there is', async ({ page }) => {
@@ -609,7 +636,31 @@ test.describe('the application page without scripting', () => {
     await clickSend(page);
 
     await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
-    await expect(page.locator('[data-agreement="handbook"] input').first()).toBeFocused();
+
+    // An error near the *bottom* of a document that runs from eleven articles
+    // through eight child rows to the totals (#88). The banner still renders
+    // and is still announced, but the family is not parked on it: it is off
+    // screen, above where they have been put.
+    const handbook = page.locator('[data-agreement="handbook"] input').first();
+    await expect(handbook).toBeFocused();
+    await expect(handbook).toBeInViewport();
+    await expect(page.locator('[data-outcome="failed"]')).not.toBeInViewport();
+  });
+
+  test('lands on the empty class list above the child who is short (#88)', async ({ page }) => {
+    await page.goto(APPLICATION_PATH);
+
+    // No script, so the second row arrives by round trip, and a check writes
+    // nothing.
+    await fillSendable(page, 'classes');
+    await page.selectOption('#apply-child-count', '2');
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+
+    await page.fill('#apply-child-1-name', 'Second Child');
+    await clickSend(page);
+
+    await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
+    await expect(page.locator('input[name="child-0-classes"]').first()).toBeFocused();
   });
 
   test('sends a complete application by round trip', async ({ page }) => {

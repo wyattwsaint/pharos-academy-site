@@ -316,16 +316,6 @@ const outstanding = validateApplication(values, askable);
 const incomplete = Object.keys(outstanding).length > 0;
 
 /**
- * Where a refused send puts the family.
- *
- * The first outstanding field in reading order, focused on arrival, so the page
- * answers "you cannot send this yet" by showing them the thing rather than by
- * scrolling them to a banner. With scripting on the browser does this without a
- * round trip; this is the server's half, and the two land in the same place.
- */
-const focus: ErrorField | null = rejected ? firstError(errors) : null;
-
-/**
  * The still-needed list, in reading order.
  *
  * A greyed button with no list is a dead end. Each line links to the control it
@@ -355,6 +345,20 @@ const childNeeds = ((): { index: number; box: 'name' | 'age' } => {
   }
   return { index: 0, box: 'name' };
 })();
+
+/**
+ * Where a refused send puts the family.
+ *
+ * The first outstanding field in reading order, focused on arrival, so the page
+ * answers "you cannot send this yet" by showing them the thing rather than by
+ * scrolling them to a banner. With scripting on the browser does this without a
+ * round trip; this is the server's half, and the two land in the same place.
+ *
+ * The row goes with it because the class lists live inside the child rows, so
+ * which row needs attention decides whether the classes are above it or below
+ * (#88, `firstError`).
+ */
+const focus: ErrorField | null = rejected ? firstError(errors, childNeeds.index) : null;
 
 /**
  * Which document a refused send should land on — the first one nobody has
@@ -1080,6 +1084,21 @@ const description =
 
     const visibleRows = (): HTMLFieldSetElement[] => rows.filter((row) => !row.disabled);
 
+    /**
+     * Which shown row the children rule is about — `childNeeds.index` on the
+     * server, over the same rows. `firstError` needs it to know whether the
+     * class lists are above that row or below it (#88).
+     */
+    const childRow = (): number => {
+      const shown = visibleRows();
+      const at = shown.findIndex((row) => {
+        const name = row.querySelector<HTMLInputElement>('input[name$="-name"]');
+        const age = row.querySelector<HTMLInputElement>('input[name$="-age"]');
+        return !name?.value.trim() || !age?.value.trim();
+      });
+      return Math.max(at, 0);
+    };
+
     const answerIn = (scope: HTMLElement | null): string =>
       scope?.querySelector<HTMLInputElement>('input:checked')?.value ?? '';
 
@@ -1258,7 +1277,7 @@ const description =
       event.preventDefault();
 
       for (const field of ERROR_FIELDS) touched.add(field);
-      const first = firstError(render());
+      const first = firstError(render(), childRow());
       const target = first ? FOCUS[first]() : null;
       target?.focus();
       target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
