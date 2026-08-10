@@ -13,12 +13,15 @@
  * the form — it is the reason the school wants to talk to this family. So the
  * parser returns a `flagged` boolean rather than an error, and the flag routes
  * the application to a conversation. Since #85 the form does insist that
- * *somebody answered* the questions, which is a different thing and reads as one
- * everywhere: `validateApplication` gates on a question having an answer and
- * never on which answer it is. There is still **no scroll-gate** — nothing is
- * hidden, nothing waits on the Statement's disclosure being opened — because a
- * gate is a WCAG 2.2 AA hazard for keyboard and screen-reader users that buys no
- * evidence anybody read anything. **ADR-0009** holds the distinction.
+ * *somebody answered* the questions, and that is a different thing:
+ * **the gate is on having answered, never on having agreed.** Of the Statement
+ * of Faith and of the agreements, `validateApplication` asks only whether the
+ * question has an answer and never which answer it is, so "No" to all three
+ * sends exactly as "Yes" does. There is still **no scroll-gate** — nothing
+ * waits on the Statement's disclosure being opened, and nothing is held back
+ * until something has been scrolled through. **ADR-0009** holds both, and holds
+ * that a future "require a Yes" is a reversal of the decision rather than a
+ * tightening of the check.
  *
  * **The children's sensitive data does not enter the site.** `ApplicationChild`
  * has a name, an age and the classes, and that is the entire type. Date of
