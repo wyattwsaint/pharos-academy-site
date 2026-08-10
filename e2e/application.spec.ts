@@ -120,6 +120,15 @@ async function clickCheck(page: Page) {
   await page.locator('form[data-enhanced]').waitFor();
 }
 
+/**
+ * Leave a field, the way a family does — by going to the next one.
+ *
+ * Blur is the event the live checking turns on (#90), and there is no "blur"
+ * gesture: a family arrives somewhere else. Every test that means "and then
+ * they moved on" says it this way.
+ */
+const leave = (page: Page, next = '#apply-family-name') => page.locator(next).focus();
+
 /** One line of the still-needed list, by the rule it belongs to. */
 const stillNeeded = (page: Page, field: string) =>
   page.locator(`[data-missing-for="${field}"]`);
@@ -282,6 +291,135 @@ test.describe('the application page', () => {
 
     await page.fill('#apply-family-name', 'S');
     await expect(page.locator('#apply-family-name-error')).toBeHidden();
+  });
+
+  test('says nothing to a second child whose name is still being typed', async ({ page }) => {
+    // Story 6 on the one field where it is easy to get wrong (#90). The
+    // children's rule is one rule over eight rows: a family who has finished
+    // the first child has "left" that rule, and a rule-wide reveal would shout
+    // "Second needs an age" at the second child's *name* box, mid-word, before
+    // they have reached the age box at all.
+    await open(page);
+
+    await page.selectOption('#apply-child-count', '2');
+    await page.fill('#apply-child-0-name', 'First Child');
+    await page.fill('#apply-child-0-age', '13');
+    await leave(page);
+    await expect(page.locator('#apply-children-error')).toBeHidden();
+
+    // Typed, rather than filled: a keystroke is the event this rule is about.
+    await page.locator('#apply-child-1-name').pressSequentially('Second Child');
+    await expect(page.locator('#apply-children-error')).toBeHidden();
+
+    // Tabbing on to the age box is not being told about the age box. The
+    // family is standing in it, with nothing typed in it yet — the sentence
+    // belongs to the box they have left, not to the one they have reached.
+    await page.locator('#apply-child-1-age').focus();
+    await expect(page.locator('#apply-children-error')).toBeHidden();
+
+    // Left with no age, and the sentence arrives — naming the row it is about.
+    await leave(page);
+    await expect(page.locator('#apply-children-error')).toHaveText(/Second Child/);
+
+    // And it goes as the age arrives, without another blur.
+    await page.locator('#apply-child-1-age').pressSequentially('9');
+    await expect(page.locator('#apply-children-error')).toBeHidden();
+  });
+
+  test('answers a radio and a checkbox the moment they change', async ({ page }) => {
+    // AC 4: there is no half-made choice to interrupt, so a group evaluates on
+    // change rather than waiting to be left.
+    await open(page);
+
+    // One faith cell answered is not a column, and the grid says so at once —
+    // with no blur, and with focus still inside the grid.
+    await page.check(`input[name="${faithKey('Father', FAITH_QUESTIONS[0].id)}"][value="yes"]`);
+    await expect(page.locator('#apply-faith-error')).toBeVisible();
+    await answerFaith(page);
+    await expect(page.locator('#apply-faith-error')).toBeHidden();
+
+    // A checkbox ticked and unticked leaves the class rule outstanding, and
+    // says so on the change rather than on the way out.
+    const box = page.locator('input[name="child-0-classes"][value="algebra-1:year"]');
+    await box.check();
+    await expect(page.locator('#apply-classes-error')).toBeHidden();
+    await box.uncheck();
+    await expect(page.locator('#apply-classes-error')).toBeVisible();
+  });
+
+  test('raises a browser error in the same markup the server raises one in', async ({
+    browser,
+    page,
+  }) => {
+    // AC 5. Two ways to the same wrong answer — a field left empty here, and a
+    // refused round trip there — must be one thing to a screen reader: the same
+    // paragraph, the same sentence, the same `aria-invalid`, the same
+    // `aria-describedby`. Both halves are in one test because the comparison is
+    // the assertion; a pair of tests either side of the file could each pass
+    // while the two drifted apart.
+    await open(page);
+
+    await page.locator('#apply-email').focus();
+    await leave(page);
+
+    const live = page.locator('#apply-email-error');
+    await expect(live).toBeVisible();
+    const sentence = ((await live.textContent()) ?? '').trim();
+    await expect(page.locator('#apply-email')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#apply-email')).toHaveAttribute(
+      'aria-describedby',
+      'apply-email-error',
+    );
+
+    // The same rule, raised by the server. Scripting off, so the click is a
+    // real POST rather than the page's own refusal — and a refused POST stores
+    // nothing, which is why this one runs against a deployment too.
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const served = await context.newPage();
+    await served.goto(APPLICATION_PATH);
+    await fillSendable(served, 'email');
+    await clickSend(served);
+
+    // A real round trip, and a refused one: nothing was stored.
+    await expect(served.locator('[data-outcome="failed"]')).toBeVisible();
+    await expect(served.locator('#apply-email-error')).toHaveText(sentence);
+    await expect(served.locator('#apply-email')).toHaveAttribute('aria-invalid', 'true');
+    await expect(served.locator('#apply-email')).toHaveAttribute(
+      'aria-describedby',
+      'apply-email-error',
+    );
+    await context.close();
+  });
+
+  test('never raises an error against the objections box, or against a “No”', async ({ page }) => {
+    // AC 7. Saying what you think costs a family nothing, at any point in the
+    // filling in — not on blur, not on a keystroke, not on the way out.
+    await open(page);
+
+    await page.locator('#apply-objections').focus();
+    await leave(page);
+    await expect(page.locator('#apply-objections')).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#apply-objections')).not.toHaveAttribute(
+      'aria-describedby',
+      /error/,
+    );
+
+    // And not when the greyed button is asked for everything at once, which is
+    // the one moment every other rule speaks.
+    await clickSend(page);
+    await expect(page.locator('#apply-objections')).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#apply-objections')).not.toHaveAttribute(
+      'aria-describedby',
+      /error/,
+    );
+
+    await fillSendable(page, 'faith');
+    await answerFaith(page, 'no');
+    await page.fill('#apply-objections', 'We disagree with the third article.');
+    await leave(page);
+
+    await expect(page.locator('#apply-faith-error')).toBeHidden();
+    expect(await greyed(page)).toBe(false);
   });
 
   test('ignores a row the family has hidden, and checks one they bring back', async ({ page }) => {
