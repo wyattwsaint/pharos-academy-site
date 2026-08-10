@@ -47,20 +47,26 @@ export default defineConfig({
     isr: {
       expiration: 60 * 60,
       bypassToken,
-      // Two addresses that must never be answered from a cache (#33). The
-      // backup download would hand back last hour's content while claiming to
-      // be a backup taken now, and the monthly cron is a GET whose *effect* is
-      // the point — a cached 200 is a month with no email and a green run to
-      // say so. Every other admin address escapes the cache by accident, since
-      // the guard re-stamps the session cookie and Vercel does not cache a
-      // response carrying `Set-Cookie`; these two are too important to leave
-      // resting on an accident, and the cron carries no cookie at all.
+      // The whole admin, and the monthly cron (#33).
+      //
+      // The admin is excluded wholesale rather than address by address, because
+      // the exclusion is not really about caching: an included path is *routed*
+      // to the adapter's `_isr` function, and a POST that arrives there answers
+      // 303 with no `Location` and no `Set-Cookie`, then dies —
+      // `FUNCTION_INVOCATION_FAILED` printed after the word "Redirecting". Every
+      // admin screen is a form, so ISR in front of any of them is a screen that
+      // cannot be saved and a login that cannot be signed into. The earlier
+      // reading here — that a response carrying `Set-Cookie` escapes the cache
+      // on its own — was true of the cache and irrelevant to the routing.
+      //
+      // The cron is a GET whose *effect* is the point: a cached 200 is a month
+      // with no email and a green run to say so.
       // …and the one public page that takes a POST (#30). The volunteer form's
       // answer belongs to a single submission; a cache in front of it is a
       // cache that can hand one visitor's outcome to the next. Read from the
       // route list rather than written out, so the page and the exclusion
       // cannot disagree.
-      exclude: ['/admin/backup.zip', '/api/cron/monthly-backup', ...onRequestPaths()],
+      exclude: [/^\/admin(\/.*)?$/, '/api/cron/monthly-backup', ...onRequestPaths()],
     },
   }),
   // The dev toolbar injects its own `<h1>`s ("Audit", "Settings", …) into the

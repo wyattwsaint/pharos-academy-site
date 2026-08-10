@@ -249,8 +249,16 @@ describe('the schedule', () => {
     );
     const exclude = config.match(/exclude:\s*\[([^\]]*)\]/)?.[1] ?? '';
 
-    expect(exclude).toContain('/api/cron/monthly-backup');
-    expect(exclude).toContain('/admin/backup.zip');
+    // Covered either by its own literal or by a pattern that spans it — the
+    // admin is excluded wholesale, so the download no longer names itself here.
+    const excluded = (path: string) =>
+      exclude.includes(`'${path}'`) ||
+      [...exclude.matchAll(/\/(\^[^,\]]*?)\/(?=[,\]\s])/g)].some(([, source]) =>
+        new RegExp(source).test(path),
+      );
+
+    expect(excluded('/api/cron/monthly-backup')).toBe(true);
+    expect(excluded('/admin/backup.zip')).toBe(true);
   });
 
   it('points at a route that exists', () => {
