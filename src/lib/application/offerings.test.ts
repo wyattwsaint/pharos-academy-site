@@ -95,7 +95,7 @@ describe('the clash rule (#31 AC 3)', () => {
   it('still reports it after Latin is moved to one semester', () => {
     // The heart of the ticket. A same-slot check that compares semester names
     // clears this pair the moment they stop matching — and sells the family a
-    // $280 collision, because Algebra 1 runs the full year and still meets on
+    // $280 clash, because Algebra 1 runs the full year and still meets on
     // every Monday the fall Latin does.
     const latinFall = offering('beginner-latin-grades-5-6', 'fall', {
       enrolment: 'fall',
