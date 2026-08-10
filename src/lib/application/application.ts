@@ -30,11 +30,12 @@
 import { BELIEFS_ARTICLES, BELIEFS_CLOSING } from '../about/beliefs.js';
 import { parseAgreements, type Agreements, type AskableAgreement } from './agreements.js';
 import type { EnrolmentUnit } from '../courses/course.js';
-import { isEmailAddress, textField as text } from '../forms.js';
+import { textField as text } from '../forms.js';
 import { amountOwed, type AmountOwed, type Selection } from '../money/owed.js';
 import type { MoneySettings } from '../money/settings.js';
 import type { SchoolYear } from '../calendar/year.js';
 import { clashesAmong, findOffering, type Offering, type OfferingClash } from './offerings.js';
+import { validateApplication } from './validation.js';
 
 /** The address of the page that holds the flow and takes its POST. */
 export const APPLICATION_PATH = '/admissions/apply';
@@ -236,33 +237,14 @@ export function parseApplication(
 /**
  * Everything wrong with an application, in one pass.
  *
- * Four things can be wrong and none of them is an opinion: who is applying, how
- * to reach them, who the children are, and whether any class was chosen. The
- * Statement of Faith cannot appear here — see `flagged`.
+ * The rules themselves live in `validation.ts`, a leaf module that reaches
+ * nothing but the shared email check, and are re-exported from here so that
+ * every caller keeps importing them from where they already do. The move is for
+ * the browser's sake: #85 runs these rules on the page as a family types, and
+ * importing them from this module would take the price list, the catalogue and
+ * the timetable into the bundle with them. **ADR-0009** holds the reasoning.
  */
-export function validateApplication(values: ApplicationFields): ApplicationErrors {
-  const errors: ApplicationErrors = {};
-
-  if (!values.familyName) errors.familyName = 'We need a family name for the application.';
-  if (!values.email) {
-    errors.email = 'We need an email address to reply to.';
-  } else if (!isEmailAddress(values.email)) {
-    errors.email = 'That does not look like an email address.';
-  }
-
-  const named = values.children.filter((child) => child.name);
-  if (named.length === 0) {
-    errors.children = 'Tell us at least one child’s name, and their age.';
-  } else if (named.some((child) => !child.age)) {
-    errors.children = 'Each child needs an age beside their name.';
-  }
-
-  if (values.children.every((child) => child.offeringKeys.length === 0)) {
-    errors.classes = 'Choose at least one class. If you are not sure yet, write to us instead.';
-  }
-
-  return errors;
-}
+export { validateApplication };
 
 /**
  * Whether this application goes to a conversation rather than straight through.

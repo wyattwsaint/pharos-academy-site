@@ -399,6 +399,31 @@ describe('the children’s sensitive data does not enter the site (#31 AC 9)', (
    * of these words to explain why the fields are absent, so a plain text grep
    * over any of them fails on its own explanation.
    */
+  /*
+   * The same criterion against the modules that hold the rules.
+   *
+   * `validateApplication` moved to `validation.ts` (ADR-0009), and a criterion
+   * enforced only over the file the code used to be in is a criterion a move
+   * can quietly repeal. So both modules are read, and a rule naming one of
+   * these fields fails here wherever it is written.
+   *
+   * **Names, not prose.** Comments and string literals come out first: the doc
+   * comments in both files use every one of these words to explain why the
+   * fields are absent, and "we need an email address to reply to" is a message
+   * about a grown-up. What is left is the names the code actually declares,
+   * which is where a new field would have to appear.
+   */
+  it.each(['application.ts', 'validation.ts'])('declares no %s field', (module) => {
+    const names = readFileSync(fileURLToPath(new URL(module, import.meta.url)), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/\/\/[^\n]*/g, ' ')
+      .replace(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g, ' ')
+      .toLowerCase();
+    expect(names.length).toBeGreaterThan(0);
+
+    expect(names).not.toMatch(FORBIDDEN);
+  });
+
   it('asks for no date of birth, address, medical, evaluation or custody field', () => {
     const page = readFileSync(
       fileURLToPath(new URL('../../pages/admissions/apply.astro', import.meta.url)),
