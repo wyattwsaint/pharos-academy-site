@@ -5,8 +5,8 @@
  * known way it misstates the school's own schedule (#22): Monday's *God Made
  * Everything* (9:00–10:30) and *Principles of Drawing* (10:10–11:10) overlap by
  * twenty minutes, and *Kingdom Math* (10:40–12:10) overlaps *Algebra 1*
- * (11:20–12:20) by fifty. Drawn as consecutive rows, a parent plans around a
- * collision that is really there and is wrong.
+ * (11:20–12:20) by fifty. Drawn as consecutive rows, a parent plans around an
+ * overlap that is really there and is wrong.
  *
  * So the model here is time-proportional. Every course is an interval in
  * minutes; a day is laid out by packing those intervals into lanes, exactly as

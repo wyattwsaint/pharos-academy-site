@@ -12,14 +12,14 @@
  * **time overlap**, and a **term overlap** — all three. Measuring the third in
  * semester names ("both are year courses") is the naive check that clears
  * Algebra 1 against Beginner Latin (5-6) the moment somebody moves Latin to one
- * semester, and sells the family a $280 collision: Algebra 1 runs the whole
+ * semester, and sells the family a $280 clash: Algebra 1 runs the whole
  * year, so it still meets on every Monday the fall Latin does. So term overlap
  * is measured in **real meeting dates**, by the same function the course editor
  * uses (`meetingDatesOn`), and the two surfaces cannot disagree.
  *
  * The third state survives on purpose. A block whose start date the school has
  * not set has no dates to compare, so the honest answer is **possible clash**
- * rather than an invented collision or a hidden one.
+ * rather than an invented clash or a hidden one.
  *
  * Nothing here reports oversubscription. The Wednesday 10:40 slot carries five
  * electives by design; five families in one room is the school's arrangement,

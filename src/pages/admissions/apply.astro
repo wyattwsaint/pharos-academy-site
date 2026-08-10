@@ -76,7 +76,7 @@ import { listPolicies } from '../../lib/policies/store.js';
  * the totals and writes nothing; "Send the application" writes the row. A
  * clash is a warning and never a block (#31 AC 3–5), so the family has to be
  * able to see it *before* they commit — a page that only ever warns on the way
- * out is a page that tells a family about a $280 collision after they have
+ * out is a page that tells a family about a $280 clash after they have
  * posted the cheque. Only Send is gated: **Check** is never greyed, because a
  * family who cannot yet send is exactly the family who wants to look.
  *

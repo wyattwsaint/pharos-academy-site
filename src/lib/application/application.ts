@@ -385,7 +385,7 @@ export type ChildClashes = {
  * Per child, because a **clash** is a fact about one child's timetable: "the
  * family cannot attend both" is never true of two children — two siblings can
  * sit in two rooms at 10:40 on a Wednesday, and telling them otherwise invents
- * a collision the school would then have to talk them out of. Pooling the
+ * a clash the school would then have to talk them out of. Pooling the
  * family's selections also reports the same course as clashing with itself
  * whenever two children pick it in different units, which is not a mistake at
  * all.
