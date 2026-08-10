@@ -389,6 +389,26 @@ test.describe('the application page', () => {
     ).toBeChecked();
   });
 
+  test('leaves the send ungreyed when the classes collide', async ({ page }) => {
+    // #89 AC 8, and the line #85 draws between the two things this page says
+    // about a selection. Completeness is about questions answered; a collision
+    // is about a choice made, and the family may have a reason for it. A gate
+    // that refused to release the button until the timetable was tidy would
+    // turn every warning into a block by the back door — the thing #31 AC 3-5
+    // set out not to do — and it would do it silently, because the collision is
+    // not a line the still-needed list can even raise.
+    await open(page);
+
+    await fillSendable(page);
+    await tickClashingPair(page);
+
+    expect(await greyed(page)).toBe(false);
+    // And the clash is not a line the still-needed list can raise, so a family
+    // is never told to go and fix something the page has already said they may
+    // keep. Counterpart below, scripting off, where the warning is on screen.
+    await expect(stillNeeded(page, 'classes')).toBeHidden();
+  });
+
   test('says nothing when two children hold that slot between them', async ({ page }) => {
     // AC 5, the sibling case. Two children in two rooms at 11:20 on a Monday is
     // not a collision, and a family of two told it was would be talked out of a
@@ -567,6 +587,24 @@ test.describe('the application page without scripting', () => {
 
     expect(await greyed(page)).toBe(false);
     await expect(page.locator('[data-missing-for="faith"]')).toBeHidden();
+  });
+
+  test('leaves the send ungreyed when the classes collide', async ({ page }) => {
+    // The server's half of #89 AC 8, and the one that matters most: with
+    // scripting off the warning and the button are decided by the same render,
+    // so a completeness rule that had quietly learned about the timetable would
+    // show up here as a greyed button beside a warning that says "you can send
+    // this anyway". A check writes nothing, so this is safe against a real
+    // deployment.
+    await page.goto(APPLICATION_PATH);
+
+    await fillSendable(page);
+    await tickClashingPair(page);
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+
+    await expect(page.locator('li[data-severity="clash"]').first()).toBeVisible();
+    expect(await greyed(page)).toBe(false);
+    await expect(stillNeeded(page, 'classes')).toBeHidden();
   });
 
   test('refuses an incomplete send, gives back what was typed, and lands on it', async ({
