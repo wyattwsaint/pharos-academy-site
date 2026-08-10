@@ -164,6 +164,7 @@ test.describe('the application page', () => {
     // choice that was right all along.
     await page.goto(APPLICATION_PATH);
 
+    await page.selectOption('#apply-child-count', '2');
     await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
     await page.check('input[name="child-1-classes"][value="beginner-latin-grades-5-6:year"]');
     await page.getByRole('button', { name: 'Check these choices' }).click();
@@ -176,6 +177,7 @@ test.describe('the application page', () => {
   test('names the child a warning belongs to when both have one', async ({ page }) => {
     await page.goto(APPLICATION_PATH);
 
+    await page.selectOption('#apply-child-count', '2');
     await page.fill('input[name="child-0-name"]', 'Ada');
     await page.fill('input[name="child-1-name"]', 'Obi');
     for (const index of [0, 1]) {
@@ -189,6 +191,45 @@ test.describe('the application page', () => {
     await expect(page.locator('[data-child-clashes]')).toHaveCount(2);
     await expect(page.locator('[data-child-clashes="0"]')).toContainText('Ada');
     await expect(page.locator('[data-child-clashes="1"]')).toContainText('Obi');
+  });
+
+  test('shows the number of children the family picks, and sends only those', async ({ page }) => {
+    // The count picker. Only a browser can test it: the rows are all in the
+    // HTML either way, and what changes is which of them a family can see and
+    // which of them the POST carries.
+    await page.goto(APPLICATION_PATH);
+
+    const rows = page.locator('fieldset[data-child-row]');
+    await expect(rows).toHaveCount(8);
+    // One is where a form with nothing behind it opens — the honest default.
+    await expect(page.locator('fieldset[data-child-row]:visible')).toHaveCount(1);
+
+    await page.selectOption('#apply-child-count', '3');
+    await expect(page.locator('fieldset[data-child-row]:visible')).toHaveCount(3);
+
+    for (const index of [0, 1, 2]) {
+      await page.fill(`input[name="child-${index}-name"]`, `Child ${index}`);
+      await page.check(`input[name="child-${index}-classes"][value="algebra-1:year"]`);
+      await page.check(
+        `input[name="child-${index}-classes"][value="beginner-latin-grades-5-6:year"]`,
+      );
+    }
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+
+    // Three children went, three came back, and the picker survived the POST.
+    await expect(page.locator('[data-child-clashes]')).toHaveCount(3);
+    await expect(page.locator('#apply-child-count')).toHaveValue('3');
+
+    // Down to two: the third row is disabled as well as hidden, so it posts
+    // nothing — a child the family is no longer applying for does not arrive
+    // with a timetable collision the school would then ask them about.
+    await page.selectOption('#apply-child-count', '2');
+    await expect(page.locator('fieldset[data-child-row]:visible')).toHaveCount(2);
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+
+    await expect(page.locator('[data-child-clashes]')).toHaveCount(2);
+    await expect(page.locator('#apply-child-count')).toHaveValue('2');
+    await expect(page.locator('input[name="child-2-name"]')).toHaveValue('');
   });
 
   test('a check reports no missing fields on a form still being filled in', async ({ page }) => {
