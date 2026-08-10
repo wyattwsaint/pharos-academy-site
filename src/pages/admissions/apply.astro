@@ -103,12 +103,15 @@ import { listPolicies } from '../../lib/policies/store.js';
  * in the first place.
  *
  * **Errors arrive while the family types, and nothing jumps to the top.** Each
- * field checks itself on blur and re-checks on every keystroke once it has
- * already gone wrong; the still-needed list beside the button is an
- * `aria-live` region. A refused send — from the greyed button, or from the
- * server round trip a family with scripting off gets — puts focus on the first
- * outstanding control rather than depositing the family on a banner five
- * thousand words above the field that needs them.
+ * field checks itself on blur — a radio or a checkbox on change, since there is
+ * no half-made choice to interrupt — and re-checks on every keystroke once it
+ * has already gone wrong. What has been left is tracked per *control* rather
+ * than per rule (#90), so a family typing a second child's name is not told
+ * about the age they have not reached yet. The still-needed list beside the
+ * button is an `aria-live` region. A refused send — from the greyed button, or
+ * from the server round trip a family with scripting off gets — puts focus on
+ * the first outstanding control rather than depositing the family on a banner
+ * five thousand words above the field that needs them.
  *
  * **How many children is a question, not a guess.** The family picks the number
  * from a dropdown and that many rows are shown; all eight are rendered and the
@@ -1022,21 +1025,37 @@ const description =
     }));
 
     /**
-      Which fields the family has finished with.
+      Which *controls* the family has finished with, by the name they post under.
 
-      A field is checked once they have left it, and re-checked on every
-      keystroke after that. Before that it says nothing: a form that reports an
-      empty family name while somebody is still typing the first letter of it is
-      a form that feels like an argument.
+      A control is checked once they have left it — or, for a radio or a
+      checkbox, the moment it changes, since there is no half-made choice to
+      interrupt — and re-checked on every keystroke after that. Before that it
+      says nothing: a form that reports an empty family name while somebody is
+      still typing the first letter of it is a form that feels like an argument.
+
+      **Controls and not rules**, because the children's rule is one rule over
+      eight rows (#90). A family who has finished the first child has left that
+      rule, and revealing it rule-wide would shout "Second needs an age" at the
+      second child's *name* box, mid-word, before they have reached the age box
+      at all. `reveals` below is where the difference is spent.
 
       Which is why "every section with something outstanding carries its own
       note" (#89) is true from the moment a family has been anywhere near that
-      section, and true of every section at once the moment they activate the
-      greyed button — but not true of a form nobody has touched yet. The
-      still-needed list beside the button is the one that is complete from the
-      first paint, and it is the one a family reads before they have started.
+      section — but not true of a form nobody has touched yet. The still-needed
+      list beside the button is the one that is complete from the first paint,
+      and it is the one a family reads before they have started.
     */
-    const touched = new Set<ErrorField>();
+    const touched = new Set<string>();
+
+    /**
+      Every section at once, from the moment the greyed button is activated.
+
+      A family who has asked to send has asked for the whole answer, and #89's
+      "every section carries its own note" is true of every section from then
+      on. It never goes back to false: having been told, a family is not
+      untold.
+    */
+    let revealAll = false;
 
     /*
       Where each error's sentence goes, and who points at it.
@@ -1199,7 +1218,7 @@ const description =
       }
 
       for (const field of ERROR_FIELDS) {
-        const shown = touched.has(field) ? errors[field] : undefined;
+        const shown = reveals(field) ? errors[field] : undefined;
         paint(field, shown);
 
         const item = missing?.querySelector<HTMLElement>(`[data-missing-for="${field}"]`);
@@ -1227,8 +1246,7 @@ const description =
     }
 
     /** Which rule a control belongs to, from the name it posts under. */
-    function fieldOf(control: Element | null): ErrorField | null {
-      const name = control?.getAttribute('name') ?? '';
+    function fieldOf(name: string): ErrorField | null {
       if (name.startsWith('faith-')) return 'faith';
       if (name.startsWith('agreement-')) return 'agreements';
       if (name === 'familyName') return 'familyName';
@@ -1238,9 +1256,32 @@ const description =
       return null;
     }
 
+    /**
+      Whether this rule's sentence has been earned yet.
+
+      Every rule but one is earned by any of its controls: the family answered a
+      faith cell, or left the email box, and the rule that cell or box belongs to
+      may speak. The children's rule is earned by the one *box* its sentence is
+      about, because that rule is one rule over sixteen boxes: "Second needs an
+      age" is about the age box, so tabbing out of the name box beside it has
+      not earned it — the family is standing in the empty age box, having typed
+      nothing into it yet, which is the moment story 6 is about.
+    */
+    function reveals(field: ErrorField): boolean {
+      if (revealAll) return true;
+      if (field === 'children') {
+        const row = childRow();
+        const named = form.querySelector<HTMLInputElement>(`#apply-child-${row}-name`)?.value.trim();
+        // A row with a name is short of an age, and vice versa — the same
+        // reading `validateApplication` and `FOCUS.children` make of it.
+        return touched.has(`child-${row}-${named ? 'age' : 'name'}`);
+      }
+      return [...touched].some((name) => fieldOf(name) === field);
+    }
+
     const check = (event: Event): void => {
-      const field = fieldOf(event.target as Element);
-      if (field) touched.add(field);
+      const name = (event.target as Element | null)?.getAttribute('name') ?? '';
+      if (fieldOf(name)) touched.add(name);
       render();
     };
 
@@ -1283,7 +1324,7 @@ const description =
       if (send.getAttribute('aria-disabled') !== 'true') return;
       event.preventDefault();
 
-      for (const field of ERROR_FIELDS) touched.add(field);
+      revealAll = true;
       const first = firstError(render(), childRow());
       const target = first ? FOCUS[first]() : null;
       target?.focus();
