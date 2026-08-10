@@ -77,30 +77,37 @@ import { listPolicies } from '../../lib/policies/store.js';
  * clash is a warning and never a block (#31 AC 3–5), so the family has to be
  * able to see it *before* they commit — a page that only ever warns on the way
  * out is a page that tells a family about a $280 collision after they have
- * posted the cheque.
+ * posted the cheque. Only Send is gated: **Check** is never greyed, because a
+ * family who cannot yet send is exactly the family who wants to look.
  *
- * **There is no scroll-gate** (#31 AC 7) and nothing here could implement one:
- * nothing is hidden, nothing is behind an `overflow` container, the children's
- * section is editable from the first paint, and the Statement's disclosure opens
- * with a click rather than with a scroll to the bottom. A gate is a WCAG 2.2 AA
- * hazard for keyboard and screen-reader users that buys no evidence anybody read
- * anything. **That rule survives #85 intact** — read ADR-0009 before reading the
- * greyed button below as its reversal.
+ * **The application gates on having answered, never on having agreed** (#85,
+ * **ADR-0009**). "Send the application" is greyed until the form is complete,
+ * and complete means *answered*: a family name, an email address we could reply
+ * to, a child with a name and an age, a class, one full column of the Statement
+ * of Faith grid by any one respondent, and an answer to each document the
+ * school has actually published. What was answered is never the gate's business
+ * — "No" passes, "Neither agrees" passes, an objection passes and still routes
+ * the application to a conversation rather than to a refusal. The ADR holds the
+ * reasoning, and holds what would count as reversing it.
  *
- * **The application gates on answers** (#85). "Send the application" is greyed
- * until the form is complete, and complete means *answered*: a family name, a
- * reachable address, a child with an age, a class, one full column of the
- * Statement of Faith grid by any one respondent, and an answer to each document
- * the school has actually published. Nothing here gates on *agreement* — "No"
- * passes, "Neither agrees" passes, an objection passes and still routes the
- * application to a conversation rather than to a refusal.
+ * **There is still no scroll-gate** (#31 AC 7). Nothing waits on scroll
+ * position or on reading time: the Statement's disclosure opens with a click,
+ * the children's section is editable from the first paint, and the gate below
+ * reads answers and nothing else. What `hidden` does here is fold away things
+ * that have nothing to say yet — a spare child row (#84), an error sentence, a
+ * line of the still-needed list — never a section held back until something has
+ * been scrolled through. A gate like that is a WCAG 2.2 AA hazard for the
+ * keyboard and screen-reader users least able to work around it, and it buys no
+ * evidence that anybody read anything. Read ADR-0009 before reading the greyed
+ * button as this rule's reversal: it is one of three things that decision went
+ * out of its way to leave alone.
  *
  * **Greyed, never `disabled`.** `aria-disabled` plus a greyed appearance, so the
  * button stays focusable and can explain itself: a keyboard or screen-reader
  * user reaches it, activates it, is told what is missing and is taken there.
  * `disabled` would remove it from the tab order and leave that user with a dead
- * control and no explanation, which is the WCAG hazard the no-gate rule is about
- * in the first place.
+ * control and no explanation — the same WCAG 2.2 AA hazard the no-gate rule is
+ * about (ADR-0009).
  *
  * **Errors arrive while the family types, and nothing jumps to the top.** Each
  * field checks itself on blur — a radio or a checkbox on change, since there is
@@ -517,8 +524,10 @@ const description =
             {/*
               A disclosure, not a gate. It opens with a click or with the
               keyboard, it is open to anyone who wants it, and nothing on this
-              page waits on it — no button is disabled and no field is hidden
-              until it has been scrolled through (#31 AC 7).
+              page waits on it: no field is hidden until it has been scrolled
+              through, and leaving these articles unopened costs a family
+              nothing (#31 AC 7). Send is greyed until the questions *below* are
+              answered (#85) — never until this is opened.
             */}
             <details class="statement mt-6">
               <summary>Read the eleven articles here</summary>
@@ -759,7 +768,11 @@ const description =
             {/*
               The clash warnings (#31 AC 3, 4, 5). Warnings and never a block:
               a family may have a reason, and the school would rather they made
-              the choice knowing. The Wednesday 10:40 slot's five electives
+              the choice knowing. #85 did not change that — the gate reads
+              whether the questions were answered and never what the timetable
+              says, so no clash has ever greyed the button. The "you can send
+              this anyway" below is about the clash, not about the gate.
+              The Wednesday 10:40 slot's five electives
               produce nothing here unless *one child* selects two of them —
               grouped per child, because siblings in two rooms at one time is
               not a clash and must never be reported as one.
