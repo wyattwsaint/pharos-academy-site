@@ -12,9 +12,13 @@
  * error on a "No" or on an objection, because an objection is not a defect in
  * the form — it is the reason the school wants to talk to this family. So the
  * parser returns a `flagged` boolean rather than an error, and the flag routes
- * the application to a conversation. There is no scroll-gate, and there is
- * nothing here that could implement one: a gate is a WCAG 2.2 AA hazard for
- * keyboard and screen-reader users that buys no evidence anybody read anything.
+ * the application to a conversation. Since #85 the form does insist that
+ * *somebody answered* the questions, which is a different thing and reads as one
+ * everywhere: `validateApplication` gates on a question having an answer and
+ * never on which answer it is. There is still **no scroll-gate** — nothing is
+ * hidden, nothing waits on the Statement's disclosure being opened — because a
+ * gate is a WCAG 2.2 AA hazard for keyboard and screen-reader users that buys no
+ * evidence anybody read anything. **ADR-0009** holds the distinction.
  *
  * **The children's sensitive data does not enter the site.** `ApplicationChild`
  * has a name, an age and the classes, and that is the entire type. Date of
@@ -22,20 +26,36 @@
  * custody arrangements are all on the school's live Google Form and are all
  * deliberately absent here — they move to paper signed at enrolment. This is
  * what deletes the stricter storage tier rather than building it, and
- * `application.test.ts` reads this file and the form component back and fails if
- * either grows one of those words. **ADR-0007** holds the decision and what
- * reversing it would cost.
+ * `application.test.ts` reads this file, `validation.ts` and the form component back
+ * and fails if any of them grows one of those words. **ADR-0007** holds the
+ * decision and what reversing it would cost.
+ *
+ * **The rules themselves live in `validation.ts`, and only their name lives here.**
+ * Everything this module exported before #85 it still exports, under the same
+ * names, so no caller and no test moved. The split is about bundle weight: the
+ * page's `<script>` needs the rules in the browser, and this file's imports —
+ * the Statement's text, the catalogue, the clash rule, the money graph — are not
+ * things a browser should download to notice an empty text field.
  */
 
 import { BELIEFS_ARTICLES, BELIEFS_CLOSING } from '../about/beliefs.js';
-import { parseAgreements, type Agreements, type AskableAgreement } from './agreements.js';
+import { parseAgreements, type AskableAgreement } from './agreements.js';
 import type { EnrolmentUnit } from '../courses/course.js';
 import { textField as text } from '../forms.js';
+import {
+  FAITH_QUESTIONS,
+  FAITH_RESPONDENTS,
+  faithKey,
+  validateApplication,
+  type ApplicationChild,
+  type ApplicationErrors,
+  type ApplicationFields,
+  type FaithAnswers,
+} from './validation.js';
 import { amountOwed, type AmountOwed, type Selection } from '../money/owed.js';
 import type { MoneySettings } from '../money/settings.js';
 import type { SchoolYear } from '../calendar/year.js';
 import { clashesAmong, findOffering, type Offering, type OfferingClash } from './offerings.js';
-import { validateApplication } from './validation.js';
 
 /** The address of the page that holds the flow and takes its POST. */
 export const APPLICATION_PATH = '/admissions/apply';
@@ -63,109 +83,43 @@ export const APPLICATION_STAGES = [
   { id: 'confirmation', title: 'Sending it' },
 ] as const;
 
-/**
- * Who is asked the three questions, separately.
- *
- * Separately, and not as one household answer, because the live form asks them
- * that way and because a household where one parent disagrees is exactly the
- * conversation the flag exists to start. A family with no second parent leaves
- * that column blank, which is why an unanswered question is neither a "no" nor
- * an error.
+/*
+ * The vocabulary and the rules, from the leaf module, under the names they have
+ * always had here. Re-exported rather than moved-and-updated so that #85 costs
+ * no caller a change — `validation.ts` is the file to read, this is where to import
+ * from.
  */
-export const FAITH_RESPONDENTS = ['Father', 'Mother', 'Legal guardian'] as const;
-export type FaithRespondent = (typeof FAITH_RESPONDENTS)[number];
-
-/**
- * The three questions, in the school's own words from its live form.
- *
- * Transcribed rather than drafted, for the same reason the Statement itself is
- * (`about/beliefs.ts`): what a Christian school asks a family to affirm is the
- * school's text, not this site's.
- */
-export const FAITH_QUESTIONS = [
-  { id: 'read', text: 'Have you read Pharos Academy’s Statement of Faith and Practice?' },
-  { id: 'agree', text: 'Do you agree with Pharos Academy’s Statement of Faith and Practice?' },
-  {
-    id: 'comfortable',
-    text:
-      'Are you comfortable with your child being educated in alignment with Pharos Academy’s ' +
-      'Statement of Faith and Practice?',
-  },
-] as const;
-export type FaithQuestionId = (typeof FAITH_QUESTIONS)[number]['id'];
-
-/**
- * One answer. Empty is a real, ordinary state — a family with no legal guardian
- * leaves that column alone — and is never treated as a "no".
- */
-export type FaithAnswer = 'yes' | 'no' | '';
-
-/** The nine cells of the grid, keyed by `faithKey`. Missing means unanswered. */
-export type FaithAnswers = Record<string, FaithAnswer>;
-
-/** `faith-Father-agree` — one radio group per cell, and its form field name. */
-export function faithKey(respondent: FaithRespondent, question: FaithQuestionId): string {
-  return `faith-${respondent.replace(/\s+/g, '-')}-${question}`;
-}
-
-/** What one cell was answered, or empty when it was not. */
-export function faithAnswer(
-  answers: FaithAnswers,
-  respondent: FaithRespondent,
-  question: FaithQuestionId,
-): FaithAnswer {
-  return answers[faithKey(respondent, question)] ?? '';
-}
-
-/**
- * One child, and the whole of what the site knows about one.
- *
- * A name, an age and the classes. **Nothing else may be added here** — see the
- * note at the top of this file, and the test that enforces it.
- */
-export type ApplicationChild = {
-  name: string;
-  /** As typed. Free text, because the inquiry's ages are free text. */
-  age: string;
-  /** `<slug>:<unit>` keys, resolved against what is actually on sale. */
-  offeringKeys: string[];
-};
-
-export type ApplicationFields = {
-  familyName: string;
-  email: string;
-  children: ApplicationChild[];
-  faith: FaithAnswers;
-  /**
-   * Objections to the Statement, in the family's own words.
-   *
-   * **Optional**, matching the school's live form. An objection that never
-   * blocks submission reads more naturally as a field a family may leave alone
-   * than as one they must type something into to proceed.
-   */
-  objections: string;
-  /**
-   * The Code of Conduct and Handbook agreements (#71), per family.
-   *
-   * Per family and not per child, because the live form asks once. Absent means
-   * unanswered — or not asked, when the school has not published that document —
-   * and neither is an error: `validateApplication` cannot see this field and
-   * `isFlagged` deliberately does not consult it. See `agreements.ts`.
-   */
-  agreements: Agreements;
-};
-
-export type ApplicationErrors = {
-  familyName?: string;
-  email?: string;
-  children?: string;
-  classes?: string;
-};
+export {
+  ERROR_FIELDS,
+  FAITH_QUESTIONS,
+  FAITH_RESPONDENTS,
+  faithAnswer,
+  faithColumn,
+  faithKey,
+  firstError,
+  validateApplication,
+} from './validation.js';
+export type {
+  ApplicationChild,
+  ApplicationErrors,
+  ApplicationFields,
+  AskedAgreement,
+  ErrorField,
+  FaithAnswer,
+  FaithAnswers,
+  FaithQuestionId,
+  FaithRespondent,
+} from './validation.js';
 
 export type ParsedApplication = {
   /** Always populated, valid or not, so a rejected form redisplays what was typed. */
   values: ApplicationFields;
-  /** Empty when the submission is good. Never mentions the Statement of Faith. */
+  /**
+   * Empty when the submission is good.
+   *
+   * It can name the Statement of Faith since #85 — but only ever to say that
+   * nobody answered it, never to say that an answer was the wrong one.
+   */
   errors: ApplicationErrors;
   /**
    * Whether this application needs a conversation before it is accepted.
@@ -231,20 +185,14 @@ export function parseApplication(
     agreements: parseAgreements(form, askable),
   };
 
-  return { values, errors: validateApplication(values), flagged: isFlagged(values) };
+  // The same `askable` the questions were rendered from, so the gate can only
+  // ever require an answer to a question the family was actually shown.
+  return {
+    values,
+    errors: validateApplication(values, askable),
+    flagged: isFlagged(values),
+  };
 }
-
-/**
- * Everything wrong with an application, in one pass.
- *
- * The rules themselves live in `validation.ts`, a leaf module that reaches
- * nothing but the shared email check, and are re-exported from here so that
- * every caller keeps importing them from where they already do. The move is for
- * the browser's sake: #85 runs these rules on the page as a family types, and
- * importing them from this module would take the price list, the catalogue and
- * the timetable into the bundle with them. **ADR-0009** holds the reasoning.
- */
-export { validateApplication };
 
 /**
  * Whether this application goes to a conversation rather than straight through.
@@ -252,6 +200,11 @@ export { validateApplication };
  * An unanswered cell does not flag: a household with no legal guardian leaves
  * that column blank, and treating silence as dissent would flag most of the
  * intake and make the flag mean nothing.
+ *
+ * #85 did not touch this function. The gate asks whether a question was
+ * answered; the flag asks what the answer was. Keeping them apart is the whole
+ * reason a family can answer "No" to every article and still send their
+ * application.
  *
  * **The two agreements are deliberately not read here** (#71). "Neither agrees"
  * is an answer the school's own form has always allowed, and flagging it would

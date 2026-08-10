@@ -6,7 +6,11 @@ import { unzipSync } from 'fflate';
 
 import { LABELS } from '../src/lib/admin/policies.js';
 import { SUITE_ADMIN, signIn } from './suite-admin.js';
-import { APPLICATION_PATH } from '../src/lib/application/application.js';
+import {
+  APPLICATION_PATH,
+  FAITH_QUESTIONS,
+  faithKey,
+} from '../src/lib/application/application.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
 import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
@@ -817,8 +821,9 @@ test.describe('applications', () => {
       child: string;
       offering: string;
       objection?: string;
-      /** One of the two agreements (#71), when the test is about them. */
+      /** The two agreements (#71), when the test is about them. */
       handbook?: 'student' | 'parent' | 'neither';
+      codeOfConduct?: 'student' | 'parent' | 'neither';
     },
   ): Promise<void> {
     await page.goto(APPLICATION_PATH);
@@ -828,9 +833,23 @@ test.describe('applications', () => {
     await page.fill('#apply-child-0-age', '13');
     await page.check(`input[name="child-0-classes"][value="${family.offering}"]`);
     if (family.objection) await page.fill('#apply-objections', family.objection);
-    if (family.handbook) {
-      await page.check(`[data-agreement="handbook"] input[value="${family.handbook}"]`);
+
+    /*
+     * What #85 added to a sendable application: one respondent's whole column of
+     * the Statement of Faith grid, and an answer to each published document.
+     * "Neither agrees" is the default here because the gate is about having
+     * answered — a test that had to agree to send would be testing the wrong
+     * thing.
+     */
+    for (const question of FAITH_QUESTIONS) {
+      await page.check(`input[name="${faithKey('Father', question.id)}"][value="yes"]`);
     }
+    await page.check(
+      `[data-agreement="handbook"] input[value="${family.handbook ?? 'neither'}"]`,
+    );
+    await page.check(
+      `[data-agreement="code-of-conduct"] input[value="${family.codeOfConduct ?? 'neither'}"]`,
+    );
 
     await page.getByRole('button', { name: 'Send the application' }).click();
     await expect(page.locator('[data-outcome="received"]')).toBeVisible();
@@ -916,7 +935,7 @@ test.describe('applications', () => {
     await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
   });
 
-  test('reads both agreements by hand, including the one nobody answered (#71 AC 6)', async ({
+  test('reads both agreements by hand, each in the family’s own words (#71 AC 6)', async ({
     page,
   }) => {
     const family = 'Suite Agreements';
@@ -926,20 +945,30 @@ test.describe('applications', () => {
       child: 'Agreeing Child',
       offering: 'algebra-1:year',
       handbook: 'neither',
+      codeOfConduct: 'student',
     });
 
     await signIn(page, '/admin/applications');
     const agreements = rowFor(page, family).getByTestId('application-agreements');
 
-    // The answer in the family's own words, against the version they were shown.
+    /*
+     * Each answer in the family's own words, against the version they were
+     * shown, and the two read independently of one another.
+     *
+     * #85 closed the case this test used to cover — an application arriving with
+     * a published document left blank — because a question the family was asked
+     * now has to be answered before it can be sent. "Not answered" is still what
+     * the screen says for a document nobody was asked about, and
+     * `agreements.test.ts` holds that: it is no longer producible through the
+     * public form, so asserting it here would be asserting a state the form
+     * cannot reach.
+     */
     await expect(agreements.locator('[data-agreement="handbook"]')).toContainText('Neither agrees');
     await expect(agreements.locator('[data-agreement="handbook"]')).toContainText('version');
-
-    // And the one they left alone says so, rather than being absent from the
-    // screen or quietly reading as "neither".
     await expect(agreements.locator('[data-agreement="code-of-conduct"]')).toContainText(
-      'Not answered',
+      'Student agrees',
     );
+    await expect(agreements.locator('[data-agreement="code-of-conduct"]')).toContainText('version');
 
     // "Neither agrees" is not a conversation flag, and never was on the live
     // form either — the application goes through like any other.

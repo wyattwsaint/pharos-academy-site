@@ -18,22 +18,25 @@ describe('the validation rules keep their address', () => {
     expect(validateApplication).toBe(leaf.validateApplication);
   });
 
-  it('reports the four things that can be wrong', () => {
+  it('names every rule an empty form breaks', () => {
+    // The messages themselves, and the answered-never-agreed cases, are
+    // `application.test.ts`'s and `agreements.test.ts`'s. What this asserts is
+    // that the re-exported function is the whole rule set rather than a subset.
     expect(
-      validateApplication({
-        familyName: '',
-        email: 'ruth at example',
-        children: [],
-        faith: {},
-        objections: '',
-        agreements: {},
-      }),
-    ).toEqual({
-      familyName: 'We need a family name for the application.',
-      email: 'That does not look like an email address.',
-      children: 'Tell us at least one child’s name, and their age.',
-      classes: 'Choose at least one class. If you are not sure yet, write to us instead.',
-    });
+      Object.keys(
+        validateApplication(
+          {
+            familyName: '',
+            email: 'ruth at example',
+            children: [],
+            faith: {},
+            objections: '',
+            agreements: {},
+          },
+          [{ slug: 'code-of-conduct' }],
+        ),
+      ).sort(),
+    ).toEqual(['agreements', 'children', 'classes', 'email', 'faith', 'familyName']);
   });
 });
 
@@ -53,7 +56,12 @@ describe('the validation rules keep their address', () => {
  */
 describe('the rules are a leaf', () => {
   it('reaches nothing but the shared form helpers', () => {
-    expect([...reachableFrom(moduleUrl('validation.ts'))].sort()).toEqual(['forms.ts']);
+    // `agreements.ts` since #85 — the gate has to read an answer to a document,
+    // and that module is a leaf itself. Everything else stays out.
+    expect([...reachableFrom(moduleUrl('validation.ts'))].sort()).toEqual([
+      'agreements.ts',
+      'forms.ts',
+    ]);
   });
 });
 

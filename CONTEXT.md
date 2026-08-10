@@ -325,21 +325,51 @@ agrees**.
 carrying three children still records one answer per document. The singular word
 "student" is the form's phrasing, not a per-child question.
 
-**Unanswered is not "neither".** A family may leave either question alone, and
-the record says nothing rather than saying they refused — the same distinction
-the Statement of Faith grid keeps between a blank column and a "no".
+**Unanswered is not "neither".** Where an answer exists the record says which
+one; where none exists it says nothing rather than saying they refused — the same
+distinction the Statement of Faith grid keeps between a blank column and a "no".
+Since #85 a question the school *asked* has to be answered before the
+application can be sent, so an unanswered agreement on a submitted application is
+now only possible for a document that was never published.
 
 **It carries the policy version it was given against**, so a later upload cannot
 reinterpret what a family agreed to. The link a family reads goes to the policy's
 fixed address; only the record keeps the number.
 
-**It never blocks a submission and never raises the
+**No answer to it blocks a submission, and none of them raises the
 [conversation flag](#conversation-flag).** "Neither agrees" is an ordinary
-answer. Whether it should route to a conversation is the school's call, not the
-site's (#71).
+answer and goes through like any other. Whether it should route to a
+conversation is the school's call, not the site's (#71).
 
 Not: "signature" (nothing is signed here — the paper at enrolment is), "consent",
 "acceptance".
+
+### complete application
+
+An application with an answer to every question the school asked: a family name,
+a reachable email, a child with a name and an age, at least one class, **one full
+column** of the Statement of Faith grid by any one respondent, and an
+[agreement](#agreement) answer for each published document. Until it is
+complete, **Send the application** is greyed and a list beside it names what is
+still needed.
+
+**Complete means answered, never agreed** (#85, ADR-0009). "No" is complete.
+"Neither agrees" is complete. An objection is complete, and still raises the
+[conversation flag](#conversation-flag). Nothing about what a family thinks can
+make their application incomplete, and a request to change that is a different
+decision with its own ADR.
+
+**One column, not three.** A father applying alone, a mother applying alone and a
+legal guardian applying alone are the same application to this rule. A second
+column half filled in is extra information rather than a new defect.
+
+**It is derived, never stored.** There is no "checked" state and no "valid" flag:
+the browser re-derives it on every keystroke and the server on every render and
+every POST, from one rule set. Pressing **Check these choices** is a preview and
+never a step.
+
+Not: "validated", "approved", "accepted" (the school does that, later, by
+reading it).
 
 ### H.O.P.E.
 
