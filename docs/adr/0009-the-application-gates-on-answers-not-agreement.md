@@ -2,7 +2,9 @@
 
 **Status:** accepted
 **Date:** 2026-08-10
-**Context:** [#86](https://github.com/wyattwsaint/pharos-academy-site/issues/86), implements [#85](https://github.com/wyattwsaint/pharos-academy-site/issues/85)
+**Context:** [#86](https://github.com/wyattwsaint/pharos-academy-site/issues/86), implemented by
+[#85](https://github.com/wyattwsaint/pharos-academy-site/issues/85), builds on
+[#71](https://github.com/wyattwsaint/pharos-academy-site/issues/71)
 **Supersedes:** the "no submit is disabled" clause of [#31](https://github.com/wyattwsaint/pharos-academy-site/issues/31) AC 7
 
 ## Context
@@ -77,7 +79,8 @@ proof, because a greyed `aria-disabled` button would now pass it.
   ask for more; this one asks for nothing that is not already on the form.
 
 **Where the rules live.** The pure rules move to `src/lib/application/validation.ts`, a leaf
-module importing one function — the shared email check — and otherwise only types.
+module importing the shared email check and `agreements.ts` — itself a leaf — and otherwise
+only types.
 `validateApplication` keeps its name, its signature and its home, by re-export from
 `application.ts`. The reason is bundle weight: the page's browser script runs these rules as
 the family types, and importing them from `application.ts` would pull the rate card, the
@@ -96,7 +99,17 @@ accident.
 - The gate is legible: everything it requires is a field being non-empty, and the reader who
   wonders "could this ever refuse an objection?" can see that it could not.
 - The rules are one small module, so the server and the browser run the same ones rather than
-  two copies that drift.
+  two copies that drift. Nothing is stored between evaluations — there is no "checked" flag and
+  no "valid" flag — so editing a class after a passing check cannot leave the button lying
+  about the form.
+- A refused send — greyed button with scripting on, round trip with scripting off — puts focus
+  on the thing that needs attention. Both paths walk the same rows and the same documents, so
+  they land in the same place.
+- The flag keeps meaning what it meant. `isFlagged` is untouched: it still flags on any "No"
+  and on any objection, and still does not consult the agreements. The gate did not fill that
+  queue with routine cases.
+- A policy the school has not published produces no question and therefore no requirement. The
+  gate always matches the form the family was shown.
 
 **Bad, and accepted.**
 
@@ -108,6 +121,13 @@ accident.
 - The gate now has two implementations to keep honest — the browser's and the server's, for
   scripting-off. The shared leaf module is what makes them the same rules; a rule added to one
   and not the other is the regression to watch for.
+- A family who wanted to leave the Statement of Faith questions alone entirely can no longer
+  send an application. That is the decision, and "Not answered" in all nine cells is no longer
+  a way through. Answering "No" to all three is.
+- Two of #31's end-to-end tests described the old behaviour and were rewritten rather than
+  deleted. They are the ones to read if this decision is ever revisited.
 - **Any future request to require a "Yes"** — on an article, on the Code of Conduct, on the
-  Handbook — is a reversal of this decision and must be taken as one. **Reopen this ADR rather
-  than tightening the check.**
+  Handbook — is a reversal of this decision and must be taken as one. It would turn a
+  conversation-starter into a doctrine test, and the argument would be about what the school
+  wants to be rather than about what the form should validate. **Reopen this ADR rather than
+  tightening the check.**

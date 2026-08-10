@@ -10,7 +10,7 @@ import {
   parseAgreements,
   type AskableAgreement,
 } from './agreements.js';
-import { parseApplication } from './application.js';
+import { FAITH_QUESTIONS, faithKey, parseApplication } from './application.js';
 import { offeringsOf } from './offerings.js';
 import { CATALOGUE } from '../courses/catalogue.js';
 
@@ -40,6 +40,21 @@ function form(entries: Record<string, string>): FormData {
   for (const [key, value] of Object.entries(entries)) data.append(key, value);
   return data;
 }
+
+/**
+ * A sendable application, without the agreements. #85 requires a family name, a
+ * reachable address, a child, a class and one answered column of the Statement
+ * of Faith grid — so a fixture testing "the agreements never block" has to be
+ * complete in every other respect, or it proves nothing about the agreements.
+ */
+const SENDABLE: Record<string, string> = {
+  familyName: 'Marsh',
+  email: 'ruth@example.com',
+  'child-0-name': 'Obi',
+  'child-0-age': '9',
+  'child-0-classes': 'algebra-1:year',
+  ...Object.fromEntries(FAITH_QUESTIONS.map((question) => [faithKey('Father', question.id), 'yes'])),
+};
 
 describe('reading the answers', () => {
   it('records the answer against the version the family was shown', () => {
@@ -124,11 +139,7 @@ describe('what the answers may never do', () => {
   it('does not block a submission, whatever was answered', () => {
     const parsed = parseApplication(
       form({
-        familyName: 'Marsh',
-        email: 'ruth@example.com',
-        'child-0-name': 'Obi',
-        'child-0-age': '9',
-        'child-0-classes': 'algebra-1:year',
+        ...SENDABLE,
         'agreement-handbook': 'neither',
         'agreement-code-of-conduct': 'neither',
       }),
@@ -144,18 +155,10 @@ describe('what the answers may never do', () => {
   });
 
   it('is absent from an application to a school that has published neither document', () => {
-    const parsed = parseApplication(
-      form({
-        familyName: 'Marsh',
-        email: 'ruth@example.com',
-        'child-0-name': 'Obi',
-        'child-0-age': '9',
-        'child-0-classes': 'algebra-1:year',
-      }),
-      OFFERINGS,
-    );
+    const parsed = parseApplication(form(SENDABLE), OFFERINGS);
 
     expect(parsed.values.agreements).toEqual({});
+    // A question nobody was asked cannot be one a family failed to answer (#85).
     expect(parsed.errors).toEqual({});
   });
 });

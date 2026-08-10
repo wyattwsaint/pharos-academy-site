@@ -1,17 +1,23 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { APPLICATION_PATH } from '../src/lib/application/application.js';
+import { APPLICATION_PATH, FAITH_QUESTIONS, faithKey } from '../src/lib/application/application.js';
 
 /**
- * The application, over real HTTP (#31).
+ * The application, over real HTTP (#31, #85).
  *
  * The clash rule, the totals and the parser are unit-tested as pure functions
  * in `src/lib/application/*.test.ts` (#31 AC 10). What only a browser can
  * settle is the page as a family meets it: that the form reaches the one route
  * that renders on request, that a clash is shown *before* anything is sent,
- * that nothing on the page is gated behind a scroll, and that none of the
- * fields this ticket forbids ever renders (#31 AC 9) — a type can keep a field
- * out of the row, but only the DOM proves it is out of the form.
+ * that nothing on the page is gated behind a scroll, that the gate greys and
+ * ungreys the Send button as the form fills in, that a refused send lands the
+ * family on the thing that needs them, and that none of the fields this ticket
+ * forbids ever renders (#31 AC 9) — a type can keep a field out of the row, but
+ * only the DOM proves it is out of the form.
+ *
+ * **Both paths, every time** (#85). The gate is the one place where a browser
+ * and a server could silently disagree, so anything asserted with scripting on
+ * has a counterpart in the scripting-off block at the bottom of this file.
  *
  * "Check these choices" posts with `intent=check`, which re-renders the
  * warnings and the totals and **writes nothing** — so every check-flow test
@@ -74,9 +80,88 @@ async function tickClashingPair(page: Page) {
   await page.check('input[name="child-0-classes"][value="beginner-latin-grades-5-6:year"]');
 }
 
+/**
+ * Open the application, and wait for the page to be the one being tested.
+ *
+ * The page's script is a deferred module, so for a moment after paint the form
+ * is the server's form — a correct page, but not the enhanced one. Clicking into
+ * that window tests neither, so every scripting-on test waits for the marker the
+ * script sets when it is live. The scripting-off block deliberately does not.
+ */
+async function open(page: Page, path = APPLICATION_PATH) {
+  const response = await page.goto(path);
+  await page.locator('form[data-enhanced]').waitFor();
+  return response;
+}
+
+/** The Send button, whose greyness is the gate (#85). */
+const sendButton = (page: Page) => page.getByRole('button', { name: 'Send the application' });
+
+/** Whether the gate is holding the application back. */
+async function greyed(page: Page): Promise<boolean> {
+  return (await sendButton(page).getAttribute('aria-disabled')) === 'true';
+}
+
+/**
+ * Press Send, greyed or not.
+ *
+ * `force` because Playwright reads `aria-disabled="true"` as not-enabled and
+ * refuses to click — which is a fair reading of the attribute and, incidentally,
+ * the clearest evidence available that the greying is announced rather than
+ * merely painted. A person's pointer and a person's Enter key are not bound by
+ * it, and being able to activate the button and be told what is missing is the
+ * whole reason #85 chose `aria-disabled` over `disabled`.
+ */
+const clickSend = (page: Page) => sendButton(page).click({ force: true });
+
+/** Press Check, and wait for the page it brings back to be enhanced again. */
+async function clickCheck(page: Page) {
+  await page.getByRole('button', { name: 'Check these choices' }).click();
+  await page.locator('form[data-enhanced]').waitFor();
+}
+
+/** One line of the still-needed list, by the rule it belongs to. */
+const stillNeeded = (page: Page, field: string) =>
+  page.locator(`[data-missing-for="${field}"]`);
+
+/** Answer one respondent's whole column of the Statement of Faith grid. */
+async function answerFaith(page: Page, answer: 'yes' | 'no' = 'yes') {
+  for (const question of FAITH_QUESTIONS) {
+    await page.check(`input[name="${faithKey('Father', question.id)}"][value="${answer}"]`);
+  }
+}
+
+/** Answer both published agreements. Any answer will do — that is the point. */
+async function answerAgreements(page: Page, answer = 'neither') {
+  for (const slug of ['code-of-conduct', 'handbook']) {
+    await page.check(`[data-agreement="${slug}"] input[value="${answer}"]`);
+  }
+}
+
+/**
+ * Everything #85 requires, in the order the page reads.
+ *
+ * `except` leaves one rule unmet, so a test can be about that rule and nothing
+ * else — the whole form minus one thing is the only honest way to prove that
+ * one thing is what the gate is holding out for.
+ */
+async function fillSendable(page: Page, except?: string) {
+  if (except !== 'faith') await answerFaith(page);
+  if (except !== 'familyName') await page.fill('#apply-family-name', 'Suite Family');
+  if (except !== 'email') await page.fill('#apply-email', 'suite-family@example.com');
+  if (except !== 'children') {
+    await page.fill('#apply-child-0-name', 'Suite Child');
+    await page.fill('#apply-child-0-age', '13');
+  }
+  if (except !== 'classes') {
+    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+  }
+  if (except !== 'agreements') await answerAgreements(page);
+}
+
 test.describe('the application page', () => {
   test('answers 200 and is the stages on one document', async ({ page }) => {
-    const response = await page.goto(APPLICATION_PATH);
+    const response = await open(page);
 
     expect(response?.status()).toBe(200);
     await expect(page.locator('form[data-application-form]')).toHaveCount(1);
@@ -92,7 +177,7 @@ test.describe('the application page', () => {
     // #71 AC 1, 2 and 4, as a family meets them: three answers in the school's
     // own words, a link to the *fixed* address of each document, and a form
     // that stays sendable whatever is picked.
-    await page.goto(APPLICATION_PATH);
+    await open(page);
 
     for (const slug of ['code-of-conduct', 'handbook']) {
       const question = page.locator(`[data-agreement="${slug}"]`);
@@ -104,30 +189,153 @@ test.describe('the application page', () => {
       }
     }
 
-    await page.check('[data-agreement="handbook"] input[value="neither"]');
-    await expect(page.getByRole('button', { name: 'Send the application' })).toBeEnabled();
+    // "Neither agrees" answers the question, and answering is all #85 asks:
+    // the requirement leaves the still-needed list rather than becoming one.
+    await answerAgreements(page);
+    await expect(stillNeeded(page, 'agreements')).toBeHidden();
   });
 
   test('gates nothing behind a scroll', async ({ page }) => {
-    // AC 7. A scroll-gate would show up here as a disabled submit waiting on a
-    // scroll event, so the strongest DOM-level claim is: no submit on this page
-    // is disabled, ever — the page is reached with both buttons live.
-    await page.goto(APPLICATION_PATH);
+    // AC 7, the half of it that survives #85. A scroll-gate would show up as
+    // something hidden, something waiting on the Statement's disclosure being
+    // opened, or a submit removed from the tab order. None of the three: the
+    // children's section is visible and editable from the first paint, the
+    // Statement opens with a click, and the greyed Send button is `aria-disabled`
+    // rather than `disabled` — reachable, focusable, and able to explain itself.
+    await open(page);
 
     await expect(page.locator('button[type="submit"][disabled]')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Check these choices' })).toBeEnabled();
-    await expect(page.getByRole('button', { name: 'Send the application' })).toBeEnabled();
+    await expect(page.locator('fieldset[data-child-row]:visible')).toHaveCount(1);
+    await expect(page.locator('#apply-child-0-name')).toBeEditable();
+    await expect(page.locator('input[name="child-0-classes"]').first()).toBeVisible();
 
     // The Statement is behind a click, not a scroll: a closed <details> whose
     // summary is focusable, with nothing on the page waiting on it being open.
     await expect(page.locator('details.statement > summary')).toBeVisible();
     await expect(page.locator('details.statement[open]')).toHaveCount(0);
+
+    // The gate holds a fresh form, and it holds it without the disclosure ever
+    // being opened: filling the form in is the only thing that releases it.
+    expect(await greyed(page)).toBe(true);
+    await sendButton(page).focus();
+    await expect(sendButton(page)).toBeFocused();
+
+    await fillSendable(page);
+    await expect(page.locator('details.statement[open]')).toHaveCount(0);
+    expect(await greyed(page)).toBe(false);
+  });
+
+  test('greys the send until the last thing is answered, and names each one', async ({ page }) => {
+    // #85 as a family meets it: a greyed button with a list beside it, one line
+    // per outstanding rule, each line a link to the control it is about.
+    await open(page);
+
+    const fields = ['faith', 'familyName', 'email', 'children', 'classes', 'agreements'];
+    for (const field of fields) await expect(stillNeeded(page, field)).toBeVisible();
+
+    // Each line goes somewhere, and somewhere that exists.
+    for (const field of fields) {
+      const href = await stillNeeded(page, field).locator('a').getAttribute('href');
+      expect(href).toMatch(/^#/);
+      await expect(page.locator(href ?? '#')).toHaveCount(1);
+    }
+
+    // One rule at a time. The button stays grey until the last of them is met.
+    for (const field of fields) {
+      await open(page);
+      await fillSendable(page, field);
+
+      expect(await greyed(page), `${field} alone does not hold the gate`).toBe(true);
+      await expect(stillNeeded(page, field)).toBeVisible();
+    }
+  });
+
+  test('answers the greyed button rather than submitting it', async ({ page }) => {
+    // AC 9 and 10 of the ticket: the button is reachable, activating it says
+    // what is missing and puts the family on it, and nothing is sent.
+    await open(page);
+
+    await fillSendable(page, 'email');
+    await clickSend(page);
+
+    // No round trip — the page a family is on is the page they were on.
+    await expect(page.locator('[data-outcome]')).toHaveCount(0);
+    await expect(page.locator('#apply-email-error')).toBeVisible();
+    await expect(page.locator('#apply-email')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#apply-email')).toBeFocused();
+  });
+
+  test('checks a field when the family leaves it, and clears it as they fix it', async ({
+    page,
+  }) => {
+    // Stories 4, 5 and 6: nothing is said while the first word is being typed,
+    // something is said the moment the field is left, and it goes as they type.
+    await open(page);
+
+    await page.fill('#apply-family-name', 'Suit');
+    await expect(page.locator('#apply-family-name-error')).toBeHidden();
+
+    await page.fill('#apply-family-name', '');
+    await page.locator('#apply-email').focus();
+    await expect(page.locator('#apply-family-name-error')).toBeVisible();
+
+    await page.fill('#apply-family-name', 'S');
+    await expect(page.locator('#apply-family-name-error')).toBeHidden();
+  });
+
+  test('ignores a row the family has hidden, and checks one they bring back', async ({ page }) => {
+    // Stories 25 and 26. Stale text in a row nobody is applying for must not
+    // hold the gate, and a row brought back must come under it at once.
+    await open(page);
+
+    await page.selectOption('#apply-child-count', '2');
+    await fillSendable(page);
+    await page.fill('#apply-child-1-name', 'Second Child');
+
+    expect(await greyed(page)).toBe(true);
+    await expect(stillNeeded(page, 'children')).toBeVisible();
+
+    await page.selectOption('#apply-child-count', '1');
+    expect(await greyed(page)).toBe(false);
+
+    await page.selectOption('#apply-child-count', '2');
+    expect(await greyed(page)).toBe(true);
+  });
+
+  test('lands on the child who is short, not on the first child there is', async ({ page }) => {
+    // The one place the two gates could quietly disagree: the browser walks the
+    // rows and the server used to answer row 0 whatever the form said. A family
+    // whose first child is done and whose second has no age must not be sent
+    // back to a box they already filled in. Counterpart below, scripting off.
+    await open(page);
+
+    await fillSendable(page);
+    await page.selectOption('#apply-child-count', '2');
+    await page.fill('#apply-child-1-name', 'Second Child');
+
+    await clickSend(page);
+    await expect(page.locator('#apply-child-1-age')).toBeFocused();
+    await expect(stillNeeded(page, 'children').locator('a')).toHaveAttribute(
+      'href',
+      '#apply-child-1-age',
+    );
+  });
+
+  test('lands on the document nobody has answered, not on the first one', async ({ page }) => {
+    await open(page);
+
+    await fillSendable(page, 'agreements');
+    await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
+
+    await clickSend(page);
+    await expect(page.locator('[data-agreement="handbook"] input').first()).toBeFocused();
   });
 
   test('asks for none of what moves to paper', async ({ page }) => {
     // AC 9, over the rendered DOM. The source scan in `application.test.ts`
     // covers the template; this covers what a browser actually built.
-    await page.goto(APPLICATION_PATH);
+    await open(page);
     await expect(page.locator(FORBIDDEN_FIELDS)).toHaveCount(0);
   });
 
@@ -137,10 +345,10 @@ test.describe('the application page', () => {
     // AC 3, as a family experiences it: tick the pair, ask for a check, and be
     // told about the collision while the cheque is still in the drawer. A
     // check writes nothing, so this runs against a real deployment too.
-    await page.goto(APPLICATION_PATH);
+    await open(page);
 
     await tickClashingPair(page);
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
 
     await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
     await expect(page.locator('[data-clashes]')).not.toHaveAttribute('data-clashes', '0');
@@ -149,8 +357,10 @@ test.describe('the application page', () => {
     await expect(clash).toContainText('Algebra 1');
     await expect(clash).toContainText('Beginner Latin');
 
-    // A warning and never a block: the send button is as live as it ever was.
-    await expect(page.getByRole('button', { name: 'Send the application' })).toBeEnabled();
+    // A warning and never a block: no submit is disabled, and a collision is
+    // not one of the things the still-needed list can name (#85).
+    await expect(page.locator('button[type="submit"][disabled]')).toHaveCount(0);
+    await expect(stillNeeded(page, 'classes')).toBeHidden();
     // And what was ticked is still ticked — a check that clears the form would
     // cost a family their whole selection for having asked a question.
     await expect(
@@ -162,12 +372,12 @@ test.describe('the application page', () => {
     // AC 5, the sibling case. Two children in two rooms at 11:20 on a Monday is
     // not a collision, and a family of two told it was would be talked out of a
     // choice that was right all along.
-    await page.goto(APPLICATION_PATH);
+    await open(page);
 
     await page.selectOption('#apply-child-count', '2');
     await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
     await page.check('input[name="child-1-classes"][value="beginner-latin-grades-5-6:year"]');
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
 
     await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
     await expect(page.locator('[data-clashes]')).toHaveAttribute('data-clashes', '0');
@@ -175,7 +385,7 @@ test.describe('the application page', () => {
   });
 
   test('names the child a warning belongs to when both have one', async ({ page }) => {
-    await page.goto(APPLICATION_PATH);
+    await open(page);
 
     await page.selectOption('#apply-child-count', '2');
     await page.fill('input[name="child-0-name"]', 'Ada');
@@ -186,7 +396,7 @@ test.describe('the application page', () => {
         `input[name="child-${index}-classes"][value="beginner-latin-grades-5-6:year"]`,
       );
     }
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
 
     await expect(page.locator('[data-child-clashes]')).toHaveCount(2);
     await expect(page.locator('[data-child-clashes="0"]')).toContainText('Ada');
@@ -197,7 +407,7 @@ test.describe('the application page', () => {
     // The count picker. Only a browser can test it: the rows are all in the
     // HTML either way, and what changes is which of them a family can see and
     // which of them the POST carries.
-    await page.goto(APPLICATION_PATH);
+    await open(page);
 
     const rows = page.locator('fieldset[data-child-row]');
     await expect(rows).toHaveCount(8);
@@ -214,7 +424,7 @@ test.describe('the application page', () => {
         `input[name="child-${index}-classes"][value="beginner-latin-grades-5-6:year"]`,
       );
     }
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
 
     // Three children went, three came back, and the picker survived the POST.
     await expect(page.locator('[data-child-clashes]')).toHaveCount(3);
@@ -225,51 +435,59 @@ test.describe('the application page', () => {
     // with a timetable collision the school would then ask them about.
     await page.selectOption('#apply-child-count', '2');
     await expect(page.locator('fieldset[data-child-row]:visible')).toHaveCount(2);
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
 
     await expect(page.locator('[data-child-clashes]')).toHaveCount(2);
     await expect(page.locator('#apply-child-count')).toHaveValue('2');
     await expect(page.locator('input[name="child-2-name"]')).toHaveValue('');
   });
 
-  test('a check reports no missing fields on a form still being filled in', async ({ page }) => {
+  test('a check previews the totals and the collisions, and reports no missing fields', async ({
+    page,
+  }) => {
     // The check is "did I pick two classes that collide", not "you forgot your
-    // name" — an empty check must come back clean, not covered in errors.
-    await page.goto(APPLICATION_PATH);
+    // name" — an empty check must come back clean, not covered in errors. It is
+    // a preview and never a step: passing it is not a thing #85 can require,
+    // and failing to press it is not a thing #85 can hold against a family.
+    await open(page);
 
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await tickClashingPair(page);
+    await clickCheck(page);
 
     await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
     await expect(page.locator('[data-outcome="failed"]')).toHaveCount(0);
-    await expect(page.locator('.error')).toHaveCount(0);
+    await expect(page.locator('.error:visible')).toHaveCount(0);
+    // The preview it exists for: the totals and the collision, both still there.
+    await expect(page.locator('li[data-severity="clash"]').first()).toBeVisible();
+    await expect(page.locator('.totals')).toBeVisible();
   });
 
-  test('refuses an incomplete send and gives back what was typed', async ({ page }) => {
-    // A refused send stores nothing, so this too is safe anywhere.
-    await page.goto(APPLICATION_PATH);
+  test('never needs a check pressed, before or after a change of mind', async ({ page }) => {
+    // Stories 29 and 30. The button reflects the form, not the last button
+    // press: there is no "checked" state for a later edit to leave stale.
+    await open(page);
 
-    await page.fill('#apply-family-name', 'Suite Family');
-    await page.getByRole('button', { name: 'Send the application' }).click();
+    await fillSendable(page);
+    expect(await greyed(page)).toBe(false);
 
-    await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
-    await expect(page.locator('#apply-family-name')).toHaveValue('Suite Family');
-    await expect(page.locator('#apply-email-error')).toBeVisible();
-    await expect(page.locator('#apply-email')).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.locator('#apply-children-error')).toBeVisible();
-    await expect(page.locator('#apply-classes-error')).toBeVisible();
+    await page.uncheck('input[name="child-0-classes"][value="algebra-1:year"]');
+    expect(await greyed(page)).toBe(true);
+
+    await page.check('input[name="child-0-classes"][value="kingdom-math:year"]');
+    expect(await greyed(page)).toBe(false);
   });
 
   test('opens as a clean slate with no inquiry in the link', async ({ page }) => {
     // AC 1's other half: the prefill is unit-tested; what HTTP has to prove is
     // that arriving without one is the same form, not an error.
-    await page.goto(APPLICATION_PATH);
+    await open(page);
     await expect(page.locator('#apply-family-name')).toHaveValue('');
   });
 
   test('treats a mangled inquiry link as no inquiry at all', async ({ page }) => {
     // The link Jill pastes gets wrapped by email clients. A malformed id must
     // be the same clean slate over HTTP — a 200, not a 500 from a uuid cast.
-    const response = await page.goto(`${APPLICATION_PATH}?inquiry=not-a-uuid`);
+    const response = await open(page, `${APPLICATION_PATH}?inquiry=not-a-uuid`);
 
     expect(response?.status()).toBe(200);
     await expect(page.locator('form[data-application-form]')).toHaveCount(1);
@@ -277,20 +495,19 @@ test.describe('the application page', () => {
   });
 
   test('promises no response time on the page as it is reached', async ({ page }) => {
-    await page.goto(APPLICATION_PATH);
+    await open(page);
     expect(await page.locator('main').innerText()).not.toMatch(CLOCKS);
   });
 
   test('takes a real application and holds the reference', async ({ page }) => {
     test.skip(!MAY_SUBMIT, 'a real send writes an application row');
-    await page.goto(APPLICATION_PATH);
+    await open(page);
 
-    await page.fill('#apply-family-name', 'Suite Family');
-    await page.fill('#apply-email', 'suite-family@example.com');
-    await page.fill('#apply-child-0-name', 'Suite Child');
-    await page.fill('#apply-child-0-age', '13');
-    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
-    await page.getByRole('button', { name: 'Send the application' }).click();
+    // A bare application no longer sends (#85): the faith column and the two
+    // agreement answers are part of what the school asked for.
+    await fillSendable(page);
+    expect(await greyed(page)).toBe(false);
+    await clickSend(page);
 
     // The row is the backing for the sentence, and the reference is the row's id.
     const outcome = page.locator('[data-outcome="received"]');
@@ -303,5 +520,105 @@ test.describe('the application page', () => {
     await expect(confirmation).toContainText('Algebra 1');
     await expect(confirmation).toContainText('Pharos Academy');
     expect(await page.locator('main').innerText()).not.toMatch(CLOCKS);
+  });
+});
+
+/**
+ * The same gate, with scripting off (#85, story 11).
+ *
+ * The gate is the one place a browser and a server could silently disagree, so
+ * every rule asserted above is asserted here again by round trip. What changes
+ * is *when* a family is told, never *whether* — and a refused POST lands them on
+ * the same first outstanding control rather than on a banner at the top of a
+ * five-thousand-word document.
+ */
+test.describe('the application page without scripting', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('greys the send from the server, and ungreys it from the server', async ({ page }) => {
+    await page.goto(APPLICATION_PATH);
+    expect(await greyed(page)).toBe(true);
+
+    await fillSendable(page);
+    // Nothing re-derives in the page, so the round trip is the derivation. A
+    // check writes nothing, which is why it is the one used here.
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+
+    expect(await greyed(page)).toBe(false);
+    await expect(page.locator('[data-missing-for="faith"]')).toBeHidden();
+  });
+
+  test('refuses an incomplete send, gives back what was typed, and lands on it', async ({
+    page,
+  }) => {
+    // A refused send stores nothing, so this is safe against a real deployment.
+    await page.goto(APPLICATION_PATH);
+
+    await page.fill('#apply-family-name', 'Suite Family');
+    await clickSend(page);
+
+    await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
+    await expect(page.locator('#apply-family-name')).toHaveValue('Suite Family');
+    await expect(page.locator('#apply-email-error')).toBeVisible();
+    await expect(page.locator('#apply-email')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#apply-children-error')).toBeVisible();
+    await expect(page.locator('#apply-classes-error')).toBeVisible();
+    await expect(page.locator('#apply-faith-error')).toBeVisible();
+
+    // Not the banner. The first thing that needs them, in reading order — which
+    // on this form is the Statement of Faith grid, above everything else.
+    await expect(page.locator('[data-faith-grid] input').first()).toBeFocused();
+  });
+
+  test('lands on the field that is missing, not on the first field there is', async ({ page }) => {
+    await page.goto(APPLICATION_PATH);
+
+    await fillSendable(page, 'email');
+    await clickSend(page);
+
+    await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
+    await expect(page.locator('#apply-email')).toBeFocused();
+  });
+
+  test('lands on the child who is short, not on the first child there is', async ({ page }) => {
+    await page.goto(APPLICATION_PATH);
+
+    // No script, so the second row arrives by round trip. A check writes
+    // nothing, which is why it is the one used to open it.
+    await fillSendable(page);
+    await page.selectOption('#apply-child-count', '2');
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+
+    await page.fill('#apply-child-1-name', 'Second Child');
+    await clickSend(page);
+
+    await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
+    await expect(page.locator('#apply-child-1-age')).toBeFocused();
+    // And the still-needed line points there too, rather than at a filled box.
+    await expect(stillNeeded(page, 'children').locator('a')).toHaveAttribute(
+      'href',
+      '#apply-child-1-age',
+    );
+  });
+
+  test('lands on the document nobody has answered, not on the first one', async ({ page }) => {
+    await page.goto(APPLICATION_PATH);
+
+    await fillSendable(page, 'agreements');
+    await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
+    await clickSend(page);
+
+    await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
+    await expect(page.locator('[data-agreement="handbook"] input').first()).toBeFocused();
+  });
+
+  test('sends a complete application by round trip', async ({ page }) => {
+    test.skip(!MAY_SUBMIT, 'a real send writes an application row');
+    await page.goto(APPLICATION_PATH);
+
+    await fillSendable(page);
+    await clickSend(page);
+
+    await expect(page.locator('[data-outcome="received"]')).toBeVisible();
   });
 });

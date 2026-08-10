@@ -12,13 +12,16 @@ import {
   faithAnswer,
   faithKey,
   familyClashes,
+  firstError,
   MAX_CHILDREN,
   parseApplication,
   prefillFrom,
   statementVersion,
+  validateApplication,
   type ApplicationChild,
   type ApplicationErrors,
   type ApplicationFields,
+  type ErrorField,
 } from '../../lib/application/application.js';
 import {
   AGREEMENT_CHOICES,
@@ -77,10 +80,35 @@ import { listPolicies } from '../../lib/policies/store.js';
  * posted the cheque.
  *
  * **There is no scroll-gate** (#31 AC 7) and nothing here could implement one:
- * no submit is disabled, nothing is behind an `overflow` container, and the
- * Statement's disclosure opens with a click rather than with a scroll to the
- * bottom. A gate is a WCAG 2.2 AA hazard for keyboard and screen-reader users
- * that buys no evidence anybody read anything.
+ * nothing is hidden, nothing is behind an `overflow` container, the children's
+ * section is editable from the first paint, and the Statement's disclosure opens
+ * with a click rather than with a scroll to the bottom. A gate is a WCAG 2.2 AA
+ * hazard for keyboard and screen-reader users that buys no evidence anybody read
+ * anything. **That rule survives #85 intact** — read ADR-0009 before reading the
+ * greyed button below as its reversal.
+ *
+ * **The application gates on answers** (#85). "Send the application" is greyed
+ * until the form is complete, and complete means *answered*: a family name, a
+ * reachable address, a child with an age, a class, one full column of the
+ * Statement of Faith grid by any one respondent, and an answer to each document
+ * the school has actually published. Nothing here gates on *agreement* — "No"
+ * passes, "Neither agrees" passes, an objection passes and still routes the
+ * application to a conversation rather than to a refusal.
+ *
+ * **Greyed, never `disabled`.** `aria-disabled` plus a greyed appearance, so the
+ * button stays focusable and can explain itself: a keyboard or screen-reader
+ * user reaches it, activates it, is told what is missing and is taken there.
+ * `disabled` would remove it from the tab order and leave that user with a dead
+ * control and no explanation, which is the WCAG hazard the no-gate rule is about
+ * in the first place.
+ *
+ * **Errors arrive while the family types, and nothing jumps to the top.** Each
+ * field checks itself on blur and re-checks on every keystroke once it has
+ * already gone wrong; the still-needed list beside the button is an
+ * `aria-live` region. A refused send — from the greyed button, or from the
+ * server round trip a family with scripting off gets — puts focus on the first
+ * outstanding control rather than depositing the family on a banner five
+ * thousand words above the field that needs them.
  *
  * **How many children is a question, not a guess.** The family picks the number
  * from a dropdown and that many rows are shown; all eight are rendered and the
@@ -270,6 +298,88 @@ if (Astro.request.method === 'POST') {
 }
 
 const rejected = Object.keys(errors).length > 0;
+
+/**
+ * What the form is still short of, whatever button was last pressed (#85).
+ *
+ * Deliberately *not* `errors`: `errors` is what the family is being told off
+ * about, and a check must not tell anyone off. `outstanding` is what the gate
+ * reads — the button's greyness and the still-needed list — and it is derived on
+ * every render from the values in hand. There is no "checked" flag and no
+ * "valid" flag anywhere on this page, which is why editing a class after a
+ * passing check cannot leave the button lying about the form.
+ *
+ * The same function the browser calls on every keystroke, and the same one the
+ * POST above already called. One rule set, three callers, no way to disagree.
+ */
+const outstanding = validateApplication(values, askable);
+const incomplete = Object.keys(outstanding).length > 0;
+
+/**
+ * Where a refused send puts the family.
+ *
+ * The first outstanding field in reading order, focused on arrival, so the page
+ * answers "you cannot send this yet" by showing them the thing rather than by
+ * scrolling them to a banner. With scripting on the browser does this without a
+ * round trip; this is the server's half, and the two land in the same place.
+ */
+const focus: ErrorField | null = rejected ? firstError(errors) : null;
+
+/**
+ * The still-needed list, in reading order.
+ *
+ * A greyed button with no list is a dead end. Each line links to the control it
+ * is about, because on a document this long "a child needs an age" without a
+ * link is an instruction to go hunting. Rendered whole and hidden line by line
+ * so the browser has only to flip `hidden` — a server-raised line and a
+ * browser-raised one are then the same element, not two spellings of one.
+ */
+const childAt = (index: number): ApplicationChild =>
+  values.children[index] ?? { name: '', age: '', offeringKeys: [] };
+
+/**
+ * Which box on which child row a refused send should land in.
+ *
+ * The first *shown* row short of a name, else short of an age — the same walk
+ * `FOCUS.children` makes in the browser, over the same rows: a row past the
+ * count is `disabled`, posts nothing, and is skipped by both halves. Landing on
+ * row 0 whatever the count would be the two paths disagreeing, and a family
+ * whose second child has no age would be sent to their first child's filled-in
+ * age box.
+ */
+const childNeeds = ((): { index: number; box: 'name' | 'age' } => {
+  for (let index = 0; index < rows; index += 1) {
+    const child = childAt(index);
+    if (!child.name.trim()) return { index, box: 'name' };
+    if (!child.age.trim()) return { index, box: 'age' };
+  }
+  return { index: 0, box: 'name' };
+})();
+
+/**
+ * Which document a refused send should land on — the first one nobody has
+ * answered, matching `FOCUS.agreements`. "Not answered" posts an empty value,
+ * so an explicit "Not answered" and an untouched question are the same thing
+ * here, exactly as the rules read them.
+ */
+const agreementNeeds = Math.max(
+  askable.findIndex((document) => !agreementAnswer(values.agreements, document.slug)),
+  0,
+);
+
+const NEEDED: { field: ErrorField; href: string; label: string }[] = [
+  { field: 'faith', href: '#apply-faith', label: 'One parent or guardian’s answers to the three questions' },
+  { field: 'familyName', href: '#apply-family-name', label: 'Your family name' },
+  { field: 'email', href: '#apply-email', label: 'An email address we can reply to' },
+  {
+    field: 'children',
+    href: `#apply-child-${childNeeds.index}-${childNeeds.box}`,
+    label: 'Each child’s name and their age',
+  },
+  { field: 'classes', href: '#apply-classes', label: 'At least one class, for one child' },
+  { field: 'agreements', href: '#apply-agreements', label: 'Who agrees to each of the documents' },
+];
+
 const cost = applicationCost(values, offerings, settings);
 const clashing = familyClashes(values, offerings, year);
 const clashCount = clashing.reduce((sum, one) => sum + one.clashes.length, 0);
@@ -282,9 +392,6 @@ const clashCount = clashing.reduce((sum, one) => sum + one.clashes.length, 0);
 const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
 const childLabel = (child: ApplicationChild, index: number): string =>
   child.name.trim() || `Your ${ORDINALS[index] ?? `${index + 1}th`} child`;
-
-const childAt = (index: number): ApplicationChild =>
-  values.children[index] ?? { name: '', age: '', offeringKeys: [] };
 
 const stage = (id: string): string =>
   APPLICATION_STAGES.find((one) => one.id === id)?.title ?? '';
@@ -421,12 +528,12 @@ const description =
               alone if it does not apply to your family — an unanswered question is not a "no".
             </p>
 
-            <div class="faith mt-7">
-              {FAITH_QUESTIONS.map((question) => (
+            <div class="faith mt-7" id="apply-faith" data-faith-grid>
+              {FAITH_QUESTIONS.map((question, row) => (
                 <fieldset class="question">
                   <legend>{question.text}</legend>
                   <div class="respondents">
-                    {FAITH_RESPONDENTS.map((respondent) => (
+                    {FAITH_RESPONDENTS.map((respondent, column) => (
                       <fieldset class="respondent">
                         <legend>{respondent}</legend>
                         {(
@@ -435,7 +542,7 @@ const description =
                             { value: 'no', label: 'No' },
                             { value: '', label: 'Not answered' },
                           ] as const
-                        ).map((choice) => (
+                        ).map((choice, choiceAt) => (
                           <label class="check">
                             <input
                               type="radio"
@@ -443,6 +550,10 @@ const description =
                               value={choice.value}
                               checked={
                                 faithAnswer(values.faith, respondent, question.id) === choice.value
+                              }
+                              aria-describedby={errors.faith ? 'apply-faith-error' : undefined}
+                              autofocus={
+                                focus === 'faith' && row === 0 && column === 0 && choiceAt === 0
                               }
                             />
                             <span>{choice.label}</span>
@@ -454,6 +565,15 @@ const description =
                 </fieldset>
               ))}
             </div>
+
+            {/*
+              One column, and never a verdict on what is in it (#85). The grid is
+              incomplete until some one respondent has answered all three; which
+              respondent, and what they answered, is not this page's business.
+            */}
+            <p class="error mt-5" id="apply-faith-error" hidden={!errors.faith}>
+              {errors.faith}
+            </p>
 
             <div class="field mt-7">
               <label for="apply-objections">
@@ -486,12 +606,11 @@ const description =
                   value={values.familyName}
                   aria-describedby={errors.familyName ? 'apply-family-name-error' : undefined}
                   aria-invalid={errors.familyName ? 'true' : undefined}
+                  autofocus={focus === 'familyName'}
                 />
-                {errors.familyName && (
-                  <p class="error" id="apply-family-name-error">
-                    {errors.familyName}
-                  </p>
-                )}
+                <p class="error" id="apply-family-name-error" hidden={!errors.familyName}>
+                  {errors.familyName}
+                </p>
               </div>
 
               <div>
@@ -504,25 +623,27 @@ const description =
                   value={values.email}
                   aria-describedby={errors.email ? 'apply-email-error' : undefined}
                   aria-invalid={errors.email ? 'true' : undefined}
+                  autofocus={focus === 'email'}
                 />
-                {errors.email && (
-                  <p class="error" id="apply-email-error">
-                    {errors.email}
-                  </p>
-                )}
+                <p class="error" id="apply-email-error" hidden={!errors.email}>
+                  {errors.email}
+                </p>
               </div>
             </div>
 
-            {errors.children && (
-              <p class="error mt-6" id="apply-children-error">
-                {errors.children}
-              </p>
-            )}
-            {errors.classes && (
-              <p class="error mt-4" id="apply-classes-error">
-                {errors.classes}
-              </p>
-            )}
+            {/*
+              Rendered whether or not they say anything, and hidden when they do
+              not. The browser flips `hidden` and writes the sentence, so an
+              error raised while the family types is the same element a refused
+              POST fills in — indistinguishable to a screen reader, which is the
+              point.
+            */}
+            <p class="error mt-6" id="apply-children-error" hidden={!errors.children}>
+              {errors.children}
+            </p>
+            <p class="error mt-4" id="apply-classes-error" hidden={!errors.classes}>
+              {errors.classes}
+            </p>
 
             {/*
               The count, above the rows it governs.
@@ -568,6 +689,11 @@ const description =
                       name={`child-${index}-name`}
                       value={childAt(index).name}
                       aria-describedby={errors.children ? 'apply-children-error' : undefined}
+                      autofocus={
+                        focus === 'children' &&
+                        index === childNeeds.index &&
+                        childNeeds.box === 'name'
+                      }
                     />
                   </div>
                   <div>
@@ -578,11 +704,16 @@ const description =
                       inputmode="numeric"
                       value={childAt(index).age}
                       aria-describedby={errors.children ? 'apply-children-error' : undefined}
+                      autofocus={
+                        focus === 'children' &&
+                        index === childNeeds.index &&
+                        childNeeds.box === 'age'
+                      }
                     />
                   </div>
                 </div>
 
-                <fieldset class="picker mt-6">
+                <fieldset class="picker mt-6" id={index === 0 ? 'apply-classes' : undefined}>
                   <legend>Classes for this child</legend>
                   {offerings.length === 0 ? (
                     <p class="hint">
@@ -591,7 +722,7 @@ const description =
                     </p>
                   ) : (
                     <ul class="offerings">
-                      {offerings.map((offering) => (
+                      {offerings.map((offering, at) => (
                         <li>
                           <label class="check">
                             <input
@@ -600,6 +731,7 @@ const description =
                               value={offeringKey(offering)}
                               checked={childAt(index).offeringKeys.includes(offeringKey(offering))}
                               aria-describedby={errors.classes ? 'apply-classes-error' : undefined}
+                              autofocus={focus === 'classes' && index === 0 && at === 0}
                             />
                             <span>
                               <strong>{offeringTitle(offering)}</strong>
@@ -659,9 +791,12 @@ const description =
           field's stead — it is on `askable`, and the parser records it — so what
           this family agreed to survives the next upload.
 
-          Nothing here can block a submission. "Neither agrees" is an answer the
-          school's own form allows, "Not answered" leaves the row absent, and no
-          error can be attached to either.
+          Since #85 an *asked* question has to be answered before the
+          application can be sent — and that is a requirement to answer, never a
+          requirement to agree. All three choices pass, "Neither agrees"
+          included. A document the school has not published produces no question
+          and no requirement, so the gate can never be about something a family
+          was not shown.
         */}
         {askable.length > 0 && (
           <section class="band" id="agreements" data-section="apply-agreements">
@@ -669,12 +804,12 @@ const description =
               <h2>{stage('agreements')}</h2>
               <p class="sub mt-4">
                 Two documents families sign. Read them here — they open in full — and tell us who
-                agrees. You can send the application whatever you answer, and "Neither agrees" is a
-                real answer rather than a problem.
+                agrees. We need an answer to each, and any of them will do: "Neither agrees" is a
+                real answer rather than a problem, and none of them stops your application.
               </p>
 
-              <div class="faith mt-7">
-                {askable.map((document) => (
+              <div class="faith mt-7" id="apply-agreements" data-agreements>
+                {askable.map((document, at) => (
                   <fieldset class="question" data-agreement={document.slug}>
                     <legend>{document.question}</legend>
                     <p class="hint">
@@ -683,7 +818,7 @@ const description =
                     </p>
                     <div class="mt-4">
                       {[...AGREEMENT_CHOICES, { value: '', label: 'Not answered' } as const].map(
-                        (choice) => (
+                        (choice, choiceAt) => (
                           <label class="check">
                             <input
                               type="radio"
@@ -691,6 +826,12 @@ const description =
                               value={choice.value}
                               checked={
                                 agreementAnswer(values.agreements, document.slug) === choice.value
+                              }
+                              aria-describedby={
+                                errors.agreements ? 'apply-agreements-error' : undefined
+                              }
+                              autofocus={
+                                focus === 'agreements' && at === agreementNeeds && choiceAt === 0
                               }
                             />
                             <span>{choice.label}</span>
@@ -701,6 +842,10 @@ const description =
                   </fieldset>
                 ))}
               </div>
+
+              <p class="error mt-5" id="apply-agreements-error" hidden={!errors.agreements}>
+                {errors.agreements}
+              </p>
             </div>
           </section>
         )}
@@ -766,10 +911,45 @@ const description =
               <button class="btn" type="submit" name="intent" value="check">
                 Check these choices
               </button>{' '}
-              <button class="btn solid" type="submit" name="intent" value="send">
+              {/*
+                Greyed with `aria-disabled`, never with `disabled` (#85). It
+                stays in the tab order and it stays activatable, because a
+                keyboard or screen-reader user who reaches it must be told what
+                is missing and taken there rather than handed a dead control.
+                With scripting off it submits, and the server says the same
+                thing by round trip.
+              */}
+              <button
+                class="btn solid"
+                type="submit"
+                name="intent"
+                value="send"
+                aria-disabled={incomplete ? 'true' : undefined}
+                aria-describedby="apply-missing"
+                data-send
+              >
                 Send the application
               </button>
             </p>
+
+            {/*
+              What the greyed button would say if it could talk. Polite rather
+              than assertive: it changes on every keystroke while a family types
+              their email, and an assertive region would interrupt them mid-word.
+            */}
+            <div class="missing mt-6" id="apply-missing" aria-live="polite" data-missing>
+              <p data-missing-intro hidden={!incomplete}>Still needed before you can send this:</p>
+              <ul>
+                {NEEDED.map((one) => (
+                  <li data-missing-for={one.field} hidden={!outstanding[one.field]}>
+                    <a href={one.href}>{one.label}</a>
+                  </li>
+                ))}
+              </ul>
+              <p data-missing-done hidden={incomplete}>
+                That is everything we need. You can send this whenever you are ready.
+              </p>
+            </div>
 
             <p class="mt-6 text-ink-2">
               Not ready? <a href={INQUIRY_PATH}>Ask us a question instead</a> — we would far rather
@@ -784,29 +964,320 @@ const description =
 
 <script>
   /*
-    The count picker, and the whole of the client behaviour on this page.
+    The client behaviour on this page: the count picker, and the gate (#85).
 
-    It moves `hidden` and `disabled` together, never one without the other: a
-    row that is out of sight but still posting would put a child on the
-    application the family cannot see, and one that is disabled but still
-    visible would silently ignore what they typed into it. The server sets both
-    on the way out, so the page is already correct before this runs — and stays
-    correct if it never does. A family with scripting off changes the number
-    with "Check these choices" instead, which is a round trip rather than a
-    dead control.
+    Both are enhancements and neither is a dependency. With scripting off the
+    server sets every `hidden` and `disabled` on the way out, applies the same
+    rules on POST, and lands focus on the same first outstanding control — so
+    what this file buys a family is *when* they are told, never *whether*.
+
+    The rules themselves are imported rather than restated. `validation.ts` is a leaf
+    for this reason: importing `application.ts` here would ship the Statement of
+    Faith text, the catalogue, the clash rule and the money graph to a browser
+    that only needs to notice an empty box.
   */
-  const form = document.querySelector<HTMLFormElement>('form[data-application-form]');
-  const picker = form?.querySelector<HTMLSelectElement>('select[data-child-count]');
-  const rows = [...(form?.querySelectorAll<HTMLFieldSetElement>('fieldset[data-child-row]') ?? [])];
+  import type {
+    AgreementAnswer,
+    AgreementSlug,
+    Agreements,
+  } from '../../lib/application/agreements.js';
+  import {
+    ERROR_FIELDS,
+    FAITH_QUESTIONS,
+    FAITH_RESPONDENTS,
+    faithKey,
+    firstError,
+    validateApplication,
+    type ApplicationChild,
+    type ApplicationErrors,
+    type ApplicationFields,
+    type ErrorField,
+    type FaithAnswers,
+  } from '../../lib/application/validation.js';
 
-  picker?.addEventListener('change', () => {
-    const wanted = Number(picker.value);
-    for (const row of rows) {
-      const spare = Number(row.dataset.childRow) >= wanted;
-      row.hidden = spare;
-      row.disabled = spare;
+  const found = document.querySelector<HTMLFormElement>('form[data-application-form]');
+
+  if (found) {
+    // Bound once, non-null, so every closure below can say `form` without
+    // re-asserting that a page with a confirmation on it has one.
+    const form: HTMLFormElement = found;
+
+    const picker = form.querySelector<HTMLSelectElement>('select[data-child-count]');
+    const rows = [...form.querySelectorAll<HTMLFieldSetElement>('fieldset[data-child-row]')];
+    const send = form.querySelector<HTMLButtonElement>('button[data-send]');
+    const missing = form.querySelector<HTMLElement>('[data-missing]');
+
+    /*
+      The documents the page actually asked about. Read off the rendered
+      questions rather than passed in, so the browser's rule and the server's
+      are looking at the same form: a policy with nothing published produces no
+      question here, and therefore no requirement.
+    */
+    const asked = [...form.querySelectorAll<HTMLElement>('[data-agreement]')].map((question) => ({
+      slug: question.dataset.agreement as AgreementSlug,
+    }));
+
+    /**
+      Which fields the family has finished with.
+
+      A field is checked once they have left it, and re-checked on every
+      keystroke after that. Before that it says nothing: a form that reports an
+      empty family name while somebody is still typing the first letter of it is
+      a form that feels like an argument.
+    */
+    const touched = new Set<ErrorField>();
+
+    /*
+      Where each error's sentence goes, and who points at it.
+
+      The same elements the server fills in, so an error raised while the family
+      types and one raised by a refused POST are the same thing to a screen
+      reader. `invalid` is set only where the server sets it.
+    */
+    const enabledRow = 'fieldset[data-child-row]:not([disabled])';
+    const WIRING: Record<ErrorField, { error: string; describes: string; invalid?: string }> = {
+      faith: { error: 'apply-faith-error', describes: '[data-faith-grid] input' },
+      familyName: {
+        error: 'apply-family-name-error',
+        describes: '#apply-family-name',
+        invalid: '#apply-family-name',
+      },
+      email: { error: 'apply-email-error', describes: '#apply-email', invalid: '#apply-email' },
+      children: {
+        error: 'apply-children-error',
+        describes: `${enabledRow} input[name$="-name"], ${enabledRow} input[name$="-age"]`,
+      },
+      classes: {
+        error: 'apply-classes-error',
+        describes: `${enabledRow} input[name$="-classes"]`,
+      },
+      agreements: { error: 'apply-agreements-error', describes: '[data-agreements] input' },
+    };
+
+    /** The control a refused send should land on, per field. */
+    const FOCUS: Record<ErrorField, () => HTMLElement | null> = {
+      faith: () => form.querySelector('[data-faith-grid] input'),
+      familyName: () => form.querySelector('#apply-family-name'),
+      email: () => form.querySelector('#apply-email'),
+      children: () => {
+        for (const row of visibleRows()) {
+          const name = row.querySelector<HTMLInputElement>('input[name$="-name"]');
+          const age = row.querySelector<HTMLInputElement>('input[name$="-age"]');
+          if (!name?.value.trim()) return name;
+          if (!age?.value.trim()) return age;
+        }
+        return null;
+      },
+      classes: () => visibleRows()[0]?.querySelector('input[name$="-classes"]') ?? null,
+      agreements: () => {
+        for (const { slug } of asked) {
+          const question = form.querySelector<HTMLElement>(`[data-agreement="${slug}"]`);
+          if (!answerIn(question)) return question?.querySelector('input') ?? null;
+        }
+        return null;
+      },
+    };
+
+    const visibleRows = (): HTMLFieldSetElement[] => rows.filter((row) => !row.disabled);
+
+    const answerIn = (scope: HTMLElement | null): string =>
+      scope?.querySelector<HTMLInputElement>('input:checked')?.value ?? '';
+
+    const valueOf = (selector: string): string =>
+      form.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)?.value.trim() ?? '';
+
+    /**
+      The form as the rules see it — the same shape `parseApplication` builds.
+
+      A hidden row is a row that is not there, exactly as it is on the server: it
+      carries `disabled` as well as `hidden`, it posts nothing, and it is skipped
+      here. So lowering the count cannot leave stale text blocking a send, and
+      raising it again brings the row back under the rule from that moment.
+    */
+    function read(): ApplicationFields {
+      const children: ApplicationChild[] = [];
+      for (const row of visibleRows()) {
+        const name = row.querySelector<HTMLInputElement>('input[name$="-name"]')?.value.trim() ?? '';
+        const age = row.querySelector<HTMLInputElement>('input[name$="-age"]')?.value.trim() ?? '';
+        const offeringKeys = [
+          ...row.querySelectorAll<HTMLInputElement>('input[name$="-classes"]:checked'),
+        ].map((box) => box.value);
+
+        if (name || age || offeringKeys.length > 0) children.push({ name, age, offeringKeys });
+      }
+
+      const faith: FaithAnswers = {};
+      for (const respondent of FAITH_RESPONDENTS) {
+        for (const question of FAITH_QUESTIONS) {
+          const key = faithKey(respondent, question.id);
+          const chosen =
+            form.querySelector<HTMLInputElement>(`input[name="${key}"]:checked`)?.value ?? '';
+          // "Not answered" is a real radio on this grid, and it posts an empty
+          // value. Empty is unanswered and is never read as a "no".
+          faith[key] = chosen === 'yes' || chosen === 'no' ? chosen : '';
+        }
+      }
+
+      const agreements: Agreements = {};
+      for (const { slug } of asked) {
+        const answer = answerIn(form.querySelector(`[data-agreement="${slug}"]`));
+        // The version is the server's to record; the rule only asks whether
+        // anything was answered at all.
+        if (answer !== '') agreements[slug] = { answer: answer as AgreementAnswer, version: null };
+      }
+
+      return {
+        familyName: valueOf('#apply-family-name'),
+        email: valueOf('#apply-email'),
+        children,
+        faith,
+        objections: valueOf('#apply-objections'),
+        agreements,
+      };
     }
-  });
+
+    /** Show or clear one field's sentence, and the wiring that points at it. */
+    function paint(field: ErrorField, message: string | undefined): void {
+      const wiring = WIRING[field];
+      const paragraph = document.getElementById(wiring.error);
+      if (paragraph) {
+        paragraph.textContent = message ?? '';
+        paragraph.hidden = message === undefined;
+      }
+
+      for (const control of form.querySelectorAll(wiring.describes)) {
+        if (message === undefined) control.removeAttribute('aria-describedby');
+        else control.setAttribute('aria-describedby', wiring.error);
+      }
+
+      const invalid = wiring.invalid ? form.querySelector(wiring.invalid) : null;
+      if (message === undefined) invalid?.removeAttribute('aria-invalid');
+      else invalid?.setAttribute('aria-invalid', 'true');
+    }
+
+    /**
+      Re-derive everything from the form as it stands.
+
+      Nothing is remembered between renders except which fields have been left
+      once. There is no "valid" flag to go stale, which is why changing a class
+      after a passing check cannot leave the button saying something the form no
+      longer supports.
+    */
+    function render(): ApplicationErrors {
+      const errors = validateApplication(read(), asked);
+      const incomplete = Object.keys(errors).length > 0;
+
+      if (send) {
+        if (incomplete) send.setAttribute('aria-disabled', 'true');
+        else send.removeAttribute('aria-disabled');
+      }
+
+      for (const field of ERROR_FIELDS) {
+        const shown = touched.has(field) ? errors[field] : undefined;
+        paint(field, shown);
+
+        const item = missing?.querySelector<HTMLElement>(`[data-missing-for="${field}"]`);
+        if (item) item.hidden = errors[field] === undefined;
+      }
+
+      /*
+        The children line names a row, so it has to move as the rows do.
+        The server points it at the row it would focus; here that row can
+        change on a keystroke, and a link to a box the family already filled in
+        is the hunt the list exists to save them.
+      */
+      const childLink = missing?.querySelector<HTMLAnchorElement>(
+        '[data-missing-for="children"] a',
+      );
+      const childTarget = FOCUS.children();
+      if (childLink && childTarget?.id) childLink.href = `#${childTarget.id}`;
+
+      const intro = missing?.querySelector<HTMLElement>('[data-missing-intro]');
+      const done = missing?.querySelector<HTMLElement>('[data-missing-done]');
+      if (intro) intro.hidden = !incomplete;
+      if (done) done.hidden = incomplete;
+
+      return errors;
+    }
+
+    /** Which rule a control belongs to, from the name it posts under. */
+    function fieldOf(control: Element | null): ErrorField | null {
+      const name = control?.getAttribute('name') ?? '';
+      if (name.startsWith('faith-')) return 'faith';
+      if (name.startsWith('agreement-')) return 'agreements';
+      if (name === 'familyName') return 'familyName';
+      if (name === 'email') return 'email';
+      if (name.endsWith('-classes')) return 'classes';
+      if (/^child-\d+-(name|age)$/.test(name)) return 'children';
+      return null;
+    }
+
+    const check = (event: Event): void => {
+      const field = fieldOf(event.target as Element);
+      if (field) touched.add(field);
+      render();
+    };
+
+    // Leaving a field checks it; a radio or a checkbox is answered the moment it
+    // changes, so there is nothing to wait for. A keystroke re-checks whatever
+    // has already been checked and nothing else.
+    form.addEventListener('blur', check, true);
+    form.addEventListener('change', check);
+    form.addEventListener('input', () => void render());
+
+    /*
+      The count picker.
+
+      It moves `hidden` and `disabled` together, never one without the other: a
+      row that is out of sight but still posting would put a child on the
+      application the family cannot see, and one that is disabled but still
+      visible would silently ignore what they typed into it. A row appearing or
+      disappearing changes what the rules can see, so the gate is re-derived with
+      it.
+    */
+    picker?.addEventListener('change', () => {
+      const wanted = Number(picker.value);
+      for (const row of rows) {
+        const spare = Number(row.dataset.childRow) >= wanted;
+        row.hidden = spare;
+        row.disabled = spare;
+      }
+      render();
+    });
+
+    /*
+      The greyed button explains itself.
+
+      `aria-disabled` does not stop a click, which is the whole reason it was
+      chosen: the family reaches the button, activates it, is shown everything
+      that is missing and is put on the first of it. A `disabled` button would
+      have said nothing and could not have been reached at all.
+    */
+    send?.addEventListener('click', (event) => {
+      if (send.getAttribute('aria-disabled') !== 'true') return;
+      event.preventDefault();
+
+      for (const field of ERROR_FIELDS) touched.add(field);
+      const first = firstError(render());
+      const target = first ? FOCUS[first]() : null;
+      target?.focus();
+      target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+
+    render();
+
+    /*
+      The enhancement is live.
+
+      A module script is deferred, so for a moment after the page paints the
+      form is the server's form: the count picker is a round trip and the gate
+      is whatever the last render decided. That is a correct page and not a
+      broken one — but it is a *different* page, and a test that clicks into the
+      window between the two is testing neither. The marker says which one is on
+      screen.
+    */
+    form.setAttribute('data-enhanced', '');
+  }
 </script>
 
 <style>
@@ -1043,5 +1514,40 @@ const description =
     margin-top: 0.35rem;
     color: #8c2b19;
     font-weight: 500;
+  }
+
+  /*
+    The greyed Send button (#85).
+
+    Grey and a not-allowed cursor, and no `opacity`: a translucent solid button
+    drops its text below the contrast floor, and the one user this styling is
+    most likely to matter to is the one who would notice. The button is still
+    focusable, still clickable and still explains itself — see the script.
+  */
+  .btn[aria-disabled='true'],
+  .btn[aria-disabled='true']:hover {
+    background: var(--color-ink-2);
+    border-color: var(--color-ink-2);
+    color: var(--color-cream);
+    cursor: not-allowed;
+  }
+
+  .missing {
+    max-width: 46rem;
+    color: var(--color-ink-2);
+  }
+
+  .missing ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0;
+  }
+
+  .missing li {
+    border-left: 3px solid var(--color-gold-orn);
+    padding-left: 1rem;
   }
 </style>

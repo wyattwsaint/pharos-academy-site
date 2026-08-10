@@ -12,14 +12,18 @@ import {
   FAITH_RESPONDENTS,
   faithKey,
   familyClashes,
+  firstError,
   isFlagged,
   MAX_CHILDREN,
   parseApplication,
   prefillFrom,
   priceUnit,
   statementVersion,
+  validateApplication,
+  type ApplicationErrors,
   type ApplicationFields,
 } from './application.js';
+import type { AskableAgreement } from './agreements.js';
 import { offeringsOf } from './offerings.js';
 
 /**
@@ -38,7 +42,23 @@ function form(entries: Record<string, string | string[]>): FormData {
   return data;
 }
 
-/** A complete, valid submission. Individual tests spoil one field of it. */
+/** One respondent's whole column of the Statement of Faith grid, answered. */
+function column(
+  respondent: (typeof FAITH_RESPONDENTS)[number],
+  answer: 'yes' | 'no' = 'yes',
+): Record<string, string> {
+  return Object.fromEntries(
+    FAITH_QUESTIONS.map((question) => [faithKey(respondent, question.id), answer]),
+  );
+}
+
+/**
+ * A complete, valid submission. Individual tests spoil one field of it.
+ *
+ * One full column since #85: an application nobody answered the Statement of
+ * Faith questions on is no longer a sendable one, so a fixture without a column
+ * would be testing a form the school does not accept.
+ */
 function goodForm(over: Record<string, string | string[]> = {}): FormData {
   return form({
     familyName: 'Okonkwo',
@@ -46,6 +66,7 @@ function goodForm(over: Record<string, string | string[]> = {}): FormData {
     'child-0-name': 'Ada',
     'child-0-age': '13',
     'child-0-classes': ['algebra-1:year'],
+    ...column('Father'),
     ...over,
   });
 }
@@ -134,6 +155,137 @@ describe('reading a submitted application', () => {
   it('asks for an age beside a name', () => {
     const { errors } = parseApplication(goodForm({ 'child-0-age': '' }), OFFERINGS);
     expect(errors.children).toBeTruthy();
+  });
+
+  it('says whose row is short of an age', () => {
+    // "A child needs an age" is not actionable on an eight-row form (#85).
+    const { errors } = parseApplication(
+      goodForm({ 'child-1-name': 'Obi', 'child-1-age': '' }),
+      OFFERINGS,
+    );
+
+    expect(errors.children).toContain('Obi');
+  });
+});
+
+/**
+ * The gate (#85). Answered, never agreed — every case below asks whether a
+ * question has an answer, and none of them asks which answer it is.
+ */
+describe('what an application must carry before it can be sent (#85)', () => {
+  const ASKABLE: AskableAgreement[] = [
+    {
+      slug: 'code-of-conduct',
+      title: 'Code of Conduct',
+      question: 'Who agrees to the Pharos Academy Code of Conduct?',
+      version: 2,
+    },
+    {
+      slug: 'handbook',
+      title: 'Handbook',
+      question: 'Who agrees to the Pharos Academy Handbook?',
+      version: 5,
+    },
+  ];
+
+  /** Both published documents answered, so a case can be about one thing.  */
+  const AGREED = { 'agreement-code-of-conduct': 'parent', 'agreement-handbook': 'parent' };
+
+  const errorsOf = (
+    over: Record<string, string | string[]>,
+    askable: AskableAgreement[] = [],
+  ): ApplicationErrors => parseApplication(goodForm(over), OFFERINGS, askable).errors;
+
+  describe('one column of the Statement of Faith grid', () => {
+    it.each(FAITH_RESPONDENTS)('is enough when %s answers all three', (respondent) => {
+      // A single-parent household, a household with no parent on the form: no
+      // respondent is privileged over another, and one column is the whole rule.
+      const bare = Object.fromEntries(
+        FAITH_QUESTIONS.map((question) => [faithKey('Father', question.id), '']),
+      );
+
+      expect(errorsOf({ ...bare, ...column(respondent) }).faith).toBeUndefined();
+    });
+
+    it('is not met by a column with a gap in it', () => {
+      expect(
+        errorsOf({ [faithKey('Father', 'comfortable')]: '' }).faith,
+      ).toBeTruthy();
+    });
+
+    it('is not met by three columns with a gap in each', () => {
+      // Nine answers, none of them a complete column. The rule is one
+      // respondent's whole answer, not a count of cells.
+      const scattered: Record<string, string> = {};
+      for (const [index, respondent] of FAITH_RESPONDENTS.entries()) {
+        for (const [at, question] of FAITH_QUESTIONS.entries()) {
+          scattered[faithKey(respondent, question.id)] = at === index ? '' : 'yes';
+        }
+      }
+
+      expect(errorsOf(scattered).faith).toBeTruthy();
+    });
+
+    it('is met by a complete column of “No”', () => {
+      // The distinction the whole ticket turns on: answered, never agreed.
+      const { errors, flagged } = parseApplication(goodForm(column('Father', 'no')), OFFERINGS);
+
+      expect(errors).toEqual({});
+      expect(flagged).toBe(true);
+    });
+
+    it('takes a partly-filled second column as information, not as a defect', () => {
+      expect(errorsOf({ [faithKey('Mother', 'read')]: 'yes' })).toEqual({});
+    });
+
+    it('never asks for the objections box', () => {
+      // Optional, and writing in it costs a family nothing.
+      expect(errorsOf({})).toEqual({});
+      expect(errorsOf({ objections: 'We disagree with article 9.' })).toEqual({});
+    });
+  });
+
+  describe('an answer to every published document', () => {
+    it('asks for one when the school has published one', () => {
+      expect(errorsOf({}, ASKABLE).agreements).toBeTruthy();
+    });
+
+    it.each(['student', 'parent', 'neither'])('takes “%s” as the answer it is', (answer) => {
+      const answered = {
+        'agreement-code-of-conduct': answer,
+        'agreement-handbook': answer,
+      };
+
+      expect(errorsOf(answered, ASKABLE)).toEqual({});
+    });
+
+    it('drops the requirement entirely when neither document is published', () => {
+      expect(errorsOf({}, [])).toEqual({});
+    });
+
+    it('asks only about the one that is published', () => {
+      const onlyHandbook = ASKABLE.filter((document) => document.slug === 'handbook');
+
+      expect(errorsOf({ 'agreement-handbook': 'neither' }, onlyHandbook)).toEqual({});
+      expect(errorsOf({ 'agreement-code-of-conduct': 'neither' }, onlyHandbook).agreements)
+        .toBeTruthy();
+    });
+
+    it('still refuses when one of the two is left alone', () => {
+      expect(errorsOf({ 'agreement-handbook': 'parent' }, ASKABLE).agreements).toBeTruthy();
+    });
+  });
+
+  it('names the first outstanding thing in the order the page reads', () => {
+    // Where focus goes when a send is refused. Reading order, not the order the
+    // rules happen to be written in.
+    expect(firstError(validateApplication(prefillFrom(null), ASKABLE))).toBe('faith');
+    expect(firstError(errorsOf({ familyName: '' }, ASKABLE))).toBe('familyName');
+    expect(firstError(errorsOf(AGREED, ASKABLE))).toBeNull();
+  });
+
+  it('passes a whole application, with both documents answered', () => {
+    expect(errorsOf(AGREED, ASKABLE)).toEqual({});
   });
 });
 
@@ -402,10 +554,11 @@ describe('the children’s sensitive data does not enter the site (#31 AC 9)', (
   /*
    * The same criterion against the modules that hold the rules.
    *
-   * `validateApplication` moved to `validation.ts` (ADR-0009), and a criterion
-   * enforced only over the file the code used to be in is a criterion a move
-   * can quietly repeal. So both modules are read, and a rule naming one of
-   * these fields fails here wherever it is written.
+   * `validateApplication` moved to `validation.ts` (ADR-0009), and `#85` moved
+   * `ApplicationChild` after it. A criterion enforced only over the file the
+   * code used to be in is a criterion a move can quietly repeal, so both
+   * modules are read, and a rule naming one of these fields fails here wherever
+   * it is written.
    *
    * **Names, not prose.** Comments and string literals come out first: the doc
    * comments in both files use every one of these words to explain why the
