@@ -153,7 +153,7 @@ export const SEEDED_ANNOUNCEMENTS: readonly SeedAnnouncement[] = [
     postedOn: '2026-07-01',
     headline: 'School Board Update, July 2026',
     body:
-      'The Launch Task Force met on 1 July to review progress before the school year. Key policies were approved — a Child Protection Background Check Policy, a Disclosure Statement and abuse prevention training requirements — the teacher contract was updated to 28 weeks, and the application for federal tax-exempt status is moving forward. Classes begin Monday 31 August, 28 weeks in total.',
+      'The Launch Task Force met on July 1 to review progress before the school year. Key policies were approved — a Child Protection Background Check Policy, a Disclosure Statement and abuse prevention training requirements — the teacher contract was updated to 28 weeks, and the application for federal tax-exempt status is moving forward. Classes begin Monday, August 31, 28 weeks in total.',
     linkUrl: null,
     linkLabel: null,
     attachmentFilename: null,
@@ -163,17 +163,17 @@ export const SEEDED_ANNOUNCEMENTS: readonly SeedAnnouncement[] = [
     postedOn: '2026-07-01',
     headline: 'Fundraising for Pharos through Weis Markets',
     body:
-      'Link your Weis Rewards card to Pharos Academy and the school earns a share of $500,000. Register your card online — Pharos Academy, school ID 88082, 9 Sherwood Drive, Enola PA 17025 — then scan it each time you shop. You only register once; you are in the programme for the school year.',
+      'Link your Weis Rewards card to Pharos Academy and the school earns a share of $500,000. Register your card online — Pharos Academy, school ID 88082, 9 Sherwood Drive, Enola PA 17025 — then scan it each time you shop. You only register once; you are in the program for the school year.',
     linkUrl: 'https://www.weis4school.com',
     linkLabel: 'Register your Weis Rewards card',
     attachmentFilename: null,
   },
   {
-    slug: '2026-07-01-senators-game-fundraiser-24-july',
+    slug: '2026-07-01-senators-game-fundraiser-july-24',
     postedOn: '2026-07-01',
-    headline: 'Senators game fundraiser, 24 July',
+    headline: 'Senators game fundraiser, July 24',
     body:
-      'Pharos receives $4 for every ticket bought for the Senators game on 24 July. Ask Jill for tickets.',
+      'Pharos receives $4 for every ticket bought for the Senators game on July 24. Ask Jill for tickets.',
     linkUrl: null,
     linkLabel: null,
     attachmentFilename: null,

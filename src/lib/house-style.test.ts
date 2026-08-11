@@ -11,7 +11,8 @@ import { britishSpellings, prose, RULES } from './house-style.js';
  * on a repo that is still full of "cheque" and "enrolment", because the
  * allowlist below names every area that violates it today — the debt is written
  * down here rather than paid here. #112, #113 and #114 pay it down by deleting
- * entries, and #115 empties it.
+ * entries, and #115 empties it. #112's entry is gone: the home page, the site
+ * chrome and the shared modules behind them are now enforced like anything else.
  *
  * The rule it encodes is **prose is American, identifiers are not**. A family
  * reads "check", "enrollment" and "program"; the database keeps
@@ -66,18 +67,6 @@ interface Debt {
  * rather than a ticket.
  */
 const ALLOWED: readonly Debt[] = [
-  {
-    // #112 — batch 1: the home page, the site chrome, and the shared modules
-    // they read.
-    area: 'shared modules and site plumbing',
-    paths: [
-      'src/lib/announcements/announcement.ts',
-      'src/lib/backup/export.ts',
-      'src/lib/courses/store.ts',
-      'src/lib/redirects.ts',
-      'src/pages/api/cron/monthly-backup.ts',
-    ],
-  },
   {
     // #113 — batch 2: Admissions and the Apply flow, where "cheque" is densest
     // and a family is reading most closely.

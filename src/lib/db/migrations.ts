@@ -571,6 +571,46 @@ export const MIGRATIONS: readonly Migration[] = [
     id: '0013-staff-portraits',
     statements: [updatePhotos(PEOPLE)],
   },
+  {
+    /*
+     * The announcements, in American English (#112).
+     *
+     * 0004 seeded them and `insertAnnouncements` is `on conflict do nothing`, so
+     * rewording the constant fixes a database nobody has migrated yet and
+     * nothing else. Every already-seeded row would keep "programme" and "24
+     * July" forever, which is the whole of what a family reads on the news page.
+     *
+     * Each statement is guarded on the row still holding the *old* seed text, so
+     * a correction Jill typed from the admin survives this — the seed is the
+     * starting point, not the truth (0013 makes the same argument about a
+     * portrait). A fresh database seeds the new wording one migration earlier
+     * and finds nothing to do here.
+     *
+     * The Senators slug moves with its headline because
+     * `announcementSlug(postedOn, headline)` is what a slug *is* here, and
+     * `announcement.test.ts` holds the seed to that. Nothing published links to
+     * the old address: the slug is an anchor and a PDF path on the news page,
+     * and that row has no file.
+     */
+    id: '0014-announcements-in-american-english',
+    statements: [
+      `update announcements
+         set body = replace(replace(body, 'met on 1 July', 'met on July 1'),
+                            'Monday 31 August', 'Monday, August 31')
+       where slug = '2026-07-01-school-board-update-july-2026'
+         and body like '%met on 1 July%'`,
+      `update announcements
+         set body = replace(body, 'in the programme for', 'in the program for')
+       where slug = '2026-07-01-fundraising-for-pharos-through-weis-markets'
+         and body like '%in the programme for%'`,
+      `update announcements
+         set slug = '2026-07-01-senators-game-fundraiser-july-24',
+             headline = 'Senators game fundraiser, July 24',
+             body = replace(body, 'game on 24 July', 'game on July 24')
+       where slug = '2026-07-01-senators-game-fundraiser-24-july'
+         and headline = 'Senators game fundraiser, 24 July'`,
+    ],
+  },
 ];
 
 /**

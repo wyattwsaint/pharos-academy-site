@@ -75,7 +75,7 @@ export const EXPORTED_TABLES = [
  */
 export const EXPORTED_TABLE_LABELS: Record<(typeof EXPORTED_TABLES)[number], string> = {
   school_details: 'The school’s own details — address, phone, email, mission and vision',
-  courses: 'The class catalogue',
+  courses: 'The class catalog',
   people: 'Everyone on the staff page',
   announcements: 'Every announcement, and any PDF posted with one',
   policies: 'Every policy, with its description and its position on the page',
