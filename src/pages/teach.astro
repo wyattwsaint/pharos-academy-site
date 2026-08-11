@@ -2,8 +2,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getSchoolDetails } from '../lib/admin/school-details.js';
 import { getDb } from '../lib/db/client.js';
-import { INQUIRY_HREF } from '../lib/home/sections.js';
-import { TEACHER_CONTRACT, TEACH_PATH } from '../lib/teach/teach.js';
+import { listPeople } from '../lib/people/store.js';
+import { TEACHER_CONTRACT, leadershipContact } from '../lib/teach/teach.js';
 
 /**
  * Teaching here — off the parent path, deliberately (#30, #9's tree).
@@ -25,7 +25,9 @@ import { TEACHER_CONTRACT, TEACH_PATH } from '../lib/teach/teach.js';
  * signs; the page says what it is and who to talk to, and the terms are in the
  * PDF where they can be read whole.
  */
-const details = await getSchoolDetails(await getDb());
+const db = await getDb();
+const [details, people] = await Promise.all([getSchoolDetails(db), listPeople(db)]);
+const contact = leadershipContact(people);
 
 const description =
   'Teaching at Pharos Academy — what the non-employee teacher contract covers, the Pennsylvania clearances required, and who to talk to.';
@@ -67,21 +69,12 @@ const description =
     <div class="wide">
       <h2>Talking to us</h2>
       <p class="mt-5">
-        Interested in teaching a class? <a href={INQUIRY_HREF}>Send us a note</a> or write to
+        {/* The spaces are inside the expression: Astro drops the newline either side of one. */}
+        Interested in teaching a class? Send a note to
+        {contact ? ` our ${contact.role}, ${contact.name}, at ` : ' '}
         <a href={`mailto:${details.email}`}>{details.email}</a> — tell us the subject and the ages
         you would want, and we will go from there.
-      </p>
-      <p class="mt-5 text-ink-2">
-        This page is at <code>{TEACH_PATH}</code> and is linked from the footer rather than the
-        main navigation. That is deliberate: the four things in the nav are for families, and this
-        is not.
       </p>
     </div>
   </section>
 </BaseLayout>
-
-<style>
-  code {
-    font-size: 0.95em;
-  }
-</style>

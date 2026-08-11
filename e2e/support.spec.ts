@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 
 import { SUPPORT_PATH } from '../src/lib/about/story.js';
-import { TEACH_PATH, TEACHER_CONTRACT } from '../src/lib/teach/teach.js';
+import { SEEDED_SCHOOL_DETAILS } from '../src/lib/db/migrations.js';
+import { PEOPLE } from '../src/lib/people/person.js';
+import { leadershipContact, TEACH_PATH, TEACHER_CONTRACT } from '../src/lib/teach/teach.js';
 import { INTERESTS } from '../src/lib/volunteer/volunteer.js';
 
 /**
@@ -89,5 +91,24 @@ test.describe('teaching here', () => {
     const response = await request.get(TEACHER_CONTRACT.path);
     expect(response.status()).toBe(200);
     expect((await response.body()).subarray(0, 5).toString()).toBe('%PDF-');
+  });
+
+  // The page names the Head of School rather than talking about itself (#105).
+  // Both halves are read off the seeded database rather than typed here, so
+  // this asserts the sentence the page renders, not a second copy of it.
+  test('says who to write to, and no longer describes its own place in the site', async ({
+    page,
+  }) => {
+    const head = leadershipContact(PEOPLE);
+    const email = SEEDED_SCHOOL_DETAILS.email;
+    await page.goto(TEACH_PATH);
+
+    const contact = page.locator('[data-section="teach-contact"]');
+    await expect(contact).toContainText(`our ${head?.role}, ${head?.name}, at ${email}`);
+    await expect(contact.getByRole('link', { name: email })).toHaveAttribute(
+      'href',
+      `mailto:${email}`,
+    );
+    await expect(page.locator('main')).not.toContainText('This page is at');
   });
 });

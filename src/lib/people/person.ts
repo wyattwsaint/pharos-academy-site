@@ -172,8 +172,14 @@ export function instructorOf(directory: ReadonlyMap<string, Person>, course: Cou
   return person;
 }
 
-/** Leadership, in the order the school put them in. */
-export function leadershipAmong(people: readonly Person[]): Person[] {
+/**
+ * Leadership, in the order the school put them in.
+ *
+ * Over `SeedPerson` rather than `Person` so the seed can be ranked without
+ * being given a stamp it has not got — the stamp plays no part in the ordering,
+ * and a caller holding rows still gets rows back.
+ */
+export function leadershipAmong<T extends SeedPerson>(people: readonly T[]): T[] {
   return people
     .filter((person) => person.leadershipRank !== null)
     .sort((a, b) => (a.leadershipRank ?? 0) - (b.leadershipRank ?? 0));
