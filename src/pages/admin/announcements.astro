@@ -2,7 +2,6 @@
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { isCurrent, STALE_AFTER_DAYS } from '../../lib/announcements/announcement.js';
 import { listAnnouncements } from '../../lib/announcements/store.js';
 import { postedOnLabel } from '../../lib/announcements/views.js';
 import { formatStamp } from '../../lib/admin/school-details.js';
@@ -13,21 +12,21 @@ import { NEWS_PATH } from '../../lib/announcements/views.js';
  * Everything the school has announced, newest first (#27).
  *
  * A list and nothing else; every edit happens on the announcement's own screen.
- * The one thing this screen adds is telling Jill which of them the homepage is
- * currently showing — the six-week rule is invisible from the public side by
- * design, and an admin that did not say so would leave her wondering why an
- * announcement she can see here is not on the front page.
+ *
+ * This screen used to say which of them the homepage was showing. Since #109
+ * there is no homepage section, so every announcement is on the news page and
+ * nowhere else — there is no longer a difference between two of them for this
+ * screen to report, and a six-week note here would describe a rule with no
+ * visible effect.
  *
  * There is no delete. An announcement is a record of what the school said, and
- * going stale already takes it off the homepage — which is the thing a delete
- * button would actually be for.
+ * an old one sitting further down the news page is what a delete button would
+ * actually be for.
  */
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
 const announcements = await listAnnouncements(db);
-const now = new Date();
-const showing = announcements.filter((announcement) => isCurrent(announcement, now)).length;
 ---
 
 <AdminLayout title="Announcements" actor={actor}>
@@ -36,16 +35,7 @@ const showing = announcements.filter((announcement) => isCurrent(announcement, n
     Board updates, fundraisers and notices. Everything here is on the <a
       href={NEWS_PATH}
       class="underline underline-offset-4">news page</a
-    >; the homepage shows the ones posted in the last {STALE_AFTER_DAYS} days and hides itself
-    entirely when there are none.
-  </p>
-
-  <p class="mt-4" data-testid="showing-count">
-    {
-      showing === 0
-        ? 'Nothing is on the homepage at the moment — the announcements section there is hidden.'
-        : `The homepage is showing ${showing} of these.`
-    }
+    >, newest first, and stays there.
   </p>
 
   <p class="mt-8">
@@ -72,8 +62,6 @@ const showing = announcements.filter((announcement) => isCurrent(announcement, n
           <p class="mt-1 text-sm">
             {postedOnLabel(announcement.postedOn)}
             {' · '}
-            {isCurrent(announcement, now) ? 'On the homepage' : 'On the news page only'}
-            {' · '}
             {announcement.attachmentFilename ?? 'No PDF'}
           </p>
           <p class="mt-1 text-sm" data-testid={`stamp-${announcement.slug}`}>
@@ -85,7 +73,7 @@ const showing = announcements.filter((announcement) => isCurrent(announcement, n
   </ul>
 
   <p class="mt-10 border-t border-navy/15 pt-6">
-    Nothing is ever deleted here. An announcement that has aged out stays on the news page, which is
-    where a family looks for what was said last term.
+    Nothing is ever deleted here. An old announcement stays on the news page, which is where a
+    family looks for what was said last term.
   </p>
 </AdminLayout>

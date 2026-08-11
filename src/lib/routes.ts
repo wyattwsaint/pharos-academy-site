@@ -97,9 +97,9 @@ function publicRoutes(classSlugs: readonly string[]): PublicRoute[] {
     /*
      * The news page (#27).
      *
-     * Weekly, because it is the one page whose content changes on its own: an
-     * announcement crossing six weeks changes the homepage without anybody
-     * editing anything.
+     * Weekly, because the school posts to it and nowhere else: since #109 the
+     * home page carries no announcements, so this is the only page an
+     * announcement changes.
      *
      * The attached PDFs are deliberately **not** in this list. It is a build-time
      * constant and an attachment is a database row uploaded after the build, so

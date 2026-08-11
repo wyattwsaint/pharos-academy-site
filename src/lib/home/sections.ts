@@ -17,14 +17,13 @@ import { CURRENT_FAMILIES_PATH } from '../current-families/section.js';
  * with real ages and prices *is* what a week looks like, and splitting it puts
  * the same information on the page twice.
  *
- * `announcements` sits directly after the hero. #9 does not place it. An
- * announcement that has to be seen — a closing, a registration deadline — six
- * sections down is not an announcement, and the auto-hide only earns its keep
- * if the slot it vacates is a prominent one.
+ * `announcements` used to sit directly after the hero and is gone (#109). The
+ * school wanted a quieter home page and urgent notices go in the announcement
+ * banner, which is on every page and does not need a slot here. Only the home
+ * page surface went: the news page still carries every announcement.
  */
 export const SECTION_ORDER = [
   'hero',
-  'announcements',
   'week',
   'teachers',
   'costs',

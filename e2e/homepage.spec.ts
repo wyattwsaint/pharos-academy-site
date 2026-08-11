@@ -1,5 +1,8 @@
 import { expect, test, type Page, type Request } from '@playwright/test';
 
+import { SEEDED_ANNOUNCEMENTS } from '../src/lib/announcements/announcement.js';
+import { NEWS_PATH } from '../src/lib/announcements/views.js';
+
 /**
  * The homepage's acceptance criteria from #21, one describe block each.
  *
@@ -358,35 +361,25 @@ test.describe('the page', () => {
     // #9's resolution, with its items 2 and 3 merged into the one timetable
     // section that variant E arrived at — real classes with real ages and
     // prices *is* "what a week looks like".
-    expect(order).toEqual([
-      'hero',
-      'announcements',
-      'week',
-      'teachers',
-      'costs',
-      'faith',
-      'inquiry',
-    ]);
+    expect(order).toEqual(['hero', 'week', 'teachers', 'costs', 'faith', 'inquiry']);
   });
 
-  test('keeps the announcements section in the document, shown only when it has something', async ({
+  test('carries no announcements section, with an announcement live on the site', async ({
     page,
   }) => {
-    await page.goto('/');
-    // Present in the document whatever the school has posted — the order above
-    // depends on it — and visible exactly when it is carrying something (#27).
-    //
-    // Stated as that agreement rather than as "hidden", because what is current
-    // depends on today's date and on what the admin specs have been posting
-    // against the same database. The transition itself — everything aged out,
-    // section gone — is driven deterministically in `admin.spec.ts`, where a
-    // posted date can actually be changed.
-    const announcements = page.locator('[data-section="announcements"]');
-    await expect(announcements).toHaveCount(1);
+    // #109. An empty database would pass an absence assertion for the wrong
+    // reason, so the precondition is asserted first: a seeded announcement is on
+    // the news page. Seeded rather than posted, because the admin specs move the
+    // dates around and this must not depend on their state — and it no longer
+    // needs to, since no date puts a band back on this page.
+    const announcement = SEEDED_ANNOUNCEMENTS[0];
+    await page.goto(NEWS_PATH);
+    await expect(page.getByRole('heading', { name: announcement.headline })).toBeVisible();
 
-    const items = await announcements.locator('li').count();
-    if (items === 0) await expect(announcements).not.toBeVisible();
-    else await expect(announcements).toBeVisible();
+    await page.goto('/');
+    await expect(page.locator('[data-section="announcements"]')).toHaveCount(0);
+    await expect(page.locator('#announcements')).toHaveCount(0);
+    await expect(page.getByText(announcement.headline)).toHaveCount(0);
   });
 
   test('carries the inquiry CTA in both the header and the footer', async ({ page }) => {

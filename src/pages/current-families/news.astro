@@ -9,15 +9,15 @@ import { INQUIRY_HREF } from '../../lib/home/sections.js';
 /**
  * Everything the school has announced (#27).
  *
- * **In full, stale ones included.** This page is the record: the homepage shows
- * what is current and hides itself when nothing is, and that only works if
- * there is somewhere the older notices still are. A parent looking for the
- * fundraiser they half-remember from July needs it to still exist in August,
- * even though it has stopped being front-page news.
+ * **In full, stale ones included.** This page is the record, and since #109 took
+ * the band off the home page it is the *only* page announcements appear on. A
+ * parent looking for the fundraiser they half-remember from July needs it to
+ * still exist in August.
  *
- * Newest first, and nothing is filtered — the six-week rule belongs to the
- * homepage band alone. A dated announcement here is not stale content, it is
- * what the school said in July, printed with the date it said it on.
+ * Newest first, and nothing is filtered. Nothing was filtered here when the six
+ * weeks still governed a surface either: a dated announcement is not stale
+ * content, it is what the school said in July, printed with the date it said it
+ * on.
  */
 const db = await getDb();
 const details = await getSchoolDetails(db);
@@ -33,8 +33,8 @@ const description =
       <p class="label">Current families</p>
       <h1 class="mt-4">News</h1>
       <p class="sub mt-5">
-        Board updates, fundraisers and notices, newest first. The homepage carries whatever is
-        current; everything the school has posted stays here.
+        Board updates, fundraisers and notices, newest first. Everything the school has posted stays
+        here.
       </p>
     </div>
   </section>
@@ -44,8 +44,8 @@ const description =
       {
         /*
           Nothing posted at all is a real state and gets a sentence rather than
-          an empty page — the same argument as the homepage band, which hides
-          instead. Here the page still has to exist, because it is linked.
+          an empty page. This page cannot hide the way the old homepage band
+          did — it is linked from the nav, so it has to say something.
         */
       }
       {
