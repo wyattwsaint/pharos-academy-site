@@ -5,6 +5,7 @@ import { SUPPORT_PATH } from '../src/lib/about/story.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
 import { APPLICATION_PATH } from '../src/lib/application/application.js';
 import { CALENDAR_PATH, CURRENT_FAMILIES_PATH } from '../src/lib/current-families/section.js';
+import { SEEDED_SCHOOL_DETAILS } from '../src/lib/db/migrations.js';
 import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
 import { POLICIES_PATH } from '../src/lib/policies/views.js';
@@ -238,7 +239,9 @@ for (const surface of SURFACES) {
  */
 test.describe('an inline prose link', () => {
   const PROSE_LINKS = [
-    { name: 'on the teach page', path: TEACH_PATH, link: 'Send us a note' },
+    // "Send us a note" until #105 named the Head of School; the address is now
+    // the page's one body link and carries the same no-class case.
+    { name: 'on the teach page', path: TEACH_PATH, link: SEEDED_SCHOOL_DETAILS.email },
     // "the timetable" until #107 rewrote the band it sat in; the faith link is
     // the surviving body link on the page and carries the same no-class case.
     { name: 'on the admissions page', path: '/admissions', link: 'what we believe' },
