@@ -145,7 +145,7 @@ export const LABELS: Record<keyof CourseFields, string> = {
   start: 'Starts at',
   end: 'Ends at',
   enrolment: 'Runs as',
-  enrolmentUnits: 'Families can enrol for',
+  enrolmentUnits: 'Families can enroll for',
   weeks: 'Weeks',
   blockStart: 'Block start date',
   ageLabel: 'Ages, in the school’s words',
@@ -319,7 +319,7 @@ export function parseCourse(form: FormData, context: CourseContext): ParsedCours
 
   const units = values.enrolmentUnits.filter(isEnrolmentUnit);
   if (units.length !== values.enrolmentUnits.length) {
-    errors.enrolmentUnits = 'An enrolment unit is Year, Fall, Spring or Block, as listed.';
+    errors.enrolmentUnits = 'An enrollment unit is Year, Fall, Spring or Block, as listed.';
   } else if (units.length === 0) {
     errors.enrolmentUnits =
       'Tick at least one — this is exactly what the application offers a family, never a guess.';

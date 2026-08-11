@@ -573,36 +573,63 @@ export const MIGRATIONS: readonly Migration[] = [
   },
   {
     /*
-     * The announcements, in American English (#112).
+     * The one seeded sentence that reads British (#114).
      *
-     * 0004 seeded them and `insertAnnouncements` is `on conflict do nothing`, so
-     * rewording the constant fixes a database nobody has migrated yet and
-     * nothing else. Every already-seeded row would keep "programme" and "24
-     * July" forever, which is the whole of what a family reads on the news page.
+     * The house style is that the words a family reads are American, and the
+     * Weis Markets announcement 0004 seeded says "you are in the programme for
+     * the school year". Correcting `SEEDED_ANNOUNCEMENTS` alone would fix a
+     * fresh database and leave Neon reading the old word for ever: 0004 is
+     * `on conflict do nothing`, and its row is already there. So the correction
+     * is appended here, the way the portraits were, rather than edited into a
+     * migration that has already run.
      *
-     * Each statement is guarded on the row still holding the *old* seed text, so
-     * a correction Jill typed from the admin survives this — the seed is the
-     * starting point, not the truth (0013 makes the same argument about a
-     * portrait). A fresh database seeds the new wording one migration earlier
-     * and finds nothing to do here.
+     * A `replace` of the word rather than an overwrite of the body, because
+     * this is Jill's row to edit: rewriting the whole sentence would throw away
+     * whatever she has since typed into it. Matched on slug, idempotent — a
+     * second run finds no "programme" left to replace, and so does a fresh
+     * database, which got the American wording out of the seed one migration
+     * earlier.
+     */
+    id: '0014-announcement-house-style',
+    statements: [
+      // The slug interpolates last on purpose. The scanner reads a template
+      // literal in the segments its `${…}` holes leave behind, and a trailing
+      // `and body like …` is three plain words with no SQL keyword in front of
+      // them — prose, as far as it can tell, holding the very word this
+      // statement exists to remove.
+      `update announcements
+         set body = replace(body, 'programme', 'program')
+         where body like '%programme%'
+           and slug = ${literal('2026-07-01-fundraising-for-pharos-through-weis-markets')}`,
+    ],
+  },
+  {
+    /*
+     * The seeded dates, in American order (#112).
      *
-     * The Senators slug moves with its headline because
-     * `announcementSlug(postedOn, headline)` is what a slug *is* here, and
+     * The same argument 0014 makes about a word, made about a date. 0004 is
+     * `on conflict do nothing`, so rewording `SEEDED_ANNOUNCEMENTS` fixes a
+     * fresh database and leaves every migrated one saying "met on 1 July" and
+     * "Monday 31 August" — an order no spelling scan can see, because there is
+     * no British *word* in it.
+     *
+     * `replace` rather than an overwrite, and guarded on the old text still
+     * being there, because these are Jill's rows to edit: a sentence she has
+     * since retyped is hers and not this migration's to discard.
+     *
+     * The Senators slug moves with its headline, because
+     * `announcementSlug(postedOn, headline)` is what a slug *is* here and
      * `announcement.test.ts` holds the seed to that. Nothing published links to
      * the old address: the slug is an anchor and a PDF path on the news page,
      * and that row has no file.
      */
-    id: '0014-announcements-in-american-english',
+    id: '0015-announcement-dates-in-american-order',
     statements: [
       `update announcements
          set body = replace(replace(body, 'met on 1 July', 'met on July 1'),
                             'Monday 31 August', 'Monday, August 31')
        where slug = '2026-07-01-school-board-update-july-2026'
          and body like '%met on 1 July%'`,
-      `update announcements
-         set body = replace(body, 'in the programme for', 'in the program for')
-       where slug = '2026-07-01-fundraising-for-pharos-through-weis-markets'
-         and body like '%in the programme for%'`,
       `update announcements
          set slug = '2026-07-01-senators-game-fundraiser-july-24',
              headline = 'Senators game fundraiser, July 24',

@@ -11,8 +11,10 @@ import { britishSpellings, prose, RULES } from './house-style.js';
  * on a repo that is still full of "cheque" and "enrolment", because the
  * allowlist below names every area that violates it today — the debt is written
  * down here rather than paid here. #112, #113 and #114 pay it down by deleting
- * entries, and #115 empties it. #112's entry is gone: the home page, the site
- * chrome and the shared modules behind them are now enforced like anything else.
+ * entries, and #115 empties it. #114 has been paid — the admin pages, the
+ * policies they publish, and the one seeded sentence behind them — and so has
+ * #112: the home page, the site chrome and the shared modules behind them are
+ * now enforced like anything else. Only #113 is left.
  *
  * The rule it encodes is **prose is American, identifiers are not**. A family
  * reads "check", "enrollment" and "program"; the database keeps
@@ -78,21 +80,6 @@ const ALLOWED: readonly Debt[] = [
       'src/lib/application/offerings.ts',
       'src/pages/admissions.astro',
       'src/pages/admissions/apply.astro',
-    ],
-  },
-  {
-    // #114 — batch 3: the admin pages and the seed constants behind them. The
-    // Current Families policies page is here rather than with batch 1 because
-    // the sentence it fails on is about the policies that batch corrects.
-    area: 'the admin pages and the policies they publish',
-    paths: [
-      'src/lib/admin/courses.ts',
-      'src/pages/admin/applications.astro',
-      'src/pages/admin/courses.astro',
-      'src/pages/admin/events/[slug].astro',
-      'src/pages/admin/money.astro',
-      'src/pages/admin/policies/[slug].astro',
-      'src/pages/current-families/policies.astro',
     ],
   },
 ];
