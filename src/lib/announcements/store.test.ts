@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { createEphemeralDatabase, type Db } from '../db/client.js';
+import { createEphemeralDatabase, runMigrations, type Db } from '../db/client.js';
 import { SEEDED_ANNOUNCEMENTS } from './announcement.js';
 import {
   createAnnouncement,
@@ -72,6 +72,57 @@ describe('the seeded announcements', () => {
 
   it('hands back nothing for a slug that is not there', async () => {
     expect(await getAnnouncement(db, 'no-such-announcement')).toBeUndefined();
+  });
+});
+
+/**
+ * The house style reaching a row that is already live (#114).
+ *
+ * The Weis announcement was seeded in 0004 with "you are in the programme for
+ * the school year", and 0004 is `on conflict do nothing` — correcting the seed
+ * alone would fix a fresh database and leave Neon reading the British word. So
+ * 0014 is appended, and what these tests prove is the pair: the seed a fresh
+ * database gets, and the update the database Neon already has gets.
+ *
+ * The live case is staged by putting the old wording back and forgetting that
+ * 0014 ran, which is the same state Neon is in before the deploy.
+ */
+const WEIS = '2026-07-01-fundraising-for-pharos-through-weis-markets';
+
+async function rerunHouseStyleMigration(): Promise<void> {
+  await db.execute(`delete from _migrations where id = '0014-announcement-house-style'`);
+  await runMigrations(db);
+}
+
+describe('the seeded prose in American', () => {
+  it('reads "program" on a fresh database, out of the seed', async () => {
+    const weis = await getAnnouncement(db, WEIS);
+    expect(weis?.body).toContain('you are in the program for the school year');
+    expect(weis?.body).not.toContain('programme');
+  });
+
+  it('corrects a row seeded before the house style, without rewriting it', async () => {
+    await db.execute(
+      `update announcements set body = 'Scan your card. You are in the programme for the school year.' where slug = '${WEIS}'`,
+    );
+
+    await rerunHouseStyleMigration();
+
+    const weis = await getAnnouncement(db, WEIS);
+    // The sentence Jill typed survives; only the word changed.
+    expect(weis?.body).toBe('Scan your card. You are in the program for the school year.');
+  });
+
+  it('leaves an edit that never said it alone, and re-runs to no effect', async () => {
+    await db.execute(
+      `update announcements set body = 'The Weis fundraiser has finished.' where slug = '${WEIS}'`,
+    );
+
+    await rerunHouseStyleMigration();
+    await rerunHouseStyleMigration();
+
+    const weis = await getAnnouncement(db, WEIS);
+    expect(weis?.body).toBe('The Weis fundraiser has finished.');
   });
 });
 

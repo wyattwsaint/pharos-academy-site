@@ -163,7 +163,7 @@ export const SEEDED_ANNOUNCEMENTS: readonly SeedAnnouncement[] = [
     postedOn: '2026-07-01',
     headline: 'Fundraising for Pharos through Weis Markets',
     body:
-      'Link your Weis Rewards card to Pharos Academy and the school earns a share of $500,000. Register your card online — Pharos Academy, school ID 88082, 9 Sherwood Drive, Enola PA 17025 — then scan it each time you shop. You only register once; you are in the programme for the school year.',
+      'Link your Weis Rewards card to Pharos Academy and the school earns a share of $500,000. Register your card online — Pharos Academy, school ID 88082, 9 Sherwood Drive, Enola PA 17025 — then scan it each time you shop. You only register once; you are in the program for the school year.',
     linkUrl: 'https://www.weis4school.com',
     linkLabel: 'Register your Weis Rewards card',
     attachmentFilename: null,

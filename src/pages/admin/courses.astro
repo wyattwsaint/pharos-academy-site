@@ -68,7 +68,7 @@ const settings = await getMoneySettings(db);
             {priceSummary(course, settings.rates)}
           </p>
           <p class="mt-1 text-sm" data-testid={`units-${course.slug}`}>
-            Families can enrol for:{' '}
+            Families can enroll for:{' '}
             {course.enrolmentUnits.map((unit) => UNIT_LABELS[unit]).join(', ')}
           </p>
           <p class="mt-1 text-sm" data-testid={`stamp-${course.slug}`}>

@@ -11,7 +11,10 @@ import { britishSpellings, prose, RULES } from './house-style.js';
  * on a repo that is still full of "cheque" and "enrolment", because the
  * allowlist below names every area that violates it today — the debt is written
  * down here rather than paid here. #112, #113 and #114 pay it down by deleting
- * entries, and #115 empties it.
+ * entries, and #115 empties it. #114 has been paid: the admin pages, the
+ * policies they publish, and the one seeded sentence behind them now read
+ * American, and their entry is gone. So has #113 — Admissions and the Apply
+ * flow — which leaves batch 1 and the shared modules as the last debt.
  *
  * The rule it encodes is **prose is American, identifiers are not**. A family
  * reads "check", "enrollment" and "program"; the database keeps
@@ -71,26 +74,14 @@ const ALLOWED: readonly Debt[] = [
     // they read.
     area: 'shared modules and site plumbing',
     paths: [
-      'src/lib/announcements/announcement.ts',
+      // `announcements/announcement.ts` was here until #114. Its one violation
+      // was a *seeded* sentence — a row already live in Neon — so it belonged
+      // with the batch that appends the migration to correct the live row, not
+      // with the batch that reworded the pages around it.
       'src/lib/backup/export.ts',
       'src/lib/courses/store.ts',
       'src/lib/redirects.ts',
       'src/pages/api/cron/monthly-backup.ts',
-    ],
-  },
-  {
-    // #114 — batch 3: the admin pages and the seed constants behind them. The
-    // Current Families policies page is here rather than with batch 1 because
-    // the sentence it fails on is about the policies that batch corrects.
-    area: 'the admin pages and the policies they publish',
-    paths: [
-      'src/lib/admin/courses.ts',
-      'src/pages/admin/applications.astro',
-      'src/pages/admin/courses.astro',
-      'src/pages/admin/events/[slug].astro',
-      'src/pages/admin/money.astro',
-      'src/pages/admin/policies/[slug].astro',
-      'src/pages/current-families/policies.astro',
     ],
   },
 ];
