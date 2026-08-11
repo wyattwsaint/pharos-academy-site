@@ -571,6 +571,38 @@ export const MIGRATIONS: readonly Migration[] = [
     id: '0013-staff-portraits',
     statements: [updatePhotos(PEOPLE)],
   },
+  {
+    /*
+     * The one seeded sentence that reads British (#114).
+     *
+     * The house style is that the words a family reads are American, and the
+     * Weis Markets announcement 0004 seeded says "you are in the programme for
+     * the school year". Correcting `SEEDED_ANNOUNCEMENTS` alone would fix a
+     * fresh database and leave Neon reading the old word for ever: 0004 is
+     * `on conflict do nothing`, and its row is already there. So the correction
+     * is appended here, the way the portraits were, rather than edited into a
+     * migration that has already run.
+     *
+     * A `replace` of the word rather than an overwrite of the body, because
+     * this is Jill's row to edit: rewriting the whole sentence would throw away
+     * whatever she has since typed into it. Matched on slug, idempotent — a
+     * second run finds no "programme" left to replace, and so does a fresh
+     * database, which got the American wording out of the seed one migration
+     * earlier.
+     */
+    id: '0014-announcement-house-style',
+    statements: [
+      // The slug interpolates last on purpose. The scanner reads a template
+      // literal in the segments its `${…}` holes leave behind, and a trailing
+      // `and body like …` is three plain words with no SQL keyword in front of
+      // them — prose, as far as it can tell, holding the very word this
+      // statement exists to remove.
+      `update announcements
+         set body = replace(body, 'programme', 'program')
+         where body like '%programme%'
+           and slug = ${literal('2026-07-01-fundraising-for-pharos-through-weis-markets')}`,
+    ],
+  },
 ];
 
 /**
