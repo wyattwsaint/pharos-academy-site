@@ -38,8 +38,8 @@ const SUMMARIES: Record<string, string> = {
     'For people who might teach a class — instructors are independent contractors, and this ' +
     'carries the contract and the Pennsylvania clearances required.',
   '/admissions':
-    'How to apply — who the classes are for, which mornings they run, what applying involves, ' +
-    'the registration fee and per-class deposit, and which documents families sign.',
+    'How to apply — the families the school serves, what makes it different, the registration ' +
+    'fee and per-class deposit, and which documents families sign.',
 };
 
 /**
