@@ -1,11 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getSchoolDetails } from '../lib/admin/school-details.js';
-import {
-  admissionCosts,
-  APPLICATION_HREF,
-  instalmentSentence,
-} from '../lib/admissions/admissions.js';
+import { admissionCosts, APPLICATION_HREF } from '../lib/admissions/admissions.js';
 import { getDb } from '../lib/db/client.js';
 import { INQUIRY_HREF } from '../lib/home/sections.js';
 import { getMoneySettings } from '../lib/money/store.js';
@@ -28,13 +24,16 @@ import { POLICIES_PATH, policyPath } from '../lib/policies/views.js';
  * the point of it.
  *
  * The prose in the first two bands is the client's own, rewritten by them and
- * landed here verbatim (#107). It is not ours to tighten.
+ * landed here verbatim (#107), as is the money and agreements copy below it
+ * (#108). It is not ours to tighten.
  *
- * **Not one figure below is typed.** The fees and the four payment dates come
- * from the money settings (#29 AC 1), and the documents are the policies the
- * school has actually marked as signed rather than a list somebody kept up to
- * date by hand. The ages and the mornings the page used to derive left with the
- * client's rewrite (#107) — the prose no longer makes those claims here.
+ * **Not one figure below is typed.** The fees come from the money settings (#29
+ * AC 1), and the documents are the policies the school has actually marked as
+ * signed rather than a list somebody kept up to date by hand. The ages and the
+ * mornings the page used to derive left with the client's rewrite (#107), and
+ * the four quarterly payment dates left with #108 — the school took them off
+ * the page rather than moving them, so the admin still owns them and no page
+ * prints them.
  */
 const db = await getDb();
 const details = await getSchoolDetails(db);
@@ -100,11 +99,7 @@ const description =
 
   <section class="band" id="cost" data-section="admissions-cost">
     <div class="wide">
-      <h2>What It Costs to Apply</h2>
-      <p class="mt-4">
-        Two cheques, and both are paid to the school. Tuition is separate and is paid directly to
-        the instructor who teaches your child.
-      </p>
+      <h2>Prices for Partner Families</h2>
 
       <ul class="costs mt-7">
         {
@@ -118,14 +113,13 @@ const description =
         }
       </ul>
 
-      <p class="mt-7">{instalmentSentence(settings)}</p>
-      <p class="mt-4">
+      <p class="mt-7">
         Every class's own cost is on <a href="/classes">the classes page</a>, computed from the
         hours it meets — there is no fee on this site that is not worked out the same way for
         every family.
       </p>
       <details class="refunds mt-7">
-        <summary>What Happens If You Withdraw</summary>
+        <summary>What Happens If You Withdraw?</summary>
         <p class="mt-3">{settings.refundTerms}</p>
       </details>
     </div>
@@ -133,7 +127,7 @@ const description =
 
   <section class="band band-quiet" id="documents" data-section="admissions-documents">
     <div class="wide">
-      <h2>What You Sign</h2>
+      <h2>Is Pharos the Right Fit for your Family?</h2>
       {
         signedPolicies.length === 0 ? (
           <p class="mt-4">
@@ -143,11 +137,9 @@ const description =
         ) : (
           <>
             <p class="mt-4">
-              {signedPolicies.length === 1
-                ? 'One document, signed in person at enrolment.'
-                : `${signedPolicies.length} documents, signed in person at enrolment.`}{' '}
-              All of them are here to read in full first, and none of them is signed as part of
-              the application itself.
+              At enrollment, the parent or guardian must sign two agreement statements. We
+              encourage you to read them before you apply, to ensure that what you desire aligns
+              with our code of conduct and policies.
             </p>
             <ul class="signed mt-6">
               {signedPolicies.map((policy) => (
@@ -161,7 +153,7 @@ const description =
         )
       }
       <p class="mt-6 text-ink-2">
-        <a href={POLICIES_PATH}>Every policy the school publishes</a>, including the ones nobody signs.
+        <a href={POLICIES_PATH}>All of our policies</a>
       </p>
     </div>
   </section>
