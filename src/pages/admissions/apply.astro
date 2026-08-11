@@ -470,7 +470,7 @@ const description =
           <h2>{stage('confirmation')}</h2>
           <p class="sub mt-4">
             We have your application for {values.familyName}, and we will be in touch. A place is
-            held for each class as soon as your cheque reaches us.
+            held for each class as soon as your check reaches us.
           </p>
 
           <h3 class="mt-8">What you chose</h3>
@@ -494,7 +494,7 @@ const description =
 
           <h3 class="mt-8">What to post</h3>
           <p class="mt-4">
-            A cheque for <strong>{formatMoney(cost.total.dueNow)}</strong> — that is{' '}
+            A check for <strong>{formatMoney(cost.total.dueNow)}</strong> — that is{' '}
             {formatMoney(cost.total.registration)} in registration and{' '}
             {formatMoney(cost.total.deposits)} in deposits — made out to Pharos Academy, to:
           </p>
@@ -733,7 +733,7 @@ const description =
                   <legend>Classes for this child</legend>
                   {offerings.length === 0 ? (
                     <p class="hint">
-                      Nothing is open for enrolment at the moment. Please{' '}
+                      Nothing is open for enrollment at the moment. Please{' '}
                       <a href={INQUIRY_PATH}>write to us</a> and we will tell you when it is.
                     </p>
                   ) : (
@@ -889,7 +889,7 @@ const description =
               </li>
               <li class="due">
                 <span class="amount">{formatMoney(cost.total.dueNow)}</span>
-                <span>The cheque you post with this application</span>
+                <span>The check you post with this application</span>
               </li>
               <li>
                 <span class="amount">{formatMoney(cost.total.dueToInstructors)}</span>
@@ -901,7 +901,7 @@ const description =
               </li>
             </ul>
 
-            <p class="mt-7">Make the cheque out to Pharos Academy and post it to:</p>
+            <p class="mt-7">Make the check out to Pharos Academy and post it to:</p>
             <p class="address mt-4">{details.address}</p>
 
             {/*
@@ -910,11 +910,11 @@ const description =
               thing that changes for a family is that this paragraph offers a
               second way to pay — and the only thing that changes in the row is
               that the next submission reads "paid online" rather than
-              "awaiting cheque".
+              "awaiting check".
             */}
             <p class="mt-6 text-ink-2">
               There is no way to pay online yet. When there is, it will appear here, and posting a
-              cheque will still work.
+              check will still work.
             </p>
           </div>
         </section>

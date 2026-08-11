@@ -319,6 +319,27 @@ export function fullDateLabel(date: string): string {
   });
 }
 
+/**
+ * "August 31, 2026" — the same day in the order an American family reads it.
+ *
+ * The date half of the house style (#110). It sits beside {@link fullDateLabel}
+ * rather than replacing it because the conversion is being done a flow at a
+ * time: the Apply flow reads American now (#113), and the calendar, the news
+ * and the admin still read British until their own batches move them here. When
+ * the last caller has moved, this becomes the only one and the British form
+ * goes.
+ *
+ * Parsed as UTC for the same reason its neighbour is — see there.
+ */
+export function americanDateLabel(date: string): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 /** Errors keyed by the form field that caused them; empty means the year saves. */
 export type SchoolYearErrors = Record<string, string>;
 

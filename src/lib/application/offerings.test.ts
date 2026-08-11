@@ -270,7 +270,10 @@ describe('what the family is told', () => {
     expect(sentence).toContain('Algebra 1 (full year)');
     expect(sentence).toContain('Beginner Latin Immersion (Grades 5-6) (full year)');
     expect(sentence).toContain('Monday');
-    expect(sentence).toContain('2026-08-31');
+    // The day written out the way a family reads it, not the way the row stores
+    // it (#113): `2026-08-31` is a column value and this is a sentence.
+    expect(sentence).toContain('August 31, 2026');
+    expect(sentence).not.toContain('2026-08-31');
   });
 
   it('says why a possible clash is only possible', () => {

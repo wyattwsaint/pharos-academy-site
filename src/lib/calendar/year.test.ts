@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  americanDateLabel,
+  fullDateLabel,
   meetingsOf,
   previewRows,
   SEEDED_SCHOOL_YEAR,
@@ -229,5 +231,20 @@ describe('what the school year refuses to be', () => {
 
   it('accepts the year the school actually published', () => {
     expect(validateSchoolYear(SEEDED_SCHOOL_YEAR)).toEqual({});
+  });
+});
+
+describe('how a day is printed', () => {
+  it('offers both orders while the conversion is half done (#113)', () => {
+    // Two labels on purpose, and only until the last British caller moves: the
+    // Apply flow reads American now, the calendar and the admin do not yet.
+    expect(americanDateLabel('2026-08-31')).toBe('August 31, 2026');
+    expect(fullDateLabel('2026-08-31')).toBe('31 August 2026');
+  });
+
+  it('reads the date as UTC, so a server west of Greenwich is not a day early', () => {
+    // The failure this guards is silent and total: every printed date one day
+    // out, everywhere, in every US region this site actually runs in.
+    expect(americanDateLabel('2026-01-01')).toBe('January 1, 2026');
   });
 });

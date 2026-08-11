@@ -258,20 +258,20 @@ export const APPLICATION_EVENT_LABELS: Record<ApplicationEvent, string> = {
   refuse: 'Mark as not accepted',
   abandon: 'Mark as abandoned',
   discuss: 'Start a conversation',
-  enrol: 'Enrol this family',
+  enrol: 'Enroll this family',
   withdraw: 'Withdraw this application',
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   not_due: 'Nothing to pay',
-  awaiting: 'Awaiting cheque',
-  received: 'Cheque received',
-  overdue: 'Cheque overdue',
+  awaiting: 'Awaiting check',
+  received: 'Check received',
+  overdue: 'Check overdue',
   paid_online: 'Paid online',
 };
 
 export const PAYMENT_EVENT_LABELS: Record<PaymentEvent, string> = {
-  receive: 'Cheque has arrived',
-  expect: 'Wait (again) for a cheque',
+  receive: 'Check has arrived',
+  expect: 'Wait (again) for a check',
   waive: 'Nothing to pay',
 };

@@ -79,19 +79,6 @@ const ALLOWED: readonly Debt[] = [
     ],
   },
   {
-    // #113 — batch 2: Admissions and the Apply flow, where "cheque" is densest
-    // and a family is reading most closely.
-    area: 'Admissions and the Apply flow',
-    paths: [
-      'src/lib/admissions/admissions.ts',
-      'src/lib/application/lifecycle.ts',
-      'src/lib/application/notices.ts',
-      'src/lib/application/offerings.ts',
-      'src/pages/admissions.astro',
-      'src/pages/admissions/apply.astro',
-    ],
-  },
-  {
     // #114 — batch 3: the admin pages and the seed constants behind them. The
     // Current Families policies page is here rather than with batch 1 because
     // the sentence it fails on is about the policies that batch corrects.
@@ -148,6 +135,14 @@ describe('the house style', () => {
     expect(ruled('enrolment')).toBe(true);
     expect(ruled('cheque')).toBe(true);
     expect(ruled('programme')).toBe(true);
+  });
+
+  it('leaves the inflections the two Englishes agree on', () => {
+    // "enrolling" and "enrolled" double the l on both sides of the Atlantic, so
+    // a rule that flags them makes a page reword a word that was already right.
+    const ruled = (word: string) => RULES.some(({ british }) => new RegExp(british).test(word));
+    expect(ruled('enrolling')).toBe(false);
+    expect(ruled('enrolled')).toBe(false);
   });
 
   it('finds no British spelling in prose outside the allowlist', () => {

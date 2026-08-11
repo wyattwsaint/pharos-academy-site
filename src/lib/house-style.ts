@@ -56,7 +56,9 @@ const rule = (british: string, american: string): Rule => ({
 export const RULES: readonly Rule[] = [
   // The two the school's own vocabulary turns on.
   rule('enrolments?', 'enrollment'),
-  rule('enrol(?:s|ling)?', 'enroll'),
+  // Not `enrolling` or `enrolled`: both double the l in British English too, so
+  // the two spellings meet there and the word a family reads is already right.
+  rule('enrols?', 'enroll'),
   rule('cheques?', 'check'),
   // The rest, alphabetically.
   rule('amongst', 'among'),

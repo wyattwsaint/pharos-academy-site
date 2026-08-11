@@ -26,7 +26,7 @@
  * and only two of them in *one family's* selection is a fact worth a warning.
  */
 
-import type { SchoolYear } from '../calendar/year.js';
+import { americanDateLabel, type SchoolYear } from '../calendar/year.js';
 import type { Course, EnrolmentUnit } from '../courses/course.js';
 import { meetingDatesOn } from '../courses/slots.js';
 import { DAY_TRACKS, minutesOfDay, type DayTrack } from '../courses/schedule.js';
@@ -175,9 +175,12 @@ export function clashesAmong(
  * How a clash reads to the family.
  *
  * Names both classes, the morning, and — for a certain clash — the first day it
- * happens, because "they collide" is an assertion and "they both meet on Monday
- * 31 August" is evidence. A possible clash says *why* it is only possible, so
- * the answer is "ask the school when the block runs" rather than "ignore this".
+ * happens, because "they collide" is an assertion and "they both meet on August
+ * 31, 2026" is evidence. That day is written out rather than left as the
+ * `2026-08-31` the row stores: this is the one date in the Apply flow a family
+ * reads, and it reads it in their own order (#113). A possible clash says *why*
+ * it is only possible, so the answer is "ask the school when the block runs"
+ * rather than "ignore this".
  */
 export function clashSentence(clash: OfferingClash): string {
   const both = `${title(clash.a)} and ${title(clash.b)}`;
@@ -186,13 +189,13 @@ export function clashSentence(clash: OfferingClash): string {
     const days = clash.sharedDates.length;
     return (
       `${both} meet at the same time on ${clash.track} mornings — ` +
-      `${days} ${days === 1 ? 'day' : 'days'} together, from ${first}. ` +
+      `${days} ${days === 1 ? 'day' : 'days'} together, from ${americanDateLabel(first!)}. ` +
       'One child cannot attend both.'
     );
   }
   return (
     `${both} share a ${clash.track} time, and one of them is a block whose dates ` +
-    'the school has not set yet — so they may or may not collide. Ask us before you post the cheque.'
+    'the school has not set yet — so they may or may not collide. Ask us before you post the check.'
   );
 }
 

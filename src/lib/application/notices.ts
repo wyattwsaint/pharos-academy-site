@@ -90,10 +90,10 @@ export function applicationNotification(
   lines.push(
     '',
     'WHAT THEY OWE',
-    `  Registration:            ${formatMoney(cost.total.registration)}`,
-    `  Deposits:                ${formatMoney(cost.total.deposits)}`,
-    `  Cheque they are posting: ${formatMoney(cost.total.dueNow)}`,
-    `  Tuition to instructors:  ${formatMoney(cost.total.dueToInstructors)}`,
+    `  Registration:           ${formatMoney(cost.total.registration)}`,
+    `  Deposits:               ${formatMoney(cost.total.deposits)}`,
+    `  Check they are posting: ${formatMoney(cost.total.dueNow)}`,
+    `  Tuition to instructors: ${formatMoney(cost.total.dueToInstructors)}`,
     '',
     'THE STATEMENT OF FAITH',
     ...faithRecord(values),
@@ -189,7 +189,7 @@ function faithRecord(values: ApplicationFields): string[] {
  * The message the family receives when it worked (#18 §13, send 4).
  *
  * The same three things the confirmation screen says — what they chose, what to
- * post and where, and that a place is held when the cheque arrives — because
+ * post and where, and that a place is held when the check arrives — because
  * the screen is closed within the minute and this is the copy they keep.
  *
  * **No response-time promise**, consistent with the inquiry's confirmation and
@@ -210,12 +210,12 @@ export function applicationConfirmation(
 
   lines.push(
     '',
-    `Please post a cheque for ${formatMoney(cost.total.dueNow)} — ${formatMoney(cost.total.registration)} ` +
+    `Please post a check for ${formatMoney(cost.total.dueNow)} — ${formatMoney(cost.total.registration)} ` +
       `in registration and ${formatMoney(cost.total.deposits)} in deposits — made out to ${SCHOOL_NAME}, to:`,
     '',
     options.postTo,
     '',
-    'A place is held for each class as soon as your cheque reaches us.',
+    'A place is held for each class as soon as your check reaches us.',
     '',
     `Tuition is paid to your instructors rather than to the school: ${formatMoney(cost.total.dueToInstructors)} ` +
       'across the year at today’s rates.',
@@ -310,7 +310,7 @@ export async function deliverApplication(
     /** The settings list, never a hard-coded address (#32 AC 6). */
     to: readonly string[];
     from: string;
-    /** Where a cheque is posted — the school's own address, from its details. */
+    /** Where a check is posted — the school's own address, from its details. */
     postTo: string;
     /** The address a family is given when nothing worked. */
     schoolEmail: string;
