@@ -29,7 +29,7 @@ import type { Course, EnrolmentUnit, RateTier, Stage } from './course.js';
 export async function listCourses(db: Db): Promise<Course[]> {
   const rows = await db.select().from(coursesTable);
   if (rows.length === 0) {
-    throw new Error('The course catalogue is empty — run `npm run db:migrate`.');
+    throw new Error('The course catalog is empty — run `npm run db:migrate`.');
   }
   return rows.map(toCourse).sort((a, b) => a.title.localeCompare(b.title));
 }

@@ -67,8 +67,10 @@ code.
 | `POSTGRES_URL` | The same thing under the other name the integration sometimes writes. `DATABASE_URL` wins (`src/lib/db/client.ts`) | Harmless if `DATABASE_URL` is set |
 | `BREAK_GLASS_PASSWORD` | The way back in when both admins are locked out | No escape hatch. A locked-out pair needs a developer with database access |
 | `CRON_SECRET` | The bearer token Vercel Cron carries to `/api/cron/monthly-backup` | **That route refuses everybody.** No monthly backup email. This is the safe direction — the route mails the whole database |
-| `RESEND_API_KEY` | Sends the monthly backup email through Resend | The cron answers 500 rather than succeeding quietly, so a missing key shows up red |
-| `MAIL_FROM` | The address the site sends from — a verified Resend sender on the school's domain | Same 500 as above |
+| `GMAIL_USER` | The school's Gmail address, used as the SMTP login. Half of the route the site sends on today (ADR-0010) | No mailer, unless the Resend pair below is set. Every form keeps its record and says nobody was emailed |
+| `GMAIL_APP_PASSWORD` | A Google **app password** for that account — sixteen characters, not the mailbox password. The account needs 2-Step Verification switched on before Google will issue one. Spaces in the pasted value are ignored | Same as above |
+| `RESEND_API_KEY` | Sends through Resend instead, once the school's domain is verified. Unused while the Gmail pair is set | No mailer, unless the Gmail pair above is set |
+| `MAIL_FROM` | The address the site sends from. **Required** on the Resend route — a verified sender on the school's domain. **Optional** on Gmail, where it must be an address the mailbox has verified under "Send mail as", and defaults to `GMAIL_USER` | On Gmail, the family sees the `GMAIL_USER` address. On Resend, there is no mailer at all |
 | `ISR_BYPASS_TOKEN` | Lets the admin re-request its own public pages past the CDN cache after a save. **Optional** — the build derives one from the commit if unset, and both halves of one build agree by construction. Vercel requires exactly 32 characters | Nothing. The derived token is used |
 
 ### Set on Vercel by Vercel

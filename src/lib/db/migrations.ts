@@ -603,6 +603,63 @@ export const MIGRATIONS: readonly Migration[] = [
            and slug = ${literal('2026-07-01-fundraising-for-pharos-through-weis-markets')}`,
     ],
   },
+  {
+    /*
+     * The seeded dates, in American order (#112).
+     *
+     * The same argument 0014 makes about a word, made about a date. 0004 is
+     * `on conflict do nothing`, so rewording `SEEDED_ANNOUNCEMENTS` fixes a
+     * fresh database and leaves every migrated one saying "met on 1 July" and
+     * "Monday 31 August" — an order no spelling scan can see, because there is
+     * no British *word* in it.
+     *
+     * `replace` rather than an overwrite, and guarded on the old text still
+     * being there, because these are Jill's rows to edit: a sentence she has
+     * since retyped is hers and not this migration's to discard.
+     *
+     * The Senators slug moves with its headline, because
+     * `announcementSlug(postedOn, headline)` is what a slug *is* here and
+     * `announcement.test.ts` holds the seed to that. Nothing published links to
+     * the old address: the slug is an anchor and a PDF path on the news page,
+     * and that row has no file.
+     */
+    id: '0015-announcement-dates-in-american-order',
+    statements: [
+      `update announcements
+         set body = replace(replace(body, 'met on 1 July', 'met on July 1'),
+                            'Monday 31 August', 'Monday, August 31')
+       where slug = '2026-07-01-school-board-update-july-2026'
+         and body like '%met on 1 July%'`,
+      `update announcements
+         set slug = '2026-07-01-senators-game-fundraiser-july-24',
+             headline = 'Senators game fundraiser, July 24',
+             body = replace(body, 'game on 24 July', 'game on July 24')
+       where slug = '2026-07-01-senators-game-fundraiser-24-july'
+         and headline = 'Senators game fundraiser, 24 July'`,
+    ],
+  },
+  {
+    /*
+     * The home page's announcement banner (#15).
+     *
+     * Four columns on the singleton the office already edits, rather than a
+     * table: there is one banner, and school details is the screen whose save
+     * path already revalidates every published page — which is the whole point
+     * of the ticket, a change visible without a deploy.
+     *
+     * Defaulted off with empty words, so the migration lands on the live
+     * database without putting a bar on the home page a moment before anyone
+     * has written one. The date is the one column with no default: null is
+     * "never used", and a placeholder date is a date somebody ships.
+     */
+    id: '0016-home-banner',
+    statements: [
+      `alter table school_details add column if not exists banner_enabled boolean not null default false`,
+      `alter table school_details add column if not exists banner_message text not null default ''`,
+      `alter table school_details add column if not exists banner_date date`,
+      `alter table school_details add column if not exists banner_link text not null default ''`,
+    ],
+  },
 ];
 
 /**

@@ -136,7 +136,7 @@ export const REDIRECTS: readonly Redirect[] = [
     from: '/about-5',
     to: `${SUPPORT_PATH}#volunteer`,
     because:
-      'Byte-for-byte the same page as /volunteer, labelled "Media" in the old nav and holding ' +
+      'Byte-for-byte the same page as /volunteer, labeled "Media" in the old nav and holding ' +
       'no media at all. Same destination as the page it duplicates.',
     origin: 'wix',
   },
@@ -199,7 +199,7 @@ export const REDIRECTS: readonly Redirect[] = [
     to: STAFF_PATH,
     because:
       'The three bios that page carried are on the staff page, alongside every instructor the ' +
-      'catalogue names.',
+      'catalog names.',
     origin: 'wix',
   },
   {

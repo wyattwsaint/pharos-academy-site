@@ -33,6 +33,7 @@
     "@tailwindcss/vite": "4.3.3",
     "astro": "7.1.6",
     "drizzle-orm": "^0.45.2",
+    "nodemailer": "^9.0.5",
     "tailwindcss": "4.3.3"
   },
   "devDependencies": {
@@ -41,6 +42,7 @@
     "@electric-sql/pglite": "^0.5.4",
     "@playwright/test": "1.62.1",
     "@types/node": "^26.1.2",
+    "@types/nodemailer": "^8.0.1",
     "fflate": "^0.8.3",
     "typescript": "^6.0.3",
     "vitest": "4.1.10"

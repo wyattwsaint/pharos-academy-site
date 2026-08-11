@@ -3,6 +3,7 @@ import '../styles/global.css';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import type { SchoolDetails } from '../lib/db/schema.js';
+import type { AnnouncementBanner } from '../lib/home/announcement-banner.js';
 import { SCHOOL_NAME, SITE_URL } from '../lib/site.js';
 import { renderJsonLd, schoolJsonLd } from '../lib/structured-data.js';
 
@@ -34,9 +35,17 @@ interface Props {
    * because the hero is meant to run underneath.
    */
   overHero?: boolean;
+  /**
+   * The announcement bar for the header, or none (#15).
+   *
+   * Passed in rather than derived from `details` here, even though it could be:
+   * the bar is the home page's, and every other page reads the same row. A
+   * layout that derived it would put it on all nine.
+   */
+  banner?: AnnouncementBanner | null;
 }
 
-const { title, description, details, overHero = false } = Astro.props;
+const { title, description, details, overHero = false, banner = null } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 
 /*
@@ -87,7 +96,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     >
       Skip to content
     </a>
-    <SiteHeader overHero={overHero} />
+    <SiteHeader overHero={overHero} banner={banner} />
     <main id="main" class:list={[{ 'pt-24': !overHero }]}>
       <slot />
     </main>

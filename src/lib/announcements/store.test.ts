@@ -153,7 +153,7 @@ describe('posting and editing', () => {
   });
 
   it('overwrites the stamp on save rather than appending one', async () => {
-    const slug = '2026-07-01-senators-game-fundraiser-24-july';
+    const slug = '2026-07-01-senators-game-fundraiser-july-24';
     await saveAnnouncement(
       db,
       slug,
@@ -172,11 +172,11 @@ describe('posting and editing', () => {
   });
 
   it('leaves the posted date alone when a typo is fixed', async () => {
-    const slug = '2026-07-01-senators-game-fundraiser-24-july';
+    const slug = '2026-07-01-senators-game-fundraiser-july-24';
     const saved = await saveAnnouncement(
       db,
       slug,
-      { ...fieldsOfSeed(slug), headline: 'Senators game fundraiser, 24 July' },
+      { ...fieldsOfSeed(slug), headline: 'Senators game fundraiser, July 24' },
       'Jill Kilker',
     );
     expect(saved.postedOn).toBe('2026-07-01');

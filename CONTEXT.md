@@ -282,6 +282,32 @@ not make a July notice current again.
 Not: "news item" (the page is called News; the thing on it is an announcement),
 "post", "board update" as a kind of its own.
 
+### announcement banner
+
+The one short, timely line across the top of the **home page** — "Register now!
+Classes begin August 31". A switch, a message, a real date and an optional link,
+and there is exactly one of it.
+
+It is **not an [announcement](#announcement)**, and the near-identical name is
+the trap: an announcement is one of many dated notices that ages out onto the
+news page, and it is never urgent enough to interrupt anybody. The banner is a
+singleton the office switches on for a fortnight and off again, and it lives on
+the **school details** row beside the address, not in the announcements table —
+because that screen's save already revalidates every published page, which is
+what lets the words change without a deploy.
+
+The date is a real date, stored as one and rendered American with no ordinal
+suffix — "August 31", never "August 31st" and never free text. It renders
+**after** the message, so the office types "Register now! Classes begin".
+
+It is a **bar, not a modal**, and it is dismissible: a modal on first paint
+costs conversion and traps a keyboard visitor. A dismissal is remembered against
+the message itself, so the next thing the office puts up reaches the people who
+closed the last one.
+
+Not: "popup", "alert", "the announcements section" (which #109 removed from the
+home page — the banner is what replaced it in that region).
+
 ### policy
 
 A document the school asks families to read, and sometimes to sign: a title, one

@@ -312,7 +312,10 @@ h3 {
   left: 0;
   right: 0;
   z-index: 40;
-  padding: 24px 0;
+  /* Named so the announcement bar can cancel it and sit flush with the header's
+     bottom edge, on both sides of the stick, without restating either number. */
+  --header-pad: 24px;
+  padding: var(--header-pad) 0;
   /*
    * The background is NOT transitioned, and that is an accessibility fix rather
    * than an oversight.
@@ -348,12 +351,89 @@ h3 {
 
 .site-header.stuck {
   background: var(--color-navy-deep);
-  padding: 13px 0;
+  --header-pad: 13px;
   box-shadow: 0 6px 24px rgb(6 16 30 / 0.22);
 }
 
 .site-header.stuck::after {
   opacity: 0.55;
+}
+
+/* The announcement bar (#15) — the office's one urgent line, hung beneath the
+   header row.
+
+   Gold rather than navy because it has to read as a distinct band on both sides
+   of the stick: navy on the stuck header would be one continuous block, and
+   nothing over the hero would say where the header ends. Navy ink on gold is
+   6.5:1, so it passes at every size the bar ever uses.
+
+   The negative bottom margin cancels the header's own padding so the band ends
+   where the header does. It follows `--header-pad` rather than restating 24px,
+   which is what keeps it flush once the header shrinks on scroll. */
+.site-banner {
+  background: var(--color-gold);
+  color: var(--color-navy);
+  margin: var(--header-pad) 0 calc(-1 * var(--header-pad));
+  box-shadow: 0 6px 18px rgb(6 16 30 / 0.18);
+}
+
+.site-banner .wide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.site-banner-message {
+  font: 400 15px/1.4 var(--font-sans);
+  color: inherit;
+  margin: 0;
+}
+
+.site-banner-message b {
+  font-weight: 700;
+}
+
+a.site-banner-message {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+a.site-banner-message:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* A real button, sized to the 24px target the rest of the site uses. The glyph
+   is decorative and the name is the visually hidden span beside it, so a screen
+   reader hears "Dismiss this announcement" rather than "times". */
+.site-banner-dismiss {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: 400 22px/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.site-banner-dismiss:hover {
+  background: rgb(23 54 92 / 0.12);
+}
+
+@media (max-width: 640px) {
+  .site-banner .wide {
+    align-items: flex-start;
+  }
+
+  .site-banner-message {
+    font-size: 14px;
+  }
 }
 
 .site-header .wide {
@@ -734,12 +814,15 @@ h3 {
     padding: 0 20px;
   }
 
+  /* Set through the variable, not as `padding` directly: the announcement bar
+     cancels it to sit flush with the header's bottom edge, and a padding these
+     rules changed behind its back would leave the band overhanging by 10px. */
   .site-header {
-    padding: 14px 0;
+    --header-pad: 14px;
   }
 
   .site-header.stuck {
-    padding: 10px 0;
+    --header-pad: 10px;
   }
 
   .hero-lockup {

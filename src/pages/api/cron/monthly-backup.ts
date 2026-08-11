@@ -1,6 +1,10 @@
 import type { APIRoute } from 'astro';
 
-import { isAuthorisedCron, resendSender, sendMonthlyBackup } from '../../../lib/backup/monthly.js';
+import {
+  configuredMailer,
+  isAuthorisedCron,
+  sendMonthlyBackup,
+} from '../../../lib/backup/monthly.js';
 import { getDb } from '../../../lib/db/client.js';
 
 /**
@@ -22,21 +26,29 @@ export const GET: APIRoute = async ({ request }) => {
   if (!isAuthorisedCron(request, process.env.CRON_SECRET)) {
     // No detail. An unauthorised caller learns whether the route exists and
     // nothing else — not whether a secret is set, not whether theirs was close.
-    return text('Not authorised.', 401);
+    return text('Not authorized.', 401);
   }
 
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.MAIL_FROM?.trim();
-  if (!apiKey || !from) {
+  // `process.env` rather than `import.meta.env`: this route only ever runs on
+  // the deployment, where Vercel puts the project's variables there.
+  const mailer = configuredMailer(process.env);
+  if (!mailer) {
     // A 500 rather than a quiet success: an unconfigured send that answers "OK"
     // is twelve months of green cron runs and no backup anywhere.
-    return text('RESEND_API_KEY and MAIL_FROM are not both set — nothing was sent.', 500);
+    return text(
+      `No mail credentials are set — set GMAIL_USER and GMAIL_APP_PASSWORD, or RESEND_API_KEY and MAIL_FROM. Nothing was sent.`,
+      500,
+    );
   }
 
   try {
     const result = await sendMonthlyBackup(await getDb(), {
-      sender: resendSender(apiKey),
-      from,
+      sender: mailer.sender,
+      from: mailer.from,
+      // Whatever this route can actually carry, which is smaller on Gmail. The
+      // ceiling travels with the mailer so that changing route cannot leave the
+      // cron cheerfully attaching an archive the far end will reject.
+      maxBytes: mailer.maxAttachmentBytes,
     });
     return text(`Sent ${result.filename} (${result.bytes} bytes) to ${result.to}.`, 200);
   } catch (error) {

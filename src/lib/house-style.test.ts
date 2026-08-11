@@ -11,10 +11,11 @@ import { britishSpellings, prose, RULES } from './house-style.js';
  * on a repo that is still full of "cheque" and "enrolment", because the
  * allowlist below names every area that violates it today — the debt is written
  * down here rather than paid here. #112, #113 and #114 pay it down by deleting
- * entries, and #115 empties it. #114 has been paid: the admin pages, the
- * policies they publish, and the one seeded sentence behind them now read
- * American, and their entry is gone. So has #113 — Admissions and the Apply
- * flow — which leaves batch 1 and the shared modules as the last debt.
+ * entries, and #115 empties it. All three have now been paid — #112's home page
+ * and site chrome, #114's admin pages and the seeded sentence behind them, and
+ * #113's Admissions and Apply flow — so the debt is empty and every path under
+ * `src` is enforced. #115 is what removes the machinery below, once it is sure
+ * nothing else needs an exception.
  *
  * The rule it encodes is **prose is American, identifiers are not**. A family
  * reads "check", "enrollment" and "program"; the database keeps
@@ -68,23 +69,7 @@ interface Debt {
  * transcribed and held unedited, and it would need an exception with a reason
  * rather than a ticket.
  */
-const ALLOWED: readonly Debt[] = [
-  {
-    // #112 — batch 1: the home page, the site chrome, and the shared modules
-    // they read.
-    area: 'shared modules and site plumbing',
-    paths: [
-      // `announcements/announcement.ts` was here until #114. Its one violation
-      // was a *seeded* sentence — a row already live in Neon — so it belonged
-      // with the batch that appends the migration to correct the live row, not
-      // with the batch that reworded the pages around it.
-      'src/lib/backup/export.ts',
-      'src/lib/courses/store.ts',
-      'src/lib/redirects.ts',
-      'src/pages/api/cron/monthly-backup.ts',
-    ],
-  },
-];
+const ALLOWED: readonly Debt[] = [];
 
 const ALLOWED_PATHS = new Set(ALLOWED.flatMap((debt) => debt.paths));
 

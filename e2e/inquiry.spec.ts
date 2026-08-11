@@ -14,7 +14,7 @@ import { STAFF_PATH } from '../src/lib/people/views.js';
  * page that renders on request, and coming back with an answer specific to that
  * one submission. A `method="post"` that reaches nothing fails no unit test.
  *
- * The suite runs with no `RESEND_API_KEY`, so a valid submission here takes the
+ * The suite runs with no mail credentials, so a valid submission here takes the
  * **store succeeds / send fails** path — which is the case worth asserting,
  * because it is the one a real deployment is in today (there is no Resend
  * account yet). The parent must still be told we have their question, because

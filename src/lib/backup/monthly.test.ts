@@ -3,13 +3,16 @@ import { fileURLToPath } from 'node:url';
 import { unzipSync } from 'fflate';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { saveSchoolDetails } from '../admin/school-details.js';
+import { saveSchoolDetails, schoolDetailsFields } from '../admin/school-details.js';
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import { buildExport } from './export.js';
 import {
   MAX_ATTACHMENT_BYTES,
+  MAX_GMAIL_ATTACHMENT_BYTES,
+  configuredMailer,
   isAuthorisedCron,
   resendSender,
+  sendAll,
   sendMonthlyBackup,
   type Mail,
 } from './monthly.js';
@@ -54,15 +57,7 @@ describe('the monthly send', () => {
     const details = await (await import('../admin/school-details.js')).getSchoolDetails(db);
     await saveSchoolDetails(
       db,
-      {
-        address: details.address,
-        phone: details.phone,
-        email: 'someone-else@pharosacademy.net',
-        schoolYearStart: details.schoolYearStart,
-        mission: details.mission,
-        vision: details.vision,
-        giveUrl: details.giveUrl,
-      },
+      { ...schoolDetailsFields(details), email: 'someone-else@pharosacademy.net' },
       'Jill',
     );
 
@@ -179,6 +174,70 @@ describe('the Resend sender', () => {
         attachment: { filename: 'backup.zip', bytes: Buffer.from('x') },
       }),
     ).rejects.toThrow(/422|Invalid `from` field/);
+  });
+});
+
+/**
+ * Which route a deployment is on (#64).
+ *
+ * Asserted here rather than left to the four pages that call it, because the
+ * failure this guards against is silent: a deployment that resolves to no
+ * mailer keeps every record and tells nobody, which looks exactly like a
+ * deployment nobody has submitted anything to yet.
+ */
+describe('the configured mailer', () => {
+  const GMAIL = { GMAIL_USER: 'admissions@pharos.test', GMAIL_APP_PASSWORD: 'abcd efgh ijkl mnop' };
+  const RESEND = { RESEND_API_KEY: 're_test_key', MAIL_FROM: FROM };
+
+  it('is absent on a deployment with no credentials, which is what the suite runs as', () => {
+    expect(configuredMailer({})).toBeUndefined();
+  });
+
+  it('sends from the Gmail account when MAIL_FROM is unset, because Gmail would anyway', () => {
+    expect(configuredMailer(GMAIL)?.from).toBe('admissions@pharos.test');
+  });
+
+  it('carries a smaller attachment ceiling on Gmail than on Resend', () => {
+    expect(configuredMailer(GMAIL)?.maxAttachmentBytes).toBe(MAX_GMAIL_ATTACHMENT_BYTES);
+    expect(configuredMailer(RESEND)?.maxAttachmentBytes).toBe(MAX_ATTACHMENT_BYTES);
+    expect(MAX_GMAIL_ATTACHMENT_BYTES).toBeLessThan(MAX_ATTACHMENT_BYTES);
+  });
+
+  it('refuses a Resend key with no MAIL_FROM rather than sending with an empty sender', () => {
+    expect(configuredMailer({ RESEND_API_KEY: 're_test_key' })).toBeUndefined();
+  });
+
+  it('refuses half of the Gmail pair', () => {
+    expect(configuredMailer({ GMAIL_USER: 'admissions@pharos.test' })).toBeUndefined();
+    expect(configuredMailer({ GMAIL_APP_PASSWORD: 'abcd efgh ijkl mnop' })).toBeUndefined();
+  });
+
+  it('ignores whitespace, so a pasted value with a stray newline is still a mailer', () => {
+    expect(configuredMailer({ RESEND_API_KEY: '  re_test_key\n', MAIL_FROM: ` ${FROM} ` })?.from).toBe(
+      FROM,
+    );
+    expect(configuredMailer({ RESEND_API_KEY: '   ', MAIL_FROM: FROM })).toBeUndefined();
+  });
+
+  it('stays on Gmail while both are set, so pasting a Resend key switches nothing yet', () => {
+    // A deployment carrying both is one mid-move. The domain sender is the one
+    // being added, and it is unproven until somebody sends through it on
+    // purpose — not on the next family's inquiry.
+    const mailer = configuredMailer({ ...GMAIL, ...RESEND });
+    expect(mailer?.maxAttachmentBytes).toBe(MAX_GMAIL_ATTACHMENT_BYTES);
+  });
+
+  it('prefers an explicit MAIL_FROM on Gmail, for a verified “Send mail as” alias', () => {
+    expect(configuredMailer({ ...GMAIL, MAIL_FROM: FROM })?.from).toBe(FROM);
+  });
+
+  it('names both routes when there is no mailer, so nobody is sent to one dashboard', async () => {
+    const { sent, error } = await sendAll(undefined, [
+      { to: 'office@pharosacademy.net', from: FROM, subject: 'x', text: 'y' },
+    ]);
+    expect(sent).toBe(false);
+    expect(error).toContain('RESEND_API_KEY');
+    expect(error).toContain('GMAIL_APP_PASSWORD');
   });
 });
 
