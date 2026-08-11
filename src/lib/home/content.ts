@@ -79,17 +79,17 @@ export function costFigures(
       ? [
           {
             amount: `${formatMoney(range.low)}–${range.high}`,
-            note: 'per class per year, paid directly to your instructor',
+            note: 'Varies by course selection',
           },
         ]
       : []),
     {
       amount: formatMoney(settings.registrationFee),
-      note: 'registration, once per student per year',
+      note: 'Annual registration',
     },
     {
       amount: formatMoney(settings.classDeposit),
-      note: 'deposit per class, by cheque, holds the seat',
+      note: 'Deposit for each class',
     },
   ];
 }

@@ -25,9 +25,9 @@ describe('the costs band', () => {
 
   it('keeps the school’s own wording beside each figure', () => {
     expect(costFigures(CATALOGUE, settings).map((figure) => figure.note)).toEqual([
-      'per class per year, paid directly to your instructor',
-      'registration, once per student per year',
-      'deposit per class, by cheque, holds the seat',
+      'Varies by course selection',
+      'Annual registration',
+      'Deposit for each class',
     ]);
   });
 

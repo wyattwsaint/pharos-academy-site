@@ -4,7 +4,7 @@ import { costFigures } from '../../lib/home/content.js';
 import type { MoneySettings } from '../../lib/money/settings.js';
 
 interface Props {
-  /** The catalogue, for the "per class per year" range. */
+  /** The catalogue, for the range a year of classes falls in. */
   courses: readonly Course[];
   /** The school's money settings. Every figure below comes from these. */
   settings: MoneySettings;
@@ -35,7 +35,7 @@ const MARKS = [
 <section class="band" id="costs" data-section="costs">
   <div class="wide">
     <p class="label">What it costs</p>
-    <h2 class="mt-4">Everything, before you ask.</h2>
+    <h2 class="mt-4">Pricing for Partner Families</h2>
     <div class="figures">
       {
         figures.map((figure, index) => (
