@@ -11,6 +11,7 @@ import { getSchoolDetails } from '../lib/admin/school-details.js';
 import { listCourses } from '../lib/courses/store.js';
 import { getDb } from '../lib/db/client.js';
 import { getMoneySettings } from '../lib/money/store.js';
+import { listPeople } from '../lib/people/store.js';
 
 /**
  * The homepage, in "Beacon, warmed" — variant E, approved by George and Jill
@@ -63,13 +64,14 @@ const db = await getDb();
 const details = await getSchoolDetails(db);
 const courses = await listCourses(db);
 const settings = await getMoneySettings(db);
+const people = await listPeople(db);
 ---
 
 <BaseLayout details={details} title="Home" description={description} overHero>
   <HomeHero />
   <WeekSection courses={courses} rates={settings.rates} />
   <Ornament />
-  <TeachersSection />
+  <TeachersSection people={people} />
   <Ornament />
   <CostsSection courses={courses} settings={settings} />
   <FaithSection />
