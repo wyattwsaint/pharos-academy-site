@@ -15,7 +15,7 @@ import { INTERESTS } from '../src/lib/volunteer/volunteer.js';
  * failure that loses what somebody typed, and above all a form that prints a
  * thank-you it cannot back up.
  *
- * The suite runs with no `RESEND_API_KEY`, so a valid submission here takes the
+ * The suite runs with no mail credentials, so a valid submission here takes the
  * **no mailer** path. That is exactly the case worth asserting: the page must
  * say it did not send and hand back an address, and it must never say thank
  * you. A test environment that silently mails would be the worse setup.

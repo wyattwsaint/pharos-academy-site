@@ -736,7 +736,7 @@ test.describe('Download everything', () => {
  *
  * The inquiry is submitted through the public form on the same dev server, so
  * this is genuinely end to end: what the admin shows is what a parent typed,
- * not a row this test inserted. The suite has no `RESEND_API_KEY`, so it also
+ * not a row this test inserted. The suite has no mail credentials, so it also
  * lands on the case the ticket cares most about — saved, but nobody emailed —
  * which is invisible everywhere else on the site, because the parent was
  * correctly told we have their question.
@@ -972,7 +972,7 @@ test.describe('applications', () => {
   });
 
   test('says when nobody at the school was emailed', async ({ page }) => {
-    // The suite has no `RESEND_API_KEY`, which is exactly the case #32 AC 6
+    // The suite has no mail credentials, which is exactly the case #32 AC 6
     // cares about: the application saved, the family was told on screen, and
     // only this line says the school's own copy never went.
     const family = 'Suite Undelivered';
