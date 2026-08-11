@@ -4,7 +4,7 @@ export const prerender = false;
 import InquiryForm from '../components/InquiryForm.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getSchoolDetails, telHref } from '../lib/admin/school-details.js';
-import { resendSender } from '../lib/backup/monthly.js';
+import { configuredMailer } from '../lib/backup/monthly.js';
 import { getDb } from '../lib/db/client.js';
 import {
   parseInquiry,
@@ -64,14 +64,19 @@ if (Astro.request.method === 'POST') {
      * import — and an absent sender is a case `submitInquiry` already handles
      * honestly.
      */
-    const apiKey = import.meta.env.RESEND_API_KEY;
-    const from = import.meta.env.MAIL_FROM;
+    // Spelled out rather than handed the whole of `import.meta.env` — see `MailEnv`.
+    const mailer = configuredMailer({
+      GMAIL_USER: import.meta.env.GMAIL_USER,
+      GMAIL_APP_PASSWORD: import.meta.env.GMAIL_APP_PASSWORD,
+      RESEND_API_KEY: import.meta.env.RESEND_API_KEY,
+      MAIL_FROM: import.meta.env.MAIL_FROM,
+    });
 
     outcome = await submitInquiry(values, {
       store: (fields) => createInquiry(db, fields),
-      sender: apiKey && from ? resendSender(apiKey) : undefined,
+      sender: mailer?.sender,
       to: settings.notificationAddresses,
-      from: typeof from === 'string' ? from : '',
+      from: mailer?.from ?? '',
       site: Astro.site?.toString() ?? SITE_URL,
       schoolEmail: details.email.trim(),
     });
