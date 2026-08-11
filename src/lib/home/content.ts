@@ -18,6 +18,18 @@ import { formatMoney, type MoneySettings } from '../money/settings.js';
 
 /** One instructor on the "who teaches" row. */
 export type Instructor = {
+  /**
+   * Their row in `people`, which is where the photograph comes from.
+   *
+   * The name, role and credentials beside it are still homepage copy — the
+   * school words its front page differently from its staff page, and this row
+   * carries honorifics and a sentence of credentials the table does not hold.
+   * The face is not copy, so it is not duplicated here: ADR-0004 says one list
+   * of people, and a second hard-coded `/portraits/…` path is exactly the drift
+   * that decision exists to prevent. Change a photograph in the admin and this
+   * row follows it.
+   */
+  slug: string;
   name: string;
   /** Their role, set as the gold eyebrow under the name. */
   role: string;
@@ -28,19 +40,22 @@ export type Instructor = {
 /**
  * Three of the nine, on the homepage.
  *
- * Portraits are deliberately absent: slot 4 needs photographs of real
- * consenting adults, which is Jill's to supply (#13), and a generated painting
- * of a person standing in for a named member of staff is the one substitution
- * that would be dishonest. The circles render as an empty tint until then.
+ * Portraits are the school's own photographs, supplied for #99 and read from
+ * `people` by slug. A person the school has sent no photograph of keeps the
+ * empty tint — the row of three would otherwise come out ragged — and never a
+ * stand-in face: a generated painting under a named member of staff is the one
+ * substitution that would be dishonest (#13).
  */
 export const INSTRUCTORS: readonly Instructor[] = [
   {
+    slug: 'jill-kilker',
     name: 'Jill Kilker',
     role: 'Head of School',
     credentials:
       'M.Ed. Special Education, Shippensburg. Homeschool Evaluator in Pennsylvania',
   },
   {
+    slug: 'george-jensen',
     name: 'Pastor George Jensen',
     role: 'Chaplain · Algebra 1',
     // A non-breaking space after the degree: "M.Div." alone at the end of a
@@ -49,6 +64,7 @@ export const INSTRUCTORS: readonly Instructor[] = [
       'B.S. Secondary Mathematics, Millersville. M.Div.,\u00A0Winebrenner Theological Seminary',
   },
   {
+    slug: 'mandy-saint',
     name: 'Mrs. Mandy Saint',
     role: 'Instructor · Grammar School',
     credentials:

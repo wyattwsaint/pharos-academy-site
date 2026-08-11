@@ -1,5 +1,22 @@
 ---
 import { INSTRUCTORS } from '../../lib/home/content.js';
+import type { Person } from '../../lib/people/person.js';
+
+/**
+ * The people rows, read in the page and handed down (#34) — never read here.
+ * A store read inside a component's frontmatter runs with the 200 already on
+ * the wire, so it can only truncate the response, and a truncated 200 is what
+ * the CDN stores over the good copy.
+ */
+type Props = { people: readonly Person[] };
+
+const { people } = Astro.props;
+
+/** The homepage's three, each carrying whatever photograph the table holds. */
+const instructors = INSTRUCTORS.map((instructor) => ({
+  ...instructor,
+  photo: people.find((person) => person.slug === instructor.slug)?.photo ?? null,
+}));
 ---
 
 <section class="band band-quiet" id="teachers" data-section="teachers">
@@ -16,12 +33,32 @@ import { INSTRUCTORS } from '../../lib/home/content.js';
 
     <div class="people">
       {
-        INSTRUCTORS.map((person) => (
+        instructors.map((person) => (
           <article>
-            {/* Empty until Jill supplies photographs of real consenting adults
-                (#13). A generated painting standing in for a named member of
-                staff is the one substitution that would be dishonest. */}
-            <div class="portrait" aria-hidden="true" />
+            {
+              /* The school's own photograph where there is one (#99), and the
+                 empty tint where there is not — the row of three holds its
+                 shape either way. Never a stand-in face: a generated painting
+                 under a named member of staff is the one substitution that
+                 would be dishonest (#13).
+
+                 Alt text is this row's name, honorific and all, rather than the
+                 table's: it is the name printed under the circle, and a screen
+                 reader hearing a different one would be hearing about a
+                 different person. */
+            }
+            {person.photo ? (
+              <img
+                class="portrait"
+                src={person.photo}
+                alt={person.name}
+                width="300"
+                height="300"
+                loading="lazy"
+              />
+            ) : (
+              <div class="portrait" aria-hidden="true" />
+            )}
             <h3>{person.name}</h3>
             <p class="role label">{person.role}</p>
             <p>{person.credentials}</p>
