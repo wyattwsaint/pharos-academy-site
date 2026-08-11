@@ -122,6 +122,158 @@ test.describe('saving school details', () => {
     await expect(page.locator('#address')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#address-error')).toContainText('Address cannot be empty.');
   });
+
+  /*
+   * The home page's announcement banner, both ways round (#15).
+   *
+   * Driven from the admin rather than seeded, because the point of the ticket
+   * is that the office changes what a visitor sees without a developer: a
+   * seeded banner would prove the bar renders and nothing about the path that
+   * puts words in it. It lives in this file rather than in `homepage.spec.ts`
+   * for the same reason the rest of this describe does — it needs an account,
+   * and the account only exists on a server this config started.
+   */
+
+  /**
+   * Put the row into a known banner state, or switch the banner off.
+   *
+   * Every test below opens with this, including the ones that then assert the
+   * bar is absent. Inheriting "off" from whichever test ran last is what makes
+   * a suite that passes in isolation fail in a full run: the public project
+   * shares this dev server, `fullyParallel` is on, and an absence assertion
+   * that leans on someone else's cleanup is an assertion about scheduling.
+   */
+  async function setBanner(
+    page: Page,
+    banner: { message: string; date: string; link: string } | null,
+  ): Promise<void> {
+    await page.goto('/admin/school-details');
+    const shown = page.getByLabel('Show the banner on the home page');
+
+    if (banner === null) {
+      await shown.uncheck();
+    } else {
+      await shown.check();
+      await page.getByLabel('Banner message').fill(banner.message);
+      await page.getByLabel('Banner date').fill(banner.date);
+      await page.getByLabel('Banner link').fill(banner.link);
+    }
+
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+  }
+
+  const REGISTER = {
+    message: 'Register now! Classes begin',
+    date: '2026-08-31',
+    link: 'https://example.org/register',
+  };
+
+  test('puts the banner on the home page, and takes it off again', async ({ page }) => {
+    await signIn(page);
+    await setBanner(page, REGISTER);
+
+    await page.goto('/');
+    const bar = page.locator('[data-announcement-bar]');
+    // American, no ordinal suffix, and the date after the words the office
+    // typed — "Register now! Classes begin August 31".
+    await expect(bar).toContainText('Register now! Classes begin August 31');
+    await expect(bar.getByRole('link')).toHaveAttribute('href', REGISTER.link);
+
+    // Beneath the header's row, not floating over it.
+    const row = await page.locator('[data-site-header] > .wide').boundingBox();
+    const box = await bar.boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(row!.y + row!.height - 1);
+
+    await setBanner(page, null);
+
+    // Off is nothing at all, not an empty bar: the hero still starts at the top
+    // of the document, so the region leaves no space behind it.
+    await page.goto('/');
+    await expect(page.locator('[data-announcement-bar]')).toHaveCount(0);
+    const hero = await page.locator('[data-section="hero"]').boundingBox();
+    expect(hero!.y).toBeCloseTo(0, 0);
+  });
+
+  /*
+   * Both widths, because the focus hand-off after a dismissal is width-sensitive
+   * and silently so: `.site-nav` is `display: none` below 860px, and `.focus()`
+   * on a hidden element does nothing and reports nothing. A desktop-only run of
+   * this test passed against a target that did not exist on a phone.
+   */
+  for (const width of [1280, 390]) {
+    test(`lets a visitor dismiss the banner from the keyboard at ${width}px, and remembers it`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await signIn(page);
+      await setBanner(page, { message: 'Snow day — no classes', date: '2027-01-05', link: '' });
+
+      await page.goto('/');
+      const bar = page.locator('[data-announcement-bar]');
+      // Named, so a screen reader announces a region called Announcement rather
+      // than an unlabelled group of two controls.
+      await expect(bar).toHaveAttribute('aria-label', 'Announcement');
+      await expect(bar).toContainText('Snow day — no classes January 5');
+      // With no link set, the message is not a link to nowhere.
+      await expect(bar.getByRole('link')).toHaveCount(0);
+
+      const heroBefore = await page.locator('[data-section="hero"]').boundingBox();
+      await page.getByRole('button', { name: 'Dismiss this announcement' }).focus();
+      await page.keyboard.press('Enter');
+
+      await expect(bar).toHaveCount(0);
+      // Nothing moved: the bar hangs off a fixed header and is not in the flow.
+      const heroAfter = await page.locator('[data-section="hero"]').boundingBox();
+      expect(heroAfter!.y).toBeCloseTo(heroBefore!.y, 0);
+      // Focus did not fall to <body>; the keyboard visitor is still in the
+      // header. The header's CTA, not the nav — the nav is `display: none`
+      // below 860px, and `.focus()` on a hidden element is a silent no-op.
+      await expect(page.locator('[data-site-header] .btn')).toBeFocused();
+
+      // And it stays dismissed, which is the whole reason a dismissal is stored.
+      await page.reload();
+      await expect(page.locator('[data-announcement-bar]')).toHaveCount(0);
+
+      await setBanner(page, null);
+    });
+  }
+
+  test('has no accessibility failures with the banner live', async ({ page }) => {
+    await signIn(page);
+    await setBanner(page, REGISTER);
+
+    // Navy ink on gold, over a header that is transparent above the hero. The
+    // contrast is the thing most likely to have been got wrong by eye, and the
+    // public axe run never sees this state because the banner ships off.
+    await page.goto('/');
+    await expect(page.locator('[data-announcement-bar]')).toBeVisible();
+    const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    expect(results.violations).toEqual([]);
+
+    await setBanner(page, null);
+  });
+
+  test('refuses a banner with no date, and one whose link is not a link', async ({ page }) => {
+    await signIn(page);
+    await setBanner(page, null);
+
+    await page.getByLabel('Show the banner on the home page').check();
+    await page.getByLabel('Banner message').fill('Register now! Classes begin');
+    await page.getByLabel('Banner date').fill('');
+    // `type="url"` catches most of these in the browser before they ever post.
+    // A scheme the browser accepts is what proves the server's own check runs.
+    await page.getByLabel('Banner link').fill('javascript:alert(1)');
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
+    await expect(page.locator('#bannerDate-error')).toBeVisible();
+    await expect(page.locator('#bannerLink-error')).toBeVisible();
+
+    // Nothing was saved, so the home page is still the one the school ships.
+    await page.goto('/');
+    await expect(page.locator('[data-announcement-bar]')).toHaveCount(0);
+  });
 });
 
 test.describe('editing a person', () => {

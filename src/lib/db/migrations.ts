@@ -638,6 +638,28 @@ export const MIGRATIONS: readonly Migration[] = [
          and headline = 'Senators game fundraiser, 24 July'`,
     ],
   },
+  {
+    /*
+     * The home page's announcement banner (#15).
+     *
+     * Four columns on the singleton the office already edits, rather than a
+     * table: there is one banner, and school details is the screen whose save
+     * path already revalidates every published page — which is the whole point
+     * of the ticket, a change visible without a deploy.
+     *
+     * Defaulted off with empty words, so the migration lands on the live
+     * database without putting a bar on the home page a moment before anyone
+     * has written one. The date is the one column with no default: null is
+     * "never used", and a placeholder date is a date somebody ships.
+     */
+    id: '0016-home-banner',
+    statements: [
+      `alter table school_details add column if not exists banner_enabled boolean not null default false`,
+      `alter table school_details add column if not exists banner_message text not null default ''`,
+      `alter table school_details add column if not exists banner_date date`,
+      `alter table school_details add column if not exists banner_link text not null default ''`,
+    ],
+  },
 ];
 
 /**

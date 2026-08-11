@@ -1,4 +1,6 @@
 ---
+import AnnouncementBar from './AnnouncementBar.astro';
+import type { AnnouncementBanner } from '../lib/home/announcement-banner.js';
 import { INQUIRY_HREF, NAV_ITEMS } from '../lib/home/sections.js';
 import { SCHOOL_NAME } from '../lib/site.js';
 
@@ -12,9 +14,19 @@ interface Props {
    * script leaves it alone.
    */
   overHero?: boolean;
+  /**
+   * The announcement bar to hang beneath the header row, or null for none.
+   *
+   * Only the home page passes one (#15). It is a prop rather than a read of the
+   * school details row here for the same reason `BaseLayout` takes `details` as
+   * one: this component renders mid-stream, after the 200 has gone, so a
+   * database read in here can only truncate a page that has already claimed to
+   * have succeeded.
+   */
+  banner?: AnnouncementBanner | null;
 }
 
-const { overHero = false } = Astro.props;
+const { overHero = false, banner = null } = Astro.props;
 ---
 
 <header class:list={['site-header', { stuck: !overHero }]} data-site-header>
@@ -28,4 +40,5 @@ const { overHero = false } = Astro.props;
     </nav>
     <a class="btn on-dark" href={INQUIRY_HREF}>Ask us about Pharos</a>
   </div>
+  {banner && <AnnouncementBar banner={banner} />}
 </header>

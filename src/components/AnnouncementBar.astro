@@ -1,0 +1,103 @@
+---
+import {
+  BANNER_DISMISSED_KEY,
+  type AnnouncementBanner,
+} from '../lib/home/announcement-banner.js';
+
+/**
+ * The home page's announcement bar (#15).
+ *
+ * Rendered **inside** `SiteHeader`, beneath its row, which is what makes two of
+ * the ticket's criteria free rather than fought for. The header is
+ * `position: fixed`, so the bar is out of the document flow: dismissing it
+ * cannot shift the page, and switching it off leaves no empty space where it
+ * was. A bar in the flow would have had to fight the fixed header's overlap on
+ * one side and `pt-24` on the other.
+ *
+ * The date is rendered after the message rather than woven into it: the office
+ * types "Register now! Classes begin" and the bar says "Register now! Classes
+ * begin August 31". That is what keeps the date a real date — a free-text
+ * message with the day typed inside it is a date nothing can validate, and
+ * "Augsut 31" ships.
+ */
+interface Props {
+  banner: AnnouncementBanner;
+}
+
+const { banner } = Astro.props;
+---
+
+<aside class="site-banner" aria-label="Announcement" data-announcement-bar data-key={banner.key}>
+  <div class="wide">
+    {
+      banner.href ? (
+        <a class="site-banner-message" href={banner.href}>
+          {banner.message} <b>{banner.date}</b>
+        </a>
+      ) : (
+        <p class="site-banner-message">
+          {banner.message} <b>{banner.date}</b>
+        </p>
+      )
+    }
+    <button type="button" class="site-banner-dismiss" data-banner-dismiss>
+      <span aria-hidden="true">&times;</span>
+      <span class="sr-only">Dismiss this announcement</span>
+    </button>
+  </div>
+</aside>
+
+{
+  /*
+    Inline and immediately after the bar, not a module.
+
+    A `<script>` Astro bundles is deferred, so it would run after first paint —
+    and a visitor who closed this message would watch it appear and then vanish
+    on every page load. Inline here it runs before the browser paints the bar at
+    all.
+
+    The bar is rendered visible and removed by script, never the reverse: hidden
+    markup revealed by script is a bar that a visitor with no JavaScript never
+    sees, and the message is the one thing on the page that is urgent.
+  */
+}
+<script is:inline define:vars={{ storageKey: BANNER_DISMISSED_KEY }}>
+  (() => {
+    const bar = document.querySelector('[data-announcement-bar]');
+    if (!bar) return;
+
+    // Private browsing and a full quota both throw on access, not on write.
+    // A banner that cannot remember a dismissal is better than no banner.
+    const remembered = (() => {
+      try {
+        return localStorage.getItem(storageKey);
+      } catch {
+        return null;
+      }
+    })();
+
+    if (remembered === bar.dataset.key) {
+      bar.remove();
+      return;
+    }
+
+    bar.querySelector('[data-banner-dismiss]').addEventListener('click', () => {
+      try {
+        localStorage.setItem(storageKey, bar.dataset.key);
+      } catch {
+        /* Dismissed for this page view only. */
+      }
+      // Focus is on the button that is about to stop existing. Left alone it
+      // falls to <body>, and a keyboard visitor starts again from the top of
+      // the document.
+      //
+      // The header's own call to action, not the nav beside it: `.site-nav` is
+      // `display: none` below 860px and `.focus()` on a hidden element is a
+      // silent no-op, so the nav would have worked on the desktop this was
+      // written on and nowhere else.
+      const next = document.querySelector('[data-site-header] .btn');
+      bar.remove();
+      if (next) next.focus();
+    });
+  })();
+</script>
