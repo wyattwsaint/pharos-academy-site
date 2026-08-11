@@ -168,6 +168,68 @@ test.describe('the hero', () => {
   });
 });
 
+/**
+ * #102's two layout defects, asserted as the rule rather than as a picture.
+ *
+ * Bounding boxes, not screenshots: what broke both times was a *relationship*
+ * between two boxes — headings that no longer shared a top edge, a mark that
+ * no longer stayed clear of the nav — and a screenshot asserts every pixel of
+ * the page instead of the one relationship, so it fails on any repaint and
+ * says nothing about which. The viewports are fixed for the same reason: both
+ * defects were invisible at 1440×900 and plain at 1280×600.
+ */
+const SHORT_WIDE = { width: 1280, height: 600 };
+const NARROW_SHORT = { width: 1100, height: 560 };
+
+test.describe('the home layout', () => {
+  for (const viewport of [DESKTOP, SHORT_WIDE, NARROW_SHORT]) {
+    test(`the timetable's day headings share a top edge at ${viewport.width}×${viewport.height}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const tops = await page
+        .locator('[data-section="week"] .grid .day h3')
+        .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+
+      // Three day tracks run; a fourth is routinely empty and is not drawn.
+      expect(tops.length).toBeGreaterThan(1);
+      // Sub-pixel tolerance only. The regression this catches was 64px — a
+      // margin from the /classes page's own `.day` sections reaching these.
+      for (const top of tops) expect(top).toBeCloseTo(tops[0], 0);
+    });
+
+    test(`the hero mark stays clear of the navigation at ${viewport.width}×${viewport.height}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const mark = await page.locator('.hero-mark').boundingBox();
+      const nav = await page.locator('.site-nav').boundingBox();
+      expect(mark).not.toBeNull();
+      expect(nav).not.toBeNull();
+
+      // The rule is "the mark begins below the nav ends", which is stronger
+      // than "the two rectangles do not intersect" — they also must not swap
+      // order — and it holds however wide the nav's links happen to run.
+      expect(mark!.y).toBeGreaterThan(nav!.y + nav!.height);
+    });
+  }
+
+  test('the navigation still collapses below the narrow breakpoint', async ({ page }) => {
+    // 860px is the existing breakpoint; asserted on both sides so a fix to the
+    // hero above cannot quietly move it.
+    await page.setViewportSize({ width: 900, height: 700 });
+    await page.goto('/');
+    await expect(page.locator('.site-nav')).toBeVisible();
+
+    await page.setViewportSize({ width: 820, height: 700 });
+    await expect(page.locator('.site-nav')).not.toBeVisible();
+  });
+});
+
 test.describe('the header', () => {
   test('is chrome-less over the hero and takes the navy band once it is past', async ({ page }) => {
     await page.setViewportSize(DESKTOP);

@@ -550,6 +550,12 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  /* The header is `position: fixed`, so it takes no space and the lockup was
+     centred in the whole viewport — on a short laptop screen (1280×600 and
+     shorter) the mark rose up behind the nav links (#102). Reserving the
+     header's own band here centres the lockup in what is left, which is where
+     it always looked centred anyway on a tall screen. */
+  padding-top: 96px;
 }
 
 .hero-lockup {
@@ -558,8 +564,13 @@ h3 {
   color: var(--color-navy);
 }
 
+/* The width caps are per-breakpoint (`--lockup-mark`); the `vh` cap is the
+   short-screen one, and it is a cap rather than a second breakpoint so the
+   lockup keeps its proportions instead of re-composing. Without it the block
+   is taller than a short viewport can hold and overflows back under the
+   header the padding above just cleared. */
 .hero-mark {
-  width: var(--lockup-mark, 200px);
+  width: min(var(--lockup-mark, 200px), 20vh);
   height: auto;
   display: block;
   margin: 0 auto 20px;
