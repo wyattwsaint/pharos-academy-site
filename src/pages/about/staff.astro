@@ -20,16 +20,18 @@ import { listPeople } from '../../lib/people/store.js';
  * George Jensen is in both sections and is one row. That is the whole argument
  * for the module this page reads from.
  *
- * **Bios and photographs are optional by design.** Eight of the eleven names
- * here have neither, and this page says so by showing their name and their
- * classes rather than a paragraph of invented biography. Nothing is padded to
- * make a card the same height as its neighbour.
+ * **Bios and photographs are optional by design.** Seven of the ten names here
+ * have no bio, and this page says so by showing their name and their classes
+ * rather than a paragraph of invented biography. Nothing is padded to make a
+ * card the same height as its neighbour.
  *
- * Slot 4 — the three leadership portraits — stays an empty tint. It has to be
- * photographs of real consenting adults, it is blocked on the school supplying
- * them, and no generated or stock face substitutes for one. The instructors
- * carry no portrait frame at all, because eight empty circles would be a page
- * advertising eight missing photographs rather than eight people who teach.
+ * Slot 4 — the three leadership portraits — is photographs now (#99), and Mandy
+ * Saint's is here too, in the instructors list. Only that: real, consenting
+ * adults the school supplied, never a generated or stock face. A leader the
+ * school has sent no photograph of keeps the empty tint, because the row of
+ * three would otherwise come out ragged; an instructor without one carries no
+ * portrait frame at all, because seven empty circles would be a page
+ * advertising seven missing photographs rather than seven people who teach.
  */
 const db = await getDb();
 const details = await getSchoolDetails(db);
@@ -63,8 +65,8 @@ const description =
               {
                 /*
                   A real photograph when the school has supplied one, and an
-                  empty tint when it has not (#13). Never a stand-in face: a
-                  generated painting under a named member of staff is the one
+                  empty tint when it has not (#13, #99). Never a stand-in face:
+                  a generated painting under a named member of staff is the one
                   substitution that would be dishonest.
                 */
               }
@@ -102,6 +104,27 @@ const description =
         {
           instructors.map(({ person, courses: taught }) => (
             <li id={person.slug}>
+              {
+                /*
+                  A photograph only where there is one, and only for somebody
+                  this page has not already shown (#99). No empty frame for the
+                  six with no photograph: a circle of tint beside a name reads as
+                  a missing person rather than as a person the school simply has
+                  no picture of, and this list is seven names long. And no second
+                  copy of George's face — he is one row, printed twice, and two
+                  identical circles a screen apart would read as two people.
+                */
+              }
+              {person.photo && person.leadershipRank === null && (
+                <img
+                  class="portrait"
+                  src={person.photo}
+                  alt={person.name}
+                  width="300"
+                  height="300"
+                  loading="lazy"
+                />
+              )}
               <h3>{person.name}</h3>
               <p class="role label">{person.role}</p>
               {person.bio && <p class="staff-bio">{person.bio}</p>}

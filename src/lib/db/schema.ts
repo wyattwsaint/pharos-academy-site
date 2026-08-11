@@ -194,10 +194,10 @@ export const courses = pgTable('courses', {
  * is a column because it carries an order the staff page renders in, and that
  * order is the school's decision rather than a derivable fact.
  *
- * `bio` and `photo` are nullable and both are null for eight of the ten. That
- * is the published state, not an unfinished one: the school has written three
- * bios, and portraits are photographs of real consenting adults that Jill has
- * yet to supply (#13, slot 4).
+ * `bio` and `photo` are nullable and mostly null: the school has written three
+ * bios and supplied four photographs (#99). That is the published state, not an
+ * unfinished one — a person with neither renders as a name and what they teach,
+ * and the six faces the school has not sent stay absent rather than borrowed.
  */
 export const people = pgTable('people', {
   /** The URL segment on the staff page, and what `courses.instructor_slug` points at. */
@@ -205,7 +205,7 @@ export const people = pgTable('people', {
   name: text('name').notNull(),
   role: text('role').notNull(),
   bio: text('bio'),
-  /** A path under `public/`. Null for everybody until slot 4 is unblocked. */
+  /** A path under `public/`, or null. `/portraits/<slug>.webp` for the four. */
   photo: text('photo'),
   /** Position on the staff page, low first. Null means not leadership. */
   leadershipRank: integer('leadership_rank'),

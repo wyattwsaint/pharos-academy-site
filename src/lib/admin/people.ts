@@ -61,7 +61,8 @@ export function parsePerson(form: FormData): ParsedPerson {
 
   if (values.photo && !isSitePhotograph(values.photo)) {
     errors.photo =
-      'A photograph is a file in this site — “/people/their-name.webp”, uploaded with the site’s images.';
+      'A photograph is a file in this site — “/portraits/their-name.webp”, built from the ' +
+      'sources in assets/portraits with the site’s other images.';
   }
 
   return { values, errors };
@@ -70,10 +71,11 @@ export function parsePerson(form: FormData): ParsedPerson {
 /**
  * A photograph this site actually holds.
  *
- * Slot 4 is blocked on the client and must be photographs of real consenting
- * adults (#13, #26). A path under `public/` is one somebody at the school
- * chose, can look at, and can take down; an off-site URL is a face nobody here
- * can vouch for, so it is refused rather than hot-linked.
+ * Portraits must be photographs of real consenting adults (#13, #26, #99), and
+ * the four the school supplied live in `public/portraits/`. A path under
+ * `public/` is one somebody at the school chose, can look at, and can take
+ * down; an off-site URL is a face nobody here can vouch for, so it is refused
+ * rather than hot-linked.
  *
  * The second leading slash is the case worth naming: `//example.org/face.jpg`
  * *looks* like a path and is a protocol-relative URL, so a check that only

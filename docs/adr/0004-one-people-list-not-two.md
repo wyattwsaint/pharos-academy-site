@@ -55,11 +55,12 @@ mean different things in the same column.
 - **Editing a person republishes the whole site.** A name is printed on the staff page, on
   each class that person teaches and in the timetable, so `/admin/people/<slug>` calls
   `revalidateAll` and reports the answer, exactly as school details does (#18 §3).
-- **Photographs stay honest.** The column exists and is null for all ten seeded people.
-  Slot 4 — the three leadership portraits — is blocked on the school supplying photographs
-  of real consenting adults; the page ships with empty tints rather than generated or
-  stock faces, and the admin refuses a photograph path that is not a file in this site,
-  so an unvouched-for face cannot be hot-linked into a named member of staff's place.
+- **Photographs stay honest.** The column was null for all ten seeded people until the
+  school supplied four of them (#99): Jill Kilker, George Jensen, Kathy Liddick and Mandy
+  Saint, built into `public/portraits/` from the sources in `assets/portraits/`. The other
+  six are still null and render as no face rather than a generated or stock one, and the
+  admin still refuses a photograph path that is not a file in this site, so an
+  unvouched-for face cannot be hot-linked into a named member of staff's place.
 - **The homepage's "Who teaches" band is not this list.** Its three people are #21's
   approved copy with one-line credentials that have no column here, and it was left alone
   deliberately. If it is ever made to read `people`, the credential line is the column that

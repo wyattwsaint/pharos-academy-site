@@ -38,10 +38,18 @@ describe('the seeded people', () => {
   });
 
   it('keeps an unwritten bio and an unsupplied photograph null', async () => {
-    const person = await getPerson(db, 'mandy-saint');
+    const person = await getPerson(db, 'angela-fecteau');
     expect(person?.bio).toBeNull();
     expect(person?.photo).toBeNull();
     expect(person?.role).toBe('Instructor');
+  });
+
+  it('reads back the photograph of somebody the school supplied one for', async () => {
+    // #99. The migration is where these arrive, so this is the check that the
+    // seed and the applied SQL say the same thing about a face on the page.
+    const person = await getPerson(db, 'mandy-saint');
+    expect(person?.photo).toBe('/portraits/mandy-saint.webp');
+    expect(person?.bio).toBeNull();
   });
 
   it('answers with nothing for a slug that is not a person', async () => {

@@ -38,12 +38,17 @@ export type Person = {
    */
   bio: string | null;
   /**
-   * A photograph in `public/`, or nothing — and today it is nothing.
+   * A photograph in `public/`, or nothing.
    *
-   * Slot 4 (#13) is blocked on the client: it must be photographs of real
-   * consenting adults. No generated image of a person goes here and no
-   * placeholder face substitutes for one, so the column exists, is null for
-   * everybody, and the page ships with the slot honest rather than filled.
+   * Four of the ten have one (#99): real, named, consenting adults the school
+   * supplied, built into `public/portraits/` by
+   * `scripts/build-portraits.mjs`. The other six are null and stay null. No
+   * generated image of a person goes here and no placeholder face substitutes
+   * for one — a missing photograph renders as no portrait at all rather than as
+   * somebody else's face (#13).
+   *
+   * A path here must resolve to a file on disk; `person.test.ts` fails the
+   * suite on a typo rather than shipping a broken image.
    */
   photo: string | null;
   /** Position on the staff page, low first. Null means not leadership. */
@@ -85,7 +90,7 @@ export const PEOPLE: readonly SeedPerson[] = [
       'Ministries at Enola First Church of God in Enola, PA. She has a passion for education ' +
       'and brings a wealth of knowledge and experience to Pharos Academy. She and her husband ' +
       'Joe are the parents of adult children, Elaina and Luke.',
-    photo: null,
+    photo: '/portraits/jill-kilker.webp',
     leadershipRank: 1,
   },
   {
@@ -100,7 +105,7 @@ export const PEOPLE: readonly SeedPerson[] = [
       'Community College. He currently serves as Lead Pastor at Enola First Church of God. He ' +
       'brings educational and ministry experience to Pharos Academy. He and his wife, Judi are ' +
       'the parents of adult children, Shana, Tiffany and Christine.',
-    photo: null,
+    photo: '/portraits/george-jensen.webp',
     leadershipRank: 2,
   },
   {
@@ -118,17 +123,18 @@ export const PEOPLE: readonly SeedPerson[] = [
       'work as well as many other administrative type activities. She is a mother of two adult ' +
       'children, Joshua Sr. and Tara as well as a Nana to 4 grandchildren and 2 great ' +
       'grandchildren.',
-    photo: null,
+    photo: '/portraits/kathy-liddick.webp',
     leadershipRank: 3,
   },
-  // The eight instructors. No bio, no photograph and no invented role: the
-  // school has published none of the three, and the staff page says so by
-  // showing their name and what they teach rather than a paragraph of filler.
+  // The eight instructors. No bio and no invented role: the school has
+  // published neither, and the staff page says so by showing their name and
+  // what they teach rather than a paragraph of filler. Mandy Saint is the one
+  // with a photograph, because hers is the one the school sent (#99).
   { slug: 'angela-fecteau', name: 'Mrs. Angela Fecteau', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
   { slug: 'chelsea-miller', name: 'Mrs. Chelsea Miller', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
   { slug: 'elizabeth-hayes', name: 'Mrs. Elizabeth Hayes', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
   { slug: 'lanette-johnson', name: 'Mrs. Lanette Johnson', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
-  { slug: 'mandy-saint', name: 'Mrs. Mandy Saint', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
+  { slug: 'mandy-saint', name: 'Mrs. Mandy Saint', role: INSTRUCTOR_ROLE, bio: null, photo: '/portraits/mandy-saint.webp', leadershipRank: null },
   { slug: 'rachel-holderman', name: 'Mrs. Rachel Holderman', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
   { slug: 'robyn-lach', name: 'Ms. Robyn Lach', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
 ] as const;

@@ -550,7 +550,45 @@ export const MIGRATIONS: readonly Migration[] = [
       `alter table applications add column if not exists agreements text[] not null default '{}'`,
     ],
   },
+  {
+    /*
+     * The four staff portraits the school supplied (#99).
+     *
+     * 0003 seeded every person with a null photo, and `insertPeople` is
+     * `on conflict do nothing`, so re-running it would not fill them in — the
+     * rows already exist. This is an update, appended, because the live
+     * database has Jill's edits in it and the seed is only the starting point.
+     *
+     * Guarded on the photo still being null so it cannot overwrite a portrait
+     * swapped from the admin later: the seed's path is the default, not the
+     * truth. Matched on slug, one statement, idempotent on re-run.
+     *
+     * A fresh database gets the same four paths one migration earlier, out of
+     * `insertPeople(PEOPLE)`, and then finds nothing to do here. That is the
+     * point of the guard rather than a coincidence: the two databases agree
+     * whichever route they took.
+     */
+    id: '0013-staff-portraits',
+    statements: [updatePhotos(PEOPLE)],
+  },
 ];
+
+/**
+ * The seeded photographs, as an update rather than an insert.
+ *
+ * Only the people who have one appear: an entry per null photo would be a
+ * statement that says `set photo = null where photo is null`.
+ */
+function updatePhotos(people: readonly SeedPerson[]): string {
+  const photographed = people.filter((person) => person.photo !== null);
+  const values = photographed
+    .map((person) => `(${literal(person.slug)}, ${nullable(person.photo)})`)
+    .join(', ');
+
+  return `update people set photo = supplied.photo
+    from (values ${values}) as supplied(slug, photo)
+    where people.slug = supplied.slug and people.photo is null`;
+}
 
 /** The eight terms of the published year, idempotent like every other seed. */
 function insertTerms(terms: readonly Term[]): string {

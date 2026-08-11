@@ -861,9 +861,12 @@ h3 {
   margin-top: 40px;
 }
 
-/* Left as an empty tint on purpose: real photographs of real consenting adults
-   are Jill's to supply (#13), and a generated painting standing in for a named
-   member of staff is the one substitution that would be dishonest. */
+/* A photograph the school supplied (#99), or the tint it was before one
+   existed (#13) — one class, so a face and an empty frame are the same circle
+   in the same place and the row does not shift when the next one arrives.
+   `object-fit: cover` is the guard: the sources are square by the time they
+   are committed, but a portrait dropped in by hand must crop rather than
+   stretch a face. */
 .portrait {
   aspect-ratio: 1 / 1;
   border-radius: 50%;
@@ -871,6 +874,7 @@ h3 {
   width: 100%;
   max-width: 150px;
   box-shadow: 0 0 0 1px var(--color-rule);
+  object-fit: cover;
 }
 
 .people h3 {
@@ -896,9 +900,10 @@ h3 {
 
 /* ---------- the staff page ---------- */
 
-/* Instructors, with what they teach (#26). No portrait frame: eight empty
-   tints would be a page advertising eight missing photographs rather than
-   eight people who teach, and the photographs are the school's to supply. */
+/* Instructors, with what they teach (#26). A portrait frame only where there
+   is a photograph (#99): seven empty tints would be a page advertising seven
+   missing photographs rather than seven people who teach, and the rest are the
+   school's to supply. */
 .staff-teaching {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -915,6 +920,14 @@ h3 {
 
 .staff-teaching h3 {
   font-size: 22px;
+}
+
+/* Smaller than a leadership portrait, and above the name rather than beside
+   it, so an entry with a face is the same shape as one without — just taller.
+   The two-column list keeps its rhythm either way. */
+.staff-teaching .portrait {
+  max-width: 96px;
+  margin-bottom: 14px;
 }
 
 .staff-teaching .role {

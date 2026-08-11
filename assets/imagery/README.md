@@ -42,6 +42,8 @@ What did **not** change:
 - The exception is these four popouts. Nothing else on the page gained people.
 - **Slot 4 — the three staff portraits — is still photographs only.** It must be real
   adults who consent (issue #13). A painting there was never on the table and still isn't.
+  The school supplied four photographs in August 2026 (#99); they are in
+  `../portraits/`, and that directory's README is where their provenance lives.
 - The disclosure position is unchanged: generated, mentioned to the client if asked. Issue
   #13 carries this specific reversal into the sign-off conversation, so George and Jill are
   told rather than left to notice.
@@ -70,8 +72,8 @@ page when the week and the classes merged into one section. It is still built by
 `{{STILL_SCRIPTURE}}` placeholder for it to be inlined into. Slot 6, the Faith band, is
 deliberately **type only** — the verse, the cross mark and the gold H O P E row.
 
-Slot 4 — the three staff portraits — is the only slot still wanting an image, and it must
-be photographs of real consenting adults that the school supplies (#13), never a painting.
+Slot 4 — the staff portraits — is filled, by photographs the school supplied (#99, and see
+`../portraits/README.md`); six of the ten people still have no picture and show none.
 Slot 5 is filled by a landscape, so the page still shows no picture of anywhere Pharos
 actually is; the specified interior (an empty classroom before the morning, 21:9) would
 replace it. And since slot 3 now holds scripture rather than either academic plate, no

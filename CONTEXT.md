@@ -248,7 +248,9 @@ order the staff page renders in that nothing else can derive.
 
 A missing bio and a missing photograph are **null and valid** — the staff page
 renders such a person by showing their name and what they teach, and invents
-neither a paragraph nor a face.
+neither a paragraph nor a face. Four people have a photograph, because those are
+the four the school sent (#99); a photograph is always a file this site holds,
+never an off-site face nobody here can vouch for.
 
 Not: "staff member" (excludes nobody but sounds like it excludes instructors),
 "teacher", "instructor" as an entity.

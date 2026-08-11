@@ -25,6 +25,17 @@ const UNWRITTEN = PEOPLE.find((person) => person.bio === null && person.photo ==
 /** Somebody who is leadership *and* teaches — the one row two sections show. */
 const BOTH = 'george-jensen';
 
+/**
+ * The four the school supplied (#99), with the section each one's face is in.
+ *
+ * George is leadership *and* an instructor, and his portrait runs once, in
+ * leadership — the row is printed twice but the face is not.
+ */
+const PHOTOGRAPHED = PEOPLE.filter((person) => person.photo !== null).map((person) => ({
+  ...person,
+  section: person.leadershipRank === null ? 'staff-instructors' : 'staff-leadership',
+}));
+
 test.describe('the staff page', () => {
   test('renders a person with no bio and no photograph, and invents neither', async ({ page }) => {
     await page.goto(STAFF_PATH);
@@ -43,15 +54,56 @@ test.describe('the staff page', () => {
     await expect(entry.locator('img')).toHaveCount(0);
   });
 
-  test('puts no image of a person on the page at all, generated or otherwise', async ({ page }) => {
+  test('renders the four supplied portraits, each naming who is in it', async ({ page }) => {
     await page.goto(STAFF_PATH);
 
-    // Slot 4 is blocked on the school supplying photographs of real consenting
-    // adults, so the leadership portraits are empty tints and nothing else.
-    await expect(page.locator('.people img')).toHaveCount(0);
-    await expect(page.locator('.portrait')).toHaveCount(
-      PEOPLE.filter((person) => person.leadershipRank !== null).length,
+    // #99: the photographs the school sent, upright and square in their frame.
+    // `naturalWidth` is what separates "the tag is on the page" from "the file
+    // is actually there" — a typo'd path renders as an img with zero width.
+    for (const person of PHOTOGRAPHED) {
+      const portrait = page.locator(
+        `[data-section="${person.section}"] #${person.slug} img.portrait`,
+      );
+      await expect(portrait, person.name).toHaveCount(1);
+      await expect(portrait).toHaveAttribute('src', person.photo!);
+      await expect(portrait).toHaveAttribute('alt', person.name);
+
+      // These load lazily, so they have no natural size until they are on
+      // screen — scrolling to them is what makes the next three assertions
+      // measure a decoded image rather than an empty box.
+      await portrait.scrollIntoViewIfNeeded();
+      const box = await portrait.evaluate(async (img: HTMLImageElement) => {
+        await img.decode();
+        return {
+          w: img.naturalWidth,
+          h: img.naturalHeight,
+          rendered: img.getBoundingClientRect(),
+        };
+      });
+      expect(box.w, person.name).toBeGreaterThan(0);
+      expect(box.w, person.name).toBe(box.h);
+      // Square in the frame too: a 1:1 file in a non-square box is a stretched
+      // face, which is the failure a bare "it renders" assertion sails past.
+      expect(Math.abs(box.rendered.width - box.rendered.height), person.name).toBeLessThan(1);
+    }
+  });
+
+  test('leaves the people without a photograph as they were', async ({ page }) => {
+    await page.goto(STAFF_PATH);
+
+    // No stand-in face anywhere: exactly the four supplied photographs, and no
+    // more. Leadership keeps its empty tint, so the row of three stays a row of
+    // three; the instructors carry no frame at all.
+    await expect(page.locator('img.portrait')).toHaveCount(PHOTOGRAPHED.length);
+
+    const unphotographedLeader = PEOPLE.find(
+      (person) => person.leadershipRank !== null && person.photo === null,
     );
+    const tints = page.locator('div.portrait');
+    await expect(tints).toHaveCount(unphotographedLeader ? 1 : 0);
+
+    await expect(page.locator(`[data-section="staff-instructors"] #${UNWRITTEN.slug} img`))
+      .toHaveCount(0);
   });
 
   test('shows one row in both sections rather than two rows saying the same thing', async ({

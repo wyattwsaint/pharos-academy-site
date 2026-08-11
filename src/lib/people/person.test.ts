@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import { CATALOGUE } from '../courses/catalogue.js';
@@ -88,7 +90,7 @@ describe('one list, not two', () => {
 });
 
 describe('an optional bio and an optional photo', () => {
-  it('leaves the eight instructors without either, and says nothing about it', () => {
+  it('leaves the instructors without a bio, and says nothing about it', () => {
     // Not a gap to fill with filler: the school has published no bio for them,
     // and inventing one is the failure this asserts against.
     for (const entry of instructorsAmong(seeded, CATALOGUE)) {
@@ -97,12 +99,30 @@ describe('an optional bio and an optional photo', () => {
     }
   });
 
-  it('puts no image of a person anywhere in the seed', () => {
-    // Slot 4 (#13) is blocked on Jill: photographs of real consenting adults.
-    // A generated portrait or a stock face standing in for a named member of
-    // staff is the one substitution that would be dishonest, so there is none.
+  it('photographs the four the school supplied, and nobody else', () => {
+    // Slot 4 (#13) was blocked on real, consenting adults; #99 unblocked it for
+    // four of them. The other six stay null rather than borrowing a face: a
+    // generated portrait or a stock photograph under a named member of staff is
+    // the one substitution that would be dishonest.
+    const photographed = seeded.filter((person) => person.photo !== null).map((p) => p.slug);
+    expect(photographed).toEqual([
+      'jill-kilker',
+      'george-jensen',
+      'kathy-liddick',
+      'mandy-saint',
+    ]);
+  });
+
+  it('points every photograph at a file that is actually on disk', () => {
+    // A typo in a path renders as a broken image on the staff page, under
+    // somebody's name, and nothing else in the stack would catch it: the column
+    // is free text and the browser fails silently. This is the check that turns
+    // that into a failing suite.
     for (const person of seeded) {
-      expect(person.photo, person.name).toBeNull();
+      if (person.photo === null) continue;
+      expect(person.photo, person.name).toMatch(/^\/[\w/-]+\.webp$/);
+      const onDisk = new URL(`../../../public${person.photo}`, import.meta.url);
+      expect(existsSync(onDisk), `${person.name}: ${person.photo}`).toBe(true);
     }
   });
 
