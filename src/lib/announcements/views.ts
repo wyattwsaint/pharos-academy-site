@@ -26,14 +26,17 @@ export function newsPath(slug: string): string {
 }
 
 /**
- * The posted date, as the school would write it: "1 July 2026".
+ * The posted date, as the school would write it: "July 1, 2026".
+ *
+ * American order because a family reads it (#112) — the locale is the whole of
+ * that decision, and it is made here rather than at each of the two call sites.
  *
  * Parsed as UTC rather than as local time, because `new Date('2026-07-01')` is
- * midnight UTC and printing it in a timezone behind it gives 30 June — a
+ * midnight UTC and printing it in a timezone behind it gives June 30 — a
  * one-day-wrong date on every announcement, west of Greenwich, forever.
  */
 export function postedOnLabel(postedOn: string): string {
-  return new Date(`${postedOn}T00:00:00Z`).toLocaleDateString('en-GB', {
+  return new Date(`${postedOn}T00:00:00Z`).toLocaleDateString('en-US', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

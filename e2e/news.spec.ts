@@ -28,7 +28,7 @@ import { NEWS_PATH } from '../src/lib/announcements/views.js';
  * shows no PDF link" would be asserted against the one row that grows a file.
  */
 const PLAIN = SEEDED_ANNOUNCEMENTS.find(
-  (announcement) => announcement.slug === '2026-07-01-senators-game-fundraiser-24-july',
+  (announcement) => announcement.slug === '2026-07-01-senators-game-fundraiser-july-24',
 )!;
 
 /** The Weis fundraiser, which is unusable without its link. */

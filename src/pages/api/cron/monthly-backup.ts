@@ -22,7 +22,7 @@ export const GET: APIRoute = async ({ request }) => {
   if (!isAuthorisedCron(request, process.env.CRON_SECRET)) {
     // No detail. An unauthorised caller learns whether the route exists and
     // nothing else — not whether a secret is set, not whether theirs was close.
-    return text('Not authorised.', 401);
+    return text('Not authorized.', 401);
   }
 
   const apiKey = process.env.RESEND_API_KEY?.trim();

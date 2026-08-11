@@ -11,9 +11,10 @@ import { britishSpellings, prose, RULES } from './house-style.js';
  * on a repo that is still full of "cheque" and "enrolment", because the
  * allowlist below names every area that violates it today — the debt is written
  * down here rather than paid here. #112, #113 and #114 pay it down by deleting
- * entries, and #115 empties it. #114 has been paid: the admin pages, the
- * policies they publish, and the one seeded sentence behind them now read
- * American, and their entry is gone.
+ * entries, and #115 empties it. #114 has been paid — the admin pages, the
+ * policies they publish, and the one seeded sentence behind them — and so has
+ * #112: the home page, the site chrome and the shared modules behind them are
+ * now enforced like anything else. Only #113 is left.
  *
  * The rule it encodes is **prose is American, identifiers are not**. A family
  * reads "check", "enrollment" and "program"; the database keeps
@@ -68,21 +69,6 @@ interface Debt {
  * rather than a ticket.
  */
 const ALLOWED: readonly Debt[] = [
-  {
-    // #112 — batch 1: the home page, the site chrome, and the shared modules
-    // they read.
-    area: 'shared modules and site plumbing',
-    paths: [
-      // `announcements/announcement.ts` was here until #114. Its one violation
-      // was a *seeded* sentence — a row already live in Neon — so it belonged
-      // with the batch that appends the migration to correct the live row, not
-      // with the batch that reworded the pages around it.
-      'src/lib/backup/export.ts',
-      'src/lib/courses/store.ts',
-      'src/lib/redirects.ts',
-      'src/pages/api/cron/monthly-backup.ts',
-    ],
-  },
   {
     // #113 — batch 2: Admissions and the Apply flow, where "cheque" is densest
     // and a family is reading most closely.
