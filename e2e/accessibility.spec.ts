@@ -224,6 +224,48 @@ for (const surface of SURFACES) {
 }
 
 /**
+ * A link in a sentence is recognisable as a link without colour (#103).
+ *
+ * A computed-style assertion rather than a screenshot: what is being claimed is
+ * that the affordance survives when the colour does not, and a screenshot
+ * cannot say that — it can only say the pixels have not moved. So the two
+ * non-colour signals are read off the link itself and compared with the
+ * paragraph it sits in, which is the only comparison that means anything (a
+ * bold link inside bold copy is not heavier than anything).
+ *
+ * Teach and Admissions specifically: both carried body links with no class at
+ * all, falling back to the browser's default blue.
+ */
+test.describe('an inline prose link', () => {
+  const PROSE_LINKS = [
+    { name: 'on the teach page', path: TEACH_PATH, link: 'Send us a note' },
+    { name: 'on the admissions page', path: '/admissions', link: 'the timetable' },
+  ];
+
+  for (const { name, path, link } of PROSE_LINKS) {
+    test(`${name} is underlined and heavier than the copy around it`, async ({ page }) => {
+      await page.goto(path);
+
+      const affordance = await page
+        .getByRole('link', { name: link })
+        .first()
+        .evaluate((element) => {
+          const paragraph = element.closest('p');
+          if (!paragraph) throw new Error('the link is not in a paragraph');
+          return {
+            decoration: getComputedStyle(element).textDecorationLine,
+            weight: Number.parseInt(getComputedStyle(element).fontWeight, 10),
+            proseWeight: Number.parseInt(getComputedStyle(paragraph).fontWeight, 10),
+          };
+        });
+
+      expect(affordance.decoration).toContain('underline');
+      expect(affordance.weight).toBeGreaterThan(affordance.proseWeight);
+    });
+  }
+});
+
+/**
  * One h1 per page, checked once per page rather than once per state — a state
  * cannot add a heading, and the homepage is expensive enough to load that
  * asserting it three times only buys flakiness.

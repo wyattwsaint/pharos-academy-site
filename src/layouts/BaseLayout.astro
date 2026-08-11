@@ -38,6 +38,13 @@ interface Props {
 
 const { title, description, details, overHero = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+
+/*
+ * `data-site` on the <body> below marks the public surfaces, and only them. The
+ * admin shares this stylesheet, so the inline-prose-link rule in `beacon.css`
+ * is scoped to the attribute and the admin's own plain chrome is left alone
+ * (#103).
+ */
 ---
 
 <!doctype html>
@@ -73,7 +80,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     }
     <script type="application/ld+json" set:html={renderJsonLd(schoolJsonLd(details, Astro.site ?? SITE_URL))} is:inline />
   </head>
-  <body>
+  <body data-site>
     <a
       href="#main"
       class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-navy focus:px-4 focus:py-2 focus:text-cream"
