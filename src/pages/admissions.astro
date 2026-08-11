@@ -3,12 +3,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { getSchoolDetails } from '../lib/admin/school-details.js';
 import {
   admissionCosts,
-  agesLabel,
   APPLICATION_HREF,
   instalmentSentence,
-  morningsLabel,
 } from '../lib/admissions/admissions.js';
-import { listCourses } from '../lib/courses/store.js';
 import { getDb } from '../lib/db/client.js';
 import { INQUIRY_HREF } from '../lib/home/sections.js';
 import { getMoneySettings } from '../lib/money/store.js';
@@ -25,122 +22,85 @@ import { POLICIES_PATH, policyPath } from '../lib/policies/views.js';
  * form working out what they have committed to. One page of honest explanation
  * beforehand is the cheapest possible mitigation of it.
  *
- * So the order here is the order of a family's questions: is this for us, when
- * would we be here, what does applying actually involve, what does it cost, and
- * what are we signing. The button is last, on purpose — it is the answer to the
- * page, not the point of it.
+ * So the order here is the order of a family's questions: who is this for, what
+ * makes it different from anywhere else, what does it cost, and what are we
+ * signing. The button is last, on purpose — it is the answer to the page, not
+ * the point of it.
  *
- * **Not one figure below is typed.** The fees, the four payment dates, the ages
- * and the mornings all come from the money settings and the catalogue (#29
- * AC 1), and the documents are the policies the school has actually marked as
- * signed rather than a list somebody kept up to date by hand.
+ * The prose in the first two bands is the client's own, rewritten by them and
+ * landed here verbatim (#107). It is not ours to tighten.
+ *
+ * **Not one figure below is typed.** The fees and the four payment dates come
+ * from the money settings (#29 AC 1), and the documents are the policies the
+ * school has actually marked as signed rather than a list somebody kept up to
+ * date by hand. The ages and the mornings the page used to derive left with the
+ * client's rewrite (#107) — the prose no longer makes those claims here.
  */
 const db = await getDb();
 const details = await getSchoolDetails(db);
-const courses = await listCourses(db);
 const settings = await getMoneySettings(db);
 const signedPolicies = publishedPolicies(await listPolicies(db)).filter((policy) => policy.signed);
 
 const costs = admissionCosts(settings);
-const ages = agesLabel(courses);
-const mornings = morningsLabel(courses);
 
 const description =
-  'How to apply to Pharos Academy — who the classes are for, what applying involves, what it costs, and which documents families sign.';
+  'How to apply to Pharos Academy — the families we serve, what makes us different, what it costs, and which documents families sign.';
 ---
 
 <BaseLayout details={details} title="Admissions" description={description}>
   <section class="band band-quiet" data-section="admissions-header">
     <div class="wide">
       <p class="label">Admissions</p>
-      <h1 class="mt-4">How applying works</h1>
-      <p class="sub mt-5">
-        Everything before the form, so that nothing in the form is a surprise. Read this first —
-        it takes about three minutes, and it is the whole of what we ask of a family.
-      </p>
+      <h1 class="mt-4">How Applying Works</h1>
     </div>
   </section>
 
   <section class="band" id="who" data-section="admissions-who">
     <div class="wide">
-      <h2>Who it is for</h2>
+      <h2>Families We Serve</h2>
       <p class="mt-4">
-        Homeschooling families in and around Enola who want a few subjects taught alongside other
-        children, and the rest taught at home. You choose the classes you want; we do not enrol
-        anybody full time and we do not replace what you are already doing.
+        Families in central PA who desire a few subjects taught alongside other children, and the
+        rest taught at home. You choose the classes you want; we do not enrol anybody full time
+        and we do not replace what you are already doing.
       </p>
-      {
-        ages && (
-          <p class="mt-4">
-            Classes are written for ages {ages}, and each one states the ages it is open to on
-            <a href="/classes"> the classes page</a>. A class with no age on it is gated on
-            readiness instead, and its own page says how.
-          </p>
-        )
-      }
       <p class="mt-4">
         We are a Christian classical school and we teach that way in every subject. Families do
         not have to belong to our church, but you should read
-        <a href="/#faith"> why we do this</a> before applying.
+        <a href="/#faith"> what we believe</a> before applying.
       </p>
     </div>
   </section>
 
-  <section class="band band-quiet" id="mornings" data-section="admissions-mornings">
+  <section class="band band-quiet" id="different" data-section="admissions-different">
     <div class="wide">
-      <h2>The mornings</h2>
+      <h2>What Makes Us Different</h2>
+      {/*
+        The four letters are the school's own name for what it is, so the
+        expansion is `<strong>` — the client marked it as the load-bearing
+        phrase in the paragraph, not as text that wanted to be heavier. A bold
+        class here would have said the same thing to a sighted reader and
+        nothing at all to a screen reader (#107 AC 3).
+      */}
       <p class="mt-4">
-        Classes meet on {mornings} mornings. Afternoons are yours. Most families come for one or
-        two mornings rather than all of them —
-        <a href="/classes/by-day">the timetable</a> shows which classes run when and which of them
-        overlap, which is worth checking before you choose.
+        We are a supportive community of homeschooling families. That is what H.O.P.E. stands for
+        — <strong>Helping Our Parents Educate</strong> — and it is the whole of our posture:
+        parents remain the primary educators, and Pharos comes alongside them rather than taking
+        their place.
       </p>
       <p class="mt-4">
-        Parents stay on site. This is a hybrid school, not a drop-off, and the mornings work
-        because the adults are part of them.
+        Learning here is flexible. Families take what serves them and teach the rest at home, and
+        the week is arranged around the shape of your family rather than against it.
+      </p>
+      <p class="mt-4">
+        You choose the courses your child takes, one or several. Drop-off is welcome, and parents
+        who would rather stay are at home in the Parent Lounge for the morning.
       </p>
     </div>
   </section>
 
-  <section class="band" id="applying" data-section="admissions-applying">
+  <section class="band" id="cost" data-section="admissions-cost">
     <div class="wide">
-      <h2>What applying involves</h2>
-      <ol class="steps mt-6">
-        <li>
-          <h3>Tell us about your family</h3>
-          <p class="mt-2">
-            A short conversation first — your children's ages, what you are looking for, and any
-            questions you want answered before you commit to anything. Nothing is binding.
-          </p>
-        </li>
-        <li>
-          <h3>Choose your classes</h3>
-          <p class="mt-2">
-            One at a time or several. Each class states its ages, its morning, its length and its
-            cost, so you can price your year before you apply.
-          </p>
-        </li>
-        <li>
-          <h3>Send the application and the cheques</h3>
-          <p class="mt-2">
-            The fees below are paid by cheque, made out to Pharos Academy. Until we have them the
-            seat is not held, and we will tell you plainly if a class is already full.
-          </p>
-        </li>
-        <li>
-          <h3>Sign the documents at enrolment</h3>
-          <p class="mt-2">
-            In person, on paper, once you have read them. They are all on this site, in full,
-            beforehand.
-          </p>
-        </li>
-      </ol>
-    </div>
-  </section>
-
-  <section class="band band-quiet" id="cost" data-section="admissions-cost">
-    <div class="wide">
-      <h2>What it costs to apply</h2>
+      <h2>What It Costs to Apply</h2>
       <p class="mt-4">
         Two cheques, and both are paid to the school. Tuition is separate and is paid directly to
         the instructor who teaches your child.
@@ -165,15 +125,15 @@ const description =
         every family.
       </p>
       <details class="refunds mt-7">
-        <summary>What happens if you withdraw</summary>
+        <summary>What Happens If You Withdraw</summary>
         <p class="mt-3">{settings.refundTerms}</p>
       </details>
     </div>
   </section>
 
-  <section class="band" id="documents" data-section="admissions-documents">
+  <section class="band band-quiet" id="documents" data-section="admissions-documents">
     <div class="wide">
-      <h2>What you sign</h2>
+      <h2>What You Sign</h2>
       {
         signedPolicies.length === 0 ? (
           <p class="mt-4">
@@ -206,12 +166,12 @@ const description =
     </div>
   </section>
 
-  <section class="band band-quiet" id="start" data-section="admissions-start">
+  <section class="band" id="start" data-section="admissions-start">
     <div class="wide">
-      <h2>Ready?</h2>
+      <h2>Become a Pharos Family</h2>
       <p class="sub mt-4">
-        Applying starts with a conversation. Tell us who you are and what you are looking for, and
-        we will answer before anything is signed or sent.
+        Let's chat! Tell us who you are and what you are looking for, and we will answer before
+        anything is signed or sent.
       </p>
       <p class="mt-7">
         <a class="startbutton" href={APPLICATION_HREF}>Start your application</a>
@@ -225,26 +185,6 @@ const description =
 </BaseLayout>
 
 <style>
-  .steps {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    counter-reset: step;
-    list-style: none;
-    padding: 0;
-  }
-
-  .steps > li {
-    border-left: 2px solid var(--color-gold-orn);
-    padding-left: 1.25rem;
-    counter-increment: step;
-  }
-
-  .steps h3::before {
-    content: counter(step) '. ';
-    color: var(--color-gold-orn);
-  }
-
   .costs {
     display: flex;
     flex-direction: column;

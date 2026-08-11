@@ -239,7 +239,9 @@ for (const surface of SURFACES) {
 test.describe('an inline prose link', () => {
   const PROSE_LINKS = [
     { name: 'on the teach page', path: TEACH_PATH, link: 'Send us a note' },
-    { name: 'on the admissions page', path: '/admissions', link: 'the timetable' },
+    // "the timetable" until #107 rewrote the band it sat in; the faith link is
+    // the surviving body link on the page and carries the same no-class case.
+    { name: 'on the admissions page', path: '/admissions', link: 'what we believe' },
   ];
 
   for (const { name, path, link } of PROSE_LINKS) {

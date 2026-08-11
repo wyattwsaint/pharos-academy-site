@@ -21,19 +21,31 @@ test.describe('the admissions page', () => {
   test('answers a family’s questions in the order they ask them', async ({ page }) => {
     await page.goto('/admissions');
 
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('How applying works');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('How Applying Works');
 
-    await expect(page.locator('section[data-section]')).toHaveCount(7);
+    // Five bands since #107 retired "What applying involves", plus the header
+    // and the closing one.
+    await expect(page.locator('section[data-section]')).toHaveCount(6);
 
     for (const heading of [
-      'Who it is for',
-      'The mornings',
-      'What applying involves',
-      'What it costs to apply',
-      'What you sign',
+      'Families We Serve',
+      'What Makes Us Different',
+      'What It Costs to Apply',
+      'What You Sign',
+      'Become a Pharos Family',
     ]) {
-      await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+      await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
     }
+  });
+
+  test('marks the H.O.P.E. expansion as emphasis rather than as bold type', async ({ page }) => {
+    await page.goto('/admissions');
+
+    // The client marked the phrase, so a screen reader has to hear it marked
+    // too — `<strong>`, not a class that only paints (#107 AC 3).
+    await expect(
+      page.locator('#different strong', { hasText: 'Helping Our Parents Educate' }),
+    ).toBeVisible();
   });
 
   test('quotes every fee as a real figure rather than a gap', async ({ page }) => {
