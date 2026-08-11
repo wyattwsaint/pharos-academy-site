@@ -38,17 +38,21 @@ export const INSTRUCTORS: readonly Instructor[] = [
     name: 'Jill Kilker',
     role: 'Head of School',
     credentials:
-      'M.Ed. special education, Shippensburg. Homeschool evaluator in Pennsylvania.',
+      'M.Ed. Special Education, Shippensburg. Homeschool Evaluator in Pennsylvania',
   },
   {
     name: 'Pastor George Jensen',
     role: 'Chaplain · Algebra 1',
-    credentials: 'B.S. secondary mathematics, Millersville. M.Div., Winebrenner.',
+    // A non-breaking space after the degree: "M.Div." alone at the end of a
+    // line, with its seminary wrapped away below, reads as a stray abbreviation.
+    credentials:
+      'B.S. Secondary Mathematics, Millersville. M.Div.,\u00A0Winebrenner Theological Seminary',
   },
   {
     name: 'Mrs. Mandy Saint',
-    role: 'Instructor · six classes',
-    credentials: 'Letter of the Week, Kingdom Math, and early elementary science.',
+    role: 'Instructor · Grammar School',
+    credentials:
+      'B.S. Elementary Education, Millersville University, M. Ed. Penn State University',
   },
 ];
 
