@@ -37,6 +37,14 @@ Four of the five items the map listed as absent are **already published**. Only 
 | Photo release policy | **Genuinely absent.** No published document mentions photography, image use, or media consent for students. Still needed from the school. |
 | Vector logo | **Genuinely absent**, but better than believed. The header logo's original is a 287×335 JPG. A larger mark also exists — `assets/cecb9d_46661c…~mv2.png`, filename "Pharos.png", **1024×871** — enough for most web use at 1× and 2×. There is still no vector and nothing print-safe, so ask, but this is no longer blocking. |
 
+> **Correction (2026-08-10, #106).** The "larger mark" in the Vector logo row is not a
+> mark. `assets/cecb9d_46661c…~mv2.png` is Thiersch's 1909 drawing of the Lighthouse of
+> Alexandria — the picture `/general-8` printed beside the essay on the name — and the
+> filename "Pharos.png" is what misread it as a logo. The vector logo row therefore stands
+> as first believed: the only logo file captured is the 287×335 JPG, and a print-safe mark
+> is still to ask the school for. The drawing itself is now published on About, and its
+> source copy lives at `assets/imagery/thiersch-pharos.png`.
+
 Two new items belong on that list:
 
 - **A Media page.** `/about` has a nav item labelled "Media" pointing at `/about-5`, which is a byte-identical duplicate of the Volunteer page. There is no media content anywhere on the site.

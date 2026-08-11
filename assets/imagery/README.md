@@ -3,6 +3,24 @@
 Source images for the site's illustrative slots. Nothing here is a photograph of a real
 place, object or person belonging to Pharos Academy.
 
+## The one file here that is neither generated nor ours
+
+| File | What | Provenance |
+|---|---|---|
+| `thiersch-pharos.png` | Line drawing: Prof. H. Thiersch's 1909 reconstruction of the Lighthouse of Alexandria. 1024×871, on a light ground. **About, beside the essay on the name** (#106). | **Public domain**, published 1909. Copied byte-for-byte from the school's own upload in the mirror (`docs/mirror/assets/cecb9d_46661c…~mv2.png`, filename `Pharos.png`), which is what the old `/general-8` printed. |
+
+The licence condition on this one is the **attribution**: the work is free to publish
+given that Thiersch is named. So the caption under it on About is not decoration and is
+not optional, and `e2e/about.spec.ts` fails if it goes missing. The credit line itself is
+transcribed from the old page, in `src/lib/about/story.ts`.
+
+The mirror's own README had this file down as a large copy of the school's logo mark,
+which is what its filename suggests and what it is not. That row is corrected in
+`docs/mirror/README.md`, because it also meant the "no vector logo" question was recorded
+as half-answered when it is still fully open.
+
+## The generated illustration
+
 | File | What | Provenance |
 |---|---|---|
 | `still-scripture.jpg` | Painterly still-life: an open Bible and a hand-written journal by lamplight, daisies in a jug, a shelf behind. 1672×941 (16:9), uncropped. **Slot 3 (Classes)**, on the owner's instruction. | **AI-generated**, ChatGPT, 29 July 2026, by the site owner. |

@@ -236,16 +236,41 @@ export const PHAROS_MEANING: readonly string[] = [
 /**
  * The attributions the essay carries, kept with it.
  *
- * The second one belongs to a drawing the live page prints and this one does
- * not: the image is a Wix-hosted file we have no licence record for, and the
- * caption is reproduced without it only because the sentence about the
- * archetype cites the same source. If the drawing is ever restored, its caption
- * is already here and already correct.
+ * The last two belong to the drawing, which the live page printed and this one
+ * now prints again (#106). Its licence condition is the credit itself, so the
+ * caption is not decoration and is not ours to shorten: the work is public
+ * domain *given* that Thiersch is named.
  */
 export const PHAROS_SOURCES: readonly string[] = [
   'Source: Encyclopedia Britannica',
   'A drawing of the Pharos of Alexandria by German archaeologist Prof. H. Thiersch (1909)',
+  'Source: Public Domain',
 ];
+
+/**
+ * Thiersch's 1909 reconstruction of the lighthouse, as the page prints it.
+ *
+ * The school asked for it back (#106): it stood on the old `/general-8` beside
+ * this essay, and it is the only picture either site has of the thing the
+ * school is named after. The file is the school's own upload, re-encoded from
+ * `assets/imagery/thiersch-pharos.png` by `scripts/build-imagery.mjs`.
+ *
+ * `alt` is the one string here that is written rather than transcribed, and it
+ * describes the drawing — a reader who cannot see it wants the lighthouse, not
+ * the credit. The credit is in the caption, where it is visible to everyone,
+ * because that is what the licence asks for.
+ */
+export const PHAROS_DRAWING = {
+  src: '/imagery/thiersch-pharos.webp',
+  width: 900,
+  height: 766,
+  alt:
+    'A line drawing of the Lighthouse of Alexandria: a tall square tower on a walled harbour ' +
+    'front, narrowing to an octagonal storey and a domed lantern with a statue on top, smoke ' +
+    'trailing from it, a sailing boat on the water below.',
+  credit: PHAROS_SOURCES[1]!,
+  licence: PHAROS_SOURCES[2]!,
+} as const;
 
 /**
  * How the school explains giving, from `/giving`, verbatim.

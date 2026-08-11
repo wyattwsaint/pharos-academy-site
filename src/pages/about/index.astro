@@ -6,6 +6,7 @@ import {
   CORE_VALUES,
   MEETING_PLACE,
   METHOD,
+  PHAROS_DRAWING,
   PHAROS_MEANING,
 } from '../../lib/about/story.js';
 import { getSchoolDetails } from '../../lib/admin/school-details.js';
@@ -33,11 +34,16 @@ import { INQUIRY_HREF } from '../../lib/home/sections.js';
  * The order is a stranger's order: what we are here for (mission), how we go
  * about it (method), what we believe (values, then the fuller document), where
  * the name comes from, and where the building is.
+ *
+ * "A Christian classical hybrid microschool", in that order, is the school's
+ * own (#106) — Christian first, and it is how every other page here already
+ * says it. The word order is the school's claim about itself, so it is not a
+ * style choice this page gets to make either way.
  */
 const details = await getSchoolDetails(await getDb());
 
 const description =
-  'What Pharos Academy is for, how it teaches, what it believes, where its name comes from, and where it meets — a classical Christian hybrid microschool in Enola, Pennsylvania.';
+  'What Pharos Academy is for, how it teaches, what it believes, where its name comes from, and where it meets — a Christian classical hybrid microschool in Enola, Pennsylvania.';
 ---
 
 <BaseLayout details={details} title="About" description={description}>
@@ -46,7 +52,7 @@ const description =
       <p class="label">About</p>
       <h1 class="mt-4">Why Pharos Academy</h1>
       <p class="sub mt-5">
-        A classical Christian hybrid microschool: families choose the classes they want taught in
+        A Christian classical hybrid microschool: families choose the classes they want taught in
         community, and teach the rest at home. This is what we are for, how we go about it, and
         what we hold to.
       </p>
@@ -117,8 +123,23 @@ const description =
   <section class="band band-quiet" id="name" data-section="about-name">
     <div class="wide">
       <h2>What “Pharos” means</h2>
-      <div class="essay mt-6">
-        {PHAROS_MEANING.map((paragraph) => <p>{paragraph}</p>)}
+      <div class="name-body mt-6">
+        <div class="essay">
+          {PHAROS_MEANING.map((paragraph) => <p>{paragraph}</p>)}
+        </div>
+        <figure class="drawing">
+          <img
+            src={PHAROS_DRAWING.src}
+            alt={PHAROS_DRAWING.alt}
+            width={PHAROS_DRAWING.width}
+            height={PHAROS_DRAWING.height}
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption>
+            {PHAROS_DRAWING.credit}. {PHAROS_DRAWING.licence}.
+          </figcaption>
+        </figure>
       </div>
     </div>
   </section>
@@ -234,6 +255,74 @@ const description =
     flex-direction: column;
     gap: 1.25rem;
     max-width: 46rem;
+  }
+
+  /*
+    The essay and the drawing, side by side above 62rem and stacked below it.
+    The breakpoint is the essay's own measure plus the picture: 46rem of text
+    and a ~20rem column do not both fit before that, and a drawing squeezed to
+    a third of a phone's width is a drawing nobody can read the lantern on.
+  */
+  .name-body {
+    display: grid;
+    gap: 2rem;
+  }
+
+  @media (min-width: 62rem) {
+    .name-body {
+      grid-template-columns: minmax(0, 46rem) minmax(0, 20rem);
+      gap: 3rem;
+      align-items: start;
+    }
+  }
+
+  /*
+    A diagram, not a painting: the homepage plates dissolve their edges into the
+    band because they are illustration, and this is a measured reconstruction
+    with a caption under it. So it keeps its shape and gets no frame, no shadow
+    and no rounding.
+
+    `multiply` is what removes the source's light-grey ground. The drawing is
+    ink on near-white, and pasted onto parchment as-is it reads as a grey box
+    somebody forgot to crop; multiplied, the parchment shows through the ground
+    and only the lines survive. The alternative — trusting a fixed background
+    colour to match the band — breaks the moment the section moves bands.
+  */
+  .drawing {
+    margin: 0;
+    max-width: 26rem;
+    /*
+      Stacked, the drawing comes *first*: the essay is three long paragraphs,
+      and a picture printed after them on a phone is a picture nobody scrolls
+      to. In two columns it takes its place in the source order beside them.
+    */
+    order: -1;
+  }
+
+  @media (min-width: 62rem) {
+    .drawing {
+      order: 0;
+    }
+  }
+
+  .drawing img {
+    display: block;
+    width: 100%;
+    height: auto;
+    mix-blend-mode: multiply;
+  }
+
+  /*
+    The credit is a licence condition rather than a caption we chose to write,
+    so it is visible type on the page — quiet, but never hidden and never
+    smaller than the site's smallest readable size.
+  */
+  .drawing figcaption {
+    margin-top: 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--color-ink-2);
   }
 
   address {
