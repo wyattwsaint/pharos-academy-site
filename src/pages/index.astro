@@ -1,6 +1,5 @@
 ---
 import Ornament from '../components/Ornament.astro';
-import Announcements from '../components/home/Announcements.astro';
 import CostsSection from '../components/home/CostsSection.astro';
 import FaithSection from '../components/home/FaithSection.astro';
 import HomeHero from '../components/home/HomeHero.astro';
@@ -9,7 +8,6 @@ import TeachersSection from '../components/home/TeachersSection.astro';
 import WeekSection from '../components/home/WeekSection.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getSchoolDetails } from '../lib/admin/school-details.js';
-import { listAnnouncements } from '../lib/announcements/store.js';
 import { listCourses } from '../lib/courses/store.js';
 import { getDb } from '../lib/db/client.js';
 import { getMoneySettings } from '../lib/money/store.js';
@@ -29,18 +27,22 @@ import { getMoneySettings } from '../lib/money/store.js';
  *
  * The ornament separates *consecutive light bands* and nothing else, which is
  * not every gap on the page. `FaithSection` is the navy band and separates
- * itself — a gold hairline pressed against it reads as an underline on the
- * band rather than a rule between two sections. And `Announcements` hides when
- * empty, which is its normal state, so an ornament below it would leave a rule
- * hanging directly under the hero with nothing above it.
+ * itself — a gold hairline pressed against it reads as an underline on the band
+ * rather than a rule between two sections. There is no rule under the hero
+ * either: the hero runs straight into the timetable.
+ *
+ * There is no announcements section here (#109). The school wanted a quieter
+ * home page and urgent notices go in the announcement banner instead. The
+ * feature is untouched — the news page, its PDFs and the admin editor all still
+ * work, so this is one surface removed and not a retirement.
  */
 const description =
   'Christian classical classes in Enola, Pennsylvania, for ages 4 to 18 — mornings on Monday, Wednesday and Thursday.';
 
 /*
- * The announcements, the catalogue and the money settings are all read **here**,
- * in the page, and handed down — not read inside the components that render
- * them (#34, and #29 AC 1).
+ * The catalogue and the money settings are both read **here**, in the page, and
+ * handed down — not read inside the components that render them (#34, and #29
+ * AC 1).
  *
  * For money that means no component holds a copy of the school's rates, and the
  * two sections that quote money quote the same figures as each other by
@@ -59,14 +61,12 @@ const description =
  */
 const db = await getDb();
 const details = await getSchoolDetails(db);
-const announcements = await listAnnouncements(db);
 const courses = await listCourses(db);
 const settings = await getMoneySettings(db);
 ---
 
 <BaseLayout details={details} title="Home" description={description} overHero>
   <HomeHero />
-  <Announcements announcements={announcements} />
   <WeekSection courses={courses} rates={settings.rates} />
   <Ornament />
   <TeachersSection />

@@ -7,9 +7,9 @@ import type { Announcement } from './announcement.js';
 /**
  * The one list of announcements, read and written (#27).
  *
- * Every surface — the news page, the homepage band, the admin — comes through
- * here, so the six-week rule is applied to one list rather than to three
- * queries that could each be filtered slightly differently.
+ * Every surface — the news page, the admin, the support page's "most recent" —
+ * comes through here and gets the whole list, so filtering is a decision each
+ * surface makes over one query rather than three queries drifting apart.
  *
  * **The bytes are separate.** `listAnnouncements` never selects
  * `attachment_bytes`: a news page listing a term's worth of notices would
@@ -36,7 +36,7 @@ const WITHOUT_BYTES = {
  *
  * Unlike `listPeople`, an empty list is not refused. A school with no staff is a
  * broken deployment; a school with nothing to announce is an ordinary Tuesday,
- * and it is the state the homepage section is built to handle.
+ * and the news page says so in a sentence.
  *
  * The slug is the tiebreaker because it begins with the date and the rest of it
  * is the headline, so two notices posted the same day come back in a stable

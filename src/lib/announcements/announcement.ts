@@ -8,14 +8,17 @@
  * October and cannot be anything else. Here a board update is a row like any
  * other, ages out like any other, and needs nothing retired next time.
  *
- * The freshness rule is the ticket's other half. The homepage renders the
- * announcements that are still current and disappears entirely when none are,
- * so a school that has posted nothing for two months looks like a school with a
- * tidy homepage rather than one that stopped caring in July. It is **one** rule,
- * not two: "hide when the newest is stale" and "show the current ones" are the
- * same sentence, because the newest going stale is exactly the moment the
- * current list empties. Written twice, the six weeks would drift the first time
- * either was tuned.
+ * The freshness rule was the ticket's other half: the homepage rendered the
+ * announcements that were still current and disappeared entirely when none
+ * were. **#109 removed that section**, and the rule now has no consumer — the
+ * news page has always carried all of them, current or not.
+ *
+ * `isCurrent` and `currentAnnouncements` stay because #109 removed one surface
+ * and did not retire the feature: the school asked for a quieter home page, not
+ * for the six weeks to be forgotten, and the next surface that wants "what is
+ * current" — the announcement banner, most likely — should find the window
+ * decided in one place rather than re-derive it. They are covered by
+ * `announcement.test.ts` and rendered by nothing.
  */
 
 /** What Jill posts, as the store holds it. */
@@ -60,10 +63,10 @@ export type SeedAnnouncement = Omit<Announcement, 'lastEditedBy' | 'lastEditedAt
  * How long an announcement stays current — the spec's "~6 weeks", as a number.
  *
  * Six weeks is long enough to carry a fundraiser through a school holiday and
- * short enough that the homepage cannot advertise an event that has been and
- * gone. It lives here as one constant because it is the only place the window
- * is decided; the ISR expiry (an hour) is what makes a page cross the boundary
- * on its own, without an edit.
+ * short enough that a "what's on" surface cannot advertise an event that has
+ * been and gone. It lives here as one constant because it is the only place the
+ * window is decided. No page reads it since #109; see the note at the top of
+ * this file.
  */
 export const STALE_AFTER_DAYS = 42;
 
@@ -80,10 +83,11 @@ export function isCurrent(announcement: { postedOn: string }, now: Date): boolea
 }
 
 /**
- * The announcements the homepage shows, in the order it was given them.
+ * The current announcements, in the order they were given.
  *
- * Empty is the expected state and the interesting one: it is what makes the
- * section disappear rather than render a heading over nothing.
+ * Empty is the expected state and the interesting one: a surface that shows
+ * "what is current" has to be prepared to show nothing. No surface calls this
+ * since #109 took the homepage band away; see the note at the top of this file.
  */
 export function currentAnnouncements<T extends { postedOn: string }>(
   announcements: readonly T[],
@@ -136,8 +140,8 @@ function daysBetween(postedOn: string, now: Date): number {
  * All six carry 1 July 2026, the date of the material they come from. The Weis
  * page publishes no date at all, so it is filed with the July material rather
  * than back-dated to a guess. They therefore go stale together in mid-August,
- * and the homepage section disappears — which is the correct behaviour, not a
- * bug to date around. Reposting one is a date field.
+ * which since #109 changes nothing anybody can see: the news page lists them
+ * whatever their date. Reposting one is a date field.
  *
  * The board update is the one with a file. `npm run db:seed` attaches the PDF
  * from `docs/mirror/`, because the bytes belong in Neon (#18) and not in a

@@ -18,13 +18,19 @@ describe('the section order', () => {
   it('is #9 order, with the week and the classes merged', () => {
     expect([...SECTION_ORDER]).toEqual([
       'hero',
-      'announcements',
       'week',
       'teachers',
       'costs',
       'faith',
       'inquiry',
     ]);
+  });
+
+  // #109 removed the announcements band from this page and nothing else. Named
+  // here as well as in the order above, because the order is a list somebody
+  // extends and the absence is the decision.
+  it('does not place an announcements section', () => {
+    expect(SECTION_ORDER).not.toContain('announcements');
   });
 
   it('names every section exactly once', () => {

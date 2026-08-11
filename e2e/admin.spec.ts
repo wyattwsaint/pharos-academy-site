@@ -217,16 +217,16 @@ test.describe('the Users screen', () => {
 });
 
 /**
- * Announcements, and the disappearing homepage section (#27).
+ * Announcements (#27), now on the news page alone (#109).
  *
- * This is where AC 1 and AC 2 are actually settled, because the admin is the
- * only place a posted date can be changed — and the posted date is the whole of
- * the freshness rule. Nothing here depends on the wall clock: the section is
- * emptied by aging every announcement through the form and brought back by
- * posting one dated today.
+ * The homepage band this block used to drive is gone, and with it the pair of
+ * tests that watched it appear and disappear. What is left is what the admin is
+ * for: a notice saved here reaches the news page, its PDF comes back byte for
+ * byte, and a file that is not a PDF is refused. The six-week rule itself is
+ * proved in vitest, which is now its only consumer.
  *
- * Serial, because these tests share one database with each other and the last
- * of them changes what every announcement's date is.
+ * Serial, because these tests share one database with each other and post
+ * against it.
  */
 test.describe('announcements', () => {
   test.describe.configure({ mode: 'serial' });
@@ -257,8 +257,10 @@ test.describe('announcements', () => {
     await page.getByRole('button', { name: 'Save' }).click();
   }
 
-  // AC 1, the half without a file, and AC 2's showing branch in the same pass.
-  test('posts an announcement with no PDF, onto the news page and the homepage', async ({
+  // AC 1, the half without a file — and #109's absence, checked at the moment it
+  // is most likely to be wrong: an announcement posted today, which is exactly
+  // what used to put a band on the home page.
+  test('posts an announcement with no PDF, onto the news page and nowhere else', async ({
     page,
   }) => {
     const headline = 'Suite notice, no file';
@@ -275,11 +277,11 @@ test.describe('announcements', () => {
     await expect(entry.getByRole('heading', { name: headline })).toBeVisible();
     await expect(entry.locator('a[href$=".pdf"]')).toHaveCount(0);
 
-    // …and the homepage band is showing it, because it was posted today.
+    // …and the homepage carries neither a band nor the headline, dated today or
+    // not (#109).
     await page.goto('/');
-    const band = page.locator('[data-section="announcements"]');
-    await expect(band).toBeVisible();
-    await expect(band.getByRole('link', { name: headline })).toBeVisible();
+    await expect(page.locator('[data-section="announcements"]')).toHaveCount(0);
+    await expect(page.getByText(headline)).toHaveCount(0);
   });
 
   // AC 1, the half with a file. The bytes are the assertion: a PDF that comes
@@ -331,19 +333,18 @@ test.describe('announcements', () => {
   });
 
   /*
-   * AC 2's other branch, and the reason this file's announcements are serial.
+   * The record, and the reason this file's announcements are serial.
    *
    * Every announcement is aged past six weeks through the form — the only lever
-   * that exists, and the honest one, because it is what Jill would do. The
-   * section then has to be gone from the page rather than merely empty of
-   * items, and the news page has to still have every one of them, which is the
-   * pair of behaviours the whole ticket is about.
+   * that exists, and the honest one, because it is what Jill would do. What #27
+   * cared about on the far side of that was the news page keeping every one of
+   * them, and that is still the behaviour: the date is editable, nothing is lost
+   * by editing it, and since #109 no value of it puts anything on the home page.
    *
-   * A fresh announcement at the end brings the band back, so the database is
-   * left in a state the rest of the suite recognises, and proves the transition
-   * runs both ways.
+   * A fresh announcement at the end leaves the database in a state the rest of
+   * the suite recognises.
    */
-  test('hides the homepage section entirely once every announcement is stale', async ({ page }) => {
+  test('keeps every announcement on the news page once they are all stale', async ({ page }) => {
     await signIn(page, '/admin/announcements');
 
     const slugs = await page
@@ -362,25 +363,19 @@ test.describe('announcements', () => {
       await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
     }
 
-    await page.goto('/');
-    const band = page.locator('[data-section="announcements"]');
-    // Still in the document, because the section order is asserted as a
-    // sequence — and carrying nothing, and not visible.
-    await expect(band).toHaveCount(1);
-    await expect(band).not.toBeVisible();
-    await expect(band.locator('li')).toHaveCount(0);
-
     // Nothing was lost: the record is all still on the news page.
     await page.goto(NEWS_PATH);
     for (const slug of slugs) {
       await expect(page.locator(`[id="${slug}"]`), slug).toHaveCount(1);
     }
 
-    // And one posted today brings the section back.
-    await post(page, { headline: 'Suite notice, back again', body: 'Dated today.' });
+    // And one posted today lands on the news page and on nothing else (#109).
+    const fresh = 'Suite notice, back again';
+    await post(page, { headline: fresh, body: 'Dated today.' });
+    await page.goto(NEWS_PATH);
+    await expect(page.getByRole('heading', { name: fresh })).toBeVisible();
     await page.goto('/');
-    await expect(band).toBeVisible();
-    await expect(band.getByRole('link', { name: 'Suite notice, back again' })).toBeVisible();
+    await expect(page.locator('[data-section="announcements"]')).toHaveCount(0);
   });
 });
 

@@ -267,14 +267,14 @@ front page, which is why a July PDF is still the headline in October. There is
 no such position here, no column and no flag: the board update ages out exactly
 as a bake sale does, and nothing has to be retired next time.
 
-**Current** means posted within the last six weeks. The homepage shows the
-current announcements and hides that section entirely when there are none, and
-those are *one* rule rather than two — the newest going stale is precisely the
-moment the current list empties. A school that has posted nothing since July
-then reads as a school with a tidy homepage rather than one that stopped caring.
+**Current** means posted within the last six weeks. It is a property of an
+announcement, not of a page: the home page carried the current ones until #109
+removed that section — the school asked for a quieter front page and urgent
+notices go in the announcement banner — and no surface reads the rule today. It
+is kept in the domain because a surface was removed and the feature was not.
 
-The news page carries all of them, stale ones included, because the homepage can
-only be free to hide itself if the record is somewhere else.
+The news page carries all of them, stale ones included. It always has, which is
+why the home page was free to drop them: the record is somewhere else.
 
 The **posted date** is not the [stamp](#stamp): correcting a typo in August must
 not make a July notice current again.
