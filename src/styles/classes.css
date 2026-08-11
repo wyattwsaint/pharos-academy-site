@@ -168,7 +168,12 @@
 
 /* ---------- the timetable, drawn to the clock ---------- */
 
-.day + .day {
+/* `.day-section`, not `.day`: `beacon.css` gives the homepage timetable's
+   column headings `.day`, and a bare `.day + .day` here reached them — every
+   heading but Monday's took a 64px top margin inside its own grid cell, which
+   is what made that row of headers read as ragged (#102). Two surfaces called
+   "day" is the collision; the specific name is the fix. */
+.day-section + .day-section {
   margin-top: 64px;
 }
 

@@ -53,7 +53,7 @@ const rowFor = (minutes: number) => (minutes - layout.startMinutes) / STEP + 1;
 const rows = (layout.endMinutes - layout.startMinutes) / STEP;
 ---
 
-<section class="day" aria-labelledby={`day-${layout.track}`}>
+<section class="day-section" aria-labelledby={`day-${layout.track}`}>
   <div class="day-head">
     <h2 id={`day-${layout.track}`}>{layout.track}</h2>
     <p>
