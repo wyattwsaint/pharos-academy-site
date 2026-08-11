@@ -13,7 +13,7 @@
  * owns the dates, and nothing prints them.
  *
  * The page exists because the application asks a stranger for a great deal —
- * two cheques, four signatures and a year of their child's mornings — and one
+ * two checks, four signatures and a year of their child's mornings — and one
  * page of plain explanation before that is the cheapest possible mitigation of
  * the worst moment on this site.
  */
@@ -65,14 +65,14 @@ export function admissionCosts(settings: MoneySettings): AdmissionCost[] {
       amount: formatMoney(settings.registrationFee),
       what: 'Registration fee',
       detail:
-        'Once per student per year, by cheque with your application. It is not refundable, ' +
+        'Once per student per year, by check with your application. It is not refundable, ' +
         'and it is what reserves your place in the intake.',
     },
     {
       amount: deposit,
       what: 'Deposit, per class',
       detail:
-        'By cheque with your application, one for each class. It holds the seat, and it ' +
+        'By check with your application, one for each class. It holds the seat, and it ' +
         (settings.depositCreditedAgainstTuition
           ? 'comes off what you owe your instructor for that class.'
           : 'is on top of what you owe your instructor for that class.'),

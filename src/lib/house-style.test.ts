@@ -11,10 +11,11 @@ import { britishSpellings, prose, RULES } from './house-style.js';
  * on a repo that is still full of "cheque" and "enrolment", because the
  * allowlist below names every area that violates it today — the debt is written
  * down here rather than paid here. #112, #113 and #114 pay it down by deleting
- * entries, and #115 empties it. #114 has been paid — the admin pages, the
- * policies they publish, and the one seeded sentence behind them — and so has
- * #112: the home page, the site chrome and the shared modules behind them are
- * now enforced like anything else. Only #113 is left.
+ * entries, and #115 empties it. All three have now been paid — #112's home page
+ * and site chrome, #114's admin pages and the seeded sentence behind them, and
+ * #113's Admissions and Apply flow — so the debt is empty and every path under
+ * `src` is enforced. #115 is what removes the machinery below, once it is sure
+ * nothing else needs an exception.
  *
  * The rule it encodes is **prose is American, identifiers are not**. A family
  * reads "check", "enrollment" and "program"; the database keeps
@@ -68,21 +69,7 @@ interface Debt {
  * transcribed and held unedited, and it would need an exception with a reason
  * rather than a ticket.
  */
-const ALLOWED: readonly Debt[] = [
-  {
-    // #113 — batch 2: Admissions and the Apply flow, where "cheque" is densest
-    // and a family is reading most closely.
-    area: 'Admissions and the Apply flow',
-    paths: [
-      'src/lib/admissions/admissions.ts',
-      'src/lib/application/lifecycle.ts',
-      'src/lib/application/notices.ts',
-      'src/lib/application/offerings.ts',
-      'src/pages/admissions.astro',
-      'src/pages/admissions/apply.astro',
-    ],
-  },
-];
+const ALLOWED: readonly Debt[] = [];
 
 const ALLOWED_PATHS = new Set(ALLOWED.flatMap((debt) => debt.paths));
 
@@ -124,6 +111,14 @@ describe('the house style', () => {
     expect(ruled('enrolment')).toBe(true);
     expect(ruled('cheque')).toBe(true);
     expect(ruled('programme')).toBe(true);
+  });
+
+  it('leaves the inflections the two Englishes agree on', () => {
+    // "enrolling" and "enrolled" double the l on both sides of the Atlantic, so
+    // a rule that flags them makes a page reword a word that was already right.
+    const ruled = (word: string) => RULES.some(({ british }) => new RegExp(british).test(word));
+    expect(ruled('enrolling')).toBe(false);
+    expect(ruled('enrolled')).toBe(false);
   });
 
   it('finds no British spelling in prose outside the allowlist', () => {

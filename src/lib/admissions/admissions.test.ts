@@ -25,6 +25,14 @@ describe('what applying costs', () => {
     expect(costs[1]!.what).toContain('Deposit');
   });
 
+  it('tells a family to send a check, in their own spelling (#113)', () => {
+    const details = admissionCosts(settings).map((cost) => cost.detail);
+
+    expect(details[0]).toContain('by check with your application');
+    expect(details[1]).toContain('By check with your application');
+    expect(details.join(' ')).not.toMatch(/cheque/i);
+  });
+
   it('says the deposit comes off the tuition while it is credited', () => {
     expect(admissionCosts(settings)[1]!.detail).toContain('comes off');
   });

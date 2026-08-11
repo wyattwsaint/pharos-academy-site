@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  APPLICATION_EVENT_LABELS,
   APPLICATION_STATES,
   CHEQUE_GRACE_DAYS,
+  PAYMENT_EVENT_LABELS,
+  PAYMENT_STATUS_LABELS,
   countsInTally,
   eventsFrom,
   nextApplicationState,
@@ -139,5 +142,23 @@ describe('the payment axis', () => {
     const again = nextPayment({ mode: 'cheque', status: 'received', since: AT }, 'expect', days(AT, 30));
     expect(again).toEqual({ mode: 'cheque', status: 'awaiting', since: days(AT, 30) });
     expect(paymentStatusNow(again!, days(AT, 31))).toBe('awaiting');
+  });
+});
+
+describe('the words on the buttons', () => {
+  it('reads American, over a mode the database still spells its own way (#113)', () => {
+    // The split the house style turns on, in one assertion: `mode: 'cheque'` is
+    // a column value and never moves, and every label above it is what Jill and
+    // the family read.
+    const labels = [
+      ...Object.values(PAYMENT_STATUS_LABELS),
+      ...Object.values(PAYMENT_EVENT_LABELS),
+      ...Object.values(APPLICATION_EVENT_LABELS),
+    ];
+
+    expect(labels.filter((label) => /cheque|enrol\b/i.test(label))).toEqual([]);
+    expect(PAYMENT_STATUS_LABELS.awaiting).toBe('Awaiting check');
+    expect(PAYMENT_EVENT_LABELS.receive).toBe('Check has arrived');
+    expect(APPLICATION_EVENT_LABELS.enrol).toBe('Enroll this family');
   });
 });

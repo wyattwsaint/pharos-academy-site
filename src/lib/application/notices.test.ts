@@ -86,6 +86,7 @@ describe('the school’s copy', () => {
     // knows.
     expect(mail.text).toContain('$840');
     expect(mail.text).toContain('$125'); // registration plus one deposit
+    expect(mail.text).toContain('Check they are posting: $125');
   });
 
   it('carries the Statement of Faith record, answered cells only', () => {
@@ -168,6 +169,11 @@ describe('what the family is told', () => {
     const toFamily = mailer.sent.find((mail) => mail.to === 'okonkwo@example.com')!;
     expect(toFamily.text).toContain('9 Sherwood Drive');
     expect(toFamily.text).toContain('A place is held');
+    // The email says "check" (#113). The scanner reads the source and this
+    // reads the message, which is the half that catches a word rebuilt from
+    // pieces the scanner sees separately.
+    expect(toFamily.text).toContain('Please post a check');
+    expect(toFamily.text).not.toMatch(/cheque/i);
     // No response-time promise, here or anywhere the school speaks (#9).
     expect(toFamily.text).not.toMatch(/\b(within|in) \d+ (hours|days|working days)\b/);
   });

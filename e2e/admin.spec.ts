@@ -698,7 +698,7 @@ test.describe('policies', () => {
  * screen names the change in both directions, and the second post does. The
  * arithmetic and the diff are proved in `src/lib/money/`; what only a browser
  * can show is that a fee changed here reaches the public page a family reads
- * before writing a cheque.
+ * before writing a check.
  */
 test.describe('saving money', () => {
   // One row, one database across the suite, and each save posts the whole form.
@@ -1022,20 +1022,20 @@ test.describe('applications', () => {
 
     const row = rowFor(page, family);
     await expect(row.getByTestId('application-state')).toContainText('Submitted');
-    await expect(row.getByTestId('application-payment')).toContainText('Awaiting cheque');
+    await expect(row.getByTestId('application-payment')).toContainText('Awaiting check');
 
-    // The cheque arrives. The application has not moved.
-    await row.getByRole('button', { name: 'Cheque has arrived' }).click();
+    // The check arrives. The application has not moved.
+    await row.getByRole('button', { name: 'Check has arrived' }).click();
     await expect(rowFor(page, family).getByTestId('application-payment')).toContainText(
-      'Cheque received',
+      'Check received',
     );
     await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
 
-    // The family enrols. The money has not moved.
-    await rowFor(page, family).getByRole('button', { name: 'Enrol this family' }).click();
+    // The family enrolls. The money has not moved.
+    await rowFor(page, family).getByRole('button', { name: 'Enroll this family' }).click();
     await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Enrolled');
     await expect(rowFor(page, family).getByTestId('application-payment')).toContainText(
-      'Cheque received',
+      'Check received',
     );
   });
 

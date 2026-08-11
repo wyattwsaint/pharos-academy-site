@@ -502,7 +502,7 @@ test.describe('the application page', () => {
     page,
   }) => {
     // AC 3, as a family experiences it: tick the pair, ask for a check, and be
-    // told about the collision while the cheque is still in the drawer. A
+    // told about the collision while the check is still in the drawer. A
     // check writes nothing, so this runs against a real deployment too.
     await open(page);
 
@@ -693,7 +693,7 @@ test.describe('the application page', () => {
     await expect(outcome).toBeVisible();
     await expect(outcome).toContainText('Reference');
 
-    // The confirmation replays the choice and the cheque, and promises no clock.
+    // The confirmation replays the choice and the check, and promises no clock.
     const confirmation = page.locator('[data-section="apply-confirmation"]');
     await expect(confirmation).toContainText('Suite Child');
     await expect(confirmation).toContainText('Algebra 1');
