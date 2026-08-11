@@ -1,7 +1,13 @@
 import { expect, test } from '@playwright/test';
 
 import { BELIEFS_PATH } from '../src/lib/about/beliefs.js';
-import { ABOUT_PATH, CORE_VALUES, METHOD, PHAROS_MEANING } from '../src/lib/about/story.js';
+import {
+  ABOUT_PATH,
+  CORE_VALUES,
+  METHOD,
+  PHAROS_DRAWING,
+  PHAROS_MEANING,
+} from '../src/lib/about/story.js';
 
 /**
  * About, over real HTTP (#30).
@@ -58,6 +64,40 @@ test.describe('About', () => {
     for (const [index, paragraph] of PHAROS_MEANING.entries()) {
       await expect(paragraphs.nth(index)).toContainText(paragraph);
     }
+  });
+
+  // The drawing's licence condition is the credit, so "the image loaded" is
+  // only half of what has to hold: the credit and the licence are asserted as
+  // *visible* text, and the alt text is asserted to describe the lighthouse
+  // rather than repeat the attribution — a screen-reader user wants the
+  // picture, and the credit is on the page for everyone already.
+  test('prints Thiersch’s drawing beside the essay, credited', async ({ page }) => {
+    await page.goto(ABOUT_PATH);
+
+    const figure = page.locator('#name figure');
+    const image = figure.locator('img');
+    await expect(image).toHaveAttribute('alt', PHAROS_DRAWING.alt);
+    await expect(image).toHaveAttribute('src', PHAROS_DRAWING.src);
+
+    // Really served, and really an image — a 404 from `public/` still renders
+    // an <img> element, and this test is the one that would otherwise pass on
+    // a broken file.
+    const response = await page.request.get(PHAROS_DRAWING.src);
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toContain('image/webp');
+
+    const caption = figure.locator('figcaption');
+    await expect(caption).toBeVisible();
+    await expect(caption).toContainText('H. Thiersch');
+    await expect(caption).toContainText('Public Domain');
+  });
+
+  test('opens by calling the school Christian classical, in that order', async ({ page }) => {
+    await page.goto(ABOUT_PATH);
+
+    await expect(page.locator('[data-section="about-header"] .sub')).toContainText(
+      'A Christian classical hybrid microschool',
+    );
   });
 
   test('has the two sections the 301 map aims fragments at', async ({ page }) => {

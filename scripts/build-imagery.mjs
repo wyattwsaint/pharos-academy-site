@@ -35,6 +35,19 @@ const OUT = path.join(root, 'public', 'imagery');
  *   middle, so they take a centred crop too, at card width rather than plate
  *   width — 800 px covers a 380 px card at 2×, and 1400 would be four times the
  *   bytes for nothing.
+ *
+ * `crop: false` opts a source out of the 3:2 window entirely. Thiersch's
+ * lighthouse is a tall drawing on About, not a plate on the homepage: trimming
+ * it to 3:2 would cut the lantern off the top of the tower, which is the one
+ * part of it the essay beside it is about.
+ *
+ * `paper` is the value the source's blank ground actually measures — 235, not
+ * 255, because the drawing was scanned rather than drawn digitally. About
+ * multiplies the drawing into the parchment band so it has no visible edge, and
+ * multiply treats "ground" as "8% darker than everything under it": left alone,
+ * a grey rectangle appears around the lighthouse. Levelling the ground to white
+ * here means the band shows through it exactly, and the page keeps one rule
+ * rather than a background colour that has to be kept in step with the band.
  */
 const PLATES = [
   { src: 'still-desk.png', out: 'still-desk.webp', width: 1400, bias: 0.7 },
@@ -43,9 +56,10 @@ const PLATES = [
   { src: 'hope-o-our.png', out: 'hope-o.webp', width: 800, bias: 0.5 },
   { src: 'hope-p-parents.png', out: 'hope-p.webp', width: 800, bias: 0.5 },
   { src: 'hope-e-educate.png', out: 'hope-e.webp', width: 800, bias: 0.5 },
+  { src: 'thiersch-pharos.png', out: 'thiersch-pharos.webp', width: 900, crop: false, paper: 235 },
 ];
 
-/** Every plate on the page is set 3:2. */
+/** Every plate on the homepage is set 3:2. */
 const RATIO = 3 / 2;
 
 async function main() {
@@ -59,8 +73,9 @@ async function main() {
     // in one pass keeps the resample single-step, which matters on paintings:
     // a crop-then-resize round trip through a second encode softens the brush
     // detail that is the entire reason these are paintings and not photographs.
-    const region =
-      width / height > RATIO
+    const region = plate.crop === false
+      ? null
+      : width / height > RATIO
         ? {
             left: Math.round((width - Math.round(height * RATIO)) * plate.bias),
             top: 0,
@@ -74,8 +89,9 @@ async function main() {
             height: Math.round(width / RATIO),
           };
 
-    const buffer = await image
-      .extract(region)
+    const levelled = plate.paper ? image.linear(255 / plate.paper, 0) : image;
+
+    const buffer = await (region ? levelled.extract(region) : levelled)
       .resize({ width: plate.width })
       .webp({ quality: plate.width > 1000 ? 76 : 74, effort: 6 })
       .toBuffer();
