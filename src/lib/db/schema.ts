@@ -111,6 +111,26 @@ export const schoolDetails = pgTable('school_details', {
    * change, not a hunt through the templates.
    */
   giveUrl: text('give_url').notNull(),
+  /**
+   * The announcement banner — the short, timely line at the top of the home
+   * page (#15). Four columns rather than a table because there is one of it,
+   * and it lives here rather than beside the announcements because saving this
+   * row already revalidates the published pages.
+   *
+   * The switch is separate from the words on purpose: the office turns the
+   * banner off after the start of term without emptying the fields it will
+   * want again next year.
+   */
+  bannerEnabled: boolean('banner_enabled').notNull().default(false),
+  bannerMessage: text('banner_message').notNull().default(''),
+  /**
+   * `YYYY-MM-DD`, and nullable — a banner that has never been used has no date,
+   * and an epoch stored as a placeholder is a date somebody eventually
+   * publishes. A real date rather than free text, so "Augsut 31" cannot ship.
+   */
+  bannerDate: date('banner_date'),
+  /** Empty for an unlinked message. Absolute http(s) when set. */
+  bannerLink: text('banner_link').notNull().default(''),
   /** The stamp: who saved this row last, and when. Overwritten, never appended. */
   lastEditedBy: text('last_edited_by'),
   lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),

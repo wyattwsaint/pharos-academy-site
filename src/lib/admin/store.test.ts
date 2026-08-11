@@ -8,6 +8,7 @@ import {
   getSchoolDetails,
   parseSchoolDetails,
   saveSchoolDetails,
+  schoolDetailsFields,
 } from './school-details.js';
 import {
   endSession,
@@ -220,7 +221,7 @@ describe('school details', () => {
     const before = await getSchoolDetails(db);
     const saved = await saveSchoolDetails(
       db,
-      { ...fields(before), phone: '717-000-0000' },
+      { ...schoolDetailsFields(before), phone: '717-000-0000' },
       actor!.name,
       new Date('2026-08-05T14:00:00Z'),
     );
@@ -233,7 +234,7 @@ describe('school details', () => {
 
     const again = await saveSchoolDetails(
       db,
-      fields(saved),
+      schoolDetailsFields(saved),
       'George Jensen',
       new Date('2026-08-06T14:00:00Z'),
     );
@@ -244,12 +245,53 @@ describe('school details', () => {
     const before = await getSchoolDetails(db);
     const saved = await saveSchoolDetails(
       db,
-      { ...fields(before), giveUrl: 'https://secure.myvanco.com/PHAROS/home' },
+      { ...schoolDetailsFields(before), giveUrl: 'https://secure.myvanco.com/PHAROS/home' },
       'Jill Kilker',
     );
 
     expect(saved.giveUrl).toBe('https://secure.myvanco.com/PHAROS/home');
     expect((await getSchoolDetails(db)).giveUrl).toBe(saved.giveUrl);
+  });
+
+  // #15. The banner is on this row because saving this row is what revalidates
+  // the published pages — so what matters is that it survives that save.
+  it('starts with the announcement banner off and empty', async () => {
+    const details = await getSchoolDetails(db);
+
+    expect(details.bannerEnabled).toBe(false);
+    expect(details.bannerMessage).toBe('');
+    expect(details.bannerDate).toBeNull();
+    expect(details.bannerLink).toBe('');
+  });
+
+  it('saves the banner, and gives it back in the shape the form posts', async () => {
+    const before = await getSchoolDetails(db);
+    const saved = await saveSchoolDetails(
+      db,
+      {
+        ...schoolDetailsFields(before),
+        bannerEnabled: true,
+        bannerMessage: 'Register now! Classes begin',
+        bannerDate: '2026-08-31',
+        bannerLink: 'https://example.org/register',
+      },
+      'Jill Kilker',
+    );
+
+    expect(saved.bannerEnabled).toBe(true);
+    expect(saved.bannerDate).toBe('2026-08-31');
+    expect(schoolDetailsFields(saved).bannerDate).toBe('2026-08-31');
+    expect((await getSchoolDetails(db)).bannerMessage).toBe('Register now! Classes begin');
+  });
+
+  // A blank date field posts an empty string, and a date column has no such
+  // value: unconverted this is a write error rather than "no date".
+  it('stores an empty date as no date at all', async () => {
+    const before = await getSchoolDetails(db);
+    const saved = await saveSchoolDetails(db, { ...schoolDetailsFields(before), bannerDate: '' }, 'Jill Kilker');
+
+    expect(saved.bannerDate).toBeNull();
+    expect(schoolDetailsFields(saved).bannerDate).toBe('');
   });
 
   it('refuses a submission that would empty the footer, and says which field', async () => {
@@ -268,14 +310,4 @@ describe('school details', () => {
   });
 });
 
-function fields(details: Awaited<ReturnType<typeof getSchoolDetails>>) {
-  return {
-    address: details.address,
-    phone: details.phone,
-    email: details.email,
-    schoolYearStart: details.schoolYearStart,
-    mission: details.mission,
-    vision: details.vision,
-    giveUrl: details.giveUrl,
-  };
-}
+

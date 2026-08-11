@@ -15,8 +15,24 @@ function form(overrides: Record<string, string> = {}): FormData {
     giveUrl: 'https://secure.myvanco.com/YH8R/home',
     ...overrides,
   };
-  for (const [name, value] of Object.entries(fields)) data.set(name, value);
+  for (const [name, value] of Object.entries(fields)) {
+    // A checkbox posts nothing at all when it is unticked, and the parser reads
+    // absence as off. Spelling that as an empty string here is the only way a
+    // test can say "unticked" without a second helper.
+    if (value !== '' || name !== 'bannerEnabled') data.set(name, value);
+  }
   return data;
+}
+
+/** The banner switched on, with a message, a date and a link. */
+function bannerForm(overrides: Record<string, string> = {}): FormData {
+  return form({
+    bannerEnabled: 'on',
+    bannerMessage: 'Register now! Classes begin',
+    bannerDate: '2026-08-31',
+    bannerLink: 'https://example.org/register',
+    ...overrides,
+  });
 }
 
 describe('parsing a school-details submission', () => {
@@ -64,6 +80,79 @@ describe('parsing a school-details submission', () => {
     const result = parseSchoolDetails(form({ email: 'not-an-email', mission: 'Kept.' }));
     expect(result.values.email).toBe('not-an-email');
     expect(result.values.mission).toBe('Kept.');
+  });
+});
+
+describe('parsing the announcement banner', () => {
+  it('reads the switch, the message, the date and the link', () => {
+    const result = parseSchoolDetails(bannerForm());
+
+    expect(result.errors).toEqual({});
+    expect(result.values.bannerEnabled).toBe(true);
+    expect(result.values.bannerMessage).toBe('Register now! Classes begin');
+    expect(result.values.bannerDate).toBe('2026-08-31');
+    expect(result.values.bannerLink).toBe('https://example.org/register');
+  });
+
+  // A checkbox posts nothing when it is unticked. "Absent" therefore has to
+  // mean off, or the office could never turn the banner back off again.
+  it('reads an unticked switch as off', () => {
+    expect(parseSchoolDetails(form()).values.bannerEnabled).toBe(false);
+  });
+
+  // The switch exists so the banner can be turned off *without* emptying the
+  // words the office will want again next August.
+  it('accepts empty banner fields while the banner is off', () => {
+    const result = parseSchoolDetails(
+      form({ bannerMessage: '', bannerDate: '', bannerLink: '' }),
+    );
+    expect(result.errors).toEqual({});
+  });
+
+  it('will not show a banner with no message', () => {
+    expect(parseSchoolDetails(bannerForm({ bannerMessage: '   ' })).errors.bannerMessage)
+      .toBeTruthy();
+  });
+
+  // AC: a missing date. The date is half of what the bar says, and a banner
+  // switched on without one is a sentence that stops mid-air.
+  it('will not show a banner with no date', () => {
+    expect(parseSchoolDetails(bannerForm({ bannerDate: '' })).errors.bannerDate).toBeTruthy();
+  });
+
+  // A real date, not free text — which is the whole reason it is its own field.
+  it('rejects a banner date that is not a real day', () => {
+    expect(parseSchoolDetails(bannerForm({ bannerDate: '2026-02-31' })).errors.bannerDate)
+      .toBeTruthy();
+    expect(parseSchoolDetails(bannerForm({ bannerDate: '31/08/2026' })).errors.bannerDate)
+      .toBeTruthy();
+  });
+
+  // AC: a non-URL link. The link is optional, but a typed one leaves the site
+  // exactly as the Give URL does, and the same two failures matter.
+  it('rejects a banner link that is not an absolute http(s) address', () => {
+    expect(parseSchoolDetails(bannerForm({ bannerLink: 'example.org' })).errors.bannerLink)
+      .toBeTruthy();
+    expect(parseSchoolDetails(bannerForm({ bannerLink: 'javascript:alert(1)' })).errors.bannerLink)
+      .toBeTruthy();
+    expect(parseSchoolDetails(bannerForm({ bannerLink: '/register' })).errors.bannerLink)
+      .toBeTruthy();
+  });
+
+  it('accepts a banner with no link, because the link is the optional one', () => {
+    const result = parseSchoolDetails(bannerForm({ bannerLink: '' }));
+    expect(result.errors).toEqual({});
+    expect(result.values.bannerLink).toBe('');
+  });
+
+  // A rejected date is still checked, switch or no switch: a typo left in the
+  // field is a typo that goes live the moment the banner is switched on.
+  it('checks a typed date and link even while the banner is off', () => {
+    const result = parseSchoolDetails(
+      form({ bannerDate: '2026-02-31', bannerLink: 'nope' }),
+    );
+    expect(result.errors.bannerDate).toBeTruthy();
+    expect(result.errors.bannerLink).toBeTruthy();
   });
 });
 

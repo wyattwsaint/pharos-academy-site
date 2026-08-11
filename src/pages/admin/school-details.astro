@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import AdminBanner from '../../components/AdminBanner.astro';
+import AdminField from '../../components/AdminField.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import type { Banner } from '../../lib/admin/banner.js';
 import { isrBypassToken } from '../../lib/admin/isr-token.js';
@@ -16,6 +17,7 @@ import {
   LABELS,
   parseSchoolDetails,
   saveSchoolDetails,
+  schoolDetailsFields,
   type SchoolDetailsErrors,
   type SchoolDetailsFields,
 } from '../../lib/admin/school-details.js';
@@ -33,9 +35,14 @@ const db = await getDb();
 const actor = Astro.locals.actor!;
 
 let row = await getSchoolDetails(db);
-let values: SchoolDetailsFields = fieldsOf(row);
+let values: SchoolDetailsFields = schoolDetailsFields(row);
 let errors: SchoolDetailsErrors = {};
-let banner: Banner | null = republishBanner(Astro.url.searchParams.get('republished'));
+/*
+ * The strip that reports the last action. Named for the result rather than for
+ * the component, because `banner` on this screen now also means the home
+ * page's announcement banner below, and the two are unrelated.
+ */
+let saveResult: Banner | null = republishBanner(Astro.url.searchParams.get('republished'));
 
 if (Astro.request.method === 'POST') {
   const parsed = parseSchoolDetails(await Astro.request.formData());
@@ -43,23 +50,43 @@ if (Astro.request.method === 'POST') {
   errors = parsed.errors;
 
   if (Object.keys(errors).length > 0) {
-    banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+    saveResult = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
   } else {
     row = await saveSchoolDetails(db, values, actor.name);
-    values = fieldsOf(row);
+    values = schoolDetailsFields(row);
     const result = await revalidateAll({
       origin: revalidationOrigin(Astro.url),
       bypassToken: isrBypassToken(),
     });
-    banner = { ok: result.ok, message: describeRevalidation(result) };
+    saveResult = { ok: result.ok, message: describeRevalidation(result) };
   }
 }
 
 const stamp = formatStamp(row.lastEditedBy, row.lastEditedAt);
 
-/** The form's shape. Type decides the control; nothing else varies. */
-const FIELDS: { name: keyof SchoolDetailsFields; type: 'text' | 'tel' | 'email' | 'date' | 'url' | 'multiline'; hint?: string }[] = [
-  { name: 'address', type: 'multiline', hint: 'One line per line, as it should appear.' },
+/**
+ * The form's shape. Type decides the control; nothing else varies.
+ *
+ * `optional` is the banner's doing (#15). Everything above it must never be
+ * blank, so `required` was a constant; the banner's fields are legitimately
+ * empty while it is switched off, and marking them required would make the
+ * browser refuse the submission that turns it off.
+ */
+type Field = {
+  /**
+   * The string-valued fields only. `bannerEnabled` is a boolean and is drawn as
+   * its own checkbox below — excluded here rather than stringified, so a stray
+   * entry cannot render the word "true" into a text box.
+   */
+  name: Exclude<keyof SchoolDetailsFields, 'bannerEnabled'>;
+  type: 'text' | 'tel' | 'email' | 'date' | 'url' | 'multiline';
+  hint?: string;
+  optional?: true;
+  rows?: number;
+};
+
+const FIELDS: Field[] = [
+  { name: 'address', type: 'multiline', hint: 'One line per line, as it should appear.', rows: 3 },
   { name: 'phone', type: 'tel' },
   { name: 'email', type: 'email' },
   { name: 'schoolYearStart', type: 'date', hint: 'The first day of classes.' },
@@ -72,17 +99,22 @@ const FIELDS: { name: keyof SchoolDetailsFields; type: 'text' | 'tel' | 'email' 
   },
 ];
 
-function fieldsOf(details: typeof row): SchoolDetailsFields {
-  return {
-    address: details.address,
-    phone: details.phone,
-    email: details.email,
-    schoolYearStart: details.schoolYearStart,
-    mission: details.mission,
-    vision: details.vision,
-    giveUrl: details.giveUrl,
-  };
-}
+/** The banner's three written fields, below its switch. */
+const BANNER_FIELDS: Field[] = [
+  {
+    name: 'bannerMessage',
+    type: 'text',
+    hint: 'The date is added after it, so “Register now! Classes begin” reads “Register now! Classes begin August 31”.',
+    optional: true,
+  },
+  { name: 'bannerDate', type: 'date', hint: 'What the message is about.', optional: true },
+  {
+    name: 'bannerLink',
+    type: 'url',
+    hint: 'Optional. Where the message goes when someone clicks it.',
+    optional: true,
+  },
+];
 
 function republishBanner(published: string | null): Banner | null {
   if (published === 'live') return { ok: true, message: 'Republished — the live site is up to date.' };
@@ -98,9 +130,9 @@ function republishBanner(published: string | null): Banner | null {
   <p class="mt-2">Entered once here, and rendered everywhere the school's details appear.</p>
 
   {
-    banner && (
-      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
-        {!banner.ok && (
+    saveResult && (
+      <AdminBanner ok={saveResult.ok} message={saveResult.message} testId="save-banner">
+        {!saveResult.ok && (
           <form method="post" action="/admin/republish" class="mt-3">
             <button
               type="submit"
@@ -116,58 +148,55 @@ function republishBanner(published: string | null): Banner | null {
 
   <form method="post" class="mt-8 flex flex-col gap-6">
     {
-      FIELDS.map((field) => {
-        const invalid = Boolean(errors[field.name]);
-        const describedBy =
-          [field.hint ? `${field.name}-hint` : null, invalid ? `${field.name}-error` : null]
-            .filter(Boolean)
-            .join(' ') || undefined;
-        const control =
-          'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
-
-        return (
-          <div class="flex flex-col gap-2">
-            <label for={field.name} class="font-semibold">
-              {LABELS[field.name]}
-            </label>
-            {field.hint && (
-              <p id={`${field.name}-hint`} class="text-sm">
-                {field.hint}
-              </p>
-            )}
-            {field.type === 'multiline' ? (
-              <textarea
-                id={field.name}
-                name={field.name}
-                rows={field.name === 'address' ? 3 : 5}
-                required
-                aria-invalid={invalid ? 'true' : undefined}
-                aria-describedby={describedBy}
-                class={control}
-              >
-                {values[field.name]}
-              </textarea>
-            ) : (
-              <input
-                id={field.name}
-                name={field.name}
-                type={field.type}
-                value={values[field.name]}
-                required
-                aria-invalid={invalid ? 'true' : undefined}
-                aria-describedby={describedBy}
-                class={control}
-              />
-            )}
-            {invalid && (
-              <p id={`${field.name}-error`} class="font-semibold">
-                {errors[field.name]}
-              </p>
-            )}
-          </div>
-        );
-      })
+      FIELDS.map((field) => (
+        <AdminField
+          name={field.name}
+          type={field.type}
+          label={LABELS[field.name]}
+          value={values[field.name]}
+          hint={field.hint}
+          error={errors[field.name]}
+          optional={field.optional}
+          rows={field.rows}
+        />
+      ))
     }
+
+    <fieldset class="flex flex-col gap-6 border-t border-navy/15 pt-6">
+      <legend class="sr-only">Home page banner</legend>
+      <div>
+        <h2 class="text-xl font-semibold text-navy">Home page banner</h2>
+        <p class="mt-2">
+          A single line across the top of the home page, for something the school needs families to
+          see now. Switched off, the home page shows nothing there at all.
+        </p>
+      </div>
+
+      <div class="flex items-start gap-3">
+        <input
+          id="bannerEnabled"
+          name="bannerEnabled"
+          type="checkbox"
+          checked={values.bannerEnabled}
+          class="mt-1 size-5"
+        />
+        <label for="bannerEnabled" class="font-semibold">{LABELS.bannerEnabled}</label>
+      </div>
+
+      {
+        BANNER_FIELDS.map((field) => (
+          <AdminField
+            name={field.name}
+            type={field.type}
+            label={LABELS[field.name]}
+            value={values[field.name]}
+            hint={field.hint}
+            error={errors[field.name]}
+            optional={field.optional}
+          />
+        ))
+      }
+    </fieldset>
 
     <button
       type="submit"

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { unzipSync } from 'fflate';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { saveSchoolDetails } from '../admin/school-details.js';
+import { saveSchoolDetails, schoolDetailsFields } from '../admin/school-details.js';
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import { buildExport } from './export.js';
 import {
@@ -57,15 +57,7 @@ describe('the monthly send', () => {
     const details = await (await import('../admin/school-details.js')).getSchoolDetails(db);
     await saveSchoolDetails(
       db,
-      {
-        address: details.address,
-        phone: details.phone,
-        email: 'someone-else@pharosacademy.net',
-        schoolYearStart: details.schoolYearStart,
-        mission: details.mission,
-        vision: details.vision,
-        giveUrl: details.giveUrl,
-      },
+      { ...schoolDetailsFields(details), email: 'someone-else@pharosacademy.net' },
       'Jill',
     );
 

@@ -10,6 +10,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { getSchoolDetails } from '../lib/admin/school-details.js';
 import { listCourses } from '../lib/courses/store.js';
 import { getDb } from '../lib/db/client.js';
+import { announcementBanner } from '../lib/home/announcement-banner.js';
 import { getMoneySettings } from '../lib/money/store.js';
 import { listPeople } from '../lib/people/store.js';
 
@@ -65,9 +66,16 @@ const details = await getSchoolDetails(db);
 const courses = await listCourses(db);
 const settings = await getMoneySettings(db);
 const people = await listPeople(db);
+
+/*
+ * The announcement bar (#15). Derived in the page, like everything else here,
+ * and null whenever the office has the switch off — the header then renders
+ * nothing at all in that region rather than an empty bar.
+ */
+const banner = announcementBanner(details);
 ---
 
-<BaseLayout details={details} title="Home" description={description} overHero>
+<BaseLayout details={details} title="Home" description={description} overHero banner={banner}>
   <HomeHero />
   <WeekSection courses={courses} rates={settings.rates} />
   <Ornament />

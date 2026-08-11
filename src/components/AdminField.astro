@@ -1,0 +1,64 @@
+---
+/**
+ * One labelled control on an admin form, with its hint and its complaint.
+ *
+ * Extracted from the school-details form when the announcement banner gave it
+ * a second group of fields (#15): the wiring between a label, its hint, its
+ * error and the `aria-describedby` that ties them together is the part that
+ * silently rots when it is copied, and a screen reader is the only thing that
+ * notices.
+ */
+interface Props {
+  name: string;
+  /** `multiline` is a textarea; everything else is an `<input type>`. */
+  type: 'text' | 'tel' | 'email' | 'date' | 'url' | 'multiline';
+  label: string;
+  value: string;
+  hint?: string;
+  /** The server's complaint about this field, if it made one. */
+  error?: string;
+  /** True for a field that may be left blank. Most may not. */
+  optional?: boolean;
+  rows?: number;
+}
+
+const { name, type, label, value, hint, error, optional = false, rows = 5 } = Astro.props;
+
+const invalid = Boolean(error);
+const describedBy =
+  [hint ? `${name}-hint` : null, invalid ? `${name}-error` : null].filter(Boolean).join(' ') ||
+  undefined;
+const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
+---
+
+<div class="flex flex-col gap-2">
+  <label for={name} class="font-semibold">{label}</label>
+  {hint && <p id={`${name}-hint`} class="text-sm">{hint}</p>}
+  {
+    type === 'multiline' ? (
+      <textarea
+        id={name}
+        name={name}
+        rows={rows}
+        required={!optional}
+        aria-invalid={invalid ? 'true' : undefined}
+        aria-describedby={describedBy}
+        class={control}
+      >
+        {value}
+      </textarea>
+    ) : (
+      <input
+        id={name}
+        name={name}
+        type={type}
+        value={value}
+        required={!optional}
+        aria-invalid={invalid ? 'true' : undefined}
+        aria-describedby={describedBy}
+        class={control}
+      />
+    )
+  }
+  {invalid && <p id={`${name}-error`} class="font-semibold">{error}</p>}
+</div>
