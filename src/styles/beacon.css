@@ -674,12 +674,46 @@ h3 {
   font: italic 600 clamp(18px, 2vw, 29px) / 1.25 var(--font-tagline);
 }
 
+/* The creed line, and the only line on the site held to AAA (#101): it is the
+   one sentence a visitor is meant to leave with, and it is the smallest type in
+   the hero, so it is the line that loses first.
+
+   It carries its own wash because the hero ellipse cannot give it one. The caps
+   sit at the BOTTOM of a five-line lockup — the skirt of that ellipse, not its
+   core — and the pass recorded above already learned what happens when the
+   ellipse is grown to reach a line that lives on its skirt: it stops being a
+   wash on the sky and starts being haze over the whole painting. A wash bound
+   to this line is the same lesson applied one step further in — the smallest
+   wash that does the work, rather than a bigger one everywhere.
+
+   It is a gradient, not a panel, and that is the constraint it is tuned under:
+   it feathers to nothing before the line's own box ends, so the video still
+   moves through its edges. Re-measure with `npm run hero:contrast` after any
+   change here. */
 .hero-caps {
-  font: 600 clamp(11.5px, 1.05vw, 14px) / 1.7 var(--font-sans);
+  position: relative;
+  z-index: 0;
+  font: 700 clamp(12px, 1.1vw, 15px) / 1.7 var(--font-sans);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-navy);
   margin: 15px 0 0;
+}
+
+.hero-caps::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  /* Wider and taller than the glyphs so the falloff happens outside the words,
+     which is what keeps this reading as light on the sky rather than as a
+     plate under the type. */
+  inset: -0.85em -9%;
+  background: radial-gradient(
+    64% 52% at 50% 50%,
+    rgba(255, 251, 241, 0.74) 0%,
+    rgba(255, 251, 241, 0.62) 54%,
+    rgba(255, 251, 241, 0) 100%
+  );
 }
 
 @media (max-width: 1000px) {
