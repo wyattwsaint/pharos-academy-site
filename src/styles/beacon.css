@@ -902,7 +902,7 @@ h3 {
 
 /* Instructors, with what they teach (#26). A portrait frame only where there
    is a photograph (#99): seven empty tints would be a page advertising seven
-   missing photographs rather than seven people who teach, and the rest are the
+   missing photographs rather than eight people who teach, and the rest are the
    school's to supply. */
 .staff-teaching {
   display: grid;

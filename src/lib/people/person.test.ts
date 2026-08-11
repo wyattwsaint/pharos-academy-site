@@ -120,7 +120,10 @@ describe('an optional bio and an optional photo', () => {
     // that into a failing suite.
     for (const person of seeded) {
       if (person.photo === null) continue;
-      expect(person.photo, person.name).toMatch(/^\/[\w/-]+\.webp$/);
+      // Site-relative, like the admin's own check — not `.webp`-only, which
+      // would fail a portrait the school later supplies as a JPEG for a reason
+      // this test has no opinion about.
+      expect(person.photo, person.name).toMatch(/^\/[^/]/);
       const onDisk = new URL(`../../../public${person.photo}`, import.meta.url);
       expect(existsSync(onDisk), `${person.name}: ${person.photo}`).toBe(true);
     }

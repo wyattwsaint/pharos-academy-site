@@ -96,11 +96,13 @@ test.describe('the staff page', () => {
     // three; the instructors carry no frame at all.
     await expect(page.locator('img.portrait')).toHaveCount(PHOTOGRAPHED.length);
 
-    const unphotographedLeader = PEOPLE.find(
+    // One tint per leader the school has sent no photograph of — none today,
+    // and the count rather than a boolean so that a fourth leader arriving
+    // without one is measured rather than rounded to "at most one".
+    const unphotographedLeaders = PEOPLE.filter(
       (person) => person.leadershipRank !== null && person.photo === null,
     );
-    const tints = page.locator('div.portrait');
-    await expect(tints).toHaveCount(unphotographedLeader ? 1 : 0);
+    await expect(page.locator('div.portrait')).toHaveCount(unphotographedLeaders.length);
 
     await expect(page.locator(`[data-section="staff-instructors"] #${UNWRITTEN.slug} img`))
       .toHaveCount(0);
