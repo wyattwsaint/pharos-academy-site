@@ -43,18 +43,18 @@ line is deliberately held higher:
 
 ## Result
 
-**Every line passes.** The weakest is `em.hero-display-tag` — “Helping Our Parents Educate” at 4.48:1 against a 3.0:1 requirement.
+**Every line passes.** The weakest is `em.hero-display-tag` — “Helping Our Parents Educate” at 3.59:1 against a 3.0:1 requirement.
 
 | ground | worst | need | fail % | width | ramp | frame | type | ground px | verdict | element |
 | -----: | ----: | ---: | -----: | ----: | ---: | ----: | :--- | :-------- | :------ | :------ |
-| 4.48 | 1.01 | 3.0 | 13.6% | 1440 | 0.00 | 0s | `rgb(107, 74, 21)` | `#bbc3c3` | ok | `em.hero-display-tag` — “Helping Our Parents Educate” |
+| 3.59 | 1.00 | 3.0 | 26.6% | 1440 | 0.00 | 0s | `rgb(107, 74, 21)` | `#b6ad94` | ok | `em.hero-display-tag` — “Helping Our Parents Educate” |
 | 4.89 | 3.73 | 4.5 | 17.9% | 1440 | 0.00 | 1.6s | `rgb(23, 54, 92)` | `#a4a4a1` | ok | `a` — “About” |
 | 5.16 | 4.74 | 4.5 | 0.0% | 1440 | 0.00 | 3.2s | `rgb(23, 54, 92)` | `#ada89e` | ok | `a` — “Classes” |
+| 5.39 | 4.65 | 4.5 | 0.0% | 1440 | 0.00 | 6.4s | `rgb(23, 54, 92)` | `#aaadaa` | ok | `a` — “Admissions” |
 | 5.40 | 4.33 | 4.5 | 0.5% | 834 | 0.00 | 3.2s | `rgb(23, 54, 92)` | `#a9adae` | ok | `a.btn.on-dark` — “Ask us about Pharos” |
 | 5.41 | 1.09 | 4.5 | 20.9% | 390 | 0.45 | 0s | `rgb(42, 96, 134)` | `#ebe6d8` | ok | `p.hero-sub` — “A Christian Classical Hybrid Homes” |
-| 5.41 | 4.70 | 4.5 | 0.0% | 1440 | 0.00 | 4.8s | `rgb(23, 54, 92)` | `#bda998` | ok | `a` — “Admissions” |
 | 6.54 | 5.43 | 4.5 | 0.0% | 1440 | 0.00 | 1.6s | `rgb(23, 54, 92)` | `#c4bdae` | ok | `a` — “Current Families” |
-| 9.11 | 3.53 | 7.0 | 10.4% | 1440 | 0.00 | 3.2s | `rgb(23, 54, 92)` | `#e2ded6` | ok | `p.hero-caps` — “Faith. Family. Learning. Together.” |
+| 8.78 | 3.68 | 7.0 | 12.0% | 1440 | 0.00 | 0s | `rgb(23, 54, 92)` | `#e1daca` | ok | `p.hero-caps` — “Faith. Family. Learning. Together.” |
 | 10.16 | 1.62 | 3.0 | 2.6% | 390 | 0.00 | 1.6s | `rgb(23, 54, 92)` | `#eeeade` | ok | `h1` — “Pharos Academy” |
 | 15.11 | 15.11 | 4.5 | 0.0% | 390 | 0.85 | 0s | `rgb(255, 255, 255)` | `#102647` | ok | `b` — “Pharos Academy” |
 
