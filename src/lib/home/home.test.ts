@@ -125,12 +125,58 @@ describe('the H.O.P.E. row', () => {
 });
 
 describe('the instructors', () => {
+  // Spelled by code point: an invisible character in a test literal is a
+  // character nobody can see they have deleted.
+  const NBSP = String.fromCharCode(160);
+
   it('names three of the nine, each with a role and credentials', () => {
     expect(INSTRUCTORS).toHaveLength(3);
     for (const person of INSTRUCTORS) {
       expect(person.name).toBeTruthy();
       expect(person.role).toBeTruthy();
       expect(person.credentials).toBeTruthy();
+    }
+  });
+
+  // #100: the cards are copy, not `people` rows, so the strings are the thing
+  // under test. Spelled out in full because a class count, a lower-cased
+  // subject and a trailing period are each a plausible re-edit.
+  it('states what each of them teaches, and what they hold', () => {
+    expect(INSTRUCTORS).toEqual([
+      {
+        name: 'Jill Kilker',
+        role: 'Head of School',
+        credentials:
+          'M.Ed. Special Education, Shippensburg. Homeschool Evaluator in Pennsylvania',
+      },
+      {
+        name: 'Pastor George Jensen',
+        role: 'Chaplain · Algebra 1',
+        credentials:
+          `B.S. Secondary Mathematics, Millersville. M.Div.,${NBSP}Winebrenner Theological Seminary`,
+      },
+      {
+        name: 'Mrs. Mandy Saint',
+        role: 'Instructor · Grammar School',
+        credentials:
+          'B.S. Elementary Education, Millersville University, M. Ed. Penn State University',
+      },
+    ]);
+  });
+
+  // The degree is an abbreviation of the seminary's own qualification; alone at
+  // the end of a line it reads as a typo.
+  it('keeps M.Div. on the same line as its seminary', () => {
+    const jensen = INSTRUCTORS.find((person) => person.name.includes('Jensen'));
+    expect(jensen?.credentials).toContain(`M.Div.,${NBSP}Winebrenner`);
+  });
+
+  // A period ends a sentence inside the credentials — "M.Ed." and the stop
+  // after Shippensburg both stay — but none of these blocks ends in one.
+  it('ends no card on a trailing period', () => {
+    for (const person of INSTRUCTORS) {
+      expect(person.role.endsWith('.'), person.name).toBe(false);
+      expect(person.credentials.endsWith('.'), person.name).toBe(false);
     }
   });
 });
