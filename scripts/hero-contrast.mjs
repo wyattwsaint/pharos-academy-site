@@ -65,6 +65,28 @@ const RAMP = [0, 0.45, 0.85];
 const SETTLE_MS = 450;
 
 /**
+ * Lines held above the WCAG AA floor, by CSS selector.
+ *
+ * A threshold that is not the one being claimed is worse than no threshold: it
+ * passes quietly while the thing it was meant to protect drifts away. #101
+ * asserts AAA for the creed line, so AAA is what this script demands of it —
+ * a regression back to the AA floor has to come out as **FAIL**, not as a
+ * comfortable margin.
+ */
+const RAISED = [
+  {
+    match: '.hero-caps',
+    need: 7,
+    why:
+      'WCAG AAA, per #101. It is the sentence a visitor is meant to leave with ' +
+      'and the smallest type in the hero, so it is the line that loses first. ' +
+      'It was passing AA at 5.15:1 and still hard to read against a moving ' +
+      'ground; it now carries a wash of its own, and this threshold is what ' +
+      'stops that wash being quietly tuned back out',
+  },
+];
+
+/**
  * Astro's dev server daemonises when it detects a coding agent, which makes a
  * spawned process look like it exited immediately. Blanked, exactly as
  * `playwright.config.ts` does it and for the same reason.
@@ -254,7 +276,8 @@ async function main() {
             if (x1 <= x0 || y1 <= y0) continue;
 
             const [fg, alpha] = parseColor(box.color);
-            const need = box.large ? 3 : 4.5;
+            const raised = RAISED.find((rule) => box.selector.includes(rule.match));
+            const need = raised ? raised.need : box.large ? 3 : 4.5;
 
             // Every second pixel on both axes: the same answer for a quarter of
             // the work, on a gradient this smooth.
@@ -350,6 +373,11 @@ function report(rows) {
     '  pessimistic bound, reported but not the verdict. These lines are centred',
     '  inside a full-width box, so a box’s darkest pixel is routinely a blade of',
     '  meadow grass at the far end of a line with no glyph anywhere near it.',
+    '',
+    '`need` is the WCAG AA floor for the line’s size and weight, except where a',
+    'line is deliberately held higher:',
+    '',
+    ...RAISED.map((rule) => `- \`${rule.match}\` — **${rule.need.toFixed(1)}:1**, ${rule.why}.`),
     '',
     '## Result',
     '',
