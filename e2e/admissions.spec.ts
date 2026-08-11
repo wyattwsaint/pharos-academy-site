@@ -30,8 +30,8 @@ test.describe('the admissions page', () => {
     for (const heading of [
       'Families We Serve',
       'What Makes Us Different',
-      'What It Costs to Apply',
-      'What You Sign',
+      'Prices for Partner Families',
+      'Is Pharos the Right Fit for your Family?',
       'Become a Pharos Family',
     ]) {
       await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
@@ -58,13 +58,22 @@ test.describe('the admissions page', () => {
     }
   });
 
-  test('names the four quarterly payment dates', async ({ page }) => {
+  test('names no payment dates, which the school asked for in #108', async ({ page }) => {
     await page.goto('/admissions');
 
-    const sentence = await page.locator('#cost').textContent();
-    expect(sentence).toContain('four quarterly payments');
-    // Four real dates, in the school's own long form.
-    expect(sentence?.match(/\d{1,2} [A-Z][a-z]+ \d{4}/g) ?? []).toHaveLength(4);
+    // The dates went off the page entirely rather than moving to Apply, so the
+    // assertion is their absence: no long-form date, and no sentence around it.
+    const cost = await page.locator('#cost').textContent();
+    expect(cost).not.toContain('quarterly payments');
+    expect(cost?.match(/\d{1,2} [A-Z][a-z]+ \d{4}/g) ?? []).toHaveLength(0);
+  });
+
+  test('keeps the school’s policies reachable from the agreements section', async ({ page }) => {
+    await page.goto('/admissions');
+
+    await page.locator('#documents').getByRole('link', { name: 'All of our policies' }).click();
+
+    await expect(page).toHaveURL(/\/current-families\/policies$/);
   });
 
   test('links the documents a family signs to the documents themselves', async ({ page }) => {

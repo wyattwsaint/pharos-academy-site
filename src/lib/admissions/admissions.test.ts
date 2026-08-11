@@ -1,22 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import { APPLICATION_PATH } from '../application/application.js';
-import { CATALOGUE } from '../courses/catalogue.js';
 import { SEEDED_MONEY_SETTINGS } from '../money/settings.js';
-import {
-  admissionCosts,
-  agesLabel,
-  APPLICATION_HREF,
-  instalmentSentence,
-  morningsLabel,
-} from './admissions.js';
+import { admissionCosts, APPLICATION_HREF } from './admissions.js';
 
 /**
- * What the Admissions page says about money, ages and mornings (#29 AC 6).
+ * What the Admissions page says about money (#29 AC 6).
  *
  * All of it derived. The page is one long piece of prose and prose is exactly
- * where a fee gets retyped, so every figure and every list in it comes through
- * one of these four functions.
+ * where a fee gets retyped, so every figure in it comes through `admissionCosts`.
+ * The quarterly payment dates left the page in #108, and the ages and mornings
+ * labels left with the client's rewrite (#107); the helpers behind them are gone
+ * rather than tested with no caller, so their tests are gone too.
  */
 
 const settings = SEEDED_MONEY_SETTINGS;
@@ -45,40 +40,6 @@ describe('what applying costs', () => {
     const raised = { ...settings, registrationFee: 40, classDeposit: 125, lateFee: 75 };
 
     expect(admissionCosts(raised).map((cost) => cost.amount)).toEqual(['$40', '$125', '$75']);
-  });
-});
-
-describe('the payment dates', () => {
-  it('reads the four quarterly dates out of the settings, in the school’s form', () => {
-    expect(instalmentSentence(settings)).toBe(
-      'Tuition is paid to your instructor in four quarterly payments, due 24 August 2026, ' +
-        '12 October 2026, 7 December 2026 and 8 February 2027.',
-    );
-  });
-
-  it('follows a date moved in the admin', () => {
-    const moved = {
-      ...settings,
-      instalmentDates: ['2027-01-04', '2027-02-04', '2027-03-04', '2027-04-05'],
-    };
-
-    expect(instalmentSentence(moved)).toContain('4 January 2027');
-    expect(instalmentSentence(moved)).not.toContain('2026');
-  });
-});
-
-describe('who it is for', () => {
-  it('takes the age range from the catalogue rather than a typed sentence', () => {
-    expect(agesLabel(CATALOGUE)).toBe('4 to 18');
-  });
-
-  it('names the mornings classes actually run on', () => {
-    expect(morningsLabel(CATALOGUE)).toBe('Monday, Wednesday and Thursday');
-  });
-
-  it('says nothing about ages when no class publishes one', () => {
-    const noAges = CATALOGUE.map((course) => ({ ...course, ageMin: null, ageMax: null }));
-    expect(agesLabel(noAges)).toBeNull();
   });
 });
 
