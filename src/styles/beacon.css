@@ -40,6 +40,39 @@ h3 {
   color: var(--color-navy);
 }
 
+/* ---------- inline prose links ---------- */
+
+/*
+ * One place the site says what a link in a sentence looks like (#103).
+ *
+ * The affordance is NOT colour: an underline and a heavier stroke, so the link
+ * survives being read by somebody who cannot separate gold from ink. The colour
+ * that goes with it is --color-gold-ink, the AA text gold, and never
+ * --color-gold-orn — the ornament gold measures 2.8:1 and is never allowed to
+ * carry a word.
+ *
+ * Scoped three ways, and each exclusion is a surface that already reads as
+ * interactive without help:
+ *
+ *   [data-site]   the public pages. The admin shares this stylesheet and keeps
+ *                 its own plain chrome.
+ *   main          the header and the footer have their own treatments, and
+ *                 underlining the nav makes the header noisy.
+ *   the :not()    in-page jump navs, heading links, and the timetable's slot,
+ *                 whose own type sets the weight of every line inside it.
+ *
+ * The selector is wrapped in :where() so it carries the specificity of a bare
+ * `a` — every component class in this file and in `classes.css` therefore still
+ * wins on the properties it sets, and a new component opts out simply by
+ * saying what it wants.
+ */
+:where([data-site] main) a:not(:where(nav a, h1 a, h2 a, h3 a, .slot)) {
+  color: var(--color-gold-ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* ---------- measures ---------- */
 
 .wrap {

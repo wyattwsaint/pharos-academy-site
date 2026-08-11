@@ -63,17 +63,14 @@ const showing = currentAnnouncements(announcements, new Date());
             <p class="announcement-body mt-2">{announcement.body}</p>
             {announcement.linkUrl && announcement.linkLabel && (
               <p class="mt-3">
-                <a class="text-gold-ink underline underline-offset-4" href={announcement.linkUrl}>
+                <a href={announcement.linkUrl}>
                   {announcement.linkLabel} →
                 </a>
               </p>
             )}
             {announcement.attachmentFilename && (
               <p class="mt-3">
-                <a
-                  class="text-gold-ink underline underline-offset-4"
-                  href={attachmentPath(announcement.slug)}
-                >
+                <a href={attachmentPath(announcement.slug)}>
                   {announcement.attachmentFilename} (PDF)
                 </a>
               </p>
@@ -83,7 +80,7 @@ const showing = currentAnnouncements(announcements, new Date());
       }
     </ul>
     <p class="mt-8">
-      <a class="text-gold-ink underline underline-offset-4" href={NEWS_PATH}>All news →</a>
+      <a href={NEWS_PATH}>All news →</a>
     </p>
   </div>
 </section>

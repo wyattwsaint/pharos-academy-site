@@ -33,11 +33,11 @@ const details = await getSchoolDetails(await getDb());
 
     <p class="sub mt-6 text-sm">
       Or reach us directly:
-      <a class="text-gold-ink underline underline-offset-4" href={`mailto:${details.email}`}>
+      <a href={`mailto:${details.email}`}>
         {details.email}
       </a>
       {' · '}
-      <a class="text-gold-ink underline underline-offset-4" href={telHref(details.phone)}>
+      <a href={telHref(details.phone)}>
         {details.phone}
       </a>
     </p>

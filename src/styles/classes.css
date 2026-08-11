@@ -160,12 +160,10 @@
   margin: 0;
 }
 
+/* Colour, weight and underline all come from the base prose-link rule (#103). */
 .classcard-more {
   display: inline-block;
   margin-top: 12px;
-  font-weight: 500;
-  color: var(--color-gold-ink);
-  text-underline-offset: 3px;
 }
 
 /* ---------- the timetable, drawn to the clock ---------- */
@@ -369,9 +367,6 @@
 
 .alongside a {
   display: block;
-  font-weight: 500;
-  color: var(--color-gold-ink);
-  text-underline-offset: 3px;
 }
 
 .alongside span {
