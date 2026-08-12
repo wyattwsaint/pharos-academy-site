@@ -51,7 +51,7 @@ test.describe('the four surfaces', () => {
     await expect(page.locator('[data-section="by-age"]')).toHaveCount(1);
   });
 
-  test('render all nineteen classes from the one source', async ({ page }) => {
+  test('render every class from the one source', async ({ page }) => {
     // AC 1. Every course, on every list surface — the four ways a parent finds
     // a class, agreeing because there is only one source behind them.
     for (const path of ['/classes', '/classes/by-day', '/classes/descriptions']) {
@@ -63,6 +63,33 @@ test.describe('the four surfaces', () => {
         ).toHaveCount(1);
       }
     }
+  });
+
+  test('count the classes they show rather than stating a typed number', async ({ page }) => {
+    // #138. The heading and the lede quote the catalogue, so the number a
+    // parent reads is the number of cards under it — not a word somebody typed
+    // once and stopped maintaining. Compared against what the page rendered
+    // rather than against `CATALOGUE.length`, because the course editor can add
+    // rows past the seeded ones (`live-routes.ts`) and a page counting them is
+    // right, not broken. The seed is the floor: never fewer than it holds.
+    await page.goto('/classes');
+    // Distinct slugs, because a class shows up under every band it is open to.
+    const shown = new Set(
+      await page.locator('[data-section="by-age"] .classcard').evaluateAll((cards) =>
+        cards.map((card) => card.getAttribute('data-course')),
+      ),
+    );
+    expect(shown.size).toBeGreaterThanOrEqual(CATALOGUE.length);
+    await expect(page.locator('h1')).toHaveText(
+      `${shown.size} classes, by the age they are written for`,
+    );
+
+    await page.goto('/classes/descriptions');
+    const listed = await page.locator('[data-section="full-descriptions"] [data-course]').count();
+    expect(listed).toBeGreaterThanOrEqual(CATALOGUE.length);
+    await expect(page.locator('[data-section="classes-header"] .sub')).toContainText(
+      `All ${listed},`,
+    );
   });
 });
 

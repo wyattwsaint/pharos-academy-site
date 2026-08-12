@@ -16,16 +16,19 @@ import { listPeople } from '../../lib/people/store.js';
  * words, alphabetically.
  *
  * The live site's equivalent is a PDF and a page that disagree with each other.
- * This is the same nineteen rows the other three surfaces read, so it cannot
- * disagree with them; what makes it a distinct surface is that everything is
- * open at once, for the parent who would rather read than click.
+ * This is the same rows the other three surfaces read, so it cannot disagree
+ * with them; what makes it a distinct surface is that everything is open at
+ * once, for the parent who would rather read than click.
+ *
+ * The count in the lede is `courses.length` (#138), so "all" is a promise the
+ * page keeps whatever the catalogue holds.
  */
 const view = viewFor('full-descriptions');
 const db = await getDb();
 const details = await getSchoolDetails(db);
 const courses = await listCourses(db);
 const { rates } = await getMoneySettings(db);
-// One read of the one list, shared by all nineteen entries below.
+// One read of the one list, shared by every entry below.
 const directory = bySlug(await listPeople(db));
 ---
 
@@ -33,7 +36,7 @@ const directory = bySlug(await listPeople(db));
   <ClassesHeader
     current="full-descriptions"
     heading="Every class, in full"
-    lede="All nineteen, alphabetically, with the description, texts, prerequisites and fees the school publishes for each."
+    lede={`All ${courses.length}, alphabetically, with the description, texts, prerequisites and fees the school publishes for each.`}
   />
 
   <section class="band" data-section="full-descriptions">
