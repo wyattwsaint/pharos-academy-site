@@ -22,6 +22,7 @@ const DETAILS: SchoolDetails = {
   mission: 'Partnering with parents to provide academic rigor and mentoring.',
   vision: 'Preparing students to honor Christ the Lord as holy.',
   giveUrl: 'https://secure.myvanco.com/YH8R/home',
+  registrationUrl: '',
   bannerEnabled: false,
   bannerMessage: '',
   bannerDate: null,

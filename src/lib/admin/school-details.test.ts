@@ -76,6 +76,32 @@ describe('parsing a school-details submission', () => {
       .toBeUndefined();
   });
 
+  // #111. The registration fee is paid on someone else's page, so the same two
+  // failures as the Give URL matter — but empty is a real answer here: it is
+  // what makes the Apply page offer no online payment at all, rather than a
+  // button that goes nowhere.
+  it('reads the registration payment link, and lets it be empty', () => {
+    expect(
+      parseSchoolDetails(form({ registrationUrl: '  https://secure.myvanco.com/YH8R/campaign  ' }))
+        .values.registrationUrl,
+    ).toBe('https://secure.myvanco.com/YH8R/campaign');
+
+    const absent = parseSchoolDetails(form());
+    expect(absent.values.registrationUrl).toBe('');
+    expect(absent.errors).toEqual({});
+  });
+
+  it('rejects a registration payment link that is not an absolute http(s) address', () => {
+    expect(parseSchoolDetails(form({ registrationUrl: 'myvanco.com/YH8R' })).errors.registrationUrl)
+      .toBeTruthy();
+    expect(parseSchoolDetails(form({ registrationUrl: 'javascript:alert(1)' })).errors
+      .registrationUrl).toBeTruthy();
+    expect(parseSchoolDetails(form({ registrationUrl: '/pay' })).errors.registrationUrl)
+      .toBeTruthy();
+    expect(parseSchoolDetails(form({ registrationUrl: 'https://secure.myvanco.com/YH8R/home' }))
+      .errors.registrationUrl).toBeUndefined();
+  });
+
   it('keeps what was typed when it rejects it, so nothing has to be retyped', () => {
     const result = parseSchoolDetails(form({ email: 'not-an-email', mission: 'Kept.' }));
     expect(result.values.email).toBe('not-an-email');

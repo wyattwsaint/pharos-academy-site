@@ -29,6 +29,11 @@ export type SchoolDetailsFields = {
   mission: string;
   vision: string;
   giveUrl: string;
+  /**
+   * Where the registration fee is paid online (#111). Absolute http(s), or
+   * empty — empty means the Apply page offers no online option at all.
+   */
+  registrationUrl: string;
   /** The announcement banner's switch — see `home/announcement-banner.ts`. */
   bannerEnabled: boolean;
   bannerMessage: string;
@@ -107,6 +112,7 @@ export function schoolDetailsFields(details: SchoolDetails): SchoolDetailsFields
     mission: details.mission,
     vision: details.vision,
     giveUrl: details.giveUrl,
+    registrationUrl: details.registrationUrl,
     bannerEnabled: details.bannerEnabled,
     bannerMessage: details.bannerMessage,
     // Back to the empty string a `<input type="date">` posts when it is blank.
@@ -125,6 +131,7 @@ export function parseSchoolDetails(form: FormData): ParsedSchoolDetails {
     mission: text(form, 'mission'),
     vision: text(form, 'vision'),
     giveUrl: text(form, 'giveUrl'),
+    registrationUrl: text(form, 'registrationUrl'),
     // A checkbox posts its value only when it is ticked, so "absent" is "off".
     bannerEnabled: form.get('bannerEnabled') !== null,
     bannerMessage: text(form, 'bannerMessage'),
@@ -167,6 +174,10 @@ export function parseSchoolDetails(form: FormData): ParsedSchoolDetails {
   if (values.giveUrl && !isWebAddress(values.giveUrl)) {
     errors.giveUrl = 'The Give link needs a full web address starting http:// or https://.';
   }
+  if (values.registrationUrl && !isWebAddress(values.registrationUrl)) {
+    errors.registrationUrl =
+      'The registration payment link needs a full web address starting http:// or https://.';
+  }
 
   return { values, errors };
 }
@@ -180,6 +191,7 @@ export const LABELS: Record<keyof SchoolDetailsFields, string> = {
   mission: 'Mission',
   vision: 'Vision',
   giveUrl: 'Give link',
+  registrationUrl: 'Registration payment link',
   bannerEnabled: 'Show the banner on the home page',
   bannerMessage: 'Banner message',
   bannerDate: 'Banner date',
@@ -192,7 +204,8 @@ export const LABELS: Record<keyof SchoolDetailsFields, string> = {
  * A list rather than "every key of LABELS", which is what it used to be: the
  * banner's four fields are legitimately empty while the banner is off, and a
  * blanket rule over the labels would forbid the state the switch exists to
- * express.
+ * express. The registration payment link is optional for the same kind of
+ * reason: empty is "no online option yet", not a mistake.
  */
 const ALWAYS_REQUIRED = [
   'address',

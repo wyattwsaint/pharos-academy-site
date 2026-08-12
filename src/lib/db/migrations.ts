@@ -660,6 +660,22 @@ export const MIGRATIONS: readonly Migration[] = [
       `alter table school_details add column if not exists banner_link text not null default ''`,
     ],
   },
+  {
+    /*
+     * Paying the registration fee online (#111).
+     *
+     * Empty rather than seeded with the church's Vanco org, which is what
+     * `give_url` already holds: giving and registration are two destinations
+     * inside one Vanco account, and guessing the second from the first is how
+     * a family's registration fee lands in the offering. The Apply page shows
+     * no online option until the office pastes the page in, which is the
+     * behaviour the ticket asks for and also the safe one.
+     */
+    id: '0017-registration-payment-url',
+    statements: [
+      `alter table school_details add column if not exists registration_url text not null default ''`,
+    ],
+  },
 ];
 
 /**

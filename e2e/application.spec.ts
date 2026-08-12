@@ -498,6 +498,27 @@ test.describe('the application page', () => {
     await expect(page.locator(FORBIDDEN_FIELDS)).toHaveCount(0);
   });
 
+  test('says which amounts are by check and to whom, and claims no more than that', async ({
+    page,
+  }) => {
+    // #111 AC 3 and 4. Whether the online link is there depends on a row the
+    // office edits, so what is asserted is the part that must hold either way:
+    // the page never tells a family that a check is the only way to pay, and
+    // it always says the tuition goes to the instructor rather than the
+    // school. When the link is set, it points off-site and is not empty.
+    await open(page);
+    const payment = page.locator('[data-section="apply-payment"]');
+
+    await expect(payment).not.toContainText('There is no way to pay online');
+    await expect(payment).toContainText('Pharos Academy');
+    await expect(payment).toContainText('instructor');
+
+    const online = payment.getByRole('link', { name: 'Pay the registration fee online' });
+    if ((await online.count()) > 0) {
+      await expect(online).toHaveAttribute('href', /^https?:\/\//);
+    }
+  });
+
   test('warns about the Algebra 1 and Latin collision before anything is sent', async ({
     page,
   }) => {
