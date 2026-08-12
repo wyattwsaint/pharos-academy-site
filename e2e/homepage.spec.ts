@@ -387,7 +387,11 @@ test.describe('the page', () => {
     await page.goto('/');
     // Rooted rather than bare: the header and footer are on the class pages
     // too now (#22), where `#inquiry` would be a link that does nothing.
-    await expect(page.locator('[data-site-header] a[href="/#inquiry"]')).toHaveCount(1);
+    //
+    // The header row itself, not the whole header: since #139 the header also
+    // carries the small-screen menu, whose panel repeats this call to action
+    // for a phone. The claim is unchanged — the row offers it exactly once.
+    await expect(page.locator('[data-site-header] > .wide > a[href="/#inquiry"]')).toHaveCount(1);
     await expect(page.locator('footer a[href="/#inquiry"]')).toHaveCount(1);
   });
 });

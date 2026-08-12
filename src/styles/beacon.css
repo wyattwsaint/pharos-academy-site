@@ -521,10 +521,167 @@ a.site-banner-message:hover {
   color: var(--color-cream);
 }
 
+/* ---------- the small-screen menu (#139) ---------- */
+
+/* Above the breakpoint the desktop nav is the navigation and this is not on the
+   page at all. Below it, they swap: `.site-nav` goes and the toggle arrives. */
+.site-menu {
+  display: none;
+}
+
+.site-menu-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border: 1px solid rgb(255 255 255 / 0.6);
+  border-radius: 2px;
+  background: none;
+  color: #fff;
+  font: 600 13.5px/1 var(--font-sans);
+  cursor: pointer;
+}
+
+/* Three bars in one element, so the glyph costs no extra markup and no request.
+   It is `aria-hidden`: the word beside it is the button's name. */
+.site-menu-bars,
+.site-menu-bars::before,
+.site-menu-bars::after {
+  display: block;
+  width: 17px;
+  height: 2px;
+  background: currentColor;
+}
+
+.site-menu-bars {
+  position: relative;
+}
+
+.site-menu-bars::before,
+.site-menu-bars::after {
+  content: '';
+  position: absolute;
+  left: 0;
+}
+
+.site-menu-bars::before {
+  top: -5px;
+}
+
+.site-menu-bars::after {
+  top: 5px;
+}
+
+/* The header's own type is navy while it floats over the hero's lightened sky,
+   for the reason `.site-nav` above is. The toggle follows it. */
+.site-header:not(.stuck) .site-menu-toggle {
+  border-color: rgb(23 54 92 / 0.55);
+  color: var(--color-navy);
+}
+
+/* A sheet under the header rather than a drawer off the side: the header is
+   `position: fixed` and the panel hangs from its bottom edge, so it needs no
+   knowledge of how tall the header is on this page or at this scroll position.
+   The announcement bar is inside the header too, so the panel clears it. */
+.site-menu-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-navy-deep);
+  border-top: 1px solid rgb(255 255 255 / 0.12);
+  box-shadow: 0 18px 30px rgb(6 16 30 / 0.3);
+  /* A phone held sideways is 390px tall and still under the breakpoint, and
+     the page behind is locked while this is open — so a panel that ran past
+     the fold would put "Ask us about Pharos" somewhere nothing could reach.
+     It scrolls inside itself instead. `100%` is the header's own height, which
+     is what the panel hangs from and what it therefore has to give back. */
+  max-height: calc(100vh - 100%);
+  max-height: calc(100dvh - 100%);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.site-menu-nav {
+  display: flex;
+  flex-direction: column;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 10px 26px 22px;
+}
+
+.site-menu-nav a {
+  padding: 14px 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.12);
+  color: #fff;
+  text-decoration: none;
+  font: 400 17px/1.2 var(--font-sans);
+}
+
+/* The inquiry, set apart from the four destinations rather than fifth among
+   them — the same distinction the header row makes with a button. */
+.site-menu-nav .site-menu-cta {
+  margin-top: 18px;
+  border: 1px solid rgb(255 255 255 / 0.6);
+  border-radius: 2px;
+  padding: 14px 18px;
+  text-align: center;
+  font: 600 14.5px/1 var(--font-sans);
+}
+
 @media (max-width: 860px) {
   .site-nav {
     display: none;
   }
+
+  .site-menu {
+    display: block;
+  }
+
+  /*
+     A wordmark, a call to action and a toggle across 390px is tight, and the
+     one thing that must not happen is the button breaking mid-phrase — "Ask us
+     about / Pharos" reads as two controls. So the button is held on one line
+     and the *wordmark* is the piece allowed to stack, which is what a lockup
+     does gracefully anyway.
+
+     The call to action stays on the row rather than moving into the panel,
+     even though the panel repeats it: it is the header's one job on a page a
+     parent has scrolled to the bottom of, and `inquiry.spec.ts` has asserted
+     it is on screen at 390px since long before this menu existed.
+  */
+  .site-header .wide {
+    gap: 10px;
+  }
+
+  .site-header .wide > .btn.on-dark {
+    padding: 9px 11px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+
+  .site-brand {
+    gap: 8px;
+  }
+
+  .site-brand b {
+    font-size: 13.5px;
+    letter-spacing: 0.04em;
+  }
+
+  .site-menu-toggle {
+    gap: 7px;
+    padding: 9px 10px;
+    font-size: 12.5px;
+  }
+}
+
+/* Set on <html> while the panel is open. `overflow: hidden` on both, because
+   iOS Safari scrolls the body when only the root is stopped — and a menu whose
+   ground slides away under a thumb is worse than no menu. */
+html.nav-menu-open,
+html.nav-menu-open body {
+  overflow: hidden;
 }
 
 /* ---------- the hero ---------- */

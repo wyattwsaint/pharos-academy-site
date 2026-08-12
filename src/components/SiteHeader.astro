@@ -39,6 +39,46 @@ const { overHero = false, banner = null } = Astro.props;
       {NAV_ITEMS.map((item) => <a href={item.href}>{item.label}</a>)}
     </nav>
     <a class="btn on-dark" href={INQUIRY_HREF}>Ask us about Pharos</a>
+    {
+      /*
+        The same destinations again, for the phone (#139).
+
+        Rendered rather than cloned from `.site-nav` by script: a menu built at
+        runtime is a menu a visitor with no JavaScript does not have, and this
+        one is the only navigation most of the site's visitors are offered. The
+        panel ships with `hidden` on it, so until the element upgrades it is
+        inert rather than a second nav stacked under the first.
+
+        The application call to action is deliberately not in here. It belongs
+        to Admissions, one tap further in, and a menu that asks a parent to
+        apply before they have read anything is the wrong first question.
+      */
+    }
+    <nav-menu class="site-menu">
+      <button
+        type="button"
+        class="site-menu-toggle"
+        aria-expanded="false"
+        aria-controls="site-menu-panel"
+        data-nav-menu-toggle
+      >
+        <span class="site-menu-bars" aria-hidden="true"></span>
+        Menu
+      </button>
+      <div class="site-menu-panel" id="site-menu-panel" hidden data-nav-menu-panel>
+        <nav class="site-menu-nav" aria-label="Site">
+          {NAV_ITEMS.map((item) => <a href={item.href}>{item.label}</a>)}
+          <a class="site-menu-cta" href={INQUIRY_HREF}>Ask us about Pharos</a>
+        </nav>
+      </div>
+    </nav-menu>
   </div>
   {banner && <AnnouncementBar banner={banner} />}
 </header>
+
+<script>
+  // Bundled and deferred, unlike the announcement bar's inline script: the menu
+  // ships closed and stays closed until it is tapped, so running after first
+  // paint costs a visitor nothing.
+  import './nav-menu.js';
+</script>
