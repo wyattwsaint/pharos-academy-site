@@ -88,20 +88,26 @@ export function applicationNotification(
   lines.push('', 'WHO IS APPLYING, AND FOR WHAT', ...chosen(cost, settings));
 
   // The envelope line is the one the office acts on, so it names the amount an
-  // envelope will actually contain (#149). When the registration was paid
-  // online it arrives through Vanco unattached to this application, and the
-  // office matches the two up by hand — which it cannot do if this email calls
-  // the whole of `dueNow` a check.
+  // envelope will actually contain (#149). A registration paid online arrives
+  // through Vanco unattached to this application and the office matches the two
+  // up by hand — which it cannot do if this email calls the whole of `dueNow` a
+  // check. "Offered", not "paid": Vanco tells the site nothing, and a line
+  // claiming a payment nobody checked is worse than no line.
   const online = options.payRegistrationAt !== '';
+  const posting = online ? cost.total.deposits : cost.total.dueNow;
   lines.push(
     '',
     'WHAT THEY OWE',
     `  Registration:           ${formatMoney(cost.total.registration)}`,
     `  Deposits:               ${formatMoney(cost.total.deposits)}`,
-    online
-      ? `  Check they are posting: ${formatMoney(cost.total.deposits)} — the deposits only, the ` +
-          'registration was offered online'
-      : `  Check they are posting: ${formatMoney(cost.total.dueNow)}`,
+    // No envelope to wait for is a fact the office acts on too, and printing
+    // "$0.00" beside "check they are posting" is a line that reads as one.
+    !online
+      ? `  Check they are posting: ${formatMoney(posting)}`
+      : posting === 0
+        ? '  Check they are posting: nothing — the registration was offered online'
+        : `  Check they are posting: ${formatMoney(posting)} — the deposits only, the registration ` +
+          'was offered online',
     `  Tuition to instructors: ${formatMoney(cost.total.dueToInstructors)}`,
     '',
     'THE STATEMENT OF FAITH',
@@ -227,7 +233,19 @@ export function applicationConfirmation(
   // A family who has chosen no classes yet owes no deposits, and "post a check
   // for $0.00" is an instruction to mail an empty envelope — so the address is
   // not printed at all rather than printed under a payment they do not owe.
-  const depositsDue = cost.total.deposits > 0;
+  // Reachable only where the registration is online: a check covers both, and
+  // there is always a registration fee to post one for.
+  const posting = online ? cost.total.deposits : cost.total.dueNow;
+
+  /** What to post, and where — the one instruction, written once. */
+  const check = (asking: string): string[] => [
+    '',
+    asking,
+    '',
+    options.postTo,
+    '',
+    'A place is held for each class as soon as your check reaches us.',
+  ];
 
   if (online) {
     lines.push(
@@ -238,15 +256,11 @@ export function applicationConfirmation(
       `  ${options.payRegistrationAt}`,
     );
 
-    if (depositsDue) {
+    if (posting > 0) {
       lines.push(
-        '',
-        `The deposits — ${formatMoney(cost.total.deposits)} — are paid by check, made out to ` +
-          `${SCHOOL_NAME}, to:`,
-        '',
-        options.postTo,
-        '',
-        'A place is held for each class as soon as your check reaches us.',
+        ...check(
+          `The deposits — ${formatMoney(posting)} — are paid by check, made out to ${SCHOOL_NAME}, to:`,
+        ),
       );
     }
 
@@ -257,13 +271,10 @@ export function applicationConfirmation(
     );
   } else {
     lines.push(
-      '',
-      `Please post a check for ${formatMoney(cost.total.dueNow)} — ${formatMoney(cost.total.registration)} ` +
-        `in registration and ${formatMoney(cost.total.deposits)} in deposits — made out to ${SCHOOL_NAME}, to:`,
-      '',
-      options.postTo,
-      '',
-      'A place is held for each class as soon as your check reaches us.',
+      ...check(
+        `Please post a check for ${formatMoney(posting)} — ${formatMoney(cost.total.registration)} ` +
+          `in registration and ${formatMoney(cost.total.deposits)} in deposits — made out to ${SCHOOL_NAME}, to:`,
+      ),
     );
   }
 

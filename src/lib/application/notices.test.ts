@@ -263,6 +263,15 @@ describe('what the family is told', () => {
     expect(online.text).toContain('Check they are posting: $100');
     expect(online.text).toContain('registration was offered online');
     expect(online.text).not.toContain('Check they are posting: $125');
+
+    // And an office told to expect an envelope containing nothing is told the
+    // same wrong thing the family is spared.
+    const noDeposits = applicationNotification(
+      submission({ values: fields({ children: [{ name: 'Ada', age: '13', offeringKeys: [] }] }) }),
+      { to: 'jill@example.com', from: 'site@example.com', payRegistrationAt: PAY_AT },
+    );
+    expect(noDeposits.text).toContain('Check they are posting: nothing');
+    expect(noDeposits.text).not.toMatch(/Check they are posting: \$0/);
   });
 
   it('tells the family when the submission was refused, rather than letting it age out (AC 4)', async () => {
