@@ -1418,37 +1418,53 @@ html.nav-menu-open body {
   }
 }
 
+/* H O P E is one word, and a word does not wrap. This used to go 2-up here,
+   which stacked it into two pairs — "HO" over "PE" — and the acrostic stopped
+   reading as anything (#140). The row stays four columns at every width and the
+   TYPE gives way instead: the letter and its word both scale with the viewport
+   so a ~67px cell at 320px still holds "PARENTS" on one line.
+
+   What moves is the panel. A card inside a 67px cell is unreadable, so below
+   620px it floats again and spans the whole row — by giving up the CELL as its
+   containing block and taking the ROW instead, which is the only anchor that
+   makes all four cards land on the same two edges. Percentages off the cell do
+   not: an inner cell's padding box is a border narrower than an outer one's, so
+   the same `width: 400%` measures four different rows. */
 @media (max-width: 620px) {
   .hope {
-    grid-template-columns: repeat(2, 1fr);
+    position: relative;
   }
 
-  .hope-cell:nth-child(3) {
-    border-left: 0;
+  .hope-cell {
+    position: static;
   }
 
-  .hope-cell:nth-child(n + 3) {
-    border-top: 1px solid rgb(224 172 78 / 0.34);
+  .hope-btn {
+    padding: clamp(18px, 4vw, 30px) clamp(2px, 1.5vw, 18px) 8px;
   }
 
-  /* 2-up, a cell is ~150px and the sentence wrapped to five lines of three
-     words. The card floats again here but spans BOTH columns — anchored to its
-     own side so it never leaves the row — and covers the pair below it. */
-  .hope-card {
+  .hope-btn b {
+    font-size: clamp(30px, 10vw, 48px);
+  }
+
+  .hope-btn span {
+    margin-top: 10px;
+    font-size: clamp(9.5px, 2.6vw, 13px);
+    letter-spacing: 0.08em;
+  }
+
+  .hope-card,
+  .hope-cell:first-child .hope-card,
+  .hope-cell:last-child .hope-card {
     position: absolute;
     z-index: 8;
     top: calc(100% - 6px);
     bottom: auto;
     left: 0;
-    right: auto;
-    transform: none;
-    width: calc(200% + 1px);
-    margin: 0;
-  }
-
-  .hope-cell:nth-child(even) .hope-card {
-    left: auto;
     right: 0;
+    transform: none;
+    width: auto;
+    margin: 0;
   }
 }
 
