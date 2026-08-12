@@ -107,7 +107,6 @@ const description =
             <li>
               <b>{cost.amount}</b>
               <span class="what">{cost.what}</span>
-              <span class="detail">{cost.detail}</span>
             </li>
           ))
         }
@@ -177,10 +176,14 @@ const description =
 </BaseLayout>
 
 <style>
+  /* Each charge lost its sentence (#144), so an entry is now one line on a
+     desktop and two stacked ones on a phone. The gap came down with it: it
+     separates entries, and it has to stay clearly wider than the zero row gap
+     inside a stacked entry or the two read as one list of five things. */
   .costs {
     display: flex;
     flex-direction: column;
-    gap: 1.75rem;
+    gap: 1.25rem;
     list-style: none;
     padding: 0;
   }
@@ -203,18 +206,10 @@ const description =
     font-weight: 600;
   }
 
-  .costs .detail {
-    grid-column: 2;
-  }
-
   /* The amount stacks above its label on a phone rather than squeezing it. */
   @media (max-width: 32rem) {
     .costs > li {
       grid-template-columns: 1fr;
-    }
-
-    .costs .detail {
-      grid-column: 1;
     }
   }
 
