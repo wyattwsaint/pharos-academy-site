@@ -1,6 +1,6 @@
 import type { SchoolDetails } from './db/schema.js';
 import { absoluteUrl } from './routes.js';
-import { SCHOOL_NAME, SITE_URL } from './site.js';
+import { SCHOOL_DESCRIPTION, SCHOOL_NAME, SITE_URL } from './site.js';
 
 /**
  * School / LocalBusiness structured data (#30 AC 6).
@@ -81,6 +81,11 @@ export function schoolJsonLd(details: SchoolDetails, site: string | URL = SITE_U
     '@id': `${new URL(site).origin}/#school`,
     name: SCHOOL_NAME,
     description: details.mission,
+    // What kind of school this is, as against what it is *for* — the mission is
+    // the school's own editable copy and says why it exists, not which category
+    // it belongs to. One constant (#137), so the markup a search engine believes
+    // says the same thing the hero does.
+    disambiguatingDescription: SCHOOL_DESCRIPTION,
     url: absoluteUrl(site, '/'),
     telephone: details.phone,
     email: details.email,
@@ -88,10 +93,17 @@ export function schoolJsonLd(details: SchoolDetails, site: string | URL = SITE_U
     areaServed: ['Cumberland County, Pennsylvania', 'Dauphin County, Pennsylvania', 'Perry County, Pennsylvania'].map(
       (name) => ({ '@type': 'AdministrativeArea', name }),
     ),
-    // What the school is, in the words a category search uses. Not a keyword
-    // list — these are the three facts that distinguish it from every other
-    // school in the county, and each of them is true.
-    knowsAbout: ['Classical education', 'Christian education', 'Hybrid homeschool programs'],
+    // What the school knows about, in the words a category search uses. Not a
+    // keyword list — these are the three facts that distinguish it from every
+    // other school in the county, and each of them is true. The third names the
+    // *families* rather than the school (#137): Pharos serves homeschooling
+    // families and is not itself a homeschool, and the markup must not be the
+    // one place that still says otherwise.
+    knowsAbout: [
+      'Classical education',
+      'Christian education',
+      'Hybrid programs for homeschooling families',
+    ],
     // The pages that say more, so the entity is anchored to real content rather
     // than to a name alone.
     subjectOf: ['/about', '/about/beliefs', '/admissions'].map((path) => ({

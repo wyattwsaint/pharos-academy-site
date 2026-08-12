@@ -12,6 +12,7 @@ import {
 import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import { getDb } from '../../lib/db/client.js';
 import { INQUIRY_HREF } from '../../lib/home/sections.js';
+import { SCHOOL_DESCRIPTION, SCHOOL_DESCRIPTION_INLINE } from '../../lib/site.js';
 
 /**
  * About — the page the old site never had (#30).
@@ -35,15 +36,13 @@ import { INQUIRY_HREF } from '../../lib/home/sections.js';
  * about it (method), what we believe (values, then the fuller document), where
  * the name comes from, and where the building is.
  *
- * "A Christian classical hybrid microschool", in that order, is the school's
- * own (#106) — Christian first, and it is how every other page here already
- * says it. The word order is the school's claim about itself, so it is not a
- * style choice this page gets to make either way.
+ * The description itself is `SCHOOL_DESCRIPTION` (#137) — Christian first, in
+ * the school's own order (#106), and read from one constant so this page and the
+ * hero cannot say different things about what the school is.
  */
 const details = await getSchoolDetails(await getDb());
 
-const description =
-  'What Pharos Academy is for, how it teaches, what it believes, where its name comes from, and where it meets — a Christian classical hybrid microschool in Enola, Pennsylvania.';
+const description = `What Pharos Academy is for, how it teaches, what it believes, where its name comes from, and where it meets — ${SCHOOL_DESCRIPTION_INLINE} in Enola, Pennsylvania.`;
 ---
 
 <BaseLayout details={details} title="About" description={description}>
@@ -52,9 +51,8 @@ const description =
       <p class="label">About</p>
       <h1 class="mt-4">Why Pharos Academy</h1>
       <p class="sub mt-5">
-        A Christian classical hybrid microschool: families choose the classes they want taught in
-        community, and teach the rest at home. This is what we are for, how we go about it, and
-        what we hold to.
+        {SCHOOL_DESCRIPTION}: families choose the classes they want taught in community, and teach
+        the rest at home. This is what we are for, how we go about it, and what we hold to.
       </p>
     </div>
   </section>

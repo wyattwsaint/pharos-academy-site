@@ -2,7 +2,7 @@
 
 Replacement for the current Wix site at <https://www.pharosacademy.net/>.
 
-Pharos Academy is a Christian classical hybrid microschool in Enola, PA, operating on the
+Pharos Academy is a Christian, classical hybrid microschool in Enola, PA, operating on the
 H.O.P.E. model (Helping Our Parents Educate).
 
 **Status:** scaffolded. One placeholder page, served through ISR, with the test harness

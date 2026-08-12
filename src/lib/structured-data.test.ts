@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { SchoolDetails } from './db/schema.js';
 import { publicPaths } from './routes.js';
+import { SCHOOL_DESCRIPTION } from './site.js';
 import { parsePostalAddress, renderJsonLd, schoolJsonLd } from './structured-data.js';
 
 /**
@@ -85,6 +86,12 @@ describe('the school’s structured data', () => {
   it('names the counties it serves and what kind of school it is', () => {
     expect(JSON.stringify(node.areaServed)).toContain('Cumberland County');
     expect(node.knowsAbout).toContain('Classical education');
+  });
+
+  // #137 — the markup said microschool while the hero said homeschool. Both are
+  // read from one constant now, and this is the half a search engine believes.
+  it('says what kind of school it is in the site’s one canonical wording', () => {
+    expect(node.disambiguatingDescription).toBe(SCHOOL_DESCRIPTION);
   });
 
   it('omits the address entirely rather than half of one', () => {

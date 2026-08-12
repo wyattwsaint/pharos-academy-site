@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { renderLlmsTxt } from './llms.js';
 import { PUBLIC_ROUTES, absoluteUrl, publicPaths } from './routes.js';
+import { SCHOOL_DESCRIPTION } from './site.js';
 
 const SITE = 'https://www.pharosacademy.net';
 
@@ -22,6 +23,10 @@ describe('llms.txt', () => {
     expect(body).toContain('monday');
     expect(body).toContain('ages 4 to 18');
     expect(body).toContain('enola');
+  });
+
+  it('describes the school the one way the site describes it', () => {
+    expect(renderLlmsTxt(SITE)).toContain(SCHOOL_DESCRIPTION);
   });
 
   it('still lists a route that has no summary', () => {
