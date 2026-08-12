@@ -274,6 +274,13 @@ never an off-site face nobody here can vouch for.
 Not: "staff member" (excludes nobody but sounds like it excludes instructors),
 "teacher", "instructor" as an entity.
 
+The **printed page is the school's voice, not this glossary's** — since #143 it
+reads "Our Dedicated Staff" and "Instructors", which are the words the school
+asked for and the words a parent uses. The rule above still binds every issue
+title, test name, type and identifier: a `person` is what the code has, and
+being an instructor is still a fact about the catalogue rather than a status on
+the row.
+
 ### announcement
 
 A headline, a short body, an optional link and an optional PDF, posted on a

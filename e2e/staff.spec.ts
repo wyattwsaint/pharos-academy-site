@@ -37,6 +37,43 @@ const PHOTOGRAPHED = PEOPLE.filter((person) => person.photo !== null).map((perso
 }));
 
 test.describe('the staff page', () => {
+  /**
+   * #143: plainer headings, and nothing above or below them clearing its
+   * throat. The absences are asserted alongside the headings because the
+   * ticket is about what the page stopped saying as much as what it says.
+   */
+  test('says who these people are once, without a label or a preamble', async ({ page }) => {
+    await page.goto(STAFF_PATH);
+
+    const header = page.locator('[data-section="staff-header"]');
+    await expect(header.getByRole('heading', { level: 1 })).toHaveText('Our Dedicated Staff');
+    await expect(header.locator('.label')).toHaveCount(0);
+    await expect(header.locator('.sub')).toHaveCount(0);
+
+    const instructors = page.locator('[data-section="staff-instructors"]');
+    await expect(instructors.getByRole('heading', { level: 2 })).toHaveText('Instructors');
+    await expect(instructors.locator('.sub')).toHaveCount(0);
+
+    // Every section still has its own heading, and no level is skipped
+    // between them: h1, then an h2 per section, then a name per person.
+    const levels = await page.locator('main :is(h1, h2, h3, h4, h5, h6)').evaluateAll((nodes) =>
+      nodes.map((node) => Number(node.tagName[1])),
+    );
+    expect(levels[0]).toBe(1);
+    for (const [index, level] of levels.entries()) {
+      if (index > 0) expect(level).toBeLessThanOrEqual(levels[index - 1] + 1);
+    }
+
+    // And the description still says who is on the page without echoing a
+    // heading that is gone — asserted positively, because "does not contain
+    // the old string" passes for an empty description too.
+    const description = await page
+      .locator('meta[name="description"]')
+      .getAttribute('content');
+    expect(description).toContain('the instructors who teach each class');
+    expect(description).not.toContain('The people of Pharos Academy');
+  });
+
   test('renders a person with no bio and no photograph, and invents neither', async ({ page }) => {
     await page.goto(STAFF_PATH);
 
