@@ -1285,6 +1285,19 @@ html.nav-menu-open body {
   }
 }
 
+/* The web designer's credit (#150). Its own strip rather than a `.band`, whose
+   clamp(56px, 9vw, 108px) would give one small line the airspace of a section,
+   and quieter than the staff it sits under: the page is about the school's
+   people, and this is a footnote to it. */
+.credit-band {
+  padding: 26px 0 40px;
+}
+
+.staff-credit {
+  font-size: 13px;
+  color: var(--color-ink-2);
+}
+
 /* ---------- what it costs ---------- */
 
 /* The numerals stay sans and tabular, each under a gold mark. */

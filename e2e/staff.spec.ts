@@ -4,6 +4,7 @@ import { CATALOGUE } from '../src/lib/courses/catalogue.js';
 import { classPath } from '../src/lib/courses/views.js';
 import { PEOPLE } from '../src/lib/people/person.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
+import { SITE_CREDIT } from '../src/lib/site.js';
 
 /**
  * #26's acceptance criteria, in a browser.
@@ -54,8 +55,9 @@ test.describe('the staff page', () => {
     await expect(instructors.getByRole('heading', { level: 2 })).toHaveText('Instructors');
     await expect(instructors.locator('.sub')).toHaveCount(0);
 
-    // Every section still has its own heading, and no level is skipped
-    // between them: h1, then an h2 per section, then a name per person.
+    // No level is skipped between the headings there are: h1, then an h2 per
+    // section, then a name per person. The credit line (#150) is a section
+    // without a heading on purpose, so this counts levels rather than sections.
     const levels = await page.locator('main :is(h1, h2, h3, h4, h5, h6)').evaluateAll((nodes) =>
       nodes.map((node) => Number(node.tagName[1])),
     );
@@ -163,6 +165,30 @@ test.describe('the staff page', () => {
     // And the role he is listed under is his leadership role in both places:
     // being an instructor is a fact about the catalogue, not a second title.
     await expect(teaching.locator('.role')).toHaveText(seeded.role);
+  });
+
+  test('credits the web designer, without making them a tenth instructor', async ({ page }) => {
+    await page.goto(STAFF_PATH);
+
+    const credit = page.locator('[data-section="staff-credit"]');
+    await expect(credit).toHaveCount(1);
+    await expect(credit.locator('.staff-credit')).toHaveText(SITE_CREDIT);
+
+    // #150: no portrait, and outside both lists — the credit is a footnote to
+    // the school's people, not one of them. Asserting where it *isn't* is the
+    // point: a line reading "Website by …" under the Instructors heading would
+    // pass a bare "the text is on the page" check.
+    //
+    // Scoped by the *text* rather than by `.staff-credit`: that class is only
+    // ever emitted by the block above, so a class-scoped absence check passes
+    // wherever the credit renders and proves nothing.
+    await expect(credit.locator('img')).toHaveCount(0);
+    await expect(
+      page.locator('[data-section="staff-instructors"]').getByText(SITE_CREDIT),
+    ).toHaveCount(0);
+    await expect(
+      page.locator('[data-section="staff-leadership"]').getByText(SITE_CREDIT),
+    ).toHaveCount(0);
   });
 
   test('links each instructor to every class they teach', async ({ page }) => {
