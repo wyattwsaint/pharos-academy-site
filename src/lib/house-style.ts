@@ -1,11 +1,12 @@
 /**
  * House style: the words a family reads are American (#110).
  *
- * The rule agreed for the British-to-American conversion is **prose is
- * American, identifiers are not**. A page says "check", "enrollment" and
- * "program"; the database keeps `enrolment_units`, `payment_mode = 'cheque'`
- * and the types named after them, because renaming a schema for a spelling has
- * migration cost and no user-visible payoff.
+ * The rule the conversion settled on, and the one CONTEXT.md now states: **prose
+ * is American; `enrolment` and `cheque` survive only as column names, enum
+ * values and type names.** A page says "check", "enrollment" and "program"; the
+ * database keeps `enrolment_units`, `payment_mode = 'cheque'` and the types
+ * named after them, because renaming a schema for a spelling has migration cost
+ * and no user-visible payoff.
  *
  * That split is the whole difficulty, and it is why this module exists rather
  * than the test being a `grep`. A repo-wide search for `enrolment` finds a
