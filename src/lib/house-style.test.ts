@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { britishSpellings, prose, RULES } from './house-style.js';
+import { britishSpellings, NOT_PROSE, prose, PROSE_ROOTS, RULES } from './house-style.js';
 
 /**
  * The house-style scanner (#110): the words a family reads are American.
@@ -27,26 +27,14 @@ import { britishSpellings, prose, RULES } from './house-style.js';
 const ROOT = new URL('../../', import.meta.url);
 
 /**
- * What the site says. Everything that renders to a browser, an email or an
- * HTTP response.
+ * What the site says, and what inside it is still not prose.
  *
- * Deliberately not scanned, each for its own reason:
- *
- * - **`docs/`, `CONTEXT.md`, ADRs and code comments** — addressed to
- *   developers, not families. Comments are dropped inside every scanned file
- *   too, which is why this file may discuss a "colour" without failing itself.
- * - **`e2e/` and `*.test.ts`** — they quote the prose rather than publish it. A
- *   spec asserting today's copy follows its page in the same commit, and
- *   flagging both would double every batch's diff for no reader's benefit.
- * - **`scripts/`** — a terminal the office never opens.
- * - **`prototypes/`** — throwaway by definition, and already outside vitest.
- * - **`public/`, `assets/` and `node_modules/`** — static, binary or vendored;
- *   nothing here is ours to reword.
+ * Both live in `house-style.ts` beside the reading itself, because the
+ * punctuation audit (#148) sweeps the same files from a plain node script and
+ * two copies of this list would let the two scans cover different sites. The
+ * comment there says what is left out and why.
  */
-const SCANNED = ['src'];
-
-/** Files inside `SCANNED` that are still not prose. */
-const NOT_PROSE = /\.test\.ts$|\.test-helper\.ts$|\.d\.ts$/;
+const SCANNED = PROSE_ROOTS;
 
 /** A word that stays British, and the reason it is allowed to. */
 interface Exception {

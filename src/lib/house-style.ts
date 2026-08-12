@@ -1,6 +1,10 @@
 /**
  * House style: the words a family reads are American (#110).
  *
+ * Spelling only. The marks, the spacing and the capitals are `punctuation.ts`,
+ * which reads prose through this module and measures it against
+ * `docs/house-style.md`.
+ *
  * The rule the conversion settled on, and the one CONTEXT.md now states: **prose
  * is American; `enrolment` and `cheque` survive only as column names, enum
  * values and type names.** A page says "check", "enrollment" and "program"; the
@@ -29,6 +33,28 @@
  * source, so a match's offset is still the source's offset and a failure can
  * name the line the reader would find the word on.
  */
+
+/**
+ * What the site says: everything that renders to a browser, an email or an
+ * HTTP response.
+ *
+ * Here rather than in the test beside this file because it is not the test's
+ * policy — it is the reading, and `scripts/punctuation-audit.mjs` (#148) has to
+ * sweep exactly the same files or the two scans quietly cover different sites.
+ *
+ * Deliberately outside it, each for its own reason:
+ *
+ * - **`docs/`, `CONTEXT.md`, ADRs and code comments** — addressed to
+ *   developers, not families.
+ * - **`e2e/` and `*.test.ts`** — they quote the prose rather than publish it.
+ * - **`scripts/`** — a terminal the office never opens.
+ * - **`prototypes/`** — throwaway by definition.
+ * - **`public/`, `assets/` and `node_modules/`** — static, binary or vendored.
+ */
+export const PROSE_ROOTS: readonly string[] = ['src'];
+
+/** Files inside {@link PROSE_ROOTS} that are still not prose. */
+export const NOT_PROSE = /\.test\.ts$|\.test-helper\.ts$|\.d\.ts$/;
 
 /** A British spelling and the American form the house style asks for. */
 interface Rule {
@@ -150,7 +176,8 @@ export function britishSpellings(source: string, kind: 'astro' | 'ts'): Finding[
   return found.sort((a, b) => a.line - b.line || a.word.localeCompare(b.word));
 }
 
-function lineOf(source: string, offset: number): number {
+/** Which line of `source` an offset falls on, 1-based. */
+export function lineOf(source: string, offset: number): number {
   let line = 1;
   for (let i = 0; i < offset; i += 1) if (source[i] === '\n') line += 1;
   return line;
@@ -164,16 +191,28 @@ function lineOf(source: string, offset: number): number {
  */
 export function prose(source: string, kind: 'astro' | 'ts'): string {
   const out: string[] = Array.from(source, (char) => (char === '\n' || char === '\r' ? char : ' '));
-  const visible =
-    kind === 'astro' ? astroRanges(source) : tsProseRanges(source, 0, source.length);
-  for (const [start, end] of visible) {
+  for (const [start, end] of visibleRanges(source, kind)) {
     for (let i = start; i < end; i += 1) out[i] = source[i]!;
   }
   return out.join('');
 }
 
 /** Half-open `[start, end)` slices of the source that a reader can see. */
-type Range = readonly [number, number];
+export type Range = readonly [number, number];
+
+/**
+ * The slices of `source` a reader can see, in source order.
+ *
+ * {@link prose} is this list flattened back into a string, and is the right
+ * call when a rule is about words. A rule about *spacing* needs the slices
+ * themselves: two spaces in the blanked string can be one space of prose either
+ * side of a `{…}` expression that was never there, and the punctuation scan
+ * (#148) must not read that as a double space.
+ */
+export function visibleRanges(source: string, kind: 'astro' | 'ts'): Range[] {
+  const ranges = kind === 'astro' ? astroRanges(source) : tsProseRanges(source, 0, source.length);
+  return ranges.filter(([start, end]) => end > start).sort((a, b) => a[0] - b[0]);
+}
 
 /**
  * An Astro file: an optional TypeScript frontmatter, then a template.

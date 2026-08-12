@@ -79,6 +79,27 @@ names** — `enrolment_units`, `payment_mode = 'cheque'`, `EnrolmentUnit` —
 because renaming a schema for a spelling has migration cost and no user-visible
 payoff. This entry is named for the type, not for the sentence.
 
+Spelling is the only part of the house style that lives here. The marks, the
+spacing and the capitals are in [`docs/house-style.md`](docs/house-style.md),
+decided by ADR-0011.
+
+### verbatim copy
+
+Copy the site **transcribes** rather than writes: the Statement of Faith
+(`beliefs.ts`), the About page (`story.ts`), the course catalogue
+(`catalogue.ts`) and the `courses` rows seeded from it. Each has a test beside
+it that fails on any drift from the capture in `docs/mirror/` — `story.ts` says
+"including a tidied dash or a corrected space".
+
+It is the school's document, not the site's copy, and **no house style reaches
+it**. A tight em dash there is a real finding and still not ours to correct: the
+school changes its document, and the transcription follows. The punctuation
+audit lists such findings under *whose copy is it* rather than acting on them
+(ADR-0011).
+
+Not: "seed data" — the catalogue is seeded *and* verbatim, and the money
+settings are seeded and not.
+
 ### offering
 
 A **course** paired with an **enrolment unit** — the concrete thing a family
