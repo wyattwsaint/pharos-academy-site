@@ -691,6 +691,21 @@ export const MIGRATIONS: readonly Migration[] = [
      * the site say. Deleted rather than reworded, because the replacement is an
      * event on the calendar and not a second announcement.
      *
+     * The delete is unconditional, where every other statement in this file is
+     * guarded so an admin edit survives. That is deliberate and it is the
+     * uncomfortable half: if Jill has since reworded the row, this discards her
+     * wording. A guard on the stamp would leave an edited notice for an event
+     * that is not happening standing on the news page, which is the failure the
+     * ticket exists to fix — and the wording is not lost work, because what she
+     * would have been editing is a notice the school withdrew.
+     *
+     * **A second event is a second migration, not a second entry in
+     * `SEEDED_EVENTS`.** This statement is generated from that array, and the id
+     * below is already recorded against Neon: appending to the array would hand
+     * a fresh database an event the live one never receives, and the two would
+     * disagree for ever. The same hazard 0014 and 0015 describe for the
+     * announcements, said here before anybody reaches for the shorter route.
+     *
      * Both statements survive a re-run: the insert conflicts on its slug, and
      * the delete finds nothing the second time. A fresh database never had the
      * Texas Roadhouse row at all — `SEEDED_ANNOUNCEMENTS` no longer carries it —

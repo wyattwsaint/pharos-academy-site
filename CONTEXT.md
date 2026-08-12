@@ -286,6 +286,15 @@ front page, which is why a July PDF is still the headline in October. There is
 no such position here, no column and no flag: the board update ages out exactly
 as a bake sale does, and nothing has to be retired next time.
 
+**An announcement that has aged out is history; one that has become false is
+deleted.** Those are two different things and only the second is ever removed.
+A stale notice is a true thing about July, and the news page carries it; a
+notice for an event the school withdrew — the Texas Roadhouse night #146
+replaced — says something untrue about next week, and no staleness rule catches
+it, because its date is the day it was posted rather than the day of the event.
+That deletion is a migration, not a button: it is rare enough to be argued in
+writing each time.
+
 **Current** means posted within the last six weeks. It is a property of an
 announcement, not of a page: the home page carried the current ones until #109
 removed that section — the school asked for a quieter front page and urgent
@@ -328,6 +337,32 @@ Not: "popup", "alert", "the announcements section" (which #109 removed from the
 home page — the banner is what replaced it in that region), and not the
 [registration call to action](#registration-call-to-action), whose words the
 example above is one keystroke away from.
+
+### one-off
+
+A single dated thing on the school's calendar that belongs to no day track — an
+open house, a picture day, a dine-to-donate fundraiser. Held on one date, with a
+start time, a place and a note that are each **optional and whose absence is a
+real state**: "Field day, May 12" is a complete one-off, not an unfinished one.
+It is stored as a row an admin edits, never typed into a page.
+
+It is deliberately not a [meeting date](#day-track): a meeting is one of 112
+computed from eight numbers and belongs to a track; a one-off happens once and
+belongs to nothing. Forcing the two into one model gives every meeting a place
+it never has and every one-off a week number that means nothing.
+
+**The page shows what is still ahead; the feed shows everything.** A one-off is
+kept through the whole of its own day, in the school's own timezone, and drops
+the morning after (#146) — a fundraiser is at its most useful on the morning it
+happens. The subscribed calendar is deliberately unfiltered: it is the record of
+the year, and the phone reading it decides what to draw.
+
+It is also the one record on this site that is **deleted rather than kept**: a
+cancelled concert left on a subscribed feed is a family driving to a school that
+is dark.
+
+Not: "event" on its own (which also names an application's lifecycle events),
+"closure" (a day the school is shut, which belongs to the year), "announcement".
 
 ### registration call to action
 

@@ -56,25 +56,25 @@ test.describe('the calendar page', () => {
   /*
    * The fundraiser, to a visitor who is not signed in (#146 ACs 1, 3 and 5).
    *
-   * Asserted against `upcomingEvents` rather than against the Chick-fil-A row by
-   * name, because the seed is dated and this suite is not: on 20 August the
-   * event has been and gone, and the page is *right* to have dropped it. What is
-   * true on both sides of that date is that the page shows what is ahead and
-   * says nothing is scheduled only when nothing is.
+   * Skipped rather than quietly satisfied once the seeded events have all been
+   * and gone: the page is *right* to have dropped them, and a loop over an empty
+   * list is a test that passes for ever while proving nothing. A skip says so on
+   * the report, and the admin suite proves the same page with an event it
+   * creates itself.
    */
-  test('shows the events still ahead, and claims nothing is on only when nothing is', async ({
-    page,
-  }) => {
+  test('shows the events still ahead, and claims nothing is on while one is', async ({ page }) => {
+    const ahead = upcomingEvents(SEEDED_EVENTS, new Date());
+    test.skip(ahead.length === 0, 'Every seeded event has passed — see admin-calendar.spec.ts.');
+
     await page.goto(CALENDAR_PATH);
     const events = page.locator('[data-section="calendar-events"]');
-    const ahead = upcomingEvents(SEEDED_EVENTS, new Date());
 
     for (const event of ahead) {
       await expect(events, event.slug).toContainText(event.title);
       await expect(events, event.slug).toContainText(eventDateLabel(event.heldOn));
     }
 
-    if (ahead.length > 0) await expect(events).not.toContainText('Nothing else is on the calendar');
+    await expect(events).not.toContainText('Nothing else is on the calendar');
   });
 
   test('prints as the calendar, not as a website', async ({ page }) => {

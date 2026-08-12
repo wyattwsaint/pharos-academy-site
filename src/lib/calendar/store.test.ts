@@ -109,7 +109,14 @@ describe('events', () => {
   it('starts with the events the school has already published, and nothing else', async () => {
     const listed = await listEvents(db);
     expect(listed.map((event) => event.slug)).toEqual(SEEDED_EVENTS.map((event) => event.slug));
-    expect(listed[0]).toMatchObject({ ...SEEDED_EVENTS[0]!, lastEditedBy: null, lastEditedAt: null });
+    for (const seeded of SEEDED_EVENTS) {
+      const stored = listed.find((event) => event.slug === seeded.slug);
+      expect(stored, seeded.slug).toMatchObject({
+        ...seeded,
+        lastEditedBy: null,
+        lastEditedAt: null,
+      });
+    }
   });
 
   it('holds a one-off without it entering the term-dates model', async () => {
