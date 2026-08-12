@@ -405,22 +405,33 @@ test.describe('the page', () => {
         name: 'We walk alongside to support and encourage homeschool families',
       }),
     ).toBeVisible();
-    await expect(teachers.getByRole('link')).toHaveAttribute('href', STAFF_PATH);
+    const staffLink = teachers.getByRole('link', { name: /teach/i });
+    await expect(staffLink).toHaveCount(1);
+    await expect(staffLink).toHaveAttribute('href', STAFF_PATH);
 
     // No faces and no empty tints: `.portrait` is the one class both took.
     await expect(teachers.locator('.portrait')).toHaveCount(0);
     await expect(teachers.getByText('Who teaches')).toHaveCount(0);
     await expect(teachers.getByText('Millersville')).toHaveCount(0);
 
-    // The count is gone from the page, not just from this band — it was wrong,
-    // and a number is one more thing to keep true.
-    await expect(page.getByText(/\bnine\b/i)).toHaveCount(0);
+    // The count is gone from the whole page, not just from this band — it was
+    // wrong, and a number is one more thing to keep true. Matched as a count
+    // *of instructors* rather than as the bare word: this page also prints
+    // announcements and course copy from the shared database, and a seeded
+    // sentence containing "nine" is not this ticket's regression. Digits as
+    // well as words, because "9 instructors" is the same claim.
+    await expect(page.getByText(/\b(nine|9|eight|8|ten|10)\s+(instructors|teachers)\b/i)).toHaveCount(
+      0,
+    );
   });
 
   test('gives the teachers band a plate about 30% wider than the others', async ({ page }) => {
-    // #142 AC 4. Measured rather than read off the stylesheet: the claim is
-    // about what a parent sees, and the two plates sit in the same `.wide`
-    // column, so their rendered widths are directly comparable.
+    // #142 AC 4, "approximately 30% larger than today". The week band's plate
+    // *is* today's size — both bands drew the same 38% column before this — so
+    // it is the baseline, and it is a live one rather than a number copied out
+    // of the stylesheet. Measured rather than read off the CSS because the
+    // claim is about what a parent sees, and the two plates sit in the same
+    // `.wide` column, so their rendered widths are directly comparable.
     await page.setViewportSize(DESKTOP);
     await page.goto('/');
 

@@ -1138,7 +1138,13 @@ html.nav-menu-open body {
   color: var(--color-gold-ink);
 }
 
-/* ---------- who teaches ---------- */
+/* ---------- a row of people ---------- */
+
+/* The homepage's "who teaches" band used to share these rules; #142 replaced it
+   with an invitation, so the staff page's leadership row is the only consumer
+   left. Kept here rather than folded into the staff-page block below, because
+   `.people` and `.portrait` are the shape a row of people takes anywhere on the
+   site, and the staff page uses both together. */
 
 .people {
   display: grid;

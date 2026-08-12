@@ -16,13 +16,6 @@ import type { Course } from '../courses/course.js';
 import { priceRange } from '../money/owed.js';
 import { formatMoney, type MoneySettings } from '../money/settings.js';
 
-/*
- * The homepage's three instructor cards — name, role and a line of credentials
- * each — used to live here. #142 replaced that band with one invitation and a
- * link to the staff page, so the copy is gone rather than left unused: the
- * people are the staff page's, read from the one list (ADR-0004).
- */
-
 /** The whole of the fee schedule, which is the point of the section. */
 export type Figure = { amount: string; note: string };
 
