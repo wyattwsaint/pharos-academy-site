@@ -1418,8 +1418,8 @@ html.nav-menu-open body {
   }
 }
 
-/* H O P E is one word, and a word does not wrap. This used to go 2-up here,
-   which stacked it into two pairs — "HO" over "PE" — and the acrostic stopped
+/* H.O.P.E. is one word, and a word does not wrap. This used to go 2-up here,
+   which stacked it into two pairs — "HO" over "PE" — and the acronym stopped
    reading as anything (#140). The row stays four columns at every width and the
    TYPE gives way instead: the letter and its word both scale with the viewport
    so a ~67px cell at 320px still holds "PARENTS" on one line.
@@ -1440,17 +1440,28 @@ html.nav-menu-open body {
   }
 
   .hope-btn {
-    padding: clamp(18px, 4vw, 30px) clamp(2px, 1.5vw, 18px) 8px;
+    padding: clamp(18px, 4vw, 30px) clamp(2px, 1vw, 18px) 8px;
   }
 
   .hope-btn b {
     font-size: clamp(30px, 10vw, 48px);
   }
 
+  /* The tracking gives way, not the size. At 0.2em "EDUCATE" is the widest
+     thing on the row and it is the SPACES that make it so: 0.08em buys back
+     enough that the word keeps its full 13px at 390px — the narrowest width
+     the axe suite audits — with ~10px to spare, and only starts shrinking
+     below that. It is measured, not eyeballed: at 320px the widest label is
+     57.7px in a 62.6px box.
+
+     `nowrap` is load bearing. Every label is one unbreakable word today, so
+     without it a fifth label that no longer fits would wrap silently and the
+     overflow test would never see it. */
   .hope-btn span {
     margin-top: 10px;
-    font-size: clamp(9.5px, 2.6vw, 13px);
+    font-size: clamp(10px, 3.4vw, 13px);
     letter-spacing: 0.08em;
+    white-space: nowrap;
   }
 
   .hope-card,
