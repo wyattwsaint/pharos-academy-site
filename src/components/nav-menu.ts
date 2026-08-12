@@ -48,14 +48,14 @@ export class NavMenu extends HTMLElement {
     if (!this.#open) return;
     if (event.key === 'Escape') {
       event.preventDefault();
-      this.close({ focusToggle: true });
+      this.dismiss();
       return;
     }
     if (event.key === 'Tab') this.#trap(event);
   };
 
   #onViewportChange = () => {
-    if (!this.#small.matches) this.close({ focusToggle: false });
+    if (!this.#small.matches) this.close();
   };
 
   connectedCallback() {
@@ -64,7 +64,7 @@ export class NavMenu extends HTMLElement {
     if (!this.#toggle || !this.#panel) return;
 
     this.#toggle.addEventListener('click', () => {
-      if (this.#open) this.close({ focusToggle: true });
+      if (this.#open) this.dismiss();
       else this.open();
     });
 
@@ -73,7 +73,9 @@ export class NavMenu extends HTMLElement {
     // when one is added.
     this.#panel.addEventListener('click', (event) => {
       const target = event.target;
-      if (target instanceof Element && target.closest('a')) this.close({ focusToggle: false });
+      // `close`, not `dismiss`: the browser is already moving focus with the
+      // navigation, and pulling it back to the toggle would fight that.
+      if (target instanceof Element && target.closest('a')) this.close();
     });
 
     document.addEventListener('keydown', this.#onDocumentKeydown);
@@ -98,15 +100,22 @@ export class NavMenu extends HTMLElement {
     document.documentElement.classList.add(LOCK);
   }
 
-  close({ focusToggle }: { focusToggle: boolean }) {
+  /** Shut the panel and leave focus where it is. */
+  close() {
     if (!this.#toggle || !this.#panel) return;
     this.#toggle.setAttribute('aria-expanded', 'false');
     this.#panel.hidden = true;
     document.documentElement.classList.remove(LOCK);
-    // Only when the visitor closed it on purpose. After a click on a
-    // destination the browser is already moving focus with the navigation, and
-    // pulling it back to the toggle would fight that.
-    if (focusToggle) this.#toggle.focus();
+  }
+
+  /**
+   * Shut it the way a visitor does — Escape, or the toggle again — and put
+   * focus back on the toggle, which is the control they were last on and the
+   * only one still on screen.
+   */
+  dismiss() {
+    this.close();
+    this.#toggle?.focus();
   }
 
   /** The toggle plus the panel's links, in the order Tab would visit them. */

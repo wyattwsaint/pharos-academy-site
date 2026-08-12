@@ -24,13 +24,18 @@ const DESKTOP = { width: 1440, height: 900 };
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
+/** A violation rendered so a CI failure names the rule and the element. */
+function describeViolation(violation: { id: string; nodes: { target: unknown[] }[] }) {
+  return `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(', ')}`;
+}
+
 const toggle = (page: Page) => page.locator('[data-nav-menu-toggle]');
 const panel = (page: Page) => page.locator('[data-nav-menu-panel]');
 
 /** Load a page on a phone. `/classes` rather than `/`, so the header ships stuck. */
-async function openPhone(page: Page, path = '/classes') {
+async function openPhone(page: Page) {
   await page.setViewportSize(PHONE);
-  await page.goto(path);
+  await page.goto('/classes');
 }
 
 test.describe('the small-screen menu', () => {
@@ -87,6 +92,18 @@ test.describe('the small-screen menu', () => {
     await expect(panel(page)).toBeVisible();
   });
 
+  test('closes again on a second press of the toggle', async ({ page }) => {
+    await openPhone(page);
+
+    await toggle(page).click();
+    await expect(panel(page)).toBeVisible();
+
+    await toggle(page).click();
+    await expect(panel(page)).toBeHidden();
+    await expect(toggle(page)).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle(page)).toBeFocused();
+  });
+
   test('keeps Tab inside the open menu', async ({ page }) => {
     await openPhone(page);
     await toggle(page).click();
@@ -126,6 +143,46 @@ test.describe('the small-screen menu', () => {
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   });
 
+  /**
+   * A phone held sideways is 390px tall and still below the breakpoint, and
+   * the page behind the panel is locked while it is open — so a panel taller
+   * than the fold would put the last link somewhere nothing could reach. It
+   * scrolls inside itself instead.
+   */
+  test('keeps every link reachable on a phone held sideways', async ({ page }) => {
+    await page.setViewportSize({ width: PHONE.height, height: PHONE.width });
+    await page.goto('/classes');
+    await toggle(page).click();
+
+    const cta = panel(page).getByRole('link', { name: 'Ask us about Pharos' });
+    await cta.scrollIntoViewIfNeeded();
+    await expect(cta).toBeInViewport();
+  });
+
+  /**
+   * The breakpoint is written twice — `beacon.css` hides the desktop nav below
+   * it, `nav-menu.ts` closes the panel above it — and the second one exists to
+   * release the scroll lock. If they ever drift, a visitor who widens the
+   * window gets a page that cannot scroll and nothing on screen to unlock it.
+   */
+  test('hands back to the desktop nav at the same width the stylesheet does', async ({ page }) => {
+    await page.setViewportSize({ width: 860, height: 800 });
+    await page.goto('/classes');
+    await expect(toggle(page)).toBeVisible();
+
+    await toggle(page).click();
+    await expect(panel(page)).toBeVisible();
+
+    // Widening past the breakpoint closes it, rather than leaving the lock on
+    // with the only control that could release it now `display: none`.
+    await page.setViewportSize({ width: 861, height: 800 });
+    await expect(toggle(page)).toBeHidden();
+    await expect(panel(page)).toBeHidden();
+    await expect(page.locator('.site-nav')).toBeVisible();
+    await page.mouse.wheel(0, 600);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  });
+
   test('closes when a destination is chosen', async ({ page }) => {
     await openPhone(page);
     await toggle(page).click();
@@ -161,9 +218,28 @@ test.describe('the small-screen menu', () => {
 
     const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
 
-    expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual(
-      [],
-    );
+    expect(violations.map(describeViolation)).toEqual([]);
+  });
+
+  /**
+   * The home page is the one surface where the header floats over the hero
+   * rather than sitting on its navy band, and the toggle takes navy chrome
+   * there to survive the lightened sky — the same swap `.site-nav` makes. That
+   * pair is a contrast claim, so it is measured, open and closed, on the page
+   * it is the only page for.
+   */
+  test('has zero axe violations over the hero, open and closed', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto('/');
+
+    const closed = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    expect(closed.violations.map(describeViolation)).toEqual([]);
+
+    await toggle(page).click();
+    await expect(panel(page)).toBeVisible();
+
+    const open = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    expect(open.violations.map(describeViolation)).toEqual([]);
   });
 
   test('does not overflow horizontally with the menu open', async ({ page }) => {

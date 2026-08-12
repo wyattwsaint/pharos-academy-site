@@ -591,6 +591,15 @@ a.site-banner-message:hover {
   background: var(--color-navy-deep);
   border-top: 1px solid rgb(255 255 255 / 0.12);
   box-shadow: 0 18px 30px rgb(6 16 30 / 0.3);
+  /* A phone held sideways is 390px tall and still under the breakpoint, and
+     the page behind is locked while this is open — so a panel that ran past
+     the fold would put "Ask us about Pharos" somewhere nothing could reach.
+     It scrolls inside itself instead. `100%` is the header's own height, which
+     is what the panel hangs from and what it therefore has to give back. */
+  max-height: calc(100vh - 100%);
+  max-height: calc(100dvh - 100%);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .site-menu-nav {
@@ -647,7 +656,7 @@ a.site-banner-message:hover {
 
   .site-header .wide > .btn.on-dark {
     padding: 9px 11px;
-    font-size: 12px;
+    font-size: 12.5px;
     white-space: nowrap;
   }
 
@@ -663,7 +672,7 @@ a.site-banner-message:hover {
   .site-menu-toggle {
     gap: 7px;
     padding: 9px 10px;
-    font-size: 12px;
+    font-size: 12.5px;
   }
 }
 
