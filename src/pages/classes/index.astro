@@ -21,6 +21,10 @@ import { getMoneySettings } from '../../lib/money/store.js';
  * course appears under every band its range touches, which is why a class shows
  * up more than once and why the panel ids are prefixed with the band.
  *
+ * The count in the heading is `courses.length`, not a typed word (#138). Add a
+ * class in the admin and the heading counts it; nothing here can say a number
+ * the page below it does not show.
+ *
  * Algebra 1 is in every band. It publishes no numeric age range — its gate is a
  * prerequisite — and the rule that a course with no range is shown to everyone
  * rather than to nobody is `ages.ts`'s, tested there against the real
@@ -39,7 +43,7 @@ const bands = coursesByBand(courses);
 <BaseLayout details={details} title={view.title} description={view.description}>
   <ClassesHeader
     current="by-age"
-    heading="Nineteen classes, by the age they are written for"
+    heading={`${courses.length} classes, by the age they are written for`}
     lede="Ages first, because that is how the school writes them — the grade equivalents on each class are approximations. A class appears under every age it is open to."
   />
 

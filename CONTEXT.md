@@ -82,9 +82,11 @@ payoff. This entry is named for the type, not for the sentence.
 ### offering
 
 A **course** paired with an **enrolment unit** — the concrete thing a family
-selects and pays a deposit against. "Nineteen courses" is the catalogue;
-"offerings" is what the application flow actually operates on, because *Latin I,
-Fall* and *Latin I, Year* are two different purchases of one course.
+selects and pays a deposit against. The **catalogue** is the courses — however
+many the school currently publishes, which is a number the site derives and
+never types (#138); "offerings" is what the application flow actually operates
+on, because *Latin I, Fall* and *Latin I, Year* are two different purchases of
+one course.
 
 Not: "product", "SKU", "enrolment" on its own.
 

@@ -12,6 +12,10 @@ import { SCHOOL_DESCRIPTION, SCHOOL_NAME } from './site.js';
  * A route with no summary still appears — it is in `PUBLIC_ROUTES`, which is
  * the single list — it just carries no gloss. Silence beats a second route list
  * that can fall out of step with the first.
+ *
+ * No summary states a class count (#138). These are typed literals with no
+ * database behind them, so a number here is one nothing keeps true; the pages
+ * that read the catalogue state the count, and this file says "every class".
  */
 const SUMMARIES: Record<string, string> = {
   '/': 'What Pharos Academy is, which mornings classes run, which ages, and what it costs.',
@@ -19,7 +23,7 @@ const SUMMARIES: Record<string, string> = {
   '/classes/by-day':
     'The timetable, drawn to scale — which classes run when, and which of them overlap.',
   '/classes/descriptions':
-    'The full description, texts, prerequisites and fees for all nineteen classes.',
+    'The full description, texts, prerequisites and fees for every class.',
   [STAFF_PATH]: 'Who runs the school and who teaches each class.',
   [NEWS_PATH]: 'Board updates, fundraisers and notices for current families, newest first.',
   [POLICIES_PATH]:

@@ -29,6 +29,17 @@ describe('llms.txt', () => {
     expect(renderLlmsTxt(SITE)).toContain(SCHOOL_DESCRIPTION);
   });
 
+  it('quotes no class count, because this file cannot read the catalogue', () => {
+    // #138. The summaries are typed literals with no database behind them, so
+    // a number here is a number nothing keeps true. The surfaces that do read
+    // the catalogue are free to state one; this one says "every class".
+    const body = renderLlmsTxt(SITE);
+    const COUNT =
+      '\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|' +
+      'fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty';
+    expect(body).not.toMatch(new RegExp(`\\b(?:${COUNT})\\s+(?:\\w+\\s+)?(?:class|course)e?s\\b`, 'i'));
+  });
+
   it('still lists a route that has no summary', () => {
     const body = renderLlmsTxt(SITE, [
       { path: '/unglossed', priority: 0.5, changefreq: 'monthly' },

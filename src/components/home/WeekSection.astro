@@ -26,6 +26,12 @@ import type { RateCard } from '../../lib/money/settings.js';
  * school's current rates. Two cells the school quotes by length rather than by
  * price ("12 weeks", "rotating") carry no slug and get no figure, which is
  * complete rather than missing.
+ *
+ * The closing line names no total (#138). The column headings count what the
+ * grid holds, but the grid is `TIMETABLE` — the hand-kept mirror, not the
+ * catalogue — so a total here would either be typed or would count a list the
+ * catalogue can move away from. "Our classes" stays true either way, and the
+ * link goes to the page that reads the catalogue and does state the number.
  */
 interface Props {
   /** The catalogue, for the price on each cell. */
@@ -110,7 +116,7 @@ function priceFor(slug: string | undefined): string | null {
     </disclosure-group>
 
     <p class="mt-7 text-ink-2">
-      Our nineteen classes run across the three mornings —
+      Our classes run across the three mornings —
       <a href="/classes">the full list is on the classes page</a>, by age, by day, or in full.
     </p>
   </div>
