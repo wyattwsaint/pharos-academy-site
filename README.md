@@ -25,8 +25,17 @@ on demand and CDN-cached — not a static export and not plain SSR
 rather than the #18-specified Astro 6: see
 [ADR-0001](docs/adr/0001-astro-7-not-astro-6.md).
 
-Still to come, as their slices land: Neon + Drizzle for the store, a self-rolled admin,
-Resend for notification email.
+Still to come, as their slices land: Neon + Drizzle for the store, a self-rolled admin.
+
+Outbound email goes over **Gmail SMTP** today — the school's own mailbox, because it has no
+verified sending domain ([ADR-0010](docs/adr/0010-the-site-sends-through-gmail-until-the-domain-is-verified.md)). Resend is the
+second route, taken only when the Gmail pair is unset — Gmail wins wherever both are set, so
+moving to Resend once the domain is verified means **removing** `GMAIL_USER` and
+`GMAIL_APP_PASSWORD`, not just pasting a key in.
+**With neither configured the site sends nothing**, and it says so: every
+form still records what it was given, every application on `/admin/applications` says whether
+its two emails went, and a standing warning sits on every admin screen until credentials are
+set ([#136](https://github.com/wyattwsaint/pharos-academy-site/issues/136)).
 
 ## Commands
 
@@ -54,8 +63,10 @@ source reads is missing from it.
 | `ISR_BYPASS_TOKEN` | Lets a revalidation request past the CDN cache. Compiled in by the build unless set |
 | `BREAK_GLASS_PASSWORD` | The way back in when both admins are locked out ([#18](https://github.com/wyattwsaint/pharos-academy-site/issues/18) §4) |
 | `SEED_*_PASSWORD` | Read by `npm run db:seed` when it creates the named accounts |
-| `RESEND_API_KEY` | Sends the monthly backup email. Absent, the cron answers 500 rather than succeeding quietly |
-| `MAIL_FROM` | The address the site sends from — a verified Resend sender on the school's domain |
+| `GMAIL_USER` | The school's Gmail address, the SMTP login. Half of the route the site sends on today |
+| `GMAIL_APP_PASSWORD` | A Google **app password** for that account, not the mailbox password. With this pair unset and no Resend key, nothing is emailed — the admin says so on every screen |
+| `RESEND_API_KEY` | The second route, used only when the Gmail pair is unset. Needs `MAIL_FROM`. With neither route, `/api/cron/monthly-backup` answers 500 rather than succeeding quietly |
+| `MAIL_FROM` | The address the site sends from. **Required** on Resend — a verified sender on the school's domain. Optional on Gmail, where it defaults to `GMAIL_USER` |
 | `CRON_SECRET` | The bearer token Vercel Cron carries. **Unset, `/api/cron/monthly-backup` refuses everybody**, which is the safe direction: that route mails the whole database |
 
 ## Backup

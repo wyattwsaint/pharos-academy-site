@@ -23,6 +23,7 @@ import { offeringsOf, title as offeringTitle } from '../../lib/application/offer
 import { listApplications, type ApplicationRecord } from '../../lib/application/store.js';
 import { classTally, tallyLines } from '../../lib/application/tally.js';
 import type { Banner } from '../../lib/admin/banner.js';
+import { applicationDeliveryNote } from '../../lib/admin/outbound-mail.js';
 import { listCourses } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
 import { formatMoney } from '../../lib/money/settings.js';
@@ -127,9 +128,10 @@ const resubmittedIds = new Set(
 <AdminLayout title="Applications" actor={actor}>
   <h1 class="text-3xl font-semibold text-navy">Applications</h1>
   <p class="mt-2">
-    Every family who has applied through the website, newest first. Each one was also emailed to {
+    Every family who has applied through the website, newest first. Each one is emailed to {
       settings.notificationAddresses.join(' and ')
-    } — change that list on the Money screen.
+    } — change that list on the Money screen. Whether that email actually went is on the
+    application itself: an email is a thing that can fail, and this screen says which ones did.
   </p>
 
   {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="applications-banner" />}
@@ -156,15 +158,17 @@ const resubmittedIds = new Set(
   {
     applications.length === 0 ? (
       <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-applications">
-        Nobody has applied yet. When somebody does, they appear here and an email goes out at the
-        same moment — this screen is the record, not the notification. Keep the Google Form open
-        until the first application lands here; retire it once one has.
+        Nobody has applied yet. When somebody does, they appear here, and an email goes out at the
+        same moment unless this deployment cannot send — the application will say which. This screen
+        is the record, not the notification. Keep the Google Form open until the first application
+        lands here; retire it once one has.
       </p>
     ) : (
       <ul class="mt-8 flex flex-col gap-10">
         {applications.map((application) => {
           const owed = owedOn(application);
           const paid = paymentStatusNow(application.payment, now);
+          const delivery = applicationDeliveryNote(application);
 
           return (
             <li class="border-t border-navy/15 pt-6" data-testid="application">
@@ -315,19 +319,24 @@ const resubmittedIds = new Set(
                 </div>
               </div>
 
-              {application.notifiedAt ? (
-                <p class="mt-4 text-sm" data-testid="application-delivery">
-                  Emailed to the school.
-                  {application.confirmedAt
-                    ? ' The family was emailed too.'
-                    : ' ⚠ The family’s own copy did not send.'}
-                </p>
-              ) : (
-                <p class="mt-4 text-sm font-semibold" data-testid="application-delivery">
-                  ⚠ Nobody at the school was emailed about this one — it is only here.
-                  {application.notificationError && ` (${application.notificationError})`}
-                </p>
-              )}
+              {/*
+                What became of the two emails (#136). Both lines always, and the
+                reason inline on either failure: "Resend refused this address" is
+                a thing to fix on this row, "no mailer is configured" is a thing
+                to fix on the deployment, and a row that said only "not sent"
+                would send Jill looking in the wrong place.
+              */}
+              <div
+                class="mt-4 text-sm"
+                data-testid="application-delivery"
+                data-delivered={String(delivery.delivered)}
+              >
+                {delivery.lines.map((line) => (
+                  <p class:list={[!line.ok && 'font-semibold']}>
+                    {line.ok ? line.text : `⚠ ${line.text}`}
+                  </p>
+                ))}
+              </div>
             </li>
           );
         })}

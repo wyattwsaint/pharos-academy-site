@@ -166,6 +166,13 @@ describe('what the family is told', () => {
     });
 
     expect(outcome.familyWasTold).toBe('confirmation');
+    // A configured sender is a delivered send, with nothing to report (#136):
+    // this is the direction the two failures below are measured against.
+    expect(outcome.notified).toBe(true);
+    expect(outcome.notificationError).toBeUndefined();
+    expect(outcome.confirmed).toBe(true);
+    expect(outcome.confirmationError).toBeUndefined();
+
     const toFamily = mailer.sent.find((mail) => mail.to === 'okonkwo@example.com')!;
     expect(toFamily.text).toContain('9 Sherwood Drive');
     expect(toFamily.text).toContain('A place is held');
@@ -212,6 +219,10 @@ describe('what the family is told', () => {
     expect(outcome.notified).toBe(false);
     expect(outcome.notificationError).toContain('422');
     expect(outcome.confirmed).toBe(false);
+    // Both errors, not just the school's: a thrown send is recorded against the
+    // message it refused rather than swallowed (#136).
+    expect(outcome.confirmationError).toContain('422');
+    expect(outcome.confirmationError).toContain('okonkwo@example.com');
   });
 
   it('treats a deployment with no mailer as a school that was not told', async () => {
@@ -226,6 +237,12 @@ describe('what the family is told', () => {
 
     expect(outcome.notified).toBe(false);
     expect(outcome.notificationError).toContain('RESEND_API_KEY');
+    // And the family's own copy, which is the half that used to pass unnoticed:
+    // an absent mailer is an undelivered confirmation with a stated reason, not
+    // a quiet success (#136).
+    expect(outcome.confirmed).toBe(false);
+    expect(outcome.confirmationError).toContain('No mailer is configured');
+    expect(outcome.confirmationError).toContain('GMAIL_APP_PASSWORD');
   });
 
   it('names the address to write to when nothing else worked', () => {
