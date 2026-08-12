@@ -25,23 +25,21 @@ describe('what applying costs', () => {
     expect(costs[1]!.what).toContain('Deposit');
   });
 
-  it('tells a family to send a check, in their own spelling (#113)', () => {
-    const details = admissionCosts(settings).map((cost) => cost.detail);
-
-    expect(details[0]).toContain('by check with your application');
-    expect(details[1]).toContain('By check with your application');
-    expect(details.join(' ')).not.toMatch(/cheque/i);
+  it('carries an amount and a label and nothing else (#144)', () => {
+    // The school found the explanatory line noisy and had it removed. Asserted
+    // on the shape rather than on any one sentence, so a detail line cannot
+    // creep back in under a new name.
+    for (const cost of admissionCosts(settings)) {
+      expect(Object.keys(cost).sort()).toEqual(['amount', 'what']);
+    }
   });
 
-  it('says the deposit comes off the tuition while it is credited', () => {
-    expect(admissionCosts(settings)[1]!.detail).toContain('comes off');
-  });
-
-  it('says the opposite the moment the school stops crediting it', () => {
+  it('does not depend on whether the deposit is credited (#144)', () => {
+    // The sentence that flipped with the flag is gone. The flag still drives the
+    // arithmetic in `owed`; it no longer changes a word on this page.
     const onTop = { ...settings, depositCreditedAgainstTuition: false };
 
-    expect(admissionCosts(onTop)[1]!.detail).toContain('on top of');
-    expect(admissionCosts(onTop)[1]!.detail).not.toContain('comes off');
+    expect(admissionCosts(onTop)).toEqual(admissionCosts(settings));
   });
 
   it('follows a fee raised in the admin', () => {

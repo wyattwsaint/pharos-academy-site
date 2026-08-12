@@ -41,8 +41,6 @@ export type AdmissionCost = {
   amount: string;
   /** The name of the charge — "Registration fee". */
   what: string;
-  /** The sentence under it: when it is paid, to whom, and what it does. */
-  detail: string;
 };
 
 /**
@@ -53,36 +51,18 @@ export type AdmissionCost = {
  * for every family — the class pages carry the real one, computed from the same
  * rates.
  *
- * The deposit's sentence flips with `depositCreditedAgainstTuition`, because
- * that flag is arithmetic and not phrasing: on three classes it is the
- * difference between owing your instructors $1,300 and $900, and a family reads
- * this sentence to work out which.
+ * Each entry used to carry a sentence of explanation — when the charge is paid,
+ * to whom, and what it does. The school found the block noisy and had them
+ * removed (#144), so an amount and a label is now the whole of it. One of those
+ * sentences flipped with `depositCreditedAgainstTuition`; the flag still drives
+ * the arithmetic in `owed`, but the site no longer tells a family which way it
+ * is set, and the late fee's "only if a quarterly payment is missed" is likewise
+ * unsaid here. Both are noted on the ticket rather than reworded into the labels.
  */
 export function admissionCosts(settings: MoneySettings): AdmissionCost[] {
-  const deposit = formatMoney(settings.classDeposit);
   return [
-    {
-      amount: formatMoney(settings.registrationFee),
-      what: 'Registration fee',
-      detail:
-        'Once per student per year, by check with your application. It is not refundable, ' +
-        'and it is what reserves your place in the intake.',
-    },
-    {
-      amount: deposit,
-      what: 'Deposit, per class',
-      detail:
-        'By check with your application, one for each class. It holds the seat, and it ' +
-        (settings.depositCreditedAgainstTuition
-          ? 'comes off what you owe your instructor for that class.'
-          : 'is on top of what you owe your instructor for that class.'),
-    },
-    {
-      amount: formatMoney(settings.lateFee),
-      what: 'Late fee, per class',
-      detail:
-        'Only if a quarterly payment is missed. Nobody is charged this for asking for more ' +
-        'time — talk to us first.',
-    },
+    { amount: formatMoney(settings.registrationFee), what: 'Registration fee' },
+    { amount: formatMoney(settings.classDeposit), what: 'Deposit, per class' },
+    { amount: formatMoney(settings.lateFee), what: 'Late fee, per class' },
   ];
 }
