@@ -1,6 +1,10 @@
 /**
  * House style: the words a family reads are American (#110).
  *
+ * Spelling only. The marks, the spacing and the capitals are `punctuation.ts`,
+ * which reads prose through this module and measures it against
+ * `docs/house-style.md`.
+ *
  * The rule the conversion settled on, and the one CONTEXT.md now states: **prose
  * is American; `enrolment` and `cheque` survive only as column names, enum
  * values and type names.** A page says "check", "enrollment" and "program"; the
@@ -164,16 +168,28 @@ function lineOf(source: string, offset: number): number {
  */
 export function prose(source: string, kind: 'astro' | 'ts'): string {
   const out: string[] = Array.from(source, (char) => (char === '\n' || char === '\r' ? char : ' '));
-  const visible =
-    kind === 'astro' ? astroRanges(source) : tsProseRanges(source, 0, source.length);
-  for (const [start, end] of visible) {
+  for (const [start, end] of visibleRanges(source, kind)) {
     for (let i = start; i < end; i += 1) out[i] = source[i]!;
   }
   return out.join('');
 }
 
 /** Half-open `[start, end)` slices of the source that a reader can see. */
-type Range = readonly [number, number];
+export type Range = readonly [number, number];
+
+/**
+ * The slices of `source` a reader can see, in source order.
+ *
+ * {@link prose} is this list flattened back into a string, and is the right
+ * call when a rule is about words. A rule about *spacing* needs the slices
+ * themselves: two spaces in the blanked string can be one space of prose either
+ * side of a `{…}` expression that was never there, and the punctuation scan
+ * (#148) must not read that as a double space.
+ */
+export function visibleRanges(source: string, kind: 'astro' | 'ts'): Range[] {
+  const ranges = kind === 'astro' ? astroRanges(source) : tsProseRanges(source, 0, source.length);
+  return ranges.filter(([start, end]) => end > start).sort((a, b) => a[0] - b[0]);
+}
 
 /**
  * An Astro file: an optional TypeScript frontmatter, then a template.

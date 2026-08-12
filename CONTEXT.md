@@ -79,6 +79,9 @@ names** — `enrolment_units`, `payment_mode = 'cheque'`, `EnrolmentUnit` —
 because renaming a schema for a spelling has migration cost and no user-visible
 payoff. This entry is named for the type, not for the sentence.
 
+Spelling is the only part of the house style that lives here. The marks, the
+spacing and the capitals are in [`docs/house-style.md`](docs/house-style.md).
+
 ### offering
 
 A **course** paired with an **enrolment unit** — the concrete thing a family
