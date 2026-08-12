@@ -400,6 +400,22 @@ const NEEDED: { field: ErrorField; href: string; label: string }[] = [
 ];
 
 const cost = applicationCost(values, offerings, settings);
+
+/**
+ * How the money can be paid (#111), decided once for the whole document.
+ *
+ * The registration fee has an online address or it has not — one row, one
+ * question — and three places on this page word themselves around the answer:
+ * the totals list, the payment stage and the confirmation. Asked three times it
+ * was three decisions that could disagree; asked here it is one.
+ *
+ * The deposits are a separate condition rather than the same one: a family can
+ * reach this stage having chosen no classes yet, and "$0.00 by check, posted
+ * to" is an instruction to mail an empty envelope.
+ */
+const payRegistrationOnline = details.registrationUrl !== '';
+const depositsDue = cost.total.deposits > 0;
+
 const clashing = familyClashes(values, offerings, year);
 const clashCount = clashing.reduce((sum, one) => sum + one.clashes.length, 0);
 
@@ -475,7 +491,7 @@ const description =
           <h2>{stage('confirmation')}</h2>
           <p class="sub mt-4">
             We have your application for {values.familyName}, and we will be in touch. A place is
-            held for each class as soon as your check reaches us.
+            held for each class as soon as its deposit reaches us.
           </p>
 
           <h3 class="mt-8">What you chose</h3>
@@ -497,13 +513,38 @@ const description =
               ))}
           </ul>
 
-          <h3 class="mt-8">What to post</h3>
-          <p class="mt-4">
-            A check for <strong>{formatMoney(cost.total.dueNow)}</strong> — that is{' '}
-            {formatMoney(cost.total.registration)} in registration and{' '}
-            {formatMoney(cost.total.deposits)} in deposits — made out to Pharos Academy, to:
-          </p>
-          <p class="address mt-4">{details.address}</p>
+          <h3 class="mt-8">What to pay</h3>
+          {payRegistrationOnline ? (
+            <Fragment>
+              <p class="mt-4">
+                The registration — <strong>{formatMoney(cost.total.registration)}</strong> — online
+                through the church's giving page:
+              </p>
+              <p class="mt-4">
+                <a class="btn" href={details.registrationUrl} rel="external" data-pay-online>
+                  Pay the registration fee online
+                </a>
+              </p>
+              {depositsDue && (
+                <Fragment>
+                  <p class="mt-6">
+                    The deposits — <strong>{formatMoney(cost.total.deposits)}</strong> — by check,
+                    made out to Pharos Academy, to:
+                  </p>
+                  <p class="address mt-4">{details.address}</p>
+                </Fragment>
+              )}
+            </Fragment>
+          ) : (
+            <Fragment>
+              <p class="mt-4">
+                A check for <strong>{formatMoney(cost.total.dueNow)}</strong> — that is{' '}
+                {formatMoney(cost.total.registration)} in registration and{' '}
+                {formatMoney(cost.total.deposits)} in deposits — made out to Pharos Academy, to:
+              </p>
+              <p class="address mt-4">{details.address}</p>
+            </Fragment>
+          )}
           <p class="mt-6 text-ink-2">
             Tuition is paid to your instructors, not to the school:{' '}
             {formatMoney(cost.total.dueToInstructors)} across the year at today's rates.
@@ -894,7 +935,11 @@ const description =
               </li>
               <li class="due">
                 <span class="amount">{formatMoney(cost.total.dueNow)}</span>
-                <span>The check you post with this application</span>
+                <span>
+                  {payRegistrationOnline
+                    ? 'Due with this application — the registration online, the deposits by check'
+                    : 'The check you post with this application'}
+                </span>
               </li>
               <li>
                 <span class="amount">{formatMoney(cost.total.dueToInstructors)}</span>
@@ -906,20 +951,66 @@ const description =
               </li>
             </ul>
 
-            <p class="mt-7">Make the check out to Pharos Academy and post it to:</p>
-            <p class="address mt-4">{details.address}</p>
+            {/*
+              The payment slot, filled for one of the three amounts (#111).
+
+              The church already takes the registration fee through Vanco, so
+              that fee — and only that fee — can be paid online. The deposits
+              are the school's and the tuition is the instructor's, both still
+              by check, and saying which is which here is the whole point: the
+              old paragraph told families there was no way to pay online at
+              all, which was wrong.
+
+              Nothing about the application changes. Vanco sends us no
+              confirmation, so a "paid online" flag on the row would be a claim
+              nobody checked; the office matches a payment to an application by
+              hand, as it does now.
+            */}
+            {payRegistrationOnline ? (
+              <Fragment>
+                <p class="mt-7">
+                  The registration fee — <strong>{formatMoney(cost.total.registration)}</strong> —
+                  can be paid online through the church's giving page.
+                </p>
+                <p class="mt-5">
+                  <a class="btn" href={details.registrationUrl} rel="external" data-pay-online>
+                    Pay the registration fee online
+                  </a>
+                </p>
+                {depositsDue && (
+                  <Fragment>
+                    <p class="mt-6">
+                      The deposits — <strong>{formatMoney(cost.total.deposits)}</strong> — are paid
+                      by check, made out to Pharos Academy and posted to:
+                    </p>
+                    <p class="address mt-4">{details.address}</p>
+                  </Fragment>
+                )}
+              </Fragment>
+            ) : (
+              <Fragment>
+                <p class="mt-7">
+                  Registration and deposits are paid by check, made out to Pharos Academy and
+                  posted to:
+                </p>
+                <p class="address mt-4">{details.address}</p>
+              </Fragment>
+            )}
 
             {/*
-              The payment slot, designed in and deliberately empty (#31). There
-              is no provider here and no card field. When one lands, the only
-              thing that changes for a family is that this paragraph offers a
-              second way to pay — and the only thing that changes in the row is
-              that the next submission reads "paid online" rather than
-              "awaiting check".
+              Who is owed what, in every state — including the one where no
+              classes have been chosen yet and the deposits above are $0 and
+              rightly unwritten. A family reading only this line still knows
+              that the deposits are the school's and the tuition the
+              instructor's, which is the half of the ticket that is about
+              wording rather than about a link.
             */}
             <p class="mt-6 text-ink-2">
-              There is no way to pay online yet. When there is, it will appear here, and posting a
-              check will still work.
+              Deposits are paid by check to Pharos Academy, and tuition by check to your instructor
+              rather than to the school.
+              {payRegistrationOnline
+                ? ' A payment through Vanco does not reach us attached to this application, so the office matches the two up by hand.'
+                : ' There is no online payment set up at the moment; when there is, it will appear here, and posting a check will still work.'}
             </p>
           </div>
         </section>

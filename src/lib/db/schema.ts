@@ -112,6 +112,18 @@ export const schoolDetails = pgTable('school_details', {
    */
   giveUrl: text('give_url').notNull(),
   /**
+   * Where a family pays the registration fee online — the church's Vanco page
+   * (#111). Beside the giving destination for the same reason it exists at
+   * all: the office changes where the money goes without a deploy.
+   *
+   * Empty is a real state, and the only honest default: until someone pastes
+   * the page in, the Apply page offers no online option rather than a link
+   * that goes nowhere. The deposit and tuition are not paid here — the deposit
+   * is posted to the school, tuition to the instructor — so this is the
+   * registration fee's address and nothing else's.
+   */
+  registrationUrl: text('registration_url').notNull().default(''),
+  /**
    * The announcement banner — the short, timely line at the top of the home
    * page (#15). Four columns rather than a table because there is one of it,
    * and it lives here rather than beside the announcements because saving this

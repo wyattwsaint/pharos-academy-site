@@ -169,6 +169,62 @@ test.describe('saving school details', () => {
     link: 'https://example.org/register',
   };
 
+  /*
+   * Paying the registration fee online, both ways round (#111).
+   *
+   * Driven from the admin for the same reason the banner is: the ticket's claim
+   * is that the office moves the Vanco page without a developer, and a seeded
+   * URL would prove a link renders and nothing about the path that sets it.
+   * Both states are set here rather than inherited, because the Apply page is
+   * rendered per request off this shared row and an absence assertion that
+   * leans on whatever ran last is an assertion about scheduling.
+   */
+  const VANCO = 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION';
+
+  async function setRegistrationUrl(page: Page, url: string): Promise<void> {
+    await page.goto('/admin/school-details');
+    await page.getByLabel('Registration payment link').fill(url);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+  }
+
+  test('offers the registration fee online, and stops offering it when the link goes', async ({
+    page,
+  }) => {
+    await signIn(page);
+    await setRegistrationUrl(page, VANCO);
+
+    await page.goto('/admissions/apply');
+    const payment = page.locator('[data-section="apply-payment"]');
+    await expect(payment.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
+    // The other two amounts are still checks, and the page says whose — with no
+    // classes chosen there are no deposit figures, and this line is what
+    // carries it.
+    await expect(payment).toContainText('Deposits are paid by check to Pharos Academy');
+    await expect(payment).toContainText('tuition by check to your instructor');
+
+    await setRegistrationUrl(page, '');
+
+    // Empty is no link at all, never a button to nowhere.
+    await page.goto('/admissions/apply');
+    await expect(payment.locator('[data-pay-online]')).toHaveCount(0);
+    await expect(payment).toContainText('no online payment set up at the moment');
+  });
+
+  test('refuses a registration payment link that is not a web address', async ({ page }) => {
+    await signIn(page, '/admin/school-details');
+
+    // `type="url"` lets the browser catch most of this; what reaches the server
+    // is what it does not, and the field is optional, so "empty is fine but
+    // `javascript:` is not" is the rule worth driving.
+    await page.getByLabel('Registration payment link').fill('javascript:alert(1)');
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
+    await expect(page.locator('#registrationUrl')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#registrationUrl-error')).toContainText('full web address');
+  });
+
   test('puts the banner on the home page, and takes it off again', async ({ page }) => {
     await signIn(page);
     await setBanner(page, REGISTER);

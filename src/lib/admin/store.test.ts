@@ -253,6 +253,26 @@ describe('school details', () => {
     expect((await getSchoolDetails(db)).giveUrl).toBe(saved.giveUrl);
   });
 
+  // #111. Empty until the office pastes the Vanco page in — which is what the
+  // Apply page reads to decide whether it offers online payment at all.
+  it('starts with no registration payment link, and keeps the one it is given', async () => {
+    const before = await getSchoolDetails(db);
+    expect(before.registrationUrl).toBe('');
+
+    const saved = await saveSchoolDetails(
+      db,
+      {
+        ...schoolDetailsFields(before),
+        registrationUrl: 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION',
+      },
+      'Jill Kilker',
+    );
+
+    expect(saved.registrationUrl).toBe('https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION');
+    expect((await getSchoolDetails(db)).registrationUrl).toBe(saved.registrationUrl);
+    expect(schoolDetailsFields(saved).registrationUrl).toBe(saved.registrationUrl);
+  });
+
   // #15. The banner is on this row because saving this row is what revalidates
   // the published pages — so what matters is that it survives that save.
   it('starts with the announcement banner off and empty', async () => {

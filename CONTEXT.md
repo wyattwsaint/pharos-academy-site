@@ -127,6 +127,18 @@ exactly one thing — the next submission read `paid online` instead of
 `awaiting cheque`. No other state, screen or flag moved. That is what makes it a
 slot rather than a hole.
 
+Since #111 the slot is **partly filled**, one amount of the three. The
+**registration fee** is paid online, through the church's Vanco page — held as
+`registration_url` on the school details row, beside the giving URL, so the
+office moves it without a deploy, and empty there means the Apply page offers no
+online payment at all. The **per-class deposit** is still a check to the school,
+**tuition** still a check to the instructor.
+
+What did *not* move is the application. Vanco sends no confirmation back, so a
+`paid online` flag set from a family clicking a link would be a claim nobody
+checked; the payment state and the amounts owed are exactly what they were, and
+the office matches a Vanco payment to an application by hand.
+
 *Applied* and *paid* are separate states on separate axes. An application is
 `submitted` while its payment is `awaiting cheque`, then `overdue`, then
 `received`; none of those changes the application's own state.
