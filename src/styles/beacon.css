@@ -273,6 +273,14 @@ h3 {
   margin: 0;
 }
 
+/* One band carries no content beside its heading (#142), so the picture takes
+   the room the roster used to: 38% → 49%, a plate about 30% wider than the
+   others. A modifier rather than a change to `.accent` — every other band still
+   has a column of type to protect. */
+.accent-wide {
+  grid-template-columns: 1fr 49%;
+}
+
 @media (max-width: 760px) {
   .accent {
     grid-template-columns: 1fr;
@@ -281,6 +289,10 @@ h3 {
 
   .accent > figure {
     max-width: 420px;
+  }
+
+  .accent-wide > figure {
+    max-width: 546px;
   }
 }
 
@@ -1158,7 +1170,13 @@ html.nav-menu-open body {
   color: var(--color-gold-ink);
 }
 
-/* ---------- who teaches ---------- */
+/* ---------- a row of people ---------- */
+
+/* The homepage's "who teaches" band used to share these rules; #142 replaced it
+   with an invitation, so the staff page's leadership row is the only consumer
+   left. Kept here rather than folded into the staff-page block below, because
+   `.people` and `.portrait` are the shape a row of people takes anywhere on the
+   site, and the staff page uses both together. */
 
 .people {
   display: grid;
