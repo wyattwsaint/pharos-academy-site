@@ -61,7 +61,8 @@ mean different things in the same column.
   six are still null and render as no face rather than a generated or stock one, and the
   admin still refuses a photograph path that is not a file in this site, so an
   unvouched-for face cannot be hot-linked into a named member of staff's place.
-- **The homepage's "Who teaches" band is not this list.** Its three people are #21's
-  approved copy with one-line credentials that have no column here, and it was left alone
-  deliberately. If it is ever made to read `people`, the credential line is the column that
-  has to be added first.
+- **The homepage no longer holds a second list at all.** Its "Who teaches" band used to
+  carry three people as #21's approved copy, with one-line credentials that have no column
+  here — the one place a name could drift from this table. #142 replaced it with an
+  invitation and a link to the staff page, so every name the site prints now comes from
+  `people`.

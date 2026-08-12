@@ -241,6 +241,14 @@ h3 {
   margin: 0;
 }
 
+/* One band carries no content beside its heading (#142), so the picture takes
+   the room the roster used to: 38% → 49%, a plate about 30% wider than the
+   others. A modifier rather than a change to `.accent` — every other band still
+   has a column of type to protect. */
+.accent-wide {
+  grid-template-columns: 1fr 49%;
+}
+
 @media (max-width: 760px) {
   .accent {
     grid-template-columns: 1fr;
@@ -249,6 +257,10 @@ h3 {
 
   .accent > figure {
     max-width: 420px;
+  }
+
+  .accent-wide > figure {
+    max-width: 546px;
   }
 }
 

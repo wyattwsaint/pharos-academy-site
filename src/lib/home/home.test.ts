@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { HOPE, INSTRUCTORS } from './content.js';
-import { PEOPLE } from '../people/person.js';
+import { HOPE } from './content.js';
 import { publicPaths } from '../routes.js';
 import { INQUIRY_HREF, NAV_ITEMS, SECTION_ORDER } from './sections.js';
 import {
@@ -127,89 +126,6 @@ describe('the H.O.P.E. row', () => {
   it('gives each letter a card image', () => {
     for (const entry of HOPE) {
       expect(entry.image).toMatch(/^\/imagery\/hope-[hope]\.webp$/);
-    }
-  });
-});
-
-describe('the instructors', () => {
-  // Spelled by code point: an invisible character in a test literal is a
-  // character nobody can see they have deleted.
-  const NBSP = String.fromCharCode(160);
-
-  it('names three of the nine, each with a role and credentials', () => {
-    expect(INSTRUCTORS).toHaveLength(3);
-    for (const person of INSTRUCTORS) {
-      expect(person.name).toBeTruthy();
-      expect(person.role).toBeTruthy();
-      expect(person.credentials).toBeTruthy();
-    }
-  });
-
-  // #100: the cards are copy, not `people` rows, so the strings are the thing
-  // under test. Spelled out in full because a class count, a lower-cased
-  // subject and a trailing period are each a plausible re-edit.
-  it('states what each of them teaches, and what they hold', () => {
-    expect(INSTRUCTORS).toEqual([
-      {
-        slug: 'jill-kilker',
-        name: 'Jill Kilker',
-        role: 'Head of School',
-        credentials:
-          'M.Ed. Special Education, Shippensburg. Homeschool Evaluator in Pennsylvania',
-      },
-      {
-        slug: 'george-jensen',
-        name: 'Pastor George Jensen',
-        role: 'Chaplain · Algebra 1',
-        credentials:
-          `B.S. Secondary Mathematics, Millersville. M.Div.,${NBSP}Winebrenner Theological Seminary`,
-      },
-      {
-        slug: 'mandy-saint',
-        name: 'Mrs. Mandy Saint',
-        role: 'Instructor · Grammar School',
-        credentials:
-          'B.S. Elementary Education, Millersville University, M. Ed. Penn State University',
-      },
-    ]);
-  });
-
-  // The slug is the only part of a card that is not copy: it is the join onto
-  // `people`, and it is how the homepage gets a face without holding a second
-  // copy of the path (ADR-0004). A slug that names nobody is silent — the
-  // circle renders as the empty tint, which is a legitimate state for a person
-  // with no photograph, so nothing on the page distinguishes a typo from a
-  // photograph the school has not sent. This is what distinguishes them.
-  it('joins each card onto a real person', () => {
-    const bySlug = new Map(PEOPLE.map((person) => [person.slug, person]));
-    for (const instructor of INSTRUCTORS) {
-      expect(bySlug.get(instructor.slug), instructor.name).toBeDefined();
-    }
-  });
-
-  // All three of the homepage's names are among #99's four photographs, so the
-  // row renders three faces today. Asserted because the whole point of the
-  // change was to stop printing three empty circles under three real people.
-  it('finds a photograph for all three', () => {
-    const bySlug = new Map(PEOPLE.map((person) => [person.slug, person]));
-    for (const instructor of INSTRUCTORS) {
-      expect(bySlug.get(instructor.slug)?.photo, instructor.name).toBeTruthy();
-    }
-  });
-
-  // The degree is an abbreviation of the seminary's own qualification; alone at
-  // the end of a line it reads as a typo.
-  it('keeps M.Div. on the same line as its seminary', () => {
-    const jensen = INSTRUCTORS.find((person) => person.name.includes('Jensen'));
-    expect(jensen?.credentials).toContain(`M.Div.,${NBSP}Winebrenner`);
-  });
-
-  // A period ends a sentence inside the credentials — "M.Ed." and the stop
-  // after Shippensburg both stay — but none of these blocks ends in one.
-  it('ends no card on a trailing period', () => {
-    for (const person of INSTRUCTORS) {
-      expect(person.role.endsWith('.'), person.name).toBe(false);
-      expect(person.credentials.endsWith('.'), person.name).toBe(false);
     }
   });
 });

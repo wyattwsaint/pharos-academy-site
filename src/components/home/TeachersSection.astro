@@ -1,70 +1,34 @@
 ---
-import { INSTRUCTORS } from '../../lib/home/content.js';
-import type { Person } from '../../lib/people/person.js';
+import { STAFF_PATH } from '../../lib/people/views.js';
 
 /**
- * The people rows, read in the page and handed down (#34) — never read here.
- * A store read inside a component's frontmatter runs with the 200 already on
- * the wire, so it can only truncate the response, and a truncated 200 is what
- * the CDN stores over the good copy.
+ * An invitation, not a roster (#142).
+ *
+ * This band used to print three portraits with names and credentials under a
+ * "Nine instructors." heading — a second, smaller staff page, with a count that
+ * had stopped matching the people list. The people are the staff page's job;
+ * what belongs on the front page is the school's posture toward the families
+ * reading it, and one link to go and meet them.
+ *
+ * Nothing here reads the store any more, so the section takes no props. The
+ * count is gone rather than derived: a number on the front page is one more
+ * thing to keep true, and the staff page already answers "how many" by showing
+ * them.
  */
-type Props = { people: readonly Person[] };
-
-const { people } = Astro.props;
-
-/** The homepage's three, each carrying whatever photograph the table holds. */
-const instructors = INSTRUCTORS.map((instructor) => ({
-  ...instructor,
-  photo: people.find((person) => person.slug === instructor.slug)?.photo ?? null,
-}));
 ---
 
 <section class="band band-quiet" id="teachers" data-section="teachers">
   <div class="wide">
-    <div class="accent">
+    <div class="accent accent-wide">
       <div>
-        <p class="label">Who teaches</p>
-        <h2 class="mt-4">Nine instructors.</h2>
+        <h2>We walk alongside to support and encourage homeschool families</h2>
+        <p class="mt-5">
+          <a href={STAFF_PATH}>Meet the people who teach here →</a>
+        </p>
       </div>
       <figure class="plate">
         <img src="/imagery/vista-path.webp" alt="" width="1400" height="933" loading="lazy" />
       </figure>
-    </div>
-
-    <div class="people">
-      {
-        instructors.map((person) => (
-          <article>
-            {
-              /* The school's own photograph where there is one (#99), and the
-                 empty tint where there is not — the row of three holds its
-                 shape either way. Never a stand-in face: a generated painting
-                 under a named member of staff is the one substitution that
-                 would be dishonest (#13).
-
-                 Alt text is this row's name, honorific and all, rather than the
-                 table's: it is the name printed under the circle, and a screen
-                 reader hearing a different one would be hearing about a
-                 different person. */
-            }
-            {person.photo ? (
-              <img
-                class="portrait"
-                src={person.photo}
-                alt={person.name}
-                width="300"
-                height="300"
-                loading="lazy"
-              />
-            ) : (
-              <div class="portrait" aria-hidden="true" />
-            )}
-            <h3>{person.name}</h3>
-            <p class="role label">{person.role}</p>
-            <p>{person.credentials}</p>
-          </article>
-        ))
-      }
     </div>
   </div>
 </section>

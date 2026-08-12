@@ -2,6 +2,7 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { SEEDED_ANNOUNCEMENTS } from '../src/lib/announcements/announcement.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
+import { STAFF_PATH } from '../src/lib/people/views.js';
 import { SCHOOL_DESCRIPTION } from '../src/lib/site.js';
 
 /**
@@ -389,6 +390,49 @@ test.describe('the page', () => {
     await expect(page.locator('[data-section="announcements"]')).toHaveCount(0);
     await expect(page.locator('#announcements')).toHaveCount(0);
     await expect(page.getByText(announcement.headline)).toHaveCount(0);
+  });
+
+  test('invites families to the staff page rather than repeating it', async ({ page }) => {
+    // #142. The band used to be a second, smaller staff page — three portraits
+    // with names and credentials, under a count that had stopped matching the
+    // people list. What is asserted is the whole shape of the replacement: the
+    // school's posture, one link out, and nothing of the roster left behind.
+    await page.goto('/');
+    const teachers = page.locator('[data-section="teachers"]');
+
+    await expect(
+      teachers.getByRole('heading', {
+        name: 'We walk alongside to support and encourage homeschool families',
+      }),
+    ).toBeVisible();
+    await expect(teachers.getByRole('link')).toHaveAttribute('href', STAFF_PATH);
+
+    // No faces and no empty tints: `.portrait` is the one class both took.
+    await expect(teachers.locator('.portrait')).toHaveCount(0);
+    await expect(teachers.getByText('Who teaches')).toHaveCount(0);
+    await expect(teachers.getByText('Millersville')).toHaveCount(0);
+
+    // The count is gone from the page, not just from this band — it was wrong,
+    // and a number is one more thing to keep true.
+    await expect(page.getByText(/\bnine\b/i)).toHaveCount(0);
+  });
+
+  test('gives the teachers band a plate about 30% wider than the others', async ({ page }) => {
+    // #142 AC 4. Measured rather than read off the stylesheet: the claim is
+    // about what a parent sees, and the two plates sit in the same `.wide`
+    // column, so their rendered widths are directly comparable.
+    await page.setViewportSize(DESKTOP);
+    await page.goto('/');
+
+    const width = async (section: string) => {
+      const plate = page.locator(`[data-section="${section}"] .plate`);
+      await expect(plate).toHaveCount(1);
+      return (await plate.boundingBox())!.width;
+    };
+
+    const ratio = (await width('teachers')) / (await width('week'));
+    expect(ratio).toBeGreaterThan(1.2);
+    expect(ratio).toBeLessThan(1.45);
   });
 
   test('carries the inquiry CTA in both the header and the footer', async ({ page }) => {
