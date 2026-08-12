@@ -18,6 +18,8 @@ import { SCHOOL_DESCRIPTION } from '../src/lib/site.js';
 /** Where the hero's scroll ramp ends: one viewport, then it releases. */
 const DESKTOP = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
+/** A step below the narrowest width the axe suite audits (#140). */
+const NARROWEST = { width: 320, height: 844 };
 
 /**
  * Records every request the page makes for a video file.
@@ -39,6 +41,29 @@ async function scrollTo(page: Page, y: number) {
   await page.evaluate((offset) => window.scrollTo(0, offset), y);
   // two frames: one for the listener, one for the rAF it schedules
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+}
+
+/**
+ * Rounded document-space rectangles for every match, in document order.
+ *
+ * Rounded because sub-pixel grid fractions differ by a hundredth between two
+ * cells of the same row, and a raw comparison of those reads as "the row
+ * broke" when nothing has moved.
+ */
+async function boundingBoxes(page: Page, selector: string) {
+  return page.evaluate(
+    (sel) =>
+      [...document.querySelectorAll(sel)].map((el) => {
+        const { top, left, width, height } = el.getBoundingClientRect();
+        return {
+          top: Math.round(top + window.scrollY),
+          left: Math.round(left + window.scrollX),
+          width: Math.round(width),
+          height: Math.round(height),
+        };
+      }),
+    selector,
+  );
 }
 
 test.describe('the hero', () => {
@@ -356,6 +381,81 @@ for (const surface of DISCLOSURE_SURFACES) {
     });
   });
 }
+
+/**
+ * #140. H.O.P.E. is an acronym, so it has to read left to right as one word.
+ * The grid used to go 2-up on a phone, which stacked it into "HO" over "PE".
+ *
+ * Shared top edges are what "one row" means here — asserting four columns in
+ * the computed `grid-template-columns` would pass for a grid that reflows by
+ * some other mechanism, and fail for one that keeps the row by a different
+ * one. The panel is measured for the opposite property: it may be as wide as
+ * the row wants, but the tiles above it must not have moved.
+ */
+test.describe('the H.O.P.E. letters on a phone', () => {
+  const HOPE_CELLS = '[data-disclosure-group="hope"] [data-disclosure-cell]';
+
+  for (const viewport of [PHONE, NARROWEST]) {
+    test(`the four letters share one row at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const boxes = await boundingBoxes(page, HOPE_CELLS);
+      expect(boxes).toHaveLength(4);
+
+      expect(new Set(boxes.map((box) => box.top)).size).toBe(1);
+
+      // Left to right in document order — H, then O, then P, then E.
+      const lefts = boxes.map((box) => box.left);
+      expect(lefts).toEqual([...lefts].sort((a, b) => a - b));
+    });
+
+    test(`the letters stay inside their cells at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const overflowing = await page.evaluate((selector) => {
+        return [...document.querySelectorAll(`${selector} .hope-btn b, ${selector} .hope-btn span`)]
+          .filter((el) => el.scrollWidth > el.clientWidth + 1)
+          .map((el) => el.textContent);
+      }, HOPE_CELLS);
+
+      expect(overflowing).toEqual([]);
+    });
+
+    test(`an opened panel spans the row without displacing the tiles at ${viewport.width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const before = await boundingBoxes(page, HOPE_CELLS);
+
+      // The third tile, not the first: an inner cell is the one whose card
+      // used to measure a border narrower than the row.
+      const third = page.locator(HOPE_CELLS).nth(2);
+      await third.locator('[data-disclosure-trigger]').click();
+      const panel = third.locator('[data-disclosure-panel]');
+      await expect(panel).toBeVisible();
+
+      const after = await boundingBoxes(page, HOPE_CELLS);
+      expect(after).toEqual(before);
+
+      const row = await page.locator('.hope').boundingBox();
+      const card = await panel.boundingBox();
+      expect(row).not.toBeNull();
+      expect(card).not.toBeNull();
+
+      expect(Math.round(card!.width)).toBe(Math.round(row!.width));
+      expect(Math.round(card!.x)).toBe(Math.round(row!.x));
+      // Beneath the row, not over it. The CSS tucks the card up by 6px so the
+      // row's bottom rule reads as the card's own top edge rather than as a
+      // second line above it; 12 is that overlap with room to spare, and a card
+      // that opened *upward* again would clear it by hundreds of pixels.
+      expect(card!.y).toBeGreaterThan(row!.y + row!.height - 12);
+    });
+  }
+});
 
 test.describe('the page', () => {
   test('runs the sections in the order #9 fixed', async ({ page }) => {
