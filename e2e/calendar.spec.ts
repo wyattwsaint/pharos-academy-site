@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { eventDateLabel, SEEDED_EVENTS, upcomingEvents } from '../src/lib/calendar/event.js';
 import { CALENDAR_FEED_PATH } from '../src/lib/calendar/views.js';
 import { CALENDAR_PATH } from '../src/lib/current-families/section.js';
 import { meetingsOf, SEEDED_SCHOOL_YEAR, trackColumn } from '../src/lib/calendar/year.js';
@@ -52,6 +53,30 @@ test.describe('the calendar page', () => {
     await expect(page.getByTestId('subscription-caveat')).toContainText('own schedule');
   });
 
+  /*
+   * The fundraiser, to a visitor who is not signed in (#146 ACs 1, 3 and 5).
+   *
+   * Asserted against `upcomingEvents` rather than against the Chick-fil-A row by
+   * name, because the seed is dated and this suite is not: on 20 August the
+   * event has been and gone, and the page is *right* to have dropped it. What is
+   * true on both sides of that date is that the page shows what is ahead and
+   * says nothing is scheduled only when nothing is.
+   */
+  test('shows the events still ahead, and claims nothing is on only when nothing is', async ({
+    page,
+  }) => {
+    await page.goto(CALENDAR_PATH);
+    const events = page.locator('[data-section="calendar-events"]');
+    const ahead = upcomingEvents(SEEDED_EVENTS, new Date());
+
+    for (const event of ahead) {
+      await expect(events, event.slug).toContainText(event.title);
+      await expect(events, event.slug).toContainText(eventDateLabel(event.heldOn));
+    }
+
+    if (ahead.length > 0) await expect(events).not.toContainText('Nothing else is on the calendar');
+  });
+
   test('prints as the calendar, not as a website', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
     await page.emulateMedia({ media: 'print' });
@@ -65,18 +90,30 @@ test.describe('the calendar page', () => {
 });
 
 test.describe('the subscribe address', () => {
-  test('answers as a calendar, with a VEVENT per meeting date', async ({ request }) => {
+  test('answers as a calendar, with a VEVENT per meeting date and per one-off', async ({
+    request,
+  }) => {
     const response = await request.get(CALENDAR_FEED_PATH);
     expect(response.status()).toBe(200);
     expect(response.headers()['content-type']).toContain('text/calendar');
 
     const body = await response.text();
-    expect(body.split('BEGIN:VEVENT').length - 1).toBe(meetingsOf(SEEDED_SCHOOL_YEAR).length);
+    expect(body.split('BEGIN:VEVENT').length - 1).toBe(
+      meetingsOf(SEEDED_SCHOOL_YEAR).length + SEEDED_EVENTS.length,
+    );
     // One real date, spot-checked end to end: the Wednesday track's week 10.
     const wednesday = trackColumn(SEEDED_SCHOOL_YEAR, 'Wednesday').find((m) => m.week === 10)!;
-    expect(body.replace(/\r\n /g, '')).toContain(
-      `DTSTART;VALUE=DATE:${wednesday.date.replace(/-/g, '')}`,
-    );
+    const unfolded = body.replace(/\r\n /g, '');
+    expect(unfolded).toContain(`DTSTART;VALUE=DATE:${wednesday.date.replace(/-/g, '')}`);
+
+    /*
+     * And every one-off, whether or not it is still ahead (#146 AC 1). The feed
+     * is deliberately unfiltered where the page is not: a subscribed calendar is
+     * the record of the year, and its client is what decides what to draw.
+     */
+    for (const event of SEEDED_EVENTS) {
+      expect(unfolded, event.slug).toContain(`SUMMARY:${event.title}`);
+    }
   });
 
   test('answers 304 when nothing about the year has changed', async ({ request }) => {

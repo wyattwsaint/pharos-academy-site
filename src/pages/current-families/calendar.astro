@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getSchoolDetails } from '../../lib/admin/school-details.js';
-import { eventDateLabel, eventTimeLabel } from '../../lib/calendar/event.js';
+import { eventDateLabel, eventTimeLabel, upcomingEvents } from '../../lib/calendar/event.js';
 import { getSchoolYear, listEvents } from '../../lib/calendar/store.js';
 import {
   CALENDAR_FEED_PATH,
@@ -34,7 +34,19 @@ import { getDb } from '../../lib/db/client.js';
 const db = await getDb();
 const details = await getSchoolDetails(db);
 const year = (await getSchoolYear(db)) as SchoolYear | undefined;
-const events = await listEvents(db);
+/*
+ * What is still ahead, not everything the school has ever held (#146).
+ *
+ * The feed below is unfiltered on purpose — a subscribed calendar is the record
+ * of the year, and its client drops what is past on its own. This page is what
+ * is *on*, and a fundraiser that has been and gone belongs on neither.
+ *
+ * The page is revalidated rather than rendered per request, so an event leaves
+ * within the revalidation window rather than on the stroke of midnight. That is
+ * the same trade every dated thing on this site makes, and the boundary
+ * (`upcomingEvents`) is generous by a day at the end that matters.
+ */
+const events = upcomingEvents(await listEvents(db), new Date());
 
 const description =
   'Every class date for the Pharos Academy school year, by day track, with the days the school ' +

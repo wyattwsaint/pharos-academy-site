@@ -100,8 +100,8 @@ export function currentAnnouncements<T extends { postedOn: string }>(
  * The address of an announcement: its date, then its headline.
  *
  * Dated first so the list sorts and reads chronologically wherever a slug is
- * shown, and so two Texas Roadhouse nights in one year are two addresses rather
- * than a collision. The headline is capped rather than refused — a long
+ * shown, and so two restaurant fundraiser nights in one year are two addresses
+ * rather than a collision. The headline is capped rather than refused — a long
  * headline is still an announcement, and the date carries the uniqueness.
  */
 export function announcementSlug(postedOn: string, headline: string): string {
@@ -131,13 +131,19 @@ function daysBetween(postedOn: string, now: Date): number {
 /**
  * What the school is announcing today, carried from its own published material.
  *
- * Five of the six come from the 1 July 2026 board update, which describes four
- * active fundraisers that have no page at all on the live site; the sixth is
+ * Four of the five come from the 1 July 2026 board update, which describes
+ * active fundraisers that have no page at all on the live site; the fifth is
  * `/special-announcement`, the Weis Markets page, which becomes an announcement
  * like the rest of them. Nothing here is invented — the wording is compressed
  * from `docs/mirror/`, not written fresh.
  *
- * All six carry 1 July 2026, the date of the material they come from. The Weis
+ * The board update's fifth fundraiser, a Texas Roadhouse night planned for
+ * August, is deliberately **not** here: the school replaced it with the
+ * Chick-fil-A dine-to-donate that is now an event on the calendar
+ * (`calendar/event.ts`, #146). Migration 0018 takes the row off the databases
+ * that already have it.
+ *
+ * All five carry 1 July 2026, the date of the material they come from. The Weis
  * page publishes no date at all, so it is filed with the July material rather
  * than back-dated to a guess. They therefore go stale together in mid-August,
  * which since #109 changes nothing anybody can see: the news page lists them
@@ -174,16 +180,6 @@ export const SEEDED_ANNOUNCEMENTS: readonly SeedAnnouncement[] = [
     headline: 'Senators game fundraiser, July 24',
     body:
       'Pharos receives $4 for every ticket bought for the Senators game on July 24. Ask Jill for tickets.',
-    linkUrl: null,
-    linkLabel: null,
-    attachmentFilename: null,
-  },
-  {
-    slug: '2026-07-01-texas-roadhouse-night-and-bake-sale-in-august',
-    postedOn: '2026-07-01',
-    headline: 'Texas Roadhouse night and bake sale in August',
-    body:
-      'The June Texas Roadhouse evening raised $210.69 for Pharos. Another is planned for August, this time paired with a bake sale.',
     linkUrl: null,
     linkLabel: null,
     attachmentFilename: null,

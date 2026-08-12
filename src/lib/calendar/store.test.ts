@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
-import { eventSlug } from './event.js';
+import { eventSlug, SEEDED_EVENTS } from './event.js';
 import {
   createEvent,
   deleteEvent,
@@ -100,8 +100,16 @@ describe('events', () => {
     note: null,
   };
 
-  it('starts empty, which is a school with nothing extra on rather than a broken one', async () => {
-    expect(await listEvents(db)).toEqual([]);
+  /*
+   * The seeded events, which the store is not allowed to treat as special
+   * (#146). They were empty until the school had a real fundraiser days away;
+   * what is asserted is that a seeded row comes back as an ordinary event —
+   * unstamped, editable and deletable like any Jill types.
+   */
+  it('starts with the events the school has already published, and nothing else', async () => {
+    const listed = await listEvents(db);
+    expect(listed.map((event) => event.slug)).toEqual(SEEDED_EVENTS.map((event) => event.slug));
+    expect(listed[0]).toMatchObject({ ...SEEDED_EVENTS[0]!, lastEditedBy: null, lastEditedAt: null });
   });
 
   it('holds a one-off without it entering the term-dates model', async () => {
@@ -123,7 +131,7 @@ describe('events', () => {
       { heldOn: '2027-05-12', title: 'Field day', startTime: null, place: null, note: null },
       'Jill Kilker',
     );
-    const [event] = await listEvents(db);
+    const event = (await listEvents(db)).find((one) => one.slug === '2027-05-12-field-day');
     expect(event).toMatchObject({ startTime: null, place: null, note: null });
   });
 
@@ -135,7 +143,7 @@ describe('events', () => {
     expect(edited.lastEditedBy).toBe('George Jensen');
 
     await deleteEvent(db, slug);
-    expect(await listEvents(db)).toEqual([]);
+    expect((await listEvents(db)).map((event) => event.slug)).not.toContain(slug);
   });
 
   it('lists them earliest first, whatever order they were typed in', async () => {
@@ -146,9 +154,8 @@ describe('events', () => {
       'Jill Kilker',
     );
     await createEvent(db, eventSlug(draft.heldOn, draft.title), draft, 'Jill Kilker');
-    expect((await listEvents(db)).map((event) => event.heldOn)).toEqual([
-      '2026-10-17',
-      '2027-05-12',
-    ]);
+    const heldOn = (await listEvents(db)).map((event) => event.heldOn);
+    expect(heldOn).toEqual([...heldOn].sort());
+    expect(heldOn.slice(-2)).toEqual(['2026-10-17', '2027-05-12']);
   });
 });

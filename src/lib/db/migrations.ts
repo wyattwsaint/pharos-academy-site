@@ -16,6 +16,7 @@ import {
   SEEDED_ANNOUNCEMENTS,
   type SeedAnnouncement,
 } from '../announcements/announcement.js';
+import { SEEDED_EVENTS, type SeedEvent } from '../calendar/event.js';
 import { SEEDED_SCHOOL_YEAR, type Closure, type Term } from '../calendar/year.js';
 import { DAY_TRACKS } from '../courses/schedule.js';
 import { CATALOGUE } from '../courses/catalogue.js';
@@ -676,7 +677,55 @@ export const MIGRATIONS: readonly Migration[] = [
       `alter table school_details add column if not exists registration_url text not null default ''`,
     ],
   },
+  {
+    /*
+     * The Chick-fil-A fundraiser, and the Texas Roadhouse night it replaced
+     * (#146).
+     *
+     * An insert and a delete, and the delete is the unusual one: nothing else on
+     * this site removes an announcement, because an announcement that has aged
+     * out is only history (`calendar/store.ts`). This row is not history. It
+     * announces a Texas Roadhouse night "planned for August" that the school
+     * replaced with the fundraiser above — a future event that is not happening,
+     * which is the one thing a notice can become that leaving it up would make
+     * the site say. Deleted rather than reworded, because the replacement is an
+     * event on the calendar and not a second announcement.
+     *
+     * Both statements survive a re-run: the insert conflicts on its slug, and
+     * the delete finds nothing the second time. A fresh database never had the
+     * Texas Roadhouse row at all — `SEEDED_ANNOUNCEMENTS` no longer carries it —
+     * and finds nothing to delete, which is the same end state Neon reaches by
+     * the longer route.
+     */
+    id: '0018-chick-fil-a-replaces-texas-roadhouse',
+    statements: [
+      insertEvents(SEEDED_EVENTS),
+      `delete from announcements
+       where slug = ${literal('2026-07-01-texas-roadhouse-night-and-bake-sale-in-august')}`,
+    ],
+  },
 ];
+
+/** The events the school has already published, idempotent like every other seed. */
+function insertEvents(events: readonly SeedEvent[]): string {
+  const values = events
+    .map(
+      (event) =>
+        `(${[
+          literal(event.slug),
+          literal(event.heldOn),
+          literal(event.title),
+          nullable(event.startTime),
+          nullable(event.place),
+          nullable(event.note),
+        ].join(', ')})`,
+    )
+    .join(', ');
+
+  return `insert into calendar_events (slug, held_on, title, start_time, place, note)
+    values ${values}
+    on conflict (slug) do nothing`;
+}
 
 /**
  * The seeded photographs, as an update rather than an insert.

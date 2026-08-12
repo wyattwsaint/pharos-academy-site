@@ -20,6 +20,19 @@ import { DAY_TRACKS, type DayTrack } from '../courses/schedule.js';
  * built from its output. One computation, three surfaces.
  */
 
+/**
+ * Where the school is, for every question the calendar asks a clock.
+ *
+ * Two of them ask one: the ICS feed turns a published time into the instant it
+ * actually is, and the public page decides whether an event is still ahead. Both
+ * have to mean *Enola's* day rather than the server's — a lambda in UTC calls
+ * half past nine on a fundraiser evening "tomorrow", and the event a family
+ * came to the page for is gone hours early.
+ *
+ * Exported from `ics.ts` too, under the name that module's callers already use.
+ */
+export const SCHOOL_TIMEZONE = 'America/New_York';
+
 export type Semester = 'fall' | 'spring';
 
 /** Fall then spring — the order every surface prints them in. */
@@ -393,6 +406,27 @@ export function validateSchoolYear(year: SchoolYear): SchoolYearErrors {
   });
 
   return errors;
+}
+
+/**
+ * Today, as the school's own day — `YYYY-MM-DD` in {@link SCHOOL_TIMEZONE}.
+ *
+ * The one date on the calendar that is *not* parsed as UTC, and the exception is
+ * the point: every other date here is a day the school typed, and this is the
+ * day it currently is. Read from the clock at 8pm in Enola, UTC has already
+ * turned over, and anything comparing a stored date against it is a day ahead of
+ * the families reading the page.
+ *
+ * `en-CA` because its long-standing format is `YYYY-MM-DD` — the same shape the
+ * stored dates have, so the two compare as strings with nothing to parse.
+ */
+export function schoolToday(now: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: SCHOOL_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
 }
 
 /** `YYYY-MM-DD` plus seven days, as `YYYY-MM-DD`. UTC throughout. */

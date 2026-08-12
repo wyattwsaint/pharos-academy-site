@@ -1,4 +1,4 @@
-import { addDays, meetingsOf, type Meeting, type SchoolYear } from './year.js';
+import { addDays, meetingsOf, SCHOOL_TIMEZONE, type Meeting, type SchoolYear } from './year.js';
 import { TIMED_EVENT_MINUTES, type CalendarEvent } from './event.js';
 
 /**
@@ -28,8 +28,11 @@ export const UID_DOMAIN = 'pharosacademy.net';
  * than as floating local times with a VTIMEZONE beside them. Both are valid;
  * this one cannot be misread by a client whose zone database disagrees with
  * ours, and it needs no second component to stay in step.
+ *
+ * Declared in `year.ts` and re-exported here, so the imports point one way: the
+ * page that decides an event is past asks the same zone this file does (#146).
  */
-export const SCHOOL_TIMEZONE = 'America/New_York';
+export { SCHOOL_TIMEZONE };
 
 export type FeedInput = {
   year: SchoolYear;
