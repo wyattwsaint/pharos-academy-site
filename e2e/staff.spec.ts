@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { CATALOGUE } from '../src/lib/courses/catalogue.js';
 import { classPath } from '../src/lib/courses/views.js';
 import { PEOPLE } from '../src/lib/people/person.js';
-import { STAFF_PATH } from '../src/lib/people/views.js';
+import { SITE_CREDIT, STAFF_PATH } from '../src/lib/people/views.js';
 
 /**
  * #26's acceptance criteria, in a browser.
@@ -163,6 +163,26 @@ test.describe('the staff page', () => {
     // And the role he is listed under is his leadership role in both places:
     // being an instructor is a fact about the catalogue, not a second title.
     await expect(teaching.locator('.role')).toHaveText(seeded.role);
+  });
+
+  test('credits the web designer, without making them a tenth instructor', async ({ page }) => {
+    await page.goto(STAFF_PATH);
+
+    const credit = page.locator('[data-section="staff-credit"]');
+    await expect(credit).toHaveCount(1);
+    await expect(credit.locator('.staff-credit')).toHaveText(SITE_CREDIT);
+
+    // #150: no portrait, and outside both lists — the credit is a footnote to
+    // the school's people, not one of them. Asserting where it *isn't* is the
+    // point: a line reading "Website by …" under the Instructors heading would
+    // pass a bare "the text is on the page" check.
+    await expect(credit.locator('img')).toHaveCount(0);
+    await expect(
+      page.locator(`[data-section="staff-instructors"] .staff-credit`),
+    ).toHaveCount(0);
+    await expect(
+      page.locator(`[data-section="staff-leadership"] .staff-credit`),
+    ).toHaveCount(0);
   });
 
   test('links each instructor to every class they teach', async ({ page }) => {
