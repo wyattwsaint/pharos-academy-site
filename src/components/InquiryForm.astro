@@ -91,8 +91,23 @@ const typed = (field: keyof InquiryFields): string => values?.[field] ?? '';
     <textarea id={id('message')} name="message">{typed('message')}</textarea>
   </div>
 
-  <div class="full">
+  {
+    /*
+     * The submit button, and whatever else the page wants standing beside it.
+     *
+     * The `alongside` slot is how the home page puts its gold "Register now!"
+     * button next to "Send my question" (#141) without that button following
+     * the form onto `/inquire`, where the visitor has already made the choice
+     * this row is asking them to make. A page that passes nothing gets the row
+     * it always had.
+     *
+     * The row does not wrap: #141 AC 7 is that both calls to action stay side
+     * by side on a phone, so the buttons narrow and their words wrap instead.
+     */
+  }
+  <div class="full actions">
     <button class="btn solid" type="submit">{submitLabel}</button>
+    <slot name="alongside" />
   </div>
 </form>
 
@@ -111,6 +126,27 @@ const typed = (field: keyof InquiryFields): string => values?.[field] ?? '';
 
   .full {
     grid-column: 1 / -1;
+  }
+
+  .actions {
+    display: flex;
+    align-items: stretch;
+    gap: 0.9rem;
+  }
+
+  /* Both buttons are free to narrow below their content, which is what keeps
+     the pair on one line at 320px rather than pushing the page sideways. */
+  .actions > :global(*) {
+    min-width: 0;
+  }
+
+  /* `.btn` sets `font: 600 13.5px/1`, which is right for the single line it was
+     drawn for and wrong the moment a label wraps — at 320px "Send my question"
+     becomes two lines whose ascenders and descenders touch. Only in this row,
+     because this row is the only place on the site where a button is
+     deliberately narrowed past its words. */
+  .actions > :global(.btn) {
+    line-height: 1.25;
   }
 
   label {

@@ -2,6 +2,9 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { SEEDED_ANNOUNCEMENTS } from '../src/lib/announcements/announcement.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
+import { APPLICATION_PATH } from '../src/lib/application/application.js';
+import { REGISTRATION_LABEL } from '../src/lib/home/registration-cta.js';
+import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { SCHOOL_DESCRIPTION } from '../src/lib/site.js';
 
 /**
@@ -502,5 +505,94 @@ test.describe('the page', () => {
     // for a phone. The claim is unchanged — the row offers it exactly once.
     await expect(page.locator('[data-site-header] > .wide > a[href="/#inquiry"]')).toHaveCount(1);
     await expect(page.locator('footer a[href="/#inquiry"]')).toHaveCount(1);
+  });
+});
+
+/**
+ * The registration call to action (#141).
+ *
+ * What it says and where the date comes from is unit-tested in
+ * `home/registration-cta.test.ts`. What needs a browser is the claim that
+ * cannot be made off a derived object: two calls to action sharing one row,
+ * both still tappable, at a phone's width and at a desktop's.
+ */
+test.describe('the registration call to action', () => {
+  /**
+   * The first day of classes, rendered. Matched rather than fixed: the suite
+   * also runs against a deployment, where the office may have moved the date
+   * since the seed, and pinning the seeded day would fail there for the one
+   * reason the ticket wants to be possible.
+   */
+  const FIRST_DAY = /^Classes begin [A-Z][a-z]+ \d{1,2}, \d{4}$/;
+
+  /*
+   * 320 is not a phone the suite otherwise measures, and it is here because the
+   * row is the one component on the page that refuses to wrap: everything else
+   * stacks at a narrow width and this deliberately does not. 320px is where the
+   * pair is narrowest, so it is where "readable and tappable side by side"
+   * either holds or does not.
+   */
+  const NARROW = { width: 320, height: 700 };
+
+  for (const [name, viewport] of [
+    ['desktop', DESKTOP],
+    ['a phone', PHONE],
+    ['the narrowest phone', NARROW],
+  ] as const) {
+    test(`stands beside the inquiry, whole and tappable, on ${name}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const gold = page.locator('#inquiry a.register');
+      const send = page.locator('#inquiry button[type="submit"]');
+      await expect(gold).toBeVisible();
+      await expect(send).toBeVisible();
+
+      await expect(gold).toHaveAttribute('href', APPLICATION_PATH);
+      await expect(gold.locator('.register-label')).toHaveText(REGISTRATION_LABEL);
+      await expect(gold.locator('.register-detail')).toHaveText(FIRST_DAY);
+
+      const goldBox = (await gold.boundingBox())!;
+      const sendBox = (await send.boundingBox())!;
+
+      // Side by side rather than stacked: the two boxes overlap vertically, and
+      // the inquiry ends before the registration begins.
+      expect(goldBox.y).toBeLessThan(sendBox.y + sendBox.height);
+      expect(sendBox.y).toBeLessThan(goldBox.y + goldBox.height);
+      expect(sendBox.x + sendBox.width).toBeLessThanOrEqual(goldBox.x + 1);
+
+      // Still a target a thumb can hit, at the width where they are narrowest.
+      for (const box of [goldBox, sendBox]) {
+        expect(box.height).toBeGreaterThanOrEqual(44);
+        expect(box.width).toBeGreaterThan(44);
+      }
+
+      // Readable, which here means the words are inside the button rather than
+      // clipped by it: the buttons are allowed to narrow past their content, so
+      // a document that does not scroll sideways is not on its own proof that
+      // nothing was cut off.
+      for (const button of [gold, send]) {
+        const clipped = await button.evaluate(
+          (el) => el.scrollWidth - el.clientWidth > 1 || el.scrollHeight - el.clientHeight > 1,
+        );
+        expect(clipped).toBe(false);
+      }
+
+      // And narrowing rather than overflowing — the row must not push the
+      // document sideways.
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+    });
+  }
+
+  // The gold button belongs to the home page's row of two. `/inquire` is where
+  // a visitor who is still asking has already been sent, and the slot beside
+  // that form stays empty.
+  test('does not follow the form onto the inquiry page', async ({ page }) => {
+    await page.goto(INQUIRY_PATH);
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
+    await expect(page.locator('a.register')).toHaveCount(0);
   });
 });
