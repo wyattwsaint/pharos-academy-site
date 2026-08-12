@@ -7,17 +7,16 @@ import { britishSpellings, prose, RULES } from './house-style.js';
 /**
  * The house-style scanner (#110): the words a family reads are American.
  *
- * This is the expand step of the British-to-American conversion. It ships green
- * on a repo that is still full of "cheque" and "enrolment", because the
- * allowlist below names every area that violates it today — the debt is written
- * down here rather than paid here. #112, #113 and #114 pay it down by deleting
- * entries, and #115 empties it. All three have now been paid — #112's home page
- * and site chrome, #114's admin pages and the seeded sentence behind them, and
- * #113's Admissions and Apply flow — so the debt is empty and every path under
- * `src` is enforced. #115 is what removes the machinery below, once it is sure
- * nothing else needs an exception.
+ * The conversion is finished (#115). This scan shipped green on a repo still
+ * full of "cheque" and "enrolment", by writing the debt down as an allowlist of
+ * areas awaiting a ticket; #112's home page and site chrome, #114's admin pages
+ * and the seeded sentence behind them, and #113's Admissions and Apply flow
+ * paid the last of it. What is left below is the contract, not the debt: no
+ * path is exempt, and the only survivals are two words in identifier position,
+ * each with a stated reason.
  *
- * The rule it encodes is **prose is American, identifiers are not**. A family
+ * The rule, as CONTEXT.md now states it: **prose is American; `enrolment` and
+ * `cheque` survive only as column names, enum values and type names.** A family
  * reads "check", "enrollment" and "program"; the database keeps
  * `enrolment_units` and `payment_mode = 'cheque'`, because renaming a schema
  * for a spelling has migration cost and no user-visible payoff. `house-style.ts`
@@ -49,29 +48,38 @@ const SCANNED = ['src'];
 /** Files inside `SCANNED` that are still not prose. */
 const NOT_PROSE = /\.test\.ts$|\.test-helper\.ts$|\.d\.ts$/;
 
-/** An area that violates the rule today, and the ticket that will fix it. */
-interface Debt {
-  readonly area: string;
-  readonly paths: readonly string[];
+/** A word that stays British, and the reason it is allowed to. */
+interface Exception {
+  readonly word: string;
+  readonly reason: string;
 }
 
 /**
- * The debt, one entry per area.
+ * The allowlist, emptied of batches (#115).
  *
- * Every path here is a place the site currently reads British. Nothing in this
- * ticket rewords any of it: an entry is removed by the batch that fixes the
- * prose behind it, and `no allowlisted area has been paid off already` fails if
- * an entry outlives its violations, so an emptied area cannot sit here
- * unnoticed.
+ * It used to hold one entry per area of the site that still read British, each
+ * with the ticket that would reword it. #112, #113 and #114 deleted the last of
+ * those, and no path is exempt now: the entries below are words, not places,
+ * and they buy nothing in prose. `enrolment` in a sentence fails on the Apply
+ * page exactly as it fails anywhere else.
  *
- * The verbatim course catalogue is not listed because it does not violate the
- * rule today. If it ever does, it is not a debt: it is the school's own copy,
- * transcribed and held unedited, and it would need an exception with a reason
- * rather than a ticket.
+ * Each exception states why it survives rather than which ticket will remove
+ * it, because none will. The verbatim course catalogue is likewise not listed:
+ * it is the school's own copy, transcribed unedited, and it happens to read
+ * American already — if it ever stops, it earns a reason here too, never a
+ * ticket.
  */
-const ALLOWED: readonly Debt[] = [];
-
-const ALLOWED_PATHS = new Set(ALLOWED.flatMap((debt) => debt.paths));
+const IDENTIFIER_EXCEPTIONS: readonly Exception[] = [
+  {
+    word: 'enrolment',
+    reason:
+      'the `enrolment_units` column, the `enrolment` seed key and the `EnrolmentUnit` type — renaming a schema for a spelling has migration cost and no user-visible payoff',
+  },
+  {
+    word: 'cheque',
+    reason: "the `payment_mode = 'cheque'` enum value and the `PaymentMode` type naming it",
+  },
+];
 
 /** One violation, in the form a failure prints it. */
 interface Offence {
@@ -121,18 +129,39 @@ describe('the house style', () => {
     expect(ruled('enrolled')).toBe(false);
   });
 
-  it('finds no British spelling in prose outside the allowlist', () => {
-    const unallowed = OFFENCES.filter((offence) => !ALLOWED_PATHS.has(offence.path));
-    expect(unallowed.map((offence) => offence.line)).toEqual([]);
+  it('finds no British spelling in prose, anywhere, with nothing exempted', () => {
+    expect(OFFENCES.map((offence) => offence.line)).toEqual([]);
   });
 
-  it.each(ALLOWED.flatMap((debt) => debt.paths.map((path) => [path, debt.area] as const)))(
-    'still owes %s, allowed for %s',
+  it('allows no path — the allowlist is words with reasons, not batches', () => {
+    for (const { word, reason } of IDENTIFIER_EXCEPTIONS) {
+      expect(reason.length).toBeGreaterThan(20);
+      // A path would read as a batch waiting for a ticket, which is the shape
+      // #115 removed. An exception names a word and says why it survives.
+      expect(word).toMatch(/^[a-z]+$/);
+    }
+  });
+
+  it.each(IDENTIFIER_EXCEPTIONS)('lets $word through as an identifier only', ({ word }) => {
+    const identifiers = `const ${word}Units = 3;\nconst column = '${word}_units';\ntype Mode = '${word}';`;
+    expect(britishSpellings(identifiers, 'ts')).toEqual([]);
+    // The same word in a sentence is the violation the exception does not buy.
+    expect(britishSpellings(`const line = 'The ${word} was posted today.';`, 'ts')).not.toEqual([]);
+  });
+
+  it.each(SOURCES.filter((path) => /index\.astro$|apply\.astro$|home\/timetable\.ts$/.test(path)))(
+    'fails when a British spelling is introduced into %s',
     (path) => {
-      // A path that no longer violates the rule has been paid off, and its
-      // entry above is now hiding nothing. Delete it: the allowlist is the
-      // record of what is left, and a stale line makes the record a lie.
-      expect(OFFENCES.map((offence) => offence.path)).toContain(path);
+      // The scan being green is only worth something if it is still live on the
+      // files it covers. Reword a real one in memory and it goes red.
+      const source = readFileSync(fileURLToPath(new URL(path, ROOT)), 'utf8');
+      const kind = path.endsWith('.astro') ? 'astro' : 'ts';
+      const reworded = `${source}\nconst introduced = 'The programme centre, in colour.';\n`;
+      expect(britishSpellings(reworded, kind).map((found) => found.word)).toEqual([
+        'centre',
+        'colour',
+        'programme',
+      ]);
     },
   );
 });

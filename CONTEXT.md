@@ -72,7 +72,12 @@ with a semester the school does not sell. The enrolment unit is the thing being
 bought; it is **not** the same as the course, and two families in the same course
 may hold different enrolment units.
 
-Note the British spelling — "enrolment" is the term, used consistently.
+Note the British spelling of this heading, and note how far it reaches. **Prose
+is American**: a family reads "enrollment" and "check", never "enrolment" or
+"cheque". Those two words survive only as **column names, enum values and type
+names** — `enrolment_units`, `payment_mode = 'cheque'`, `EnrolmentUnit` —
+because renaming a schema for a spelling has migration cost and no user-visible
+payoff. This entry is named for the type, not for the sentence.
 
 ### offering
 
