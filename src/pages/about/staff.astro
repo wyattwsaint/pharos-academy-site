@@ -41,17 +41,13 @@ const leadership = leadershipAmong(people);
 const instructors = instructorsAmong(people, courses);
 
 const description =
-  'The people of Pharos Academy — the head of school, the chaplain, the director of business administration, and the instructors who teach each class.';
+  'The head of school, the chaplain, the director of business administration, and the instructors who teach each class at Pharos Academy.';
 ---
 
 <BaseLayout details={details} title="Our people" description={description}>
   <section class="band band-quiet" data-section="staff-header">
     <div class="wide">
-      <p class="label">Who we are</p>
-      <h1 class="mt-4">The people of Pharos Academy</h1>
-      <p class="sub mt-5">
-        A school is the people in front of the class and the people behind them. These are ours.
-      </p>
+      <h1>Our Dedicated Staff</h1>
     </div>
   </section>
 
@@ -94,11 +90,7 @@ const description =
 
   <section class="band band-quiet" id="instructors" data-section="staff-instructors">
     <div class="wide">
-      <h2>Who teaches</h2>
-      <p class="sub mt-5">
-        {instructors.length} instructors teach the {courses.length} classes. Each name links to what
-        they teach.
-      </p>
+      <h2>Instructors</h2>
 
       <ul class="staff-teaching">
         {
