@@ -2,6 +2,8 @@
 import '../styles/global.css';
 import { SCHOOL_NAME } from '../lib/site.js';
 import type { Actor } from '../lib/admin/sessions.js';
+import { configuredMailer } from '../lib/backup/monthly.js';
+import { outboundMailWarning } from '../lib/admin/outbound-mail.js';
 
 interface Props {
   title: string;
@@ -31,6 +33,36 @@ const NAV = [
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/backup', label: 'Backup' },
 ];
+
+/**
+ * Whether this deployment can send at all (#136).
+ *
+ * Here, in the layout, because an unconfigured mailer silences *every* form on
+ * the site: a warning that lived on one screen would be a warning Jill sees on
+ * the day she happens to open that screen.
+ *
+ * Read the same way the forms read it — spelled out rather than handed the whole
+ * of `import.meta.env`, because Vite substitutes these where they are *written*
+ * (see `MailEnv`). That is what makes the warning true rather than merely
+ * plausible: it is compiled from the same build as `apply.astro` and
+ * `inquire.astro`, so it says "these forms cannot send" and not "this deployment
+ * has no credentials right now". Credentials pasted into Vercel take effect on
+ * the next deploy, for the forms and for this warning together.
+ *
+ * Only for somebody signed in. On the login page there is nobody to warn, and
+ * naming the deployment's missing variables to a stranger is not a warning — it
+ * is a disclosure.
+ */
+const warning = actor
+  ? outboundMailWarning(
+      configuredMailer({
+        GMAIL_USER: import.meta.env.GMAIL_USER,
+        GMAIL_APP_PASSWORD: import.meta.env.GMAIL_APP_PASSWORD,
+        RESEND_API_KEY: import.meta.env.RESEND_API_KEY,
+        MAIL_FROM: import.meta.env.MAIL_FROM,
+      }),
+    )
+  : null;
 ---
 
 <!doctype html>
@@ -83,6 +115,17 @@ const NAV = [
             </form>
           </div>
         </header>
+      )
+    }
+
+    {
+      warning && (
+        // Above the content and across the whole width, on every screen, for as
+        // long as the state lasts. There is nothing to dismiss: a warning with a
+        // close button is a warning that is gone by the second application.
+        <div class="border-b-4 border-gold bg-parchment" data-testid="mail-warning">
+          <p class="mx-auto max-w-3xl px-6 py-4 font-semibold">⚠ {warning}</p>
+        </div>
       )
     }
 

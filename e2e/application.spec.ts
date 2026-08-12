@@ -699,6 +699,12 @@ test.describe('the application page', () => {
     await expect(confirmation).toContainText('Algebra 1');
     await expect(confirmation).toContainText('Pharos Academy');
     expect(await page.locator('main').innerText()).not.toMatch(CLOCKS);
+
+    // The suite has no mail credentials, so no email went — and the page must
+    // not claim one did (#136). The family has everything they need on screen.
+    await expect(page.locator('[data-outcome="emailed"]')).toHaveCount(0);
+    // The claim, not the word: "email" may legitimately appear on this page.
+    expect(await confirmation.innerText()).not.toMatch(/(on its way to|we have emailed|sent you)/i);
   });
 });
 

@@ -196,6 +196,17 @@ let values: ApplicationFields;
 let errors: ApplicationErrors = {};
 let sentId: string | null = null;
 let storeFailed = false;
+/**
+ * Whether the family's own confirmation actually left (#136).
+ *
+ * The confirmation specifically, not "the family was written to": a refused
+ * submission also emails the family, and what it tells them is the opposite
+ * thing. False until a send says otherwise, so the screen mentions an email only
+ * when there is one — a deployment with no credentials would otherwise promise a
+ * copy that is never coming, and leave the family waiting for it instead of
+ * reading what is in front of them.
+ */
+let confirmationEmailed = false;
 let checked = false;
 let rows: number;
 
@@ -286,6 +297,8 @@ if (Astro.request.method === 'POST') {
       schoolEmail: details.email.trim(),
       site: Astro.site?.toString() ?? SITE_URL,
     });
+
+    confirmationEmailed = delivery.confirmed && delivery.familyWasTold === 'confirmation';
 
     if (sentId) await recordApplicationDelivery(db, sentId, delivery);
 
@@ -493,6 +506,18 @@ const description =
             We have your application for {values.familyName}, and we will be in touch. A place is
             held for each class as soon as its deposit reaches us.
           </p>
+
+          {/*
+            Only when it really went (#136). Everything a family needs is on this
+            page, so a copy in their inbox is a convenience — and a promise of one
+            that never arrives is worse than no promise, because it is the thing
+            they would wait for.
+          */}
+          {confirmationEmailed && (
+            <p class="mt-4" data-outcome="emailed">
+              A copy of this is on its way to {values.email}.
+            </p>
+          )}
 
           <h3 class="mt-8">What you chose</h3>
           <ul class="chosen mt-4">

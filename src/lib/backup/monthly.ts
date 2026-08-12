@@ -57,6 +57,16 @@ export const MAX_GMAIL_ATTACHMENT_BYTES = 17 * 1024 * 1024;
 export const MAILER_ENV_HINT = 'GMAIL_APP_PASSWORD, or RESEND_API_KEY';
 
 /**
+ * Why nothing was sent on a deployment with no credentials (#136).
+ *
+ * One sentence, exported, because two places say it: the refused send that gets
+ * stamped on the row, and the standing warning across the admin. A second
+ * spelling of it would be a screen whose warning and whose rows disagree about
+ * what is wrong.
+ */
+export const NO_MAILER_CONFIGURED = `No mailer is configured on this deployment (${MAILER_ENV_HINT}).`;
+
+/**
  * One message, described in the terms this codebase cares about.
  *
  * The attachment is optional because there are now two things that send mail
@@ -100,10 +110,7 @@ export async function sendAll(
   mails: readonly Mail[],
 ): Promise<{ sent: boolean; error?: string }> {
   if (!sender) {
-    return {
-      sent: false,
-      error: `No mailer is configured on this deployment (${MAILER_ENV_HINT}).`,
-    };
+    return { sent: false, error: NO_MAILER_CONFIGURED };
   }
   if (mails.length === 0) {
     return { sent: false, error: 'There is nobody to send this to.' };
