@@ -67,10 +67,11 @@ const stamp = formatStamp(row.lastEditedBy, row.lastEditedAt);
 /**
  * The form's shape. Type decides the control; nothing else varies.
  *
- * `optional` is the banner's doing (#15). Everything above it must never be
- * blank, so `required` was a constant; the banner's fields are legitimately
- * empty while it is switched off, and marking them required would make the
- * browser refuse the submission that turns it off.
+ * `optional` is the banner's doing (#15), and now the registration payment
+ * link's (#111). `required` was a constant when every field here had to be
+ * filled; the banner's fields are legitimately empty while it is switched off —
+ * marking them required would make the browser refuse the submission that turns
+ * it off — and an empty payment link is "no online option yet".
  */
 type Field = {
   /**
