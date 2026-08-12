@@ -57,7 +57,9 @@ export type AdmissionCost = {
  * sentences flipped with `depositCreditedAgainstTuition`; the flag still drives
  * the arithmetic in `owed`, but the site no longer tells a family which way it
  * is set, and the late fee's "only if a quarterly payment is missed" is likewise
- * unsaid here. Both are noted on the ticket rather than reworded into the labels.
+ * unsaid here — which leaves that label reading like a charge every family pays.
+ * Both are flagged in a comment on #144 rather than reworded into the labels,
+ * because what the block should say instead is the school's call and not ours.
  */
 export function admissionCosts(settings: MoneySettings): AdmissionCost[] {
   return [

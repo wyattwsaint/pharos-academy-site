@@ -176,9 +176,10 @@ const description =
 </BaseLayout>
 
 <style>
-  /* One line per charge since the detail sentences went (#144), so the gap that
-     kept two-line entries apart is now the gap between single lines and has come
-     down to match. */
+  /* Each charge lost its sentence (#144), so an entry is now one line on a
+     desktop and two stacked ones on a phone. The gap came down with it: it
+     separates entries, and it has to stay clearly wider than the zero row gap
+     inside a stacked entry or the two read as one list of five things. */
   .costs {
     display: flex;
     flex-direction: column;
