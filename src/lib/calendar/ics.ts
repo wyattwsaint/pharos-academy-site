@@ -1,4 +1,4 @@
-import { addDays, meetingsOf, type Meeting, type SchoolYear } from './year.js';
+import { addDays, meetingsOf, SCHOOL_TIMEZONE, type Meeting, type SchoolYear } from './year.js';
 import { TIMED_EVENT_MINUTES, type CalendarEvent } from './event.js';
 
 /**
@@ -21,15 +21,18 @@ export const CALENDAR_PRODID = '-//Pharos Academy//School Calendar//EN';
 /** The namespace every UID ends in. The school's domain, because it is the school's feed. */
 export const UID_DOMAIN = 'pharosacademy.net';
 
-/**
- * Where the school is, for the times it publishes.
+/*
+ * Where the school is: `SCHOOL_TIMEZONE`, imported from `year.ts` above.
  *
- * Timed events are emitted as UTC instants computed against this zone rather
+ * Timed events are emitted as UTC instants computed against that zone rather
  * than as floating local times with a VTIMEZONE beside them. Both are valid;
  * this one cannot be misread by a client whose zone database disagrees with
  * ours, and it needs no second component to stay in step.
+ *
+ * It lives in `year.ts` rather than here because the feed is no longer the only
+ * thing that asks: the calendar page decides an event is past against the
+ * school's own day, and the two have to mean the same Enola (#146).
  */
-export const SCHOOL_TIMEZONE = 'America/New_York';
 
 export type FeedInput = {
   year: SchoolYear;

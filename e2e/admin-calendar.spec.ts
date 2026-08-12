@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+import { eventSlug } from '../src/lib/calendar/event.js';
+import { schoolTimeToUtc, utcStamp } from '../src/lib/calendar/ics.js';
 import { CALENDAR_FEED_PATH } from '../src/lib/calendar/views.js';
+import { addDays, schoolToday } from '../src/lib/calendar/year.js';
 import { CALENDAR_PATH } from '../src/lib/current-families/section.js';
 import { signIn } from './suite-admin.js';
 
@@ -91,9 +94,19 @@ test.describe('the School Year screen', () => {
 });
 
 test.describe('the Events screen', () => {
+  /*
+   * A date this suite computes rather than types, because the calendar page now
+   * drops an event once its day has passed (#146): a literal 17 October 2026 in
+   * here is a test that stops proving anything on 18 October and reports it as a
+   * regression. A hundred days out is always ahead, and the instant its 6.30pm
+   * falls on is asked of the same function the feed uses, so the assertion holds
+   * either side of a daylight-saving changeover.
+   */
+  const heldOn = addDays(schoolToday(new Date()), 100);
+
   test('adds a one-off, publishes it, and takes it off again', async ({ page, request }) => {
     await page.goto('/admin/events/new');
-    await page.getByLabel('Date').fill('2026-10-17');
+    await page.getByLabel('Date').fill(heldOn);
     await page.getByLabel('What it is').fill('Suite open house');
     await page.getByLabel('Time').fill('18:30');
     await page.getByLabel('Where').fill('The hall');
@@ -109,9 +122,9 @@ test.describe('the Events screen', () => {
     // And in the feed, as a timed event rather than a whole day.
     const feed = await (await request.get(CALENDAR_FEED_PATH)).text();
     expect(feed.replace(/\r\n /g, '')).toContain('SUMMARY:Suite open house');
-    expect(feed).toContain('DTSTART:20261017T223000Z');
+    expect(feed).toContain(`DTSTART:${utcStamp(schoolTimeToUtc(heldOn, '18:30'))}`);
 
-    await page.goto('/admin/events/2026-10-17-suite-open-house');
+    await page.goto(`/admin/events/${eventSlug(heldOn, 'Suite open house')}`);
     await page.getByRole('button', { name: 'Take this off the calendar' }).click();
     await expect(page).toHaveURL(/\/admin\/events$/);
     await expect(page.locator('body')).not.toContainText('Suite open house');

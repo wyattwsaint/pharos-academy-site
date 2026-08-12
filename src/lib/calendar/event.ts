@@ -1,4 +1,4 @@
-import { fullDateLabel } from './year.js';
+import { fullDateLabel, schoolToday } from './year.js';
 
 /**
  * A one-off on the school's calendar (#23).
@@ -26,6 +26,60 @@ export type CalendarEvent = {
   lastEditedBy: string | null;
   lastEditedAt: Date | null;
 };
+
+/** An event as the seed writes it — everything but the stamp, which is a save. */
+export type SeedEvent = Omit<CalendarEvent, 'lastEditedBy' | 'lastEditedAt'>;
+
+/**
+ * What the school has on the calendar today, carried from its own material.
+ *
+ * Seeded for the reason the announcements and the policies are: the school has
+ * a real event days away, and a calendar page that says nothing is scheduled
+ * while it is being planned is the site being wrong in public (#146). Jill
+ * edits or removes it from the Events screen like any other row — the seed is
+ * the starting point, not the truth.
+ *
+ * **The time, the place and the note are all absent, and none of them is
+ * unfinished.** The school published a name and a day and has published nothing
+ * else, so this is the whole event; inventing an hour or a branch address would
+ * put a family outside the wrong restaurant at the wrong time. Each is a field
+ * Jill fills in when the school confirms it.
+ */
+export const SEEDED_EVENTS: readonly SeedEvent[] = [
+  {
+    slug: '2026-08-19-chick-fil-a-dine-to-donate',
+    heldOn: '2026-08-19',
+    title: 'Chick-fil-A dine-to-donate',
+    startTime: null,
+    place: null,
+    note: null,
+  },
+] as const;
+
+/**
+ * The events still ahead, in the order they were given (#146).
+ *
+ * An event is kept through the whole of its own day and dropped the morning
+ * after, which is the boundary the school would draw: a fundraiser is at its
+ * most useful to a family on the morning it happens, and a calendar that has
+ * already forgotten tonight's event is a calendar nobody trusts by lunchtime.
+ *
+ * Read from the clock rather than written by a job, for the reason ADR-0008
+ * gives about an overdue cheque: a nightly job that stops running leaves the
+ * page advertising a fundraiser that has been and gone, and nobody notices
+ * until a family turns up.
+ *
+ * The **page** filters and the **feed** does not. A subscribed calendar is a
+ * record of the year and its clients drop what is past on their own; a page is
+ * what is on.
+ */
+export function upcomingEvents<T extends { heldOn: string }>(
+  events: readonly T[],
+  now: Date,
+): T[] {
+  const today = schoolToday(now);
+  return events.filter((event) => event.heldOn >= today);
+}
 
 /** What a save may change. The slug is the key and is not one of them. */
 export type CalendarEventEdit = {

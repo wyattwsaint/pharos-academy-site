@@ -156,11 +156,23 @@ describe('the announcements the school already published', () => {
     expect(currentAnnouncements([aged], NOW)).toEqual([]);
   });
 
-  it('carries the Weis fundraiser and the four the board update describes', () => {
+  it('carries the Weis fundraiser and the three of the board update’s that still stand', () => {
     const headlines = SEEDED_ANNOUNCEMENTS.map((item) => item.headline).join(' | ');
-    for (const fundraiser of ['Weis', 'Senators', 'Texas Roadhouse', 'Envelope', 'R&K Subs']) {
+    for (const fundraiser of ['Weis', 'Senators', 'Envelope', 'R&K Subs']) {
       expect(headlines, fundraiser).toContain(fundraiser);
     }
+  });
+
+  /*
+   * The fourth one the board update describes, and the absence is the assertion
+   * (#146). The Texas Roadhouse night was "planned for August" and the school
+   * replaced it with the Chick-fil-A dine-to-donate; a notice for an event that
+   * is not happening is the one thing an announcement can become that no
+   * staleness rule catches, because its date is the day it was posted.
+   */
+  it('has let go of the Texas Roadhouse night the school replaced', () => {
+    const all = SEEDED_ANNOUNCEMENTS.map((item) => `${item.headline} ${item.body}`).join(' | ');
+    expect(all).not.toContain('Roadhouse');
   });
 
   it('gives every one of them a unique slug that matches its own date and headline', () => {
