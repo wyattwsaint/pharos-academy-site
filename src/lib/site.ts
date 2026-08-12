@@ -11,6 +11,30 @@ export const SITE_URL = 'https://www.pharosacademy.net';
 export const SCHOOL_NAME = 'Pharos Academy';
 
 /**
+ * What the school is, in one line, in the school's own wording (#137).
+ *
+ * Held beside the name because it drifted the way an unheld string does: the
+ * hero read "A Christian Classical Hybrid Homeschool" while the About page, the
+ * `llms.txt` summary and the nineteen mirrored pages all said *microschool*.
+ * Pharos is not a homeschool — it serves homeschooling families, which is a
+ * different claim, and the one the site was accidentally making was wrong.
+ *
+ * Sentence case. The comma after "Christian" is *ours*, settled on #137 — the
+ * nineteen mirrored pages set the line without one, so a reader comparing this
+ * to `docs/mirror/` should expect the difference and not correct it back.
+ */
+export const SCHOOL_DESCRIPTION = 'A Christian, classical hybrid microschool';
+
+/**
+ * The same description, for the middle of a sentence.
+ *
+ * Derived rather than typed a second time — two hand-typed cases are how the
+ * first one drifted.
+ */
+export const SCHOOL_DESCRIPTION_INLINE =
+  SCHOOL_DESCRIPTION.charAt(0).toLowerCase() + SCHOOL_DESCRIPTION.slice(1);
+
+/**
  * The launch switch.
  *
  * `false` until the domain actually points here: until then the live Wix site

@@ -165,14 +165,11 @@ export const HOPE: readonly HopeLetter[] = [
 ];
 
 /**
- * The hero's sub-brand line.
- *
- * "Homeschool", not "Microschool", on the owner's instruction during the
- * prototype. The nineteen mirrored pages all say microschool, so this is a
- * positioning change the client has not confirmed in writing — flagged here
- * rather than buried in a template so it stays visible until it is.
+ * The hero's sub-brand line used to be a second copy of the school description,
+ * and read "Homeschool" while every other surface said microschool. It is
+ * `SCHOOL_DESCRIPTION` in `site.ts` now (#137) and the hero reads it directly —
+ * a second name for one string is what let the two disagree.
  */
-export const SUB_BRAND = 'A Christian Classical Hybrid Homeschool';
 
-/** Also invented copy, taken deliberately — see `prototypes/README.md`. */
+/** Invented copy, taken deliberately — see `prototypes/README.md`. */
 export const HERO_CAPS = 'Faith. Family. Learning. Together.';

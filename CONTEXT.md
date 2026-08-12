@@ -416,6 +416,22 @@ never a step.
 Not: "validated", "approved", "accepted" (the school does that, later, by
 reading it).
 
+### microschool
+
+What Pharos **is** — a small school that families enrol in for the classes they
+choose, and that teaches those classes in community. The site says it in exactly
+one wording, held as `SCHOOL_DESCRIPTION` in `src/lib/site.ts` and read from
+there by the hero, the About page, `llms.txt` and the structured data: **A
+Christian, classical hybrid microschool** (#137).
+
+A microschool is not a **homeschool**, and that is the near-synonym worth being
+careful about here: the families Pharos serves homeschool, and the site says so
+freely — the *school* does not. Copy about homeschooling families is correct;
+copy calling Pharos a homeschool is a claim about what kind of institution it is,
+and a wrong one. The hero made it for one release.
+
+Not: "hybrid homeschool", "co-op", "university-model school".
+
 ### H.O.P.E.
 
 **Helping Our Parents Educate** — the school's own acronym, real copy from the

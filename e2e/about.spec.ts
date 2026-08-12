@@ -96,7 +96,7 @@ test.describe('About', () => {
     await page.goto(ABOUT_PATH);
 
     await expect(page.locator('[data-section="about-header"] .sub')).toContainText(
-      'A Christian classical hybrid microschool',
+      'A Christian, classical hybrid microschool',
     );
   });
 

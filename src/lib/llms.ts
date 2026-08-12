@@ -4,7 +4,7 @@ import { STAFF_PATH } from './people/views.js';
 import { POLICIES_PATH } from './policies/views.js';
 import { TEACH_PATH } from './teach/teach.js';
 import { PUBLIC_ROUTES, absoluteUrl } from './routes.js';
-import { SCHOOL_NAME } from './site.js';
+import { SCHOOL_DESCRIPTION, SCHOOL_NAME } from './site.js';
 
 /**
  * One-line summaries for the `llms.txt` link list, keyed by public path.
@@ -60,7 +60,7 @@ export function renderLlmsTxt(site: string | URL, routes = PUBLIC_ROUTES): strin
   return [
     `# ${SCHOOL_NAME}`,
     '',
-    '> A Christian classical hybrid microschool in Enola, Pennsylvania, serving ages 4 to 18.',
+    `> ${SCHOOL_DESCRIPTION} in Enola, Pennsylvania, serving ages 4 to 18.`,
     '> Families choose individual classes and teach the rest at home. Classes meet on Monday,',
     '> Wednesday and Thursday mornings.',
     '',

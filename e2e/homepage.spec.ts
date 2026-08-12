@@ -2,6 +2,7 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { SEEDED_ANNOUNCEMENTS } from '../src/lib/announcements/announcement.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
+import { SCHOOL_DESCRIPTION } from '../src/lib/site.js';
 
 /**
  * The homepage's acceptance criteria from #21, one describe block each.
@@ -41,6 +42,14 @@ async function scrollTo(page: Page, y: number) {
 }
 
 test.describe('the hero', () => {
+  // #137 — the hero used to call the school a homeschool while every other
+  // surface called it a microschool. The wording is pinned in `site.test.ts`;
+  // this asserts the hero is the thing rendering it.
+  test('names the school the one way the site names it', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.hero-sub')).toHaveText(SCHOOL_DESCRIPTION);
+  });
+
   test('under prefers-reduced-motion the video has no source and fetches nothing', async ({
     browser,
   }) => {
