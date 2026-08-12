@@ -268,4 +268,11 @@ describe('where a finding is', () => {
     const [finding] = scan('Classes meet on  Monday mornings.');
     expect(finding?.context).toContain('meet on');
   });
+
+  it('shows the defect in the excerpt rather than tidying it away', () => {
+    // The excerpt exists so a reader can see the problem. Collapsing its spaces
+    // would print a sentence with nothing wrong in it.
+    expect(scan('Classes meet on  Monday mornings.')[0]?.context).toContain('on  Monday');
+    expect(scan('Ages 4' + NBSP + 'to 18.')[0]?.context).toContain(NBSP);
+  });
 });

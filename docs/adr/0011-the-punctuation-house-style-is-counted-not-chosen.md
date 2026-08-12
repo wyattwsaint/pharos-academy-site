@@ -1,0 +1,93 @@
+# ADR-0011 — The punctuation house style is counted, not chosen, and the audit reports rather than rewrites
+
+**Status:** accepted
+**Date:** 2026-08-12
+**Context:** [#148](https://github.com/wyattwsaint/pharos-academy-site/issues/148), builds on
+[#110](https://github.com/wyattwsaint/pharos-academy-site/issues/110) and
+[#115](https://github.com/wyattwsaint/pharos-academy-site/issues/115)
+
+## Context
+
+The site's copy was written across many pages, over many tickets, partly by transcription
+from the school's own documents and partly by hand. The marks drifted with it: curly
+apostrophes in most places and straight ones in others, 262 spaced em dashes and a handful
+of hyphens standing in for them, sentence-case headings on every page except Admissions and
+the staff page.
+
+#110 already settled spelling — prose is American — and `house-style.ts` enforces it in the
+suite. Nothing settled the marks, and there was no way to answer "is this page consistent
+with the rest of the site" other than reading all of it.
+
+Two questions had to be answered before any of it could be tidied, and they are separable:
+
+- **Which style is the house style?** Somebody has to say whether the site sets `“…”` or
+  `"…"`, and either answer is defensible in the abstract.
+- **Who applies it?** The copy is a school's voice, and some of it is a transcription of
+  documents the school publishes on paper.
+
+The alternatives considered:
+
+- **Pick a style from a manual — Chicago, AP — and normalise the site to it.** Defensible,
+  and it would have rewritten hundreds of marks the site already had right, in a single
+  unreviewable diff, on copy nobody asked to have changed. Rejected.
+- **Sweep and fix in one pass, leaving the report as the commit message.** This is what the
+  ticket explicitly forbids: "This ticket does not silently rewrite copy." Rejected.
+- **Do it by hand, once.** A one-off read produces a list that is stale the week after, and
+  nothing keeps the next page consistent with it. Rejected: the ticket asks for the style to
+  be recorded "so future copy follows it", and a rule nobody can run is not recorded.
+
+## Decision
+
+**The house style is whatever the site already does in most places, counted.** Every rule in
+`docs/house-style.md` was arrived at by counting the site's own usage before anything was
+decided: 67 curly apostrophes to 41 straight, 88 curly double quotes to 29 straight, 262
+spaced em dashes, sentence-case headings on every page but two. The minority usages are the
+findings; the majority is the style. Nothing was imported from a style manual, and where the
+site had no majority the rule says so rather than inventing one.
+
+**The audit reports and never rewrites.** `npm run audit:punctuation` sweeps the repo and
+the database and writes `docs/punctuation-audit.md`. It applies nothing. The corrections land
+in a later, separate change, once the site owner has said yes to a list.
+
+**Every finding says two independent things**: how hard the correction is (*mechanical* — the
+mark moves and the sentence does not; *judgement call* — it touches something the school may
+have meant), and whose copy it is in (the site's, a transcription, or a developer-only
+string). Those are different questions and the report keeps them in different columns: a
+finding in the Statement of Faith can be entirely mechanical and still not ours to make.
+
+**Transcribed copy is never corrected here.** `beliefs.ts`, `story.ts`, `catalogue.ts` and
+the `courses` table hold the school's own documents word for word, each with a test that
+fails on any drift from the capture in `docs/mirror/` — `story.ts` says "including a tidied
+dash or a corrected space". The school changes its document and the transcription follows it.
+
+**Names are not headings.** The capitalisation rule is not run over copy stored in the
+database. Every heading the site renders from a row is the name of a thing — a course, a
+policy, an event — and a name keeps the case the school gave it.
+
+## Consequences
+
+**Good.**
+
+- The style is a rule that can be run, not a page somebody has to remember. A new page is
+  checked against the same reading the spelling scan uses, from the same file list.
+- The site owner gets a complete list, with the location, the current text and the proposed
+  correction, and can approve it a line at a time. 83 of the 162 findings turn out to be in
+  copy that is not ours to touch, which is exactly the kind of thing a report is for and a
+  silent rewrite would have destroyed.
+- The style is defensible to the school without an argument about manuals: every rule is
+  what the school's own site already did.
+
+**Bad, and accepted.**
+
+- The findings sit in a document until somebody acts on them. The site stays inconsistent in
+  the meantime, and that is the deliberate trade.
+- `docs/punctuation-audit.md` is a snapshot and no test keeps it current: half of what it
+  covers lives in a database CI has no credentials for. It is regenerated by hand.
+- The scan reads prose generously — a sentence in a string literal counts, because that is
+  how much of this site's copy is written — so it also reads thrown errors and the redirect
+  table's notes. They are labelled rather than skipped, because a sweep that quietly excluded
+  files would not be the complete list the ticket asked for.
+- A rule here is only as good as its exceptions, and the exceptions are a named list: a phone
+  number is not an age range, `1,200` is not a missing space, `H.O.P.E.` is not a run-on
+  sentence, `18"x12"` is an inch mark. A case nobody has met yet will produce a wrong finding
+  before it produces a rule.

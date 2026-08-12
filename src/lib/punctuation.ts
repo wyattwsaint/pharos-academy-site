@@ -28,7 +28,7 @@
  *   double space.
  */
 
-import { visibleRanges } from './house-style.js';
+import { lineOf, visibleRanges } from './house-style.js';
 
 /** The classes of issue the report groups by. */
 export type Issue =
@@ -293,12 +293,17 @@ const SMALL_WORDS = new Set([
 ]);
 
 /**
- * Names that carry their own capital wherever they appear.
+ * Names that carry their own capital wherever they appear — including the page
+ * names this site capitalises, which is why "About" is here.
  *
  * A named list rather than a rule, for the reason `house-style.ts` gives about
  * its own: any rule general enough to catch "Pharos" catches "Dedicated" too.
  * A word not listed here is treated as an ordinary word, which is the safe
  * direction — it produces a finding a person reads, not a silent rewrite.
+ *
+ * May is the one month left out. It is a modal verb far more often than it is a
+ * month, and listing it would silence "Families May Apply" — a heading in title
+ * case that this scan exists to find.
  */
 const PROPER_NOUNS = new Set([
   'about',
@@ -326,7 +331,6 @@ const PROPER_NOUNS = new Set([
   'february',
   'march',
   'april',
-  'may',
   'june',
   'july',
   'august',
@@ -451,16 +455,17 @@ function capitalisationFindings(source: string): Finding[] {
   return findings;
 }
 
-function lineOf(source: string, offset: number): number {
-  let line = 1;
-  for (let i = 0; i < offset; i += 1) if (source[i] === '\n') line += 1;
-  return line;
-}
-
-/** The sentence around a finding, on one line, with the match left in place. */
+/**
+ * The sentence around a finding, on one line, with the match left as it is.
+ *
+ * Spaces are **not** collapsed. Half the findings here are runs of spaces, and
+ * an excerpt that tidied them would show the reader a sentence with nothing
+ * wrong in it. Only the characters that would end the row — newlines and tabs —
+ * are replaced, and the excerpt is bounded by the line anyway.
+ */
 function contextOf(source: string, at: number, length: number): string {
   const from = Math.max(0, source.lastIndexOf('\n', at) + 1, at - 60);
   const lineEnd = source.indexOf('\n', at + length);
   const to = Math.min(lineEnd === -1 ? source.length : lineEnd, at + length + 60);
-  return source.slice(from, to).replace(/\s+/g, ' ').trim();
+  return source.slice(from, to).replace(/[\r\n\t]+/g, ' ').trim();
 }
