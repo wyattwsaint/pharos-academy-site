@@ -4,7 +4,8 @@ import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import type { SchoolDetails } from '../lib/db/schema.js';
 import type { AnnouncementBanner } from '../lib/home/announcement-banner.js';
-import { SCHOOL_NAME, SITE_URL } from '../lib/site.js';
+import { SITE_URL } from '../lib/site.js';
+import { canonicalUrl, pageTitle, socialPreviewTags } from '../lib/social-preview.js';
 import { renderJsonLd, schoolJsonLd } from '../lib/structured-data.js';
 
 interface Props {
@@ -46,7 +47,16 @@ interface Props {
 }
 
 const { title, description, details, overHero = false, banner = null } = Astro.props;
-const canonical = new URL(Astro.url.pathname, Astro.site);
+
+/*
+ * The canonical URL, the `<title>` and the link-preview card are all derived
+ * from the same two props, in one module (#147). They used to be built here —
+ * which was fine while the canonical was the only one of the three, and is
+ * exactly how a card ends up titled differently from the tab it opens.
+ */
+const site = Astro.site ?? SITE_URL;
+const canonical = canonicalUrl(site, Astro.url.pathname);
+const preview = socialPreviewTags({ title, description, pathname: Astro.url.pathname, site });
 
 /*
  * `data-site` on the <body> below marks the public surfaces, and only them. The
@@ -61,10 +71,18 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title} — {SCHOOL_NAME}</title>
+    <title>{pageTitle(title)}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="sitemap" href="/sitemap.xml" />
+    {
+      /*
+        Open Graph and Twitter cards (#147). Emitted from the page's own title
+        and description, so a share of any page previews as that page rather
+        than as one site-wide default.
+      */
+    }
+    {preview.map((tag) => <meta property={tag.property} name={tag.name} content={tag.content} />)}
     {
       /*
         The hero's poster is the largest thing above the fold, and under
@@ -87,7 +105,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
         that disagrees with the page beside it is what a search engine believes.
       */
     }
-    <script type="application/ld+json" set:html={renderJsonLd(schoolJsonLd(details, Astro.site ?? SITE_URL))} is:inline />
+    <script type="application/ld+json" set:html={renderJsonLd(schoolJsonLd(details, site))} is:inline />
   </head>
   <body data-site>
     <a

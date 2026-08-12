@@ -58,6 +58,43 @@ test('crawls exactly as the launch switch says', async ({ request }) => {
   }
 });
 
+/**
+ * The card, as a scraper actually finds it (#147).
+ *
+ * `social-preview.test.ts` pins the tag list; this pins that the list reaches
+ * the rendered `<head>` of a real page, with the page's own title in it and an
+ * image that is genuinely fetchable at the URL the tag gives. The unit test
+ * cannot see either of those: a layout that dropped the tags, or a card
+ * pointing at a 404, both pass it.
+ *
+ * About rather than the homepage, deliberately — the homepage would pass a
+ * site-wide default, which is the failure this ticket names.
+ */
+test('previews a shared link with the page’s own title and a real image', async ({ page, request }) => {
+  await page.goto('/about');
+
+  const content = async (selector: string) => page.locator(selector).getAttribute('content');
+
+  expect(await content('meta[property="og:title"]')).toBe('About — Pharos Academy');
+  expect(await content('meta[property="og:title"]')).toBe(await page.title());
+  expect(await content('meta[name="twitter:card"]')).toBe('summary_large_image');
+  expect(await content('meta[property="og:type"]')).toBe('website');
+  expect(await content('meta[property="og:url"]')).toMatch(/^https?:\/\/[^/]+\/about$/);
+  expect((await content('meta[property="og:description"]'))?.length).toBeGreaterThan(0);
+  expect(await content('meta[property="og:description"]')).toBe(
+    await content('meta[name="description"]'),
+  );
+
+  // Absolute in the tag — no scraper resolves a relative one — but fetched by
+  // path, so this proves *this* deployment carries the file rather than proving
+  // production still does.
+  const image = await content('meta[property="og:image"]');
+  expect(image).toMatch(/^https?:\/\//);
+  const fetched = await request.get(new URL(image!).pathname);
+  expect(fetched.status()).toBe(200);
+  expect(fetched.headers()['content-type']).toContain('image/jpeg');
+});
+
 // The one part that does not follow the switch. The header is
 // `admin.spec.ts`'s ("keeps the admin out of search results"); this is the
 // courtesy line in `robots.txt`, which lives here with the rest of the file.

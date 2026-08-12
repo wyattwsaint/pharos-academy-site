@@ -126,12 +126,23 @@ verification checks against it, and whole-site revalidation will use it. A test 
 a page exists under `src/pages` without an entry, so the list cannot drift from what is
 actually built.
 
-## Before launch
+## Crawlers
 
-`INDEXABLE` in [`src/lib/site.ts`](src/lib/site.ts) is `false`, because the real domain
-still points at the live Wix site. It drives both `robots.txt` and the `X-Robots-Tag`
-header, so flipping it to `true` is the whole of "go live" as far as crawlers are
-concerned.
+`INDEXABLE` in [`src/lib/site.ts`](src/lib/site.ts) is **`true`** — the domain points here
+and the live site is crawlable, verified against `https://www.pharosacademy.net/robots.txt`
+on 2026-08-12 (#147). It drives both `robots.txt` and the `X-Robots-Tag` header, so the two
+can never disagree. The admin is `noindex, nofollow` in either state.
+
+This section said `false` for some time after the flip; that was documentation lag rather
+than a live site telling search engines to stay away.
+
+## Link previews
+
+Every public page emits Open Graph and Twitter card metadata, built in
+[`src/lib/social-preview.ts`](src/lib/social-preview.ts) from the same title and description
+the page already passes to the layout — so a share of any page previews as *that* page. The
+card image is `public/social/preview.jpg`, 1200×630, written by
+`node scripts/build-social-preview.mjs` and committed like the rest of the imagery.
 
 ## CI
 

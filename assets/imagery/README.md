@@ -66,6 +66,19 @@ What did **not** change:
   #13 carries this specific reversal into the sign-off conversation, so George and Jill are
   told rather than left to notice.
 
+## The link-preview card
+
+`public/social/preview.jpg` — 1200×630, what every share of this site to Facebook, WhatsApp
+or a text message renders (#147). It is **not a new image**: it is the hero's poster frame
+(`public/hero/hope-poster.webp`, itself a frame of the generated video in `../hero/`) cropped
+by `scripts/build-social-preview.mjs`, so it carries that file's provenance and disclosure
+and adds no new one.
+
+It is therefore **not a photograph of the school** — no such photograph exists in this repo,
+which is the same gap the "What is still missing" section above records for slot 5. The card
+shows the school's emblem as the site's own hero paints it. When the school supplies a
+photograph of the building or a classroom, point the script's `SOURCE` at it and re-run.
+
 ## Disclosure
 
 The hero video (`../hero/`) is also AI-generated. The owner's decision, recorded on issue
