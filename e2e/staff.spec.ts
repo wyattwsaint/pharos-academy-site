@@ -64,10 +64,13 @@ test.describe('the staff page', () => {
       if (index > 0) expect(level).toBeLessThanOrEqual(levels[index - 1] + 1);
     }
 
-    // And the description no longer echoes a heading that is gone.
+    // And the description still says who is on the page without echoing a
+    // heading that is gone — asserted positively, because "does not contain
+    // the old string" passes for an empty description too.
     const description = await page
       .locator('meta[name="description"]')
       .getAttribute('content');
+    expect(description).toContain('the instructors who teach each class');
     expect(description).not.toContain('The people of Pharos Academy');
   });
 
