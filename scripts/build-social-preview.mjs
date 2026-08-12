@@ -14,8 +14,12 @@
  *   a WebP `og:image` and fall back to no image at all. A preview card is worth
  *   the extra bytes to be readable everywhere, and the budget below keeps them
  *   in hand.
- * - **Under 300 KB.** Not a formal limit, but scrapers time out, and the
- *   quality below lands around 120 KB.
+ * - **Under 300 KB.** Not a formal limit, but scrapers time out. Asserted
+ *   below rather than only written here, because the failure is silent: a
+ *   heavier source would still write a valid file, and the symptom — a card
+ *   that never renders — appears in a chat app, where nothing in this repo
+ *   would ever see it. `social-preview.test.ts` holds the committed file to the
+ *   same ceiling.
  *
  * The source is the hero's own poster rather than one of the homepage plates,
  * because the lighthouse *is* how the site introduces itself: it is the first
@@ -60,6 +64,9 @@ const BIAS = 0;
  */
 const QUALITY = 88;
 
+/** The ceiling the header argues for, in bytes. */
+const MAX_BYTES = 300 * 1024;
+
 const image = sharp(SOURCE);
 const { width: srcWidth = 0, height: srcHeight = 0 } = await image.metadata();
 
@@ -80,6 +87,12 @@ const body = await image
   // gold in the sky from smearing, which 4:2:0 does to exactly this palette.
   .jpeg({ quality: QUALITY, mozjpeg: true, chromaSubsampling: '4:4:4' })
   .toBuffer();
+
+if (body.length > MAX_BYTES) {
+  throw new Error(
+    `card is ${(body.length / 1024).toFixed(0)} KB, over the ${MAX_BYTES / 1024} KB ceiling — lower QUALITY or pick a lighter source`,
+  );
+}
 
 await mkdir(path.dirname(OUT), { recursive: true });
 await writeFile(OUT, body);

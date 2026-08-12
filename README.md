@@ -105,8 +105,10 @@ nothing about whether the files attached; read its per-row lines, not its exit c
 
 Migrations are append-only and each statement is independently safe to re-run, so applying
 one early is safe — but it is a one-way door for the deployment already live, which will
-be reading the old shape until the PR lands. That is fine only while the site is
-pre-launch (see **Before launch** below).
+be reading the old shape until the PR lands. That used to be excused by the site being
+pre-launch. **It no longer is**: the domain points here (see **Crawlers** below), so the
+deployment reading the old shape is the one parents are on, and the window between
+migrating and landing the PR is a window they can see.
 
 ## The pre-commit gate
 

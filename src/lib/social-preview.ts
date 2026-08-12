@@ -75,8 +75,8 @@ export function pageTitle(title: string): string {
  * them.
  */
 export function canonicalUrl(site: string | URL, pathname: string): string {
-  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : '/';
-  return absoluteUrl(site, path || '/');
+  const path = pathname.replace(/(?!^)\/+$/, '');
+  return absoluteUrl(site, path);
 }
 
 interface PreviewInput {

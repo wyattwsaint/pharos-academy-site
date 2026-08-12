@@ -2,8 +2,11 @@
  * The canonical public origin.
  *
  * Held here rather than inline in `astro.config.mjs` so the sitemap, the
- * `robots.txt` and the config all read the same value. The real domain is not
- * pointed at this deployment yet; the constant is what changes when it is.
+ * `robots.txt`, the link-preview card and the config all read the same value.
+ *
+ * The domain points here: this is the live origin, not a placeholder waiting
+ * for one. (It said otherwise long after the cutover, which is how the README
+ * came to describe a launched site as pre-launch — see {@link INDEXABLE}.)
  */
 export const SITE_URL = 'https://www.pharosacademy.net';
 
