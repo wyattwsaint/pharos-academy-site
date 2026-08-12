@@ -2,8 +2,11 @@
  * The canonical public origin.
  *
  * Held here rather than inline in `astro.config.mjs` so the sitemap, the
- * `robots.txt` and the config all read the same value. The real domain is not
- * pointed at this deployment yet; the constant is what changes when it is.
+ * `robots.txt`, the link-preview card and the config all read the same value.
+ *
+ * The domain points here: this is the live origin, not a placeholder waiting
+ * for one. (It said otherwise long after the cutover, which is how the README
+ * came to describe a launched site as pre-launch — see {@link INDEXABLE}.)
  */
 export const SITE_URL = 'https://www.pharosacademy.net';
 
@@ -35,13 +38,18 @@ export const SCHOOL_DESCRIPTION_INLINE =
   SCHOOL_DESCRIPTION.charAt(0).toLowerCase() + SCHOOL_DESCRIPTION.slice(1);
 
 /**
- * The launch switch.
+ * The launch switch. **Flipped — the site is live and crawlable.**
  *
- * `false` until the domain actually points here: until then the live Wix site
- * is still what parents find, and a placeholder competing with it in search
- * results is worse than no placeholder. Flipping this to `true` is the whole
- * of "go live" as far as crawlers are concerned — `robots.txt` and the
+ * It was `false` until the domain actually pointed here: until then the live
+ * Wix site was still what parents found, and a placeholder competing with it in
+ * search results was worse than no placeholder. Flipping it to `true` was the
+ * whole of "go live" as far as crawlers are concerned — `robots.txt` and the
  * `X-Robots-Tag` header both follow it, so the two can never disagree.
+ *
+ * Verified against the live origin on 2026-08-12 (#147): `robots.txt` answers
+ * `Allow: /` and `/` carries no `X-Robots-Tag`. Kept as a switch rather than
+ * deleted because it is also how the site would be pulled back out of the index
+ * deliberately, and because the admin's exclusion is written against it.
  */
 export const INDEXABLE = true;
 

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-import { INDEXABLE } from '../src/lib/site.js';
+import { INDEXABLE, SITE_URL } from '../src/lib/site.js';
+import { pageTitle } from '../src/lib/social-preview.js';
 
 /**
  * The floor #19 exists to lay: the page is served, the three machine-readable
@@ -56,6 +57,47 @@ test('crawls exactly as the launch switch says', async ({ request }) => {
   if (!INDEXABLE) {
     expect((await request.get('/')).headers()['x-robots-tag']).toContain('noindex');
   }
+});
+
+/**
+ * The card, as a scraper actually finds it (#147).
+ *
+ * `social-preview.test.ts` pins the tag list; this pins that the list reaches
+ * the rendered `<head>` of a real page, with the page's own title in it and an
+ * image that is genuinely fetchable at the URL the tag gives. The unit test
+ * cannot see either of those: a layout that dropped the tags, or a card
+ * pointing at a 404, both pass it.
+ *
+ * About rather than the homepage, deliberately — the homepage would pass a
+ * site-wide default, which is the failure this ticket names.
+ */
+test('previews a shared link with the page’s own title and a real image', async ({ page, request }) => {
+  await page.goto('/about');
+
+  const content = async (selector: string) => page.locator(selector).getAttribute('content');
+
+  expect(await content('meta[property="og:title"]')).toBe(pageTitle('About'));
+  expect(await content('meta[property="og:title"]')).toBe(await page.title());
+  expect(await content('meta[name="twitter:card"]')).toBe('summary_large_image');
+  expect(await content('meta[property="og:type"]')).toBe('website');
+  // The canonical origin, not this deployment's. A preview deploy's card points
+  // at production on purpose — a share should open the real site — so the origin
+  // is pinned rather than matched loosely, which would let the `Astro.site`
+  // fallback break without any test noticing.
+  expect(await content('meta[property="og:url"]')).toBe(`${SITE_URL}/about`);
+  expect((await content('meta[property="og:description"]'))?.length).toBeGreaterThan(0);
+  expect(await content('meta[property="og:description"]')).toBe(
+    await content('meta[name="description"]'),
+  );
+
+  // Absolute in the tag — no scraper resolves a relative one — but fetched by
+  // path, so this proves *this* deployment carries the file rather than proving
+  // production still does.
+  const image = await content('meta[property="og:image"]');
+  expect(image).toMatch(/^https?:\/\//);
+  const fetched = await request.get(new URL(image!).pathname);
+  expect(fetched.status()).toBe(200);
+  expect(fetched.headers()['content-type']).toContain('image/jpeg');
 });
 
 // The one part that does not follow the switch. The header is
