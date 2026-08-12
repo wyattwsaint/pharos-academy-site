@@ -186,6 +186,38 @@ h3 {
   color: #21170a;
 }
 
+/*
+ * The registration button (#141) — the one place on a light band that is gold
+ * rather than navy, because it is the one place the page asks for a decision
+ * that has already been made.
+ *
+ * The gold is --color-gold, which is the mark's own #FBB03B and not an
+ * approximation of it; `home/registration-cta.test.ts` holds the token and the
+ * SVG to the same value.
+ *
+ * That raw gold is a GROUND here and never a word. As text it measures 1.9:1 on
+ * cream, which is why the site has --color-gold-ink at all — but the accessible
+ * text gold on a gold ground is two shades of one hue and unreadable for a
+ * different reason, so the type is navy instead:
+ *
+ *   navy-deep #102647 on gold #fbb03b      8.1:1   (label and detail)
+ *   navy-deep #102647 on gold-orn #c08a2e  5.0:1   (hover)
+ *
+ * The hover darkens the ground rather than swapping to navy, so the button
+ * stays the gold thing on the band throughout the interaction.
+ */
+.btn.gold {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  color: var(--color-navy-deep);
+}
+
+.btn.gold:hover {
+  background: var(--color-gold-orn);
+  border-color: var(--color-gold-orn);
+  color: var(--color-navy-deep);
+}
+
 /* ---------- the alternating bands ---------- */
 
 .band {

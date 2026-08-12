@@ -325,7 +325,31 @@ the message itself, so the next thing the office puts up reaches the people who
 closed the last one.
 
 Not: "popup", "alert", "the announcements section" (which #109 removed from the
-home page — the banner is what replaced it in that region).
+home page — the banner is what replaced it in that region), and not the
+[registration call to action](#registration-call-to-action), whose words the
+example above is one keystroke away from.
+
+### registration call to action
+
+The gold "Register now!" button on the **home page**, standing beside the
+inquiry form's own button, with the first day of classes on a second line under
+it. It leads to the application.
+
+It is **not the [announcement banner](#announcement-banner)**, and the two say
+almost the same words, which is the whole reason this entry exists. The banner
+is a bar the office switches on for a fortnight and writes itself; this is a
+fixture that is always there and whose only variable is the date. The date is
+not typed at all — it is the **school year start** off the school details row,
+the same field the office already edits, which is what lets the start of term
+move without a deploy.
+
+It is set in the **raw gold of the mark**, and that gold is a ground rather than
+a word: as text it fails contrast on every light band the site has, which is
+what `--color-gold-ink` exists for. On this button the ground is the raw gold
+and the type on it is navy.
+
+Not: "the apply button" (the application flow has its own buttons on its own
+page), "the register banner".
 
 ### policy
 

@@ -1,0 +1,55 @@
+---
+import type { RegistrationCta } from '../../lib/home/registration-cta.js';
+
+/**
+ * The gold "Register now!" button (#141).
+ *
+ * A link and not a button: it goes to the existing application flow, which is
+ * a page. The inquiry beside it is a real form control, and the two are
+ * deliberately different elements doing different things.
+ *
+ * The date under the label is one accessible name with the label — a screen
+ * reader reads "Register now! Classes begin August 31, 2026", which is the
+ * whole sentence and not two fragments. The second line is therefore not
+ * `aria-hidden` and not a separate element the name skips over.
+ *
+ * The colour lives in `.btn.gold` in `beacon.css`, with the contrast reading
+ * beside it.
+ */
+interface Props {
+  cta: RegistrationCta;
+}
+
+const { cta } = Astro.props;
+---
+
+<a class="btn gold register" href={cta.href}>
+  <span class="register-label">{cta.label}</span>
+  {/* No empty line when the office has set no start date (#141 AC 8). */}
+  {cta.detail && <span class="register-detail">{cta.detail}</span>}
+</a>
+
+<style>
+  .register {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    text-align: center;
+  }
+
+  .register-label {
+    /* The label matches the inquiry button's type; only the detail steps down. */
+    font: inherit;
+  }
+
+  .register-detail {
+    font-weight: 500;
+    font-size: 12px;
+    line-height: 1.25;
+    /* Slightly quieter than the label without becoming a second colour: the
+       gold ground is already carrying the emphasis. */
+    opacity: 0.85;
+  }
+</style>
