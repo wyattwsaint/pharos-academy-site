@@ -1,7 +1,9 @@
 ---
+import RegisterButton from './RegisterButton.astro';
 import InquiryForm from '../InquiryForm.astro';
 import { getSchoolDetails, telHref } from '../../lib/admin/school-details.js';
 import { getDb } from '../../lib/db/client.js';
+import { registrationCta } from '../../lib/home/registration-cta.js';
 
 /**
  * The inquiry, at the foot of the home page (#9 item 7, wired by #25).
@@ -15,8 +17,14 @@ import { getDb } from '../../lib/db/client.js';
  * The school's real email and phone stay directly under it, read from the one
  * row Jill edits. They are not a fallback for a broken form — a parent who
  * would rather write than fill anything in is an ordinary parent.
+ *
+ * Beside the form's own button stands the gold "Register now!" (#141). Until
+ * it, the home page's only call to action was this one — the one for a family
+ * that is still deciding — and a family that had already decided had nothing
+ * here to click.
  */
 const details = await getSchoolDetails(await getDb());
+const registration = registrationCta(details);
 ---
 
 <section class="band" id="inquiry" data-section="inquiry">
@@ -28,7 +36,9 @@ const details = await getSchoolDetails(await getDb());
     </p>
 
     <div class="mt-7">
-      <InquiryForm idPrefix="inquiry" />
+      <InquiryForm idPrefix="inquiry">
+        <RegisterButton slot="alongside" cta={registration} />
+      </InquiryForm>
     </div>
 
     <p class="sub mt-6 text-sm">

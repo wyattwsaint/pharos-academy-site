@@ -2,6 +2,9 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { SEEDED_ANNOUNCEMENTS } from '../src/lib/announcements/announcement.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
+import { APPLICATION_PATH } from '../src/lib/application/application.js';
+import { REGISTRATION_LABEL } from '../src/lib/home/registration-cta.js';
+import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
 import { SCHOOL_DESCRIPTION } from '../src/lib/site.js';
 
@@ -19,6 +22,8 @@ import { SCHOOL_DESCRIPTION } from '../src/lib/site.js';
 /** Where the hero's scroll ramp ends: one viewport, then it releases. */
 const DESKTOP = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
+/** A step below the narrowest width the axe suite audits (#140). */
+const NARROWEST = { width: 320, height: 844 };
 
 /**
  * Records every request the page makes for a video file.
@@ -40,6 +45,29 @@ async function scrollTo(page: Page, y: number) {
   await page.evaluate((offset) => window.scrollTo(0, offset), y);
   // two frames: one for the listener, one for the rAF it schedules
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+}
+
+/**
+ * Rounded document-space rectangles for every match, in document order.
+ *
+ * Rounded because sub-pixel grid fractions differ by a hundredth between two
+ * cells of the same row, and a raw comparison of those reads as "the row
+ * broke" when nothing has moved.
+ */
+async function boundingBoxes(page: Page, selector: string) {
+  return page.evaluate(
+    (sel) =>
+      [...document.querySelectorAll(sel)].map((el) => {
+        const { top, left, width, height } = el.getBoundingClientRect();
+        return {
+          top: Math.round(top + window.scrollY),
+          left: Math.round(left + window.scrollX),
+          width: Math.round(width),
+          height: Math.round(height),
+        };
+      }),
+    selector,
+  );
 }
 
 test.describe('the hero', () => {
@@ -358,6 +386,81 @@ for (const surface of DISCLOSURE_SURFACES) {
   });
 }
 
+/**
+ * #140. H.O.P.E. is an acronym, so it has to read left to right as one word.
+ * The grid used to go 2-up on a phone, which stacked it into "HO" over "PE".
+ *
+ * Shared top edges are what "one row" means here — asserting four columns in
+ * the computed `grid-template-columns` would pass for a grid that reflows by
+ * some other mechanism, and fail for one that keeps the row by a different
+ * one. The panel is measured for the opposite property: it may be as wide as
+ * the row wants, but the tiles above it must not have moved.
+ */
+test.describe('the H.O.P.E. letters on a phone', () => {
+  const HOPE_CELLS = '[data-disclosure-group="hope"] [data-disclosure-cell]';
+
+  for (const viewport of [PHONE, NARROWEST]) {
+    test(`the four letters share one row at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const boxes = await boundingBoxes(page, HOPE_CELLS);
+      expect(boxes).toHaveLength(4);
+
+      expect(new Set(boxes.map((box) => box.top)).size).toBe(1);
+
+      // Left to right in document order — H, then O, then P, then E.
+      const lefts = boxes.map((box) => box.left);
+      expect(lefts).toEqual([...lefts].sort((a, b) => a - b));
+    });
+
+    test(`the letters stay inside their cells at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const overflowing = await page.evaluate((selector) => {
+        return [...document.querySelectorAll(`${selector} .hope-btn b, ${selector} .hope-btn span`)]
+          .filter((el) => el.scrollWidth > el.clientWidth + 1)
+          .map((el) => el.textContent);
+      }, HOPE_CELLS);
+
+      expect(overflowing).toEqual([]);
+    });
+
+    test(`an opened panel spans the row without displacing the tiles at ${viewport.width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const before = await boundingBoxes(page, HOPE_CELLS);
+
+      // The third tile, not the first: an inner cell is the one whose card
+      // used to measure a border narrower than the row.
+      const third = page.locator(HOPE_CELLS).nth(2);
+      await third.locator('[data-disclosure-trigger]').click();
+      const panel = third.locator('[data-disclosure-panel]');
+      await expect(panel).toBeVisible();
+
+      const after = await boundingBoxes(page, HOPE_CELLS);
+      expect(after).toEqual(before);
+
+      const row = await page.locator('.hope').boundingBox();
+      const card = await panel.boundingBox();
+      expect(row).not.toBeNull();
+      expect(card).not.toBeNull();
+
+      expect(Math.round(card!.width)).toBe(Math.round(row!.width));
+      expect(Math.round(card!.x)).toBe(Math.round(row!.x));
+      // Beneath the row, not over it. The CSS tucks the card up by 6px so the
+      // row's bottom rule reads as the card's own top edge rather than as a
+      // second line above it; 12 is that overlap with room to spare, and a card
+      // that opened *upward* again would clear it by hundreds of pixels.
+      expect(card!.y).toBeGreaterThan(row!.y + row!.height - 12);
+    });
+  }
+});
+
 test.describe('the page', () => {
   test('runs the sections in the order #9 fixed', async ({ page }) => {
     await page.goto('/');
@@ -457,5 +560,94 @@ test.describe('the page', () => {
     // for a phone. The claim is unchanged — the row offers it exactly once.
     await expect(page.locator('[data-site-header] > .wide > a[href="/#inquiry"]')).toHaveCount(1);
     await expect(page.locator('footer a[href="/#inquiry"]')).toHaveCount(1);
+  });
+});
+
+/**
+ * The registration call to action (#141).
+ *
+ * What it says and where the date comes from is unit-tested in
+ * `home/registration-cta.test.ts`. What needs a browser is the claim that
+ * cannot be made off a derived object: two calls to action sharing one row,
+ * both still tappable, at a phone's width and at a desktop's.
+ */
+test.describe('the registration call to action', () => {
+  /**
+   * The first day of classes, rendered. Matched rather than fixed: the suite
+   * also runs against a deployment, where the office may have moved the date
+   * since the seed, and pinning the seeded day would fail there for the one
+   * reason the ticket wants to be possible.
+   */
+  const FIRST_DAY = /^Classes begin [A-Z][a-z]+ \d{1,2}, \d{4}$/;
+
+  /*
+   * 320 is not a phone the suite otherwise measures, and it is here because the
+   * row is the one component on the page that refuses to wrap: everything else
+   * stacks at a narrow width and this deliberately does not. 320px is where the
+   * pair is narrowest, so it is where "readable and tappable side by side"
+   * either holds or does not.
+   */
+  const NARROW = { width: 320, height: 700 };
+
+  for (const [name, viewport] of [
+    ['desktop', DESKTOP],
+    ['a phone', PHONE],
+    ['the narrowest phone', NARROW],
+  ] as const) {
+    test(`stands beside the inquiry, whole and tappable, on ${name}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const gold = page.locator('#inquiry a.register');
+      const send = page.locator('#inquiry button[type="submit"]');
+      await expect(gold).toBeVisible();
+      await expect(send).toBeVisible();
+
+      await expect(gold).toHaveAttribute('href', APPLICATION_PATH);
+      await expect(gold.locator('.register-label')).toHaveText(REGISTRATION_LABEL);
+      await expect(gold.locator('.register-detail')).toHaveText(FIRST_DAY);
+
+      const goldBox = (await gold.boundingBox())!;
+      const sendBox = (await send.boundingBox())!;
+
+      // Side by side rather than stacked: the two boxes overlap vertically, and
+      // the inquiry ends before the registration begins.
+      expect(goldBox.y).toBeLessThan(sendBox.y + sendBox.height);
+      expect(sendBox.y).toBeLessThan(goldBox.y + goldBox.height);
+      expect(sendBox.x + sendBox.width).toBeLessThanOrEqual(goldBox.x + 1);
+
+      // Still a target a thumb can hit, at the width where they are narrowest.
+      for (const box of [goldBox, sendBox]) {
+        expect(box.height).toBeGreaterThanOrEqual(44);
+        expect(box.width).toBeGreaterThan(44);
+      }
+
+      // Readable, which here means the words are inside the button rather than
+      // clipped by it: the buttons are allowed to narrow past their content, so
+      // a document that does not scroll sideways is not on its own proof that
+      // nothing was cut off.
+      for (const button of [gold, send]) {
+        const clipped = await button.evaluate(
+          (el) => el.scrollWidth - el.clientWidth > 1 || el.scrollHeight - el.clientHeight > 1,
+        );
+        expect(clipped).toBe(false);
+      }
+
+      // And narrowing rather than overflowing — the row must not push the
+      // document sideways.
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+    });
+  }
+
+  // The gold button belongs to the home page's row of two. `/inquire` is where
+  // a visitor who is still asking has already been sent, and the slot beside
+  // that form stays empty.
+  test('does not follow the form onto the inquiry page', async ({ page }) => {
+    await page.goto(INQUIRY_PATH);
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
+    await expect(page.locator('a.register')).toHaveCount(0);
   });
 });

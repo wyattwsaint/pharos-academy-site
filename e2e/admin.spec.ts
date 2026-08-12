@@ -79,6 +79,41 @@ test.describe('signing in', () => {
   });
 });
 
+/**
+ * The standing warning (#136).
+ *
+ * The suite runs with no mail credentials, which is the state the warning exists
+ * for — and it is asserted on more than one screen because "unmissable" means on
+ * every screen, not on the one screen somebody thought to put it on.
+ */
+test.describe('an unconfigured mailer', () => {
+  test('warns on every admin screen, and says what still works', async ({ page }) => {
+    await signIn(page, '/admin/applications');
+
+    const warning = page.getByTestId('mail-warning');
+    await expect(warning).toBeVisible();
+    await expect(warning).toContainText('No mailer is configured');
+    await expect(warning).toContainText('GMAIL_APP_PASSWORD');
+    await expect(warning).toContainText('still being recorded');
+    // Nothing to dismiss: a warning with a close button is gone by the second
+    // application.
+    await expect(warning.getByRole('button')).toHaveCount(0);
+
+    for (const path of ['/admin/inquiries', '/admin/money', '/admin/school-details']) {
+      await page.goto(path);
+      await expect(page.getByTestId('mail-warning')).toBeVisible();
+    }
+  });
+
+  test('says nothing to a stranger on the login page', async ({ page }) => {
+    // Nobody to warn, and the deployment's missing variables are not a thing to
+    // name to somebody who has not signed in.
+    await page.goto('/admin/login');
+
+    await expect(page.getByTestId('mail-warning')).toHaveCount(0);
+  });
+});
+
 test.describe('saving school details', () => {
   // One row, and a save posts the whole form: in parallel these two would
   // overwrite each other's fields.
@@ -1194,8 +1229,13 @@ test.describe('applications', () => {
     await signIn(page, '/admin/applications');
     const delivery = rowFor(page, family).getByTestId('application-delivery');
 
+    await expect(delivery).toHaveAttribute('data-delivered', 'false');
     await expect(delivery).toContainText('Nobody at the school was emailed');
     await expect(delivery).toContainText('RESEND_API_KEY');
+    // And the family's own copy, which is the failure nothing used to name
+    // (#136): the reason is on the row, not in a log nobody reads.
+    await expect(delivery).toContainText('The family was not emailed');
+    await expect(delivery).toContainText('No mailer is configured');
   });
 
   test('names the address list it is read at, and where that list is edited', async ({ page }) => {

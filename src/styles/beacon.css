@@ -186,6 +186,38 @@ h3 {
   color: #21170a;
 }
 
+/*
+ * The registration button (#141) — the one place on a light band that is gold
+ * rather than navy, because it is the one place the page asks for a decision
+ * that has already been made.
+ *
+ * The gold is --color-gold, which is the mark's own #FBB03B and not an
+ * approximation of it; `home/registration-cta.test.ts` holds the token and the
+ * SVG to the same value.
+ *
+ * That raw gold is a GROUND here and never a word. As text it measures 1.9:1 on
+ * cream, which is why the site has --color-gold-ink at all — but the accessible
+ * text gold on a gold ground is two shades of one hue and unreadable for a
+ * different reason, so the type is navy instead:
+ *
+ *   navy-deep #102647 on gold #fbb03b      8.1:1   (label and detail)
+ *   navy-deep #102647 on gold-orn #c08a2e  5.0:1   (hover)
+ *
+ * The hover darkens the ground rather than swapping to navy, so the button
+ * stays the gold thing on the band throughout the interaction.
+ */
+.btn.gold {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  color: var(--color-navy-deep);
+}
+
+.btn.gold:hover {
+  background: var(--color-gold-orn);
+  border-color: var(--color-gold-orn);
+  color: var(--color-navy-deep);
+}
+
 /* ---------- the alternating bands ---------- */
 
 .band {
@@ -1436,37 +1468,64 @@ html.nav-menu-open body {
   }
 }
 
+/* H.O.P.E. is one word, and a word does not wrap. This used to go 2-up here,
+   which stacked it into two pairs — "HO" over "PE" — and the acronym stopped
+   reading as anything (#140). The row stays four columns at every width and the
+   TYPE gives way instead: the letter and its word both scale with the viewport
+   so a ~67px cell at 320px still holds "PARENTS" on one line.
+
+   What moves is the panel. A card inside a 67px cell is unreadable, so below
+   620px it floats again and spans the whole row — by giving up the CELL as its
+   containing block and taking the ROW instead, which is the only anchor that
+   makes all four cards land on the same two edges. Percentages off the cell do
+   not: an inner cell's padding box is a border narrower than an outer one's, so
+   the same `width: 400%` measures four different rows. */
 @media (max-width: 620px) {
   .hope {
-    grid-template-columns: repeat(2, 1fr);
+    position: relative;
   }
 
-  .hope-cell:nth-child(3) {
-    border-left: 0;
+  .hope-cell {
+    position: static;
   }
 
-  .hope-cell:nth-child(n + 3) {
-    border-top: 1px solid rgb(224 172 78 / 0.34);
+  .hope-btn {
+    padding: clamp(18px, 4vw, 30px) clamp(2px, 1vw, 18px) 8px;
   }
 
-  /* 2-up, a cell is ~150px and the sentence wrapped to five lines of three
-     words. The card floats again here but spans BOTH columns — anchored to its
-     own side so it never leaves the row — and covers the pair below it. */
-  .hope-card {
+  .hope-btn b {
+    font-size: clamp(30px, 10vw, 48px);
+  }
+
+  /* The tracking gives way, not the size. At 0.2em "EDUCATE" is the widest
+     thing on the row and it is the SPACES that make it so: 0.08em buys back
+     enough that the word keeps its full 13px at 390px — the narrowest width
+     the axe suite audits — with ~10px to spare, and only starts shrinking
+     below that. It is measured, not eyeballed: at 320px the widest label is
+     57.7px in a 62.6px box.
+
+     `nowrap` is load bearing. Every label is one unbreakable word today, so
+     without it a fifth label that no longer fits would wrap silently and the
+     overflow test would never see it. */
+  .hope-btn span {
+    margin-top: 10px;
+    font-size: clamp(10px, 3.4vw, 13px);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .hope-card,
+  .hope-cell:first-child .hope-card,
+  .hope-cell:last-child .hope-card {
     position: absolute;
     z-index: 8;
     top: calc(100% - 6px);
     bottom: auto;
     left: 0;
-    right: auto;
-    transform: none;
-    width: calc(200% + 1px);
-    margin: 0;
-  }
-
-  .hope-cell:nth-child(even) .hope-card {
-    left: auto;
     right: 0;
+    transform: none;
+    width: auto;
+    margin: 0;
   }
 }
 
