@@ -68,7 +68,7 @@ export type ApplicationSubmission = {
  */
 export function applicationNotification(
   submission: ApplicationSubmission,
-  options: { to: string; from: string },
+  options: { to: string; from: string; payRegistrationAt: string },
 ): Mail {
   const { values, cost, settings, flagged, reference } = submission;
   const lines: string[] = [];
@@ -87,12 +87,27 @@ export function applicationNotification(
 
   lines.push('', 'WHO IS APPLYING, AND FOR WHAT', ...chosen(cost, settings));
 
+  // The envelope line is the one the office acts on, so it names the amount an
+  // envelope will actually contain (#149). A registration paid online arrives
+  // through Vanco unattached to this application and the office matches the two
+  // up by hand — which it cannot do if this email calls the whole of `dueNow` a
+  // check. "Offered", not "paid": Vanco tells the site nothing, and a line
+  // claiming a payment nobody checked is worse than no line.
+  const online = options.payRegistrationAt !== '';
+  const posting = online ? cost.total.deposits : cost.total.dueNow;
   lines.push(
     '',
     'WHAT THEY OWE',
     `  Registration:           ${formatMoney(cost.total.registration)}`,
     `  Deposits:               ${formatMoney(cost.total.deposits)}`,
-    `  Check they are posting: ${formatMoney(cost.total.dueNow)}`,
+    // No envelope to wait for is a fact the office acts on too, and printing
+    // "$0.00" beside "check they are posting" is a line that reads as one.
+    !online
+      ? `  Check they are posting: ${formatMoney(posting)}`
+      : posting === 0
+        ? '  Check they are posting: nothing — the registration was offered online'
+        : `  Check they are posting: ${formatMoney(posting)} — the deposits only, the registration ` +
+          'was offered online',
     `  Tuition to instructors: ${formatMoney(cost.total.dueToInstructors)}`,
     '',
     'THE STATEMENT OF FAITH',
@@ -189,8 +204,14 @@ function faithRecord(values: ApplicationFields): string[] {
  * The message the family receives when it worked (#18 §13, send 4).
  *
  * The same three things the confirmation screen says — what they chose, what to
- * post and where, and that a place is held when the check arrives — because
+ * pay and how, and that a place is held when the check arrives — because
  * the screen is closed within the minute and this is the copy they keep.
+ *
+ * That "how" is the page's own question asked once more (#149): the registration
+ * fee has an online address or it has not, and the answer has to be the same one
+ * the family was just shown. A page offering a link beside an email demanding a
+ * check for the same money is the school contradicting itself in writing, and
+ * the email is the half that outlives the screen.
  *
  * **No response-time promise**, consistent with the inquiry's confirmation and
  * with #9: who answers an application and how fast is the school's own
@@ -198,7 +219,7 @@ function faithRecord(values: ApplicationFields): string[] {
  */
 export function applicationConfirmation(
   submission: ApplicationSubmission,
-  options: { from: string; postTo: string },
+  options: { from: string; postTo: string; payRegistrationAt: string },
 ): Mail {
   const { values, cost, reference } = submission;
   const lines = [
@@ -208,14 +229,56 @@ export function applicationConfirmation(
     ...chosen(cost),
   ];
 
-  lines.push(
+  const online = options.payRegistrationAt !== '';
+  // A family who has chosen no classes yet owes no deposits, and "post a check
+  // for $0.00" is an instruction to mail an empty envelope — so the address is
+  // not printed at all rather than printed under a payment they do not owe.
+  // Reachable only where the registration is online: a check covers both, and
+  // there is always a registration fee to post one for.
+  const posting = online ? cost.total.deposits : cost.total.dueNow;
+
+  /** What to post, and where — the one instruction, written once. */
+  const check = (asking: string): string[] => [
     '',
-    `Please post a check for ${formatMoney(cost.total.dueNow)} — ${formatMoney(cost.total.registration)} ` +
-      `in registration and ${formatMoney(cost.total.deposits)} in deposits — made out to ${SCHOOL_NAME}, to:`,
+    asking,
     '',
     options.postTo,
     '',
     'A place is held for each class as soon as your check reaches us.',
+  ];
+
+  if (online) {
+    lines.push(
+      '',
+      `The registration fee — ${formatMoney(cost.total.registration)} — can be paid online, ` +
+        'through the church’s giving page:',
+      '',
+      `  ${options.payRegistrationAt}`,
+    );
+
+    if (posting > 0) {
+      lines.push(
+        ...check(
+          `The deposits — ${formatMoney(posting)} — are paid by check, made out to ${SCHOOL_NAME}, to:`,
+        ),
+      );
+    }
+
+    lines.push(
+      '',
+      'A payment through the giving page does not reach us attached to this application, so we ' +
+        'match the two up ourselves — there is nothing further for you to send us about it.',
+    );
+  } else {
+    lines.push(
+      ...check(
+        `Please post a check for ${formatMoney(posting)} — ${formatMoney(cost.total.registration)} ` +
+          `in registration and ${formatMoney(cost.total.deposits)} in deposits — made out to ${SCHOOL_NAME}, to:`,
+      ),
+    );
+  }
+
+  lines.push(
     '',
     `Tuition is paid to your instructors rather than to the school: ${formatMoney(cost.total.dueToInstructors)} ` +
       'across the year at today’s rates.',
@@ -312,6 +375,13 @@ export async function deliverApplication(
     from: string;
     /** Where a check is posted — the school's own address, from its details. */
     postTo: string;
+    /**
+     * Where the registration fee is paid online, or `''` when nowhere (#149).
+     *
+     * The school's own setting, the same row the apply page reads, so the two
+     * cannot drift and the school can move the link without a deploy.
+     */
+    payRegistrationAt: string;
     /** The address a family is given when nothing worked. */
     schoolEmail: string;
     /** The absolute origin an emailed link is built against. */
@@ -321,7 +391,11 @@ export async function deliverApplication(
   const notification = await sendAll(
     options.sender,
     options.to.map((address) =>
-      applicationNotification(submission, { to: address, from: options.from }),
+      applicationNotification(submission, {
+        to: address,
+        from: options.from,
+        payRegistrationAt: options.payRegistrationAt,
+      }),
     ),
   );
 
@@ -332,7 +406,11 @@ export async function deliverApplication(
         schoolEmail: options.schoolEmail,
         site: options.site,
       })
-    : applicationConfirmation(submission, { from: options.from, postTo: options.postTo });
+    : applicationConfirmation(submission, {
+        from: options.from,
+        postTo: options.postTo,
+        payRegistrationAt: options.payRegistrationAt,
+      });
 
   const family = await sendAll(options.sender, [toFamily]);
 
