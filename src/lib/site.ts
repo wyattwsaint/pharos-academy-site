@@ -38,6 +38,21 @@ export const SCHOOL_DESCRIPTION_INLINE =
   SCHOOL_DESCRIPTION.charAt(0).toLowerCase() + SCHOOL_DESCRIPTION.slice(1);
 
 /**
+ * Who built the site, credited at the foot of the staff page (#150).
+ *
+ * The Head of School asked for the credit, and the wording is his own, shown to
+ * him before it went live. It is a line and not a card: MWAForge is not staff,
+ * and an entry among the instructors — name, role, portrait frame — would say
+ * that they were. No portrait for the same reason. The frames on that page
+ * belong to the people a family will actually meet.
+ *
+ * Held here beside the school's own name rather than in `people/views.ts`: that
+ * module publishes the people *of the school*, and the whole argument for this
+ * being a line and not a card is that MWAForge is not one of them.
+ */
+export const SITE_CREDIT = 'Website by MWAForge';
+
+/**
  * The launch switch. **Flipped — the site is live and crawlable.**
  *
  * It was `false` until the domain actually pointed here: until then the live

@@ -3,7 +3,8 @@ import { expect, test } from '@playwright/test';
 import { CATALOGUE } from '../src/lib/courses/catalogue.js';
 import { classPath } from '../src/lib/courses/views.js';
 import { PEOPLE } from '../src/lib/people/person.js';
-import { SITE_CREDIT, STAFF_PATH } from '../src/lib/people/views.js';
+import { STAFF_PATH } from '../src/lib/people/views.js';
+import { SITE_CREDIT } from '../src/lib/site.js';
 
 /**
  * #26's acceptance criteria, in a browser.
@@ -54,8 +55,9 @@ test.describe('the staff page', () => {
     await expect(instructors.getByRole('heading', { level: 2 })).toHaveText('Instructors');
     await expect(instructors.locator('.sub')).toHaveCount(0);
 
-    // Every section still has its own heading, and no level is skipped
-    // between them: h1, then an h2 per section, then a name per person.
+    // No level is skipped between the headings there are: h1, then an h2 per
+    // section, then a name per person. The credit line (#150) is a section
+    // without a heading on purpose, so this counts levels rather than sections.
     const levels = await page.locator('main :is(h1, h2, h3, h4, h5, h6)').evaluateAll((nodes) =>
       nodes.map((node) => Number(node.tagName[1])),
     );
@@ -176,12 +178,16 @@ test.describe('the staff page', () => {
     // the school's people, not one of them. Asserting where it *isn't* is the
     // point: a line reading "Website by …" under the Instructors heading would
     // pass a bare "the text is on the page" check.
+    //
+    // Scoped by the *text* rather than by `.staff-credit`: that class is only
+    // ever emitted by the block above, so a class-scoped absence check passes
+    // wherever the credit renders and proves nothing.
     await expect(credit.locator('img')).toHaveCount(0);
     await expect(
-      page.locator(`[data-section="staff-instructors"] .staff-credit`),
+      page.locator('[data-section="staff-instructors"]').getByText(SITE_CREDIT),
     ).toHaveCount(0);
     await expect(
-      page.locator(`[data-section="staff-leadership"] .staff-credit`),
+      page.locator('[data-section="staff-leadership"]').getByText(SITE_CREDIT),
     ).toHaveCount(0);
   });
 
