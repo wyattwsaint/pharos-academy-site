@@ -294,6 +294,9 @@ if (Astro.request.method === 'POST') {
       to: settings.notificationAddresses,
       from: mailer?.from ?? '',
       postTo: details.address,
+      // The same row the page words itself from, so the email a family keeps
+      // and the screen they just read cannot disagree about how to pay (#149).
+      payRegistrationAt: details.registrationUrl,
       schoolEmail: details.email.trim(),
       site: Astro.site?.toString() ?? SITE_URL,
     });
