@@ -231,6 +231,30 @@ describe('a calendar that cannot be reached', () => {
     expect(await rows()).toHaveLength(1);
   });
 
+  it('refuses a download that stops partway rather than deleting what it never saw', async () => {
+    await seed();
+
+    // The dangerous truncation is not the one that parses to nothing — it is the
+    // one that parses to *something*. A body cut off after a whole VEVENT is a
+    // well-formed calendar as far as the reader is concerned, and every upcoming
+    // event past the cut looks exactly like an event the school deleted. The
+    // terminator is what tells the two apart: a calendar Google finished sending
+    // ends with END:VCALENDAR, and one that stops partway does not.
+    const cutOff = [
+      'BEGIN:VCALENDAR',
+      'BEGIN:VEVENT',
+      'UID:first@google.com',
+      'DTSTART;VALUE=DATE:20260910',
+      'SUMMARY:Open house',
+      'END:VEVENT',
+      'BEGIN:VEVENT',
+      'UID:second@goog',
+    ].join('\r\n');
+
+    await expect(sync(async () => new Response(cutOff))).rejects.toThrow(/stops partway/i);
+    expect(await rows()).toHaveLength(1);
+  });
+
   it('accepts a calendar whose every entry is one this sync leaves behind', async () => {
     await seed();
 

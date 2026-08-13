@@ -83,17 +83,32 @@ export async function runCalendarSync(options: CalendarSyncOptions): Promise<Syn
   }
 
   const body = await response.text();
+
+  /*
+   * A calendar Google finished sending ends with END:VCALENDAR.
+   *
+   * Checked before anything is counted, because the dangerous truncation is not
+   * the one that parses to nothing — it is the one that parses to *something*. A
+   * download cut off after a whole VEVENT is well-formed as far as the reader is
+   * concerned, and every event past the cut is indistinguishable from an event
+   * the school deleted. Without this the sweep below would delete them all: the
+   * page-emptying AC 7 exists to forbid, arriving on a 200.
+   */
+  if (!/^END:VCALENDAR\s*$/m.test(body)) {
+    throw new Error(`The download from ${url} stops partway. Nothing was written.`);
+  }
+
   const { events, skipped } = readGoogleCalendar(body);
 
   /*
    * A body with no VEVENT in it at all is a failed read, not an empty calendar.
    *
-   * A sign-in page, an error document and a truncated download all parse to
-   * nothing, and reading that as "the school deleted everything" would empty the
-   * page on a bad night — the failure AC 7 is about. Counted over every VEVENT
-   * *seen* rather than over the ones that survived the rules, so a calendar
-   * holding only cancelled events, or only its class series, is read as the
-   * ordinary thing it is: a calendar with nothing to publish.
+   * A sign-in page and an error document both parse to nothing, and reading that
+   * as "the school deleted everything" would empty the page on a bad night.
+   * Counted over every VEVENT *seen* rather than over the ones that survived the
+   * rules, so a calendar holding only cancelled events, or only its class
+   * series, is read as the ordinary thing it is: a calendar with nothing to
+   * publish.
    */
   const seen =
     events.length +

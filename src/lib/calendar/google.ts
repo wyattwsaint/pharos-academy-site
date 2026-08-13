@@ -33,7 +33,7 @@ const GOOGLE_ICAL_BASE = 'https://calendar.google.com/calendar/ical';
  * id** — `pharosacademy.net@gmail.com` — is the public route and the one the
  * school took; a whole **URL** is the secret iCal address, for a calendar that
  * is not public. Neither is a credential this repository holds: both live in
- * the deployment's environment (ADR-0012).
+ * the deployment's environment, as `GOOGLE_CALENDAR_ID` in `docs/handoff.md`.
  *
  * An address that is neither is refused loudly rather than fetched. The value
  * comes from an environment variable somebody typed, and a typo that silently

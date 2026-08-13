@@ -655,6 +655,12 @@ every PDF as an ordinary file, and a README addressed to whoever opens it. It is
 what **Download everything** produces on `/admin/backup`, and it is the same
 bytes that arrive by email on the 1st of every month.
 
+It carries the **synced one-offs** too, which are the one thing in it that is
+not in the editable set. The export answers "can the school get its content back
+without asking anyone", and half a calendar is a worse answer than a whole one —
+the fact that Google also holds a copy is not a reason for this site's own record
+of its year to have a hole in it.
+
 An export is **restorable without Postgres on purpose**. A `pg_dump` is smaller
 and a better restore, and is worth nothing to a board with no developer: the
 nightly dump answers "can this database be brought back", and the export answers

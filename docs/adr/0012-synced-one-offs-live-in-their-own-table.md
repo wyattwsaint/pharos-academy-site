@@ -26,8 +26,12 @@ the reconcile is then a bug that loses the school's typed events.
 
 ## Consequences
 
-The page, the ICS feed and the structured data each read two sources and merge
-them, which is the price paid, and it is paid in four places rather than one.
+Two sources have to be merged before anything can publish them, which is the
+price paid. It is paid **once**: `listPublishedEvents` in
+`src/lib/calendar/store.ts` is the only reader that knows there are two tables,
+and the page, the ICS feed and the structured data all go through it. This
+decision was taken expecting to pay it in each of those three places; the seam
+turned out to sit one level below them, which is where it belongs.
 
 Synced one-offs are **exported**. They are the school's content, and the
 [export](../../CONTEXT.md#export) answers "can the school get its content back

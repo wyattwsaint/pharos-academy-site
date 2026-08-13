@@ -7,7 +7,10 @@ import { cronResponse as text, isAuthorisedCron } from '../../../lib/cron.js';
 import { getDb } from '../../../lib/db/client.js';
 
 /**
- * Every morning at five in Enola (#153).
+ * Every morning at 09:00 UTC — five in Enola on daylight time, four in the
+ * winter (#153). Vercel schedules in UTC and does not follow the school's clock;
+ * the hour is not load-bearing, since what it has to beat is a family reading
+ * the calendar over breakfast.
  *
  * Reads the school's Google calendar and mirrors whatever is still ahead into
  * `synced_events`, then republishes the site — but only if something moved.
