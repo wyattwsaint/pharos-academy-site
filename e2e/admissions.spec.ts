@@ -107,6 +107,28 @@ test.describe('the admissions page', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
+  test('puts the invitation under the button it is inviting, and still offers a conversation', async ({
+    page,
+  }) => {
+    await page.goto('/admissions');
+
+    const startSection = page.locator('section[data-section="admissions-start"]');
+    const paragraphs = startSection.locator('p');
+
+    // #176: the button comes first and the sentence explaining it comes after,
+    // where it reads as the button's own subtext. Before #176 the sentence sat
+    // above, under the heading, explaining nothing in particular.
+    await expect(paragraphs.first().getByRole('link', { name: 'Start your application' })).toHaveCount(
+      1,
+    );
+    await expect(paragraphs.nth(1)).toContainText('before anything is signed or sent');
+
+    // The standing offer to talk survives the move, and now reads as an offer.
+    const chat = startSection.getByRole('link', { name: 'Let’s chat!' });
+    await expect(chat).toHaveAttribute('href', '/#inquiry');
+    await expect(startSection).toContainText('Not ready to apply?');
+  });
+
   test('is reachable from the header on every page', async ({ page }) => {
     await page.goto('/classes');
 
