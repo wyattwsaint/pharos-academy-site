@@ -23,6 +23,11 @@ import { SITE_CREDIT } from '../src/lib/site.js';
 /** Somebody the school has published no bio and no photograph for. AC 2. */
 const UNWRITTEN = PEOPLE.find((person) => person.bio === null && person.photo === null)!;
 
+/** The instructor the school supplied a bio for, rather than a leader (#150). */
+const SUPPLIED_BIO = PEOPLE.find(
+  (person) => person.bio !== null && person.leadershipRank === null,
+)!;
+
 /** Somebody who is leadership *and* teaches — the one row two sections show. */
 const BOTH = 'george-jensen';
 
@@ -91,6 +96,22 @@ test.describe('the staff page', () => {
     // a photograph the school has not supplied (AC 4).
     await expect(entry.locator('.staff-bio')).toHaveCount(0);
     await expect(entry.locator('img')).toHaveCount(0);
+  });
+
+  test('prints the instructor bio the school supplied, in the instructors list', async ({
+    page,
+  }) => {
+    // #150. The mirror image of the test above: the seven with nothing written
+    // about them get no paragraph, and the one the school wrote about gets hers
+    // — on the page, not merely in the seed. The text is read out of `PEOPLE`
+    // rather than pasted here, so an edit for tone is not a broken test.
+    await page.goto(STAFF_PATH);
+
+    const bio = SUPPLIED_BIO.bio;
+    if (bio === null) throw new Error(`"${SUPPLIED_BIO.slug}" has no seeded bio to look for.`);
+
+    const entry = page.locator(`[data-section="staff-instructors"] #${SUPPLIED_BIO.slug}`);
+    await expect(entry.locator('.staff-bio')).toHaveText(bio);
   });
 
   test('renders the four supplied portraits, each naming who is in it', async ({ page }) => {

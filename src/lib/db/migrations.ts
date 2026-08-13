@@ -745,7 +745,7 @@ export const MIGRATIONS: readonly Migration[] = [
 /**
  * One seeded biography, as an update rather than an insert.
  *
- * Narrow on purpose: a `updatePhotos`-style sweep of every bio would re-land
+ * Narrow on purpose: an `updatePhotos`-style sweep of every bio would re-land
  * Jill's, George's and Kathy's alongside it, and those three have been on the
  * live site — and editable in the admin — since 0003.
  */

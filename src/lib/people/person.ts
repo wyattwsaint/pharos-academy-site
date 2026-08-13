@@ -31,10 +31,11 @@ export type Person = {
   /**
    * The school's own paragraph about them, or nothing.
    *
-   * **Optional by design.** Three of the ten have one today because those are
-   * the three the live site publishes. An empty bio is a valid state, not a gap
-   * to fill with filler, and the staff page renders a person without one
-   * correctly rather than apologising for it.
+   * **Optional by design.** Four of the ten have one today: the three the live
+   * site publishes, and Mandy Saint's, which the school supplied afterwards
+   * (#150). An empty bio is a valid state, not a gap to fill with filler, and
+   * the staff page renders a person without one correctly rather than
+   * apologising for it.
    */
   bio: string | null;
   /**
@@ -67,10 +68,13 @@ export const INSTRUCTOR_ROLE = 'Instructor';
 /**
  * The school's people, as published today.
  *
- * The three with bios are `docs/mirror/pages/team_4.txt` — the live staff page —
- * carried unedited. The eight instructors are the distinct names on
- * `docs/mirror/data/courses.json`, which is where the site already prints them;
- * this ticket does not invent a person, a role or a sentence about anybody.
+ * Three of the four bios are `docs/mirror/pages/team_4.txt` — the live staff
+ * page — carried unedited. The fourth is Mandy Saint's, which the school
+ * supplied to the office rather than published, and which is here edited for
+ * tone with every fact she gave left in it (#150). The eight instructors are
+ * the distinct names on `docs/mirror/data/courses.json`, which is where the
+ * site already prints them; nothing here invents a person, a role, or a
+ * sentence about anybody.
  *
  * George Jensen appears **once**, with his leadership role, and teaches
  * Algebra 1 through `Course.instructorSlug`. That single row is the whole

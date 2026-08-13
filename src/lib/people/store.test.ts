@@ -50,7 +50,7 @@ describe('the seeded people', () => {
     // same thing about what the staff page prints under her name.
     const person = await getPerson(db, 'mandy-saint');
     expect(person?.photo).toBe('/portraits/mandy-saint.webp');
-    expect(person?.bio).toBe(PEOPLE.find((seeded) => seeded.slug === 'mandy-saint')!.bio);
+    expect(person?.bio).toBe(PEOPLE.find((seeded) => seeded.slug === 'mandy-saint')?.bio);
   });
 
   it('answers with nothing for a slug that is not a person', async () => {
