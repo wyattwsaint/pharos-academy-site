@@ -31,6 +31,16 @@ const seeded: Person[] = PEOPLE.map((person) => ({
   lastEditedAt: null,
 }));
 
+/**
+ * The people the school has written a paragraph about, in seed order.
+ *
+ * One list rather than a literal in each test, so the two checks below cannot
+ * drift apart: one pins the whole set, and the other reads the same names as
+ * its exemptions. Adding a bio to `PEOPLE` without adding the slug here fails
+ * the first, which is where a paragraph nobody supplied gets caught.
+ */
+const SUPPLIED_BIOS = ['jill-kilker', 'george-jensen', 'kathy-liddick', 'mandy-saint'];
+
 describe('one list, not two', () => {
   it('names every instructor the catalogue points at', () => {
     // AC 1, the load-bearing half: a course cannot name somebody who is not a
@@ -90,11 +100,16 @@ describe('one list, not two', () => {
 });
 
 describe('an optional bio and an optional photo', () => {
-  it('leaves the instructors without a bio, and says nothing about it', () => {
+  it('leaves the instructors the school has written nothing about without a bio', () => {
     // Not a gap to fill with filler: the school has published no bio for them,
-    // and inventing one is the failure this asserts against.
+    // and inventing one is the failure this asserts against. Mandy Saint is
+    // exempt because hers is not invented — the school supplied the text (#150).
+    // The exemptions are `SUPPLIED_BIOS`, the same list the test below pins, so
+    // a second one cannot be smuggled in through this loop without failing
+    // there.
     for (const entry of instructorsAmong(seeded, CATALOGUE)) {
       if (entry.person.leadershipRank !== null) continue;
+      if (SUPPLIED_BIOS.includes(entry.person.slug)) continue;
       expect(entry.person.bio, entry.person.name).toBeNull();
     }
   });
@@ -129,9 +144,12 @@ describe('an optional bio and an optional photo', () => {
     }
   });
 
-  it('carries the three bios the live site publishes, and only those', () => {
+  it('carries the four bios the school has supplied, and only those', () => {
+    // Mandy Saint is the first instructor with one (#150). The other six stay
+    // null for the reason the seed gives: the school has published nothing about
+    // them, and a paragraph of filler under a real name is an invention.
     const withBios = seeded.filter((person) => person.bio !== null).map((person) => person.slug);
-    expect(withBios).toEqual(['jill-kilker', 'george-jensen', 'kathy-liddick']);
+    expect(withBios).toEqual(SUPPLIED_BIOS);
   });
 });
 

@@ -44,12 +44,13 @@ describe('the seeded people', () => {
     expect(person?.role).toBe('Instructor');
   });
 
-  it('reads back the photograph of somebody the school supplied one for', async () => {
-    // #99. The migration is where these arrive, so this is the check that the
-    // seed and the applied SQL say the same thing about a face on the page.
+  it('reads back the photograph and the bio of somebody the school supplied them for', async () => {
+    // #99 for the face, #150 for the paragraph. The migrations are where both
+    // arrive, so this is the check that the seed and the applied SQL say the
+    // same thing about what the staff page prints under her name.
     const person = await getPerson(db, 'mandy-saint');
     expect(person?.photo).toBe('/portraits/mandy-saint.webp');
-    expect(person?.bio).toBeNull();
+    expect(person?.bio).toBe(PEOPLE.find((seeded) => seeded.slug === 'mandy-saint')?.bio);
   });
 
   it('answers with nothing for a slug that is not a person', async () => {

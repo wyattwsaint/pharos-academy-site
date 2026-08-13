@@ -31,10 +31,11 @@ export type Person = {
   /**
    * The school's own paragraph about them, or nothing.
    *
-   * **Optional by design.** Three of the ten have one today because those are
-   * the three the live site publishes. An empty bio is a valid state, not a gap
-   * to fill with filler, and the staff page renders a person without one
-   * correctly rather than apologising for it.
+   * **Optional by design.** Four of the ten have one today: the three the live
+   * site publishes, and Mandy Saint's, which the school supplied afterwards
+   * (#150). An empty bio is a valid state, not a gap to fill with filler, and
+   * the staff page renders a person without one correctly rather than
+   * apologising for it.
    */
   bio: string | null;
   /**
@@ -67,10 +68,13 @@ export const INSTRUCTOR_ROLE = 'Instructor';
 /**
  * The school's people, as published today.
  *
- * The three with bios are `docs/mirror/pages/team_4.txt` — the live staff page —
- * carried unedited. The eight instructors are the distinct names on
- * `docs/mirror/data/courses.json`, which is where the site already prints them;
- * this ticket does not invent a person, a role or a sentence about anybody.
+ * Three of the four bios are `docs/mirror/pages/team_4.txt` — the live staff
+ * page — carried unedited. The fourth is Mandy Saint's, which the school
+ * supplied to the office rather than published, and which is here edited for
+ * tone with every fact she gave left in it (#150). The eight instructors are
+ * the distinct names on `docs/mirror/data/courses.json`, which is where the
+ * site already prints them; nothing here invents a person, a role, or a
+ * sentence about anybody.
  *
  * George Jensen appears **once**, with his leadership role, and teaches
  * Algebra 1 through `Course.instructorSlug`. That single row is the whole
@@ -128,13 +132,33 @@ export const PEOPLE: readonly SeedPerson[] = [
   },
   // The eight instructors. No bio and no invented role: the school has
   // published neither, and the staff page says so by showing their name and
-  // what they teach rather than a paragraph of filler. Mandy Saint is the one
-  // with a photograph, because hers is the one the school sent (#99).
+  // what they teach rather than a paragraph of filler. Mandy Saint is the
+  // exception on both counts — hers is the photograph the school sent (#99),
+  // and hers is the biography it supplied (#150), edited for tone against the
+  // house voice with every fact she gave left in it.
   { slug: 'angela-fecteau', name: 'Mrs. Angela Fecteau', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
   { slug: 'chelsea-miller', name: 'Mrs. Chelsea Miller', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
   { slug: 'elizabeth-hayes', name: 'Mrs. Elizabeth Hayes', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
   { slug: 'lanette-johnson', name: 'Mrs. Lanette Johnson', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
-  { slug: 'mandy-saint', name: 'Mrs. Mandy Saint', role: INSTRUCTOR_ROLE, bio: null, photo: '/portraits/mandy-saint.webp', leadershipRank: null },
+  {
+    slug: 'mandy-saint',
+    name: 'Mrs. Mandy Saint',
+    role: INSTRUCTOR_ROLE,
+    bio:
+      'Mrs. Saint is a devoted educator and a homeschooling mother, with over sixteen years of ' +
+      'experience teaching elementary students. She is a mother of three, and brings both ' +
+      'professional expertise and a nurturing, family-centered perspective to her courses. ' +
+      'Faith is at the heart of her approach to education. She believes children flourish when ' +
+      'learning is rooted in truth, beauty, goodness, and a growing understanding of God’s ' +
+      'world, and she hopes to help students not only grow academically but also cultivate ' +
+      'kindness, wisdom, gratitude, and a strong moral foundation grounded in Christian values. ' +
+      'Outside the classroom she enjoys time with her family, reading, exploring nature, and ' +
+      'creating meaningful learning experiences for children. A lifelong lover of learning, she ' +
+      'counts it an honor to partner with families in cultivating thoughtful, capable, and ' +
+      'faith-filled young learners.',
+    photo: '/portraits/mandy-saint.webp',
+    leadershipRank: null,
+  },
   { slug: 'rachel-holderman', name: 'Mrs. Rachel Holderman', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
   { slug: 'robyn-lach', name: 'Ms. Robyn Lach', role: INSTRUCTOR_ROLE, bio: null, photo: null, leadershipRank: null },
 ] as const;
