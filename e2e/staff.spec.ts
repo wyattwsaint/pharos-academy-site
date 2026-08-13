@@ -343,23 +343,31 @@ test.describe('an instructor’s biography', () => {
     );
   });
 
-  test('opens on focus and can be dismissed from the keyboard', async ({ page }) => {
-    await page.setViewportSize(DESKTOP);
-    await page.goto(STAFF_PATH);
+  // At both widths, not only the desktop: a phone is where the panel's layout
+  // changes least gracefully, and a keyboard is not a desktop-only device —
+  // an external one, or a switch control, reaches this page at 390px too.
+  for (const [name, viewport] of [
+    ['a desktop', DESKTOP],
+    ['a phone', PHONE],
+  ] as const) {
+    test(`opens on focus and can be dismissed from the keyboard on ${name}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto(STAFF_PATH);
 
-    const entry = page.locator(entryFor(WITH_BIO.slug));
-    const trigger = entry.locator('[data-disclosure-trigger]');
-    const panel = entry.locator('[data-disclosure-panel]');
+      const entry = page.locator(entryFor(WITH_BIO.slug));
+      const trigger = entry.locator('[data-disclosure-trigger]');
+      const panel = entry.locator('[data-disclosure-panel]');
 
-    await trigger.focus();
-    await expect(panel).toBeVisible();
+      await trigger.focus();
+      await expect(panel).toBeVisible();
 
-    await page.keyboard.press('Escape');
-    await expect(panel).not.toBeVisible();
-    // Escape dismisses the panel and leaves focus where it was, so the next Tab
-    // carries on down the page rather than starting again from the top.
-    await expect(trigger).toBeFocused();
-  });
+      await page.keyboard.press('Escape');
+      await expect(panel).not.toBeVisible();
+      // Escape dismisses the panel and leaves focus where it was, so the next
+      // Tab carries on down the page rather than starting again from the top.
+      await expect(trigger).toBeFocused();
+    });
+  }
 
   test('is announced rather than merely shown', async ({ page }) => {
     await page.setViewportSize(DESKTOP);

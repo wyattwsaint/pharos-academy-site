@@ -105,7 +105,12 @@ const description =
       <disclosure-group data-disclosure-group="instructors">
         <ul class="staff-teaching">
           {
-            instructors.map(({ person, courses: taught }) => (
+            instructors.map(({ person, courses: taught }) => {
+              // Composed once. The trigger's `aria-controls` and the panel's
+              // `id` are the same string by construction rather than by two
+              // template literals staying in step with each other.
+              const panelId = `bio-${person.slug}`;
+              return (
               <li id={person.slug} data-disclosure-cell={person.bio ? '' : undefined}>
                 {
                   /*
@@ -148,7 +153,7 @@ const description =
                       type="button"
                       data-disclosure-trigger
                       aria-expanded="false"
-                      aria-controls={`bio-${person.slug}`}
+                      aria-controls={panelId}
                     >
                       {person.name}
                     </button>
@@ -158,7 +163,7 @@ const description =
                 </h3>
                 <p class="role label">{person.role}</p>
                 {person.bio && (
-                  <div class="staff-bio-panel" id={`bio-${person.slug}`} data-disclosure-panel>
+                  <div class="staff-bio-panel" id={panelId} data-disclosure-panel>
                     <p class="staff-bio">{person.bio}</p>
                   </div>
                 )}
@@ -170,7 +175,8 @@ const description =
                   ))}
                 </ul>
               </li>
-            ))
+              );
+            })
           }
         </ul>
       </disclosure-group>

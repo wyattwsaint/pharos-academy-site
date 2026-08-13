@@ -1303,10 +1303,16 @@ html.nav-menu-open body {
    them down the page out from under the pointer that just arrived at them.
    Absolute, so nothing moves and the panel covers rather than displaces.
 
-   Anchored to the bottom of the entry and not measured: George Jensen is the
-   only instructor with a bio today and he sorts last, so the card opens over
-   the paragraph below the list. The band has no overflow clip, so nothing cuts
-   it off there. */
+   Downward and unmeasured, at a fixed anchor. It therefore *covers* what is
+   below it — the paragraph under the list today, and the next instructor in
+   the column once the Head of School sends the bios she still owes. That is
+   the same trade the H.O.P.E. card makes when it covers the verse, and it is
+   the right one here: only one panel is open at a time, hover, Escape and an
+   outside click all put it away, and covering is what a reader expects of a
+   card that opened under the name they pointed at. Opening upward instead
+   would put the first row's card over the section's own heading, and measuring
+   which way to go is a reflow on every hover for a page with one bio on it.
+   The band has no overflow clip, so nothing cuts the card off either way. */
 .staff-bio-panel {
   display: none;
   position: absolute;
