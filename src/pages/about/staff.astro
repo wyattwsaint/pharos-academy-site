@@ -33,6 +33,15 @@ import { SITE_CREDIT } from '../../lib/site.js';
  * three would otherwise come out ragged; an instructor without one carries no
  * portrait frame at all, because seven empty circles would be a page
  * advertising seven missing photographs rather than seven people who teach.
+ *
+ * **An instructor's bio is behind their name, not under it** (#152). Leadership
+ * is three cards and reads as prose; the instructors are a list of eight where a
+ * paragraph each would bury what a parent came for, which is who teaches what.
+ * The reveal is `<disclosure-group>` — the same element as the class
+ * descriptions and the H.O.P.E. row, because two nearly-identical answers to
+ * "how does a panel open" on one site is how a client finds the inconsistent
+ * one (#21 AC 6). Somebody with no bio gets no trigger and no panel: their name
+ * is plain text, and there is nothing to point at that does nothing.
  */
 const db = await getDb();
 const details = await getSchoolDetails(db);
@@ -93,46 +102,84 @@ const description =
     <div class="wide">
       <h2>Instructors</h2>
 
-      <ul class="staff-teaching">
-        {
-          instructors.map(({ person, courses: taught }) => (
-            <li id={person.slug}>
-              {
-                /*
-                  A photograph only where there is one, and only for somebody
-                  this page has not already shown (#99). No empty frame for the
-                  six with no photograph: a circle of tint beside a name reads as
-                  a missing person rather than as a person the school simply has
-                  no picture of, and only one of these eight names has a face to
-                  show. And no second copy of George's face — he is one row,
-                  printed twice, and two identical circles a screen apart would
-                  read as two people.
-                */
-              }
-              {person.photo && person.leadershipRank === null && (
-                <img
-                  class="portrait"
-                  src={person.photo}
-                  alt={person.name}
-                  width="300"
-                  height="300"
-                  loading="lazy"
-                />
-              )}
-              <h3>{person.name}</h3>
-              <p class="role label">{person.role}</p>
-              {person.bio && <p class="staff-bio">{person.bio}</p>}
-              <ul class="staff-classes">
-                {taught.map((course) => (
-                  <li>
-                    <a href={classPath(course.slug)}>{course.title}</a>
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))
-        }
-      </ul>
+      <disclosure-group data-disclosure-group="instructors">
+        <ul class="staff-teaching">
+          {
+            instructors.map(({ person, courses: taught }) => {
+              // Composed once. The trigger's `aria-controls` and the panel's
+              // `id` are the same string by construction rather than by two
+              // template literals staying in step with each other.
+              const panelId = `bio-${person.slug}`;
+              return (
+              <li id={person.slug} data-disclosure-cell={person.bio ? '' : undefined}>
+                {
+                  /*
+                    A photograph only where there is one, and only for somebody
+                    this page has not already shown (#99). No empty frame for the
+                    six with no photograph: a circle of tint beside a name reads as
+                    a missing person rather than as a person the school simply has
+                    no picture of, and only one of these eight names has a face to
+                    show. And no second copy of George's face — he is one row,
+                    printed twice, and two identical circles a screen apart would
+                    read as two people.
+                  */
+                }
+                {person.photo && person.leadershipRank === null && (
+                  <img
+                    class="portrait"
+                    src={person.photo}
+                    alt={person.name}
+                    width="300"
+                    height="300"
+                    loading="lazy"
+                  />
+                )}
+                {
+                  /*
+                    The name is the trigger, and the only one: `disclosure-group`
+                    binds the first trigger in a cell, and a heading cannot go
+                    inside a button, so wrapping the portrait as well would mean
+                    either invalid markup or a second control that opens the same
+                    panel. Pointing at the portrait still opens it — the group
+                    opens on the *cell* being hovered, which is the whole entry —
+                    so "portrait or name" holds for a pointer, and a tap or a Tab
+                    lands on the name, which is the part every instructor has.
+                  */
+                }
+                <h3>
+                  {person.bio ? (
+                    <button
+                      class="staff-name-trigger"
+                      type="button"
+                      data-disclosure-trigger
+                      aria-expanded="false"
+                      aria-controls={panelId}
+                    >
+                      {person.name}
+                    </button>
+                  ) : (
+                    person.name
+                  )}
+                </h3>
+                <p class="role label">{person.role}</p>
+                {person.bio && (
+                  <div class="staff-bio-panel" id={panelId} data-disclosure-panel>
+                    <p class="staff-bio">{person.bio}</p>
+                  </div>
+                )}
+                <ul class="staff-classes">
+                  {taught.map((course) => (
+                    <li>
+                      <a href={classPath(course.slug)}>{course.title}</a>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+              );
+            })
+          }
+        </ul>
+      </disclosure-group>
 
       <p class="mt-9 text-ink-2">
         Wondering whether a class is right for your child?
@@ -154,3 +201,9 @@ const description =
     </div>
   </section>
 </BaseLayout>
+
+<script>
+  // The only script this page loads: the instructor bios (#152) open with the
+  // same element the class descriptions and the H.O.P.E. row use.
+  import '../../components/disclosure-group.js';
+</script>
