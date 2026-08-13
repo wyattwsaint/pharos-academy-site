@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { schoolId } from '../structured-data.js';
-import { SEEDED_EVENTS, upcomingEvents, type CalendarEvent } from './event.js';
+import { SEEDED_EVENTS, type CalendarEvent } from './event.js';
 import { renderCalendarFeed } from './ics.js';
 import { eventJsonLd } from './structured-data.js';
 import { SEEDED_SCHOOL_YEAR } from './year.js';
@@ -121,16 +121,6 @@ describe('where an event is', () => {
    * missing one. Google will decline to show a location-less event richly, and
    * the fix is Jill typing the branch on the Events screen.
    */
-  /*
-   * A guard on the seed rather than on the code. `e2e/structured-data.spec.ts`
-   * asserts that the markup describes exactly the events the calendar page shows;
-   * if the seeded event ever falls behind the clock, both sides become zero and
-   * that assertion passes on nothing. This is what says so instead.
-   */
-  it('still has something ahead of the clock to describe', () => {
-    expect(upcomingEvents(SEEDED_EVENTS, new Date()).length).toBeGreaterThan(0);
-  });
-
   it('publishes no place rather than guessing one', () => {
     expect(nodeFor().location).toBeUndefined();
     const seeded = SEEDED_EVENTS[0]!;

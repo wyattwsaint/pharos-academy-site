@@ -4,7 +4,7 @@ export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { formatStamp } from '../../lib/admin/school-details.js';
 import { eventDateLabel, eventTimeLabel } from '../../lib/calendar/event.js';
-import { listEvents } from '../../lib/calendar/store.js';
+import { listEvents, listSyncedEvents } from '../../lib/calendar/store.js';
 import { CALENDAR_PATH } from '../../lib/calendar/views.js';
 import { getDb } from '../../lib/db/client.js';
 
@@ -18,10 +18,27 @@ import { getDb } from '../../lib/db/client.js';
  * varies.
  *
  * A list, like Announcements: every edit happens on the event's own screen.
+ *
+ * **The school's Google calendar is shown here and cannot be edited here**
+ * (#153). Those events are on the calendar page beside these ones, so a screen
+ * that did not mention them would leave Jill looking at a public page carrying
+ * events her own list does not have. What it does not offer is a form: editing
+ * a copy the next sync overwrites is a control that loses, and the place to
+ * change one is Google.
  */
 const db = await getDb();
 const actor = Astro.locals.actor!;
 const events = await listEvents(db);
+const synced = await listSyncedEvents(db);
+/*
+ * When the calendar was last read, which is the same for every row the last run
+ * confirmed. Not a stamp: nobody signed in to run a sync, so there is no actor
+ * to name, and this says so in the words it uses.
+ */
+const lastRead = synced.reduce<Date | null>(
+  (latest, row) => (latest === null || row.syncedAt > latest ? row.syncedAt : latest),
+  null,
+);
 ---
 
 <AdminLayout title="Events" actor={actor}>
@@ -71,6 +88,40 @@ const events = await listEvents(db);
           </li>
         ))}
       </ul>
+    )
+  }
+
+  {
+    synced.length > 0 && (
+      <section class="mt-14" data-section="synced-events">
+        <h2 class="text-2xl font-semibold text-navy">From the school’s Google calendar</h2>
+        <p class="mt-2">
+          These are on <a href={CALENDAR_PATH} class="underline underline-offset-4">
+            the calendar
+          </a>{' '}
+          too, and in the file parents subscribe to. They are read from the school’s own Google
+          calendar once a night, so <strong>change them in Google</strong> — an edit made here
+          would be overwritten by the next reading.
+        </p>
+        <p class="mt-1 text-sm">
+          {lastRead
+            ? `Last read on ${eventDateLabel(lastRead.toISOString().slice(0, 10))}`
+            : 'Not read yet'}
+        </p>
+
+        <ul class="mt-8 flex flex-col gap-6">
+          {synced.map((event) => (
+            <li class="border-t border-navy/15 pt-6">
+              <h3 class="text-xl font-semibold text-navy">{event.title}</h3>
+              <p class="mt-1 text-sm">
+                {eventDateLabel(event.heldOn)}
+                {event.startTime ? ` · ${eventTimeLabel(event.startTime)}` : ' · All day'}
+                {event.place ? ` · ${event.place}` : ''}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
     )
   }
 </AdminLayout>

@@ -740,6 +740,74 @@ export const MIGRATIONS: readonly Migration[] = [
     id: '0019-mandy-saint-biography',
     statements: [updateBio(PEOPLE, 'mandy-saint')],
   },
+  {
+    /*
+     * The school's Google calendar, mirrored (#153).
+     *
+     * A table of its own rather than a `source` column on `calendar_events`,
+     * argued in ADR-0012. The short of it: the sync replaces the whole of this
+     * table every run, and keeping it separate is what makes "the sync never
+     * overwrites what an admin typed" structural rather than a `where` clause.
+     *
+     * Created empty, and deliberately: there is nothing to seed, because the
+     * rows are a mirror of a calendar that is read at runtime. A database with
+     * this table empty is a database whose sync has not run yet, which is a
+     * true and ordinary state — the calendar page shows the admin's own events
+     * and says nothing about Google either way.
+     *
+     * `synced_at` is not null and is not a stamp. Nobody saved these rows, so
+     * there is no actor to name; what the column records is when the calendar
+     * was last read, which is what tells an operator whether the mirror is
+     * fresh. The same check on `start_time` that `calendar_events` carries,
+     * because the two feed one list on one page.
+     */
+    id: '0020-synced-google-calendar-events',
+    statements: [
+      `create table if not exists synced_events (
+         uid text primary key,
+         held_on date not null,
+         title text not null,
+         start_time text,
+         place text,
+         note text,
+         synced_at timestamptz not null,
+         constraint synced_events_is_titled check (length(trim(title)) > 0),
+         constraint synced_events_time_is_a_time
+           check (start_time is null or start_time ~ '^[0-2][0-9]:[0-5][0-9]$')
+       )`,
+      // The page and the feed both read this in date order and nothing reads it
+      // by uid but the sync itself.
+      `create index if not exists synced_events_held_on on synced_events (held_on)`,
+    ],
+  },
+  {
+    /*
+     * The seeded Chick-fil-A row, withdrawn in favour of the school's own (#153).
+     *
+     * The school's Google calendar holds the same fundraiser on the same day,
+     * and holds it better: `20260819T210000Z` is five in the afternoon in Enola,
+     * which is the hour a family actually needs and the hour the seed had to
+     * leave blank. Once the sync runs, keeping both would put two Chick-fil-A
+     * entries on one date on the calendar page — the contradictory pair AC 5 is
+     * about — and nothing dedupes them, because two fundraisers in a fortnight
+     * is an ordinary week at this school and a rule that hid the second would
+     * hide it invisibly.
+     *
+     * **Guarded on "still exactly as seeded".** Every column is matched against
+     * what 0018 inserted and the stamp must still be null. If Jill has touched
+     * this row it is hers, this finds nothing, and the duplicate is one she can
+     * see and remove herself — in the admin, which is the half she owns. That is
+     * the opposite guard from 0018's own delete, and deliberately: 0018 removed
+     * a notice that had become *false*, where this removes one that has merely
+     * been superseded by a better copy of the same true thing.
+     *
+     * Re-running finds nothing the second time. A database seeded after this
+     * migration lands still receives the row from 0018 and still loses it here,
+     * which is the same end state by the longer route.
+     */
+    id: '0021-google-supersedes-the-seeded-fundraiser',
+    statements: [deleteUneditedSeededEvent(SEEDED_EVENTS, '2026-08-19-chick-fil-a-dine-to-donate')],
+  },
 ];
 
 /**
@@ -777,6 +845,36 @@ function insertEvents(events: readonly SeedEvent[]): string {
   return `insert into calendar_events (slug, held_on, title, start_time, place, note)
     values ${values}
     on conflict (slug) do nothing`;
+}
+
+/**
+ * Remove a seeded event, but only while it is still exactly what was seeded.
+ *
+ * Every column is compared against the seed and the stamp must still be null,
+ * so the statement is a no-op the moment an admin has edited the row — an edit
+ * is the school taking the row over, and a migration that discarded it would be
+ * the site overwriting somebody's work on a schedule.
+ *
+ * `is not distinct from` rather than `=` throughout, because three of the six
+ * columns are null in the seed and `null = null` is null, which deletes nothing
+ * and would make the guard silently permanent.
+ */
+function deleteUneditedSeededEvent(events: readonly SeedEvent[], slug: string): string {
+  const seeded = events.find((event) => event.slug === slug);
+  if (!seeded) throw new Error(`No seeded event with the slug "${slug}".`);
+
+  const matches = [
+    `slug = ${literal(seeded.slug)}`,
+    `held_on = ${literal(seeded.heldOn)}::date`,
+    `title = ${literal(seeded.title)}`,
+    `start_time is not distinct from ${nullable(seeded.startTime)}`,
+    `place is not distinct from ${nullable(seeded.place)}`,
+    `note is not distinct from ${nullable(seeded.note)}`,
+    `last_edited_by is null`,
+    `last_edited_at is null`,
+  ];
+
+  return `delete from calendar_events where ${matches.join(' and ')}`;
 }
 
 /**

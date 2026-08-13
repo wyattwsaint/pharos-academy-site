@@ -59,14 +59,17 @@ export default defineConfig({
       // reading here — that a response carrying `Set-Cookie` escapes the cache
       // on its own — was true of the cache and irrelevant to the routing.
       //
-      // The cron is a GET whose *effect* is the point: a cached 200 is a month
-      // with no email and a green run to say so.
+      // A cron is a GET whose *effect* is the point: a cached 200 is a month
+      // with no email and a green run to say so. Excluded as a family rather
+      // than one address at a time, because there are two of them now — the
+      // backup and the nightly calendar read (#153) — and a third added without
+      // its line here would fail in exactly that silent way.
       // …and the one public page that takes a POST (#30). The volunteer form's
       // answer belongs to a single submission; a cache in front of it is a
       // cache that can hand one visitor's outcome to the next. Read from the
       // route list rather than written out, so the page and the exclusion
       // cannot disagree.
-      exclude: [/^\/admin(\/.*)?$/, '/api/cron/monthly-backup', ...onRequestPaths()],
+      exclude: [/^\/api\/cron\/.*$/, /^\/admin(\/.*)?$/, ...onRequestPaths()],
     },
   }),
   // The dev toolbar injects its own `<h1>`s ("Audit", "Settings", …) into the

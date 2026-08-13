@@ -81,10 +81,43 @@ export type SyncedEvent = {
   note: string | null;
 };
 
+/**
+ * The titles Google states the school year under, which this sync never carries.
+ *
+ * A second rule beside the recurrence one, and it is needed because the
+ * recurrence rule only catches four of the six: the calendar also holds a plain
+ * "Classes in session" on 2026-09-14 and a plain "First day of classes" on
+ * 2026-08-31, neither recurring and both restating dates the School Year screen
+ * computes from eight numbers.
+ *
+ * **Matched on the whole title, not on a phrase inside one.** "Come and see
+ * classes in session" is an open house and is published; the two exact titles
+ * are Google's own wording for the year and are not.
+ *
+ * Rejected: skipping on `TRANSP:TRANSPARENT`, which all six carry. It is a flag
+ * anybody can flip from Google's own interface without knowing it means
+ * anything here, and its failure mode is a real fundraiser vanishing from the
+ * page with nothing said. This list fails the other way — a term-date title
+ * nobody anticipated publishes as a visible duplicate somebody notices and
+ * reports.
+ */
+const TERM_DATE_TITLES: readonly string[] = ['classes in session', 'first day of classes'];
+
 /** What was left behind, and why. Reported into the cron log, never silent. */
 export type SkippedCounts = {
-  /** Weekly series — the school year's business, not this sync's. */
+  /**
+   * A series, or one instance of one — the school year's business, not this
+   * sync's.
+   *
+   * Both halves, because Google states a moved or edited instance as its own
+   * VEVENT carrying a `RECURRENCE-ID` and the *series'* UID. Publishing one
+   * would put a stray Wednesday on the page with no series around it, and
+   * because the UID is the key here, two instances of one series read together
+   * would be two rows claiming one primary key.
+   */
   recurring: number;
+  /** Titled as the school year, however it recurs. See {@link TERM_DATE_TITLES}. */
+  termDates: number;
   /** `STATUS:CANCELLED`. A cancelled event is a family driving to a dark school. */
   cancelled: number;
   /** No identity, no date or no title. Nothing publishable in it. */
@@ -105,12 +138,12 @@ export type GoogleCalendarRead = {
  */
 export function readGoogleCalendar(body: string): GoogleCalendarRead {
   const events: SyncedEvent[] = [];
-  const skipped: SkippedCounts = { recurring: 0, cancelled: 0, unusable: 0 };
+  const skipped: SkippedCounts = { recurring: 0, termDates: 0, cancelled: 0, unusable: 0 };
 
   for (const raw of parseIcalEvents(body)) {
     // Order matters only for the counts: a cancelled series is reported as
     // recurring, which is the more useful thing to know about it.
-    if (raw.RRULE) {
+    if (raw.RRULE || raw['RECURRENCE-ID']) {
       skipped.recurring += 1;
       continue;
     }
@@ -120,8 +153,15 @@ export function readGoogleCalendar(body: string): GoogleCalendarRead {
     }
 
     const event = toSyncedEvent(raw);
-    if (event) events.push(event);
-    else skipped.unusable += 1;
+    if (!event) {
+      skipped.unusable += 1;
+      continue;
+    }
+    if (TERM_DATE_TITLES.includes(event.title.toLowerCase())) {
+      skipped.termDates += 1;
+      continue;
+    }
+    events.push(event);
   }
 
   return { events, skipped };

@@ -1,12 +1,17 @@
+import { sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
+import { MIGRATIONS } from '../db/migrations.js';
+import { calendarEvents } from '../db/schema.js';
 import { eventSlug, SEEDED_EVENTS } from './event.js';
+import { reconcileSyncedEvents } from './sync.js';
 import {
   createEvent,
   deleteEvent,
   getSchoolYear,
   listEvents,
+  listPublishedEvents,
   saveEvent,
   saveSchoolYear,
 } from './store.js';
@@ -101,22 +106,44 @@ describe('events', () => {
   };
 
   /*
-   * The seeded events, which the store is not allowed to treat as special
-   * (#146). They were empty until the school had a real fundraiser days away;
-   * what is asserted is that a seeded row comes back as an ordinary event —
-   * unstamped, editable and deletable like any Jill types.
+   * The admin's own events start empty, and that is a change (#153).
+   *
+   * #146 seeded the Chick-fil-A fundraiser so the page would not be empty days
+   * before a real event. The school's Google calendar carries the same evening
+   * with the 5pm the seed had to leave blank, so migration 0021 withdraws the
+   * seeded copy — guarded on it being untouched, which the next test is about.
    */
-  it('starts with the events the school has already published, and nothing else', async () => {
-    const listed = await listEvents(db);
-    expect(listed.map((event) => event.slug)).toEqual(SEEDED_EVENTS.map((event) => event.slug));
-    for (const seeded of SEEDED_EVENTS) {
-      const stored = listed.find((event) => event.slug === seeded.slug);
-      expect(stored, seeded.slug).toMatchObject({
-        ...seeded,
-        lastEditedBy: null,
-        lastEditedAt: null,
-      });
-    }
+  it('starts with no events of the admin’s own, the school’s own calendar having the one', async () => {
+    expect(await listEvents(db)).toEqual([]);
+  });
+
+  /*
+   * 0021's guard, exercised by replaying the migration over rows put back by
+   * hand. Both halves matter and only one of them is safe to get wrong: the
+   * unedited row must go, or the page carries the duplicate; the edited row must
+   * stay, or a migration has quietly discarded Jill's work.
+   */
+  const replaySupersession = async () => {
+    const migration = MIGRATIONS.find((one) => one.id.startsWith('0021-'))!;
+    for (const statement of migration.statements) await db.execute(sql.raw(statement));
+  };
+
+  it('withdraws a seeded event that is still exactly as it was seeded', async () => {
+    const seeded = SEEDED_EVENTS[0]!;
+    await db.insert(calendarEvents).values({ ...seeded });
+
+    await replaySupersession();
+
+    expect(await listEvents(db)).toEqual([]);
+  });
+
+  it('keeps a seeded event somebody has edited, because an edit makes it theirs', async () => {
+    const seeded = SEEDED_EVENTS[0]!;
+    await createEvent(db, seeded.slug, { ...seeded, place: 'Lower Allen' }, 'Jill Kilker');
+
+    await replaySupersession();
+
+    expect((await listEvents(db)).map((event) => event.slug)).toEqual([seeded.slug]);
   });
 
   it('holds a one-off without it entering the term-dates model', async () => {
@@ -164,5 +191,77 @@ describe('events', () => {
     const heldOn = (await listEvents(db)).map((event) => event.heldOn);
     expect(heldOn).toEqual([...heldOn].sort());
     expect(heldOn.slice(-2)).toEqual(['2026-10-17', '2027-05-12']);
+  });
+});
+
+/**
+ * The calendar as a family sees it, which is two tables and one list (#153).
+ *
+ * The school types some of its events here and keeps the rest in Google, and
+ * the difference is the school's own business rather than a visitor's. What is
+ * asserted below is that the join is invisible: one order, one shape, and a
+ * synced event indistinguishable from a typed one except in the two ways it
+ * honestly is — it has no stamp, and its address is Google's identity.
+ */
+describe('both sources as one calendar', () => {
+  const NOW = new Date('2026-08-13T12:00:00Z');
+
+  const typed = (heldOn: string, title: string) =>
+    createEvent(
+      db,
+      eventSlug(heldOn, title),
+      { heldOn, title, startTime: null, place: null, note: null },
+      'Jill Kilker',
+    );
+
+  const synced = (heldOn: string, title: string, startTime: string | null = null) =>
+    reconcileSyncedEvents(
+      db,
+      [{ uid: `${title.toLowerCase().replace(/\W+/g, '')}@google.com`, heldOn, title, startTime, place: null, note: null }],
+      NOW,
+    );
+
+  it('interleaves the two by date, so a family reads one calendar', async () => {
+    await typed('2026-10-17', 'Fall open house');
+    await synced('2026-09-10', 'Panera fundraiser');
+
+    const published = await listPublishedEvents(db);
+
+    expect(published.map((event) => event.title)).toEqual([
+      'Panera fundraiser',
+      'Fall open house',
+    ]);
+  });
+
+  it('gives a synced event the address Google’s identity gives it, and no stamp', async () => {
+    await synced('2026-09-10', 'Panera fundraiser', '17:00');
+
+    const [only] = await listPublishedEvents(db);
+
+    expect(only).toMatchObject({
+      slug: 'google-panerafundraiser',
+      startTime: '17:00',
+      lastEditedBy: null,
+      lastEditedAt: null,
+    });
+  });
+
+  it('shows two entries on one date rather than deciding they are one event', async () => {
+    // Two fundraisers in a fortnight is an ordinary week at this school. A rule
+    // that hid the second would hide it invisibly; a real duplicate is visible
+    // on the page, and whoever made it removes the half they own.
+    await typed('2026-09-10', 'Panera fundraiser');
+    await synced('2026-09-10', 'Panera fundraiser');
+
+    expect(await listPublishedEvents(db)).toHaveLength(2);
+  });
+
+  it('leaves the admin’s own list to the admin’s own rows', async () => {
+    await synced('2026-09-10', 'Panera fundraiser');
+
+    // The Events screen edits what the school typed. A synced row has no form,
+    // no save and no delete there, because the place to change it is Google.
+    expect(await listEvents(db)).toEqual([]);
+    expect(await listPublishedEvents(db)).toHaveLength(1);
   });
 });

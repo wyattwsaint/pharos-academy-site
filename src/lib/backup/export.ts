@@ -2,7 +2,7 @@ import type { Db } from '../db/client.js';
 import { getSchoolDetails } from '../admin/school-details.js';
 import { listApplications } from '../application/store.js';
 import { getAttachment, listAnnouncements } from '../announcements/store.js';
-import { getSchoolYear, listEvents } from '../calendar/store.js';
+import { getSchoolYear, listEvents, listSyncedEvents } from '../calendar/store.js';
 import { listCourses } from '../courses/store.js';
 import { listInquiries } from '../inquiry/store.js';
 import { getMoneySettings, listAgreedTerms } from '../money/store.js';
@@ -59,6 +59,7 @@ export const EXPORTED_TABLES = [
   'school_year_terms',
   'school_year_closures',
   'calendar_events',
+  'synced_events',
   'inquiries',
   'applications',
   'application_children',
@@ -86,6 +87,7 @@ export const EXPORTED_TABLE_LABELS: Record<(typeof EXPORTED_TABLES)[number], str
   school_year_terms: 'Each day track’s first class date and week count, per semester',
   school_year_closures: 'Every day the school is closed, with what it is closed for',
   calendar_events: 'One-off events — open houses, concerts, picture days',
+  synced_events: 'Events from the school’s own Google calendar, as the site last read them',
   inquiries: 'Every family who has asked about the school, and what they asked',
   applications:
     'Every application a family has sent — who applied, what they answered about the Statement of Faith, any objection they raised, and who agreed to the Code of Conduct and the Handbook',
@@ -240,6 +242,28 @@ export async function buildExport(db: Db, at = new Date()): Promise<BackupArchiv
   const events = await listEvents(db);
   files.push(jsonEntry('content/events.json', events));
   tables.push({ table: 'calendar_events', file: 'content/events.json', rows: events.length });
+
+  /*
+   * The school's Google calendar as the site last read it, in a file of its own
+   * (#153).
+   *
+   * Exported, and that took deciding: Google holds the original, so a copy here
+   * is a copy of a copy. It is in because the export answers "can the school
+   * get its content back without asking anyone", and an answer that omits half
+   * the calendar is a worse answer — this archive is restorable without
+   * Postgres, and it should be restorable without Google too.
+   *
+   * A separate file rather than merged into `events.json`, because they are
+   * separate tables and a restore has to be able to tell them apart: one of
+   * them is rewritten wholesale by a sync every night.
+   */
+  const mirrored = await listSyncedEvents(db);
+  files.push(jsonEntry('content/synced-events.json', mirrored));
+  tables.push({
+    table: 'synced_events',
+    file: 'content/synced-events.json',
+    rows: mirrored.length,
+  });
 
   files.unshift({ path: 'README.txt', bytes: Buffer.from(readme(at), 'utf8') });
 

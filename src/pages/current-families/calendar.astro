@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import { eventDateLabel, eventTimeLabel, upcomingEvents } from '../../lib/calendar/event.js';
-import { getSchoolYear, listEvents } from '../../lib/calendar/store.js';
+import { getSchoolYear, listPublishedEvents } from '../../lib/calendar/store.js';
 import { eventJsonLd } from '../../lib/calendar/structured-data.js';
 import {
   CALENDAR_FEED_PATH,
@@ -47,8 +47,13 @@ const year = (await getSchoolYear(db)) as SchoolYear | undefined;
  * within the revalidation window rather than on the stroke of midnight. That is
  * the same trade every dated thing on this site makes, and the boundary
  * (`upcomingEvents`) is generous by a day at the end that matters.
+ *
+ * Both sources, one list (#153): what the school typed on the Events screen and
+ * what it keeps in its own Google calendar, interleaved by date. A visitor is
+ * not told which is which, because it is not a fact about the school's year —
+ * it is a fact about where the school happens to keep its diary.
  */
-const events = upcomingEvents(await listEvents(db), new Date());
+const events = upcomingEvents(await listPublishedEvents(db), new Date());
 
 const description =
   'Every class date for the Pharos Academy school year, by day track, with the days the school ' +

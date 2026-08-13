@@ -50,8 +50,9 @@ describe('reading the school’s calendar', () => {
 
   it('reads every one-off the school has published', () => {
     const { events } = read();
-    // Twenty-four VEVENTs, less the four weekly "Classes in session" series.
-    expect(events).toHaveLength(20);
+    // Twenty-four VEVENTs, less the four weekly "Classes in session" series and
+    // the two term-date statements that recur not at all.
+    expect(events).toHaveLength(18);
   });
 
   it('puts a timed event at the hour it is in Enola, not the hour it is in UTC', () => {
@@ -63,9 +64,9 @@ describe('reading the school’s calendar', () => {
   });
 
   it('keeps an all-day event as a whole day with no time, which is a real state', () => {
-    const firstDay = read().events.find((event) => event.title === 'First day of classes');
+    const mcallisters = read().events.find((event) => event.title.startsWith('Fundraiser at McC'));
 
-    expect(firstDay).toMatchObject({ heldOn: '2026-08-31', startTime: null });
+    expect(mcallisters).toMatchObject({ heldOn: '2026-04-23', startTime: null });
   });
 
   it('unescapes an address the school typed with commas in it', () => {
@@ -121,6 +122,73 @@ describe('what the sync deliberately does not carry', () => {
     expect(events.some((event) => event.uid === '0e07ofasob1pfmv1ofd4o2v1oa@google.com')).toBe(
       false,
     );
+  });
+
+  it('skips one moved evening out of a series, because the series itself is skipped', () => {
+    // Google states a rescheduled instance as its own VEVENT carrying a
+    // RECURRENCE-ID and the *series'* UID. Publishing it would put a lone
+    // Wednesday on the page with no series around it — and, since the UID is
+    // the key, would collide with any other instance in the same read.
+    const { events, skipped } = readGoogleCalendar(
+      [
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT',
+        'UID:series@google.com',
+        'RECURRENCE-ID;VALUE=DATE:20260916',
+        'DTSTART;VALUE=DATE:20260917',
+        'SUMMARY:Chess club',
+        'END:VEVENT',
+        'END:VCALENDAR',
+      ].join('\r\n'),
+    );
+
+    expect(events).toEqual([]);
+    expect(skipped.recurring).toBe(1);
+  });
+
+  it('skips the term dates Google states without recurring, which the RRULE rule misses', () => {
+    const { events, skipped } = readGoogleCalendar(fixture);
+    const titles = events.map((event) => event.title);
+
+    // "Classes in session" on 2026-09-14 and "First day of classes" on
+    // 2026-08-31 are both plain one-offs in Google, and both restate the year
+    // the School Year screen computes.
+    expect(titles).not.toContain('Classes in session');
+    expect(titles).not.toContain('First day of classes');
+    expect(skipped.termDates).toBe(2);
+  });
+
+  it('skips a term-date title whatever case and spacing the school typed it in', () => {
+    const { events, skipped } = readGoogleCalendar(
+      [
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT',
+        'UID:shouted@google.com',
+        'DTSTART;VALUE=DATE:20260914',
+        'SUMMARY:CLASSES IN SESSION ',
+        'END:VEVENT',
+        'END:VCALENDAR',
+      ].join('\r\n'),
+    );
+
+    expect(events).toEqual([]);
+    expect(skipped.termDates).toBe(1);
+  });
+
+  it('keeps an event that merely mentions classes, because only the exact titles are the year', () => {
+    const { events } = readGoogleCalendar(
+      [
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT',
+        'UID:open-house@google.com',
+        'DTSTART;VALUE=DATE:20260914',
+        'SUMMARY:Come and see classes in session',
+        'END:VEVENT',
+        'END:VCALENDAR',
+      ].join('\r\n'),
+    );
+
+    expect(events).toHaveLength(1);
   });
 
   it('skips a cancelled event rather than announcing one', () => {
