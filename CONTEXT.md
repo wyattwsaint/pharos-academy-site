@@ -392,6 +392,67 @@ is dark.
 Not: "event" on its own (which also names an application's lifecycle events),
 "closure" (a day the school is shut, which belongs to the year), "announcement".
 
+### synced one-off
+
+A [one-off](#one-off) the school holds in **its own Google calendar**, which this
+site reads and republishes in its own design. Same shape as any other one-off —
+one date, an optional time, place and note — and the same thing on the page. The
+whole of the difference is **who holds it**: an admin one-off is a row somebody
+typed here, and a synced one-off is a copy of a row somebody typed in Google.
+
+It is the first thing on this site that is **editable and not in the
+[editable set](#editable-set)**. That list stays the seven things it was: a
+synced one-off has no form, no save and no delete in the admin, because editing
+it here would be editing a copy the next sync overwrites. The place to change it
+is Google, and the site says so rather than offering a control that loses.
+
+**The sync touches today and later, and never the past.** The school's Google
+calendar is mostly an archive — eighteen one-offs in it when this was built, and
+seventeen of them already over — and importing that archive would be the site
+asserting things about a year it was not party to. One of those seventeen is the
+Texas Roadhouse night the school withdrew, whose [announcement](#announcement)
+was deleted for having become false; copying it back is a decision nobody made.
+So the site starts its record from the day the sync starts, and keeps a synced
+one-off after its date goes by rather than deleting it for being over. The feed
+still shows everything the site has ever known. It just does not know 2025.
+
+**Two sources describing one day are two entries, and the site does not guess.**
+Nothing dedupes a synced one-off against an admin one that shares its date: two
+fundraisers in a fortnight is an ordinary week at this school, and a rule that
+hid the second would hide it invisibly. A real duplicate is visible on the page,
+and whoever made it removes one — in Google or in the admin, whichever they own.
+
+It carries no [stamp](#stamp) and cannot: nobody signs in to run a sync, so there
+is no [actor](#actor) to name. What it carries is when the calendar was last
+read, which is a different fact and is not attribution.
+
+**It is as fresh as yesterday, and that is the promise.** The calendar is read
+once a day and the site [republishes](#republish) only when something in it moved.
+The site already tells families that a subscribed calendar reaches a phone
+"within a few hours, sometimes a day or two", and that a short-notice change
+comes by text — reading Google every hour would sit inside a delay that has
+already been promised and bought nothing. When the calendar cannot be reached,
+nothing is written and nothing is republished: the page keeps the copy it has,
+which is the last thing the school is known to have said.
+
+**Not everything in the school's Google calendar is one.** That calendar also
+states the [school year](#day-track) — four weekly "Classes in session" series,
+one per day track, plus a "First day of classes" and a stray "Classes in
+session" that recur not at all. Those are **term dates**, they are computed here
+from the eight numbers on the School Year screen, and the sync leaves every one
+of them behind: restating them from Google would put a second, disagreeing
+source of truth on the same page as the first. The Tuesday series is the proof —
+it is in Google, and the Tuesday track is routinely empty.
+
+It is **held apart from the admin's own rows, in its own table** (ADR-0012), so
+that "the sync never overwrites what the school typed" is enforced by the schema
+rather than remembered. The cost is that the calendar page, the feed and the
+structured data each read two sources and merge them.
+
+Not: "imported event" (nothing is imported — the copy is refreshed, and Google
+stays the original), "Google event" (which names Google's record, not ours),
+"external event".
+
 ### registration call to action
 
 The gold "Register now!" button on the **home page**, standing beside the
