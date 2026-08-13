@@ -44,6 +44,13 @@ export type SeedEvent = Omit<CalendarEvent, 'lastEditedBy' | 'lastEditedAt'>;
  * else, so this is the whole event; inventing an hour or a branch address would
  * put a family outside the wrong restaurant at the wrong time. Each is a field
  * Jill fills in when the school confirms it.
+ *
+ * **Superseded, and kept anyway.** Migration 0021 deletes this row from any
+ * database still holding it unedited, because the school's own Google calendar
+ * carries the same fundraiser with the 5pm the seed had to leave blank (#153).
+ * The array stays as it is because migration 0018 is generated from it and an
+ * applied migration is never edited: what this describes is what a database was
+ * seeded with, not what one contains now.
  */
 export const SEEDED_EVENTS: readonly SeedEvent[] = [
   {

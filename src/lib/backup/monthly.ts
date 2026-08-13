@@ -1,5 +1,3 @@
-import { timingSafeEqual } from 'node:crypto';
-
 import { getSchoolDetails } from '../admin/school-details.js';
 import type { Db } from '../db/client.js';
 import { SCHOOL_NAME } from '../site.js';
@@ -374,33 +372,6 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-/**
- * Is this request the scheduler?
- *
- * Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. The endpoint behind
- * this mails the school's entire content to the settings address, so an
- * unauthenticated one is a way for anyone on the internet to make the site do
- * that on demand — and a way to run the whole export as often as they like.
- *
- * An unset secret refuses *everybody*. The default that reads as harmless — an
- * empty secret compared against an absent header — is two empty strings, which
- * are equal, and the endpoint would be open precisely on the deployment where
- * nobody configured it.
- */
-export function isAuthorisedCron(request: Request, secret: string | undefined): boolean {
-  const expected = secret?.trim() ?? '';
-  if (!expected) return false;
-
-  const header = request.headers.get('authorization') ?? '';
-  const match = /^Bearer\s+(.+)$/.exec(header);
-  if (!match) return false;
-
-  const offered = Buffer.from(match[1].trim(), 'utf8');
-  const wanted = Buffer.from(expected, 'utf8');
-  // Length is not a secret, and `timingSafeEqual` throws on a mismatch.
-  if (offered.length !== wanted.length) return false;
-  return timingSafeEqual(offered, wanted);
-}
 
 /**
  * What the school reads on the 1st.

@@ -6,9 +6,12 @@ import {
   schoolYear as schoolYearTable,
   schoolYearClosures,
   schoolYearTerms,
+  syncedEvents,
+  type SyncedEventRow,
 } from '../db/schema.js';
 import type { DayTrack } from '../courses/schedule.js';
 import type { CalendarEvent, CalendarEventEdit } from './event.js';
+import { syncedEventSlug } from './google.js';
 import type { Closure, SchoolYear, Semester, Term } from './year.js';
 
 /**
@@ -128,6 +131,59 @@ export async function listEvents(db: Db): Promise<CalendarEvent[]> {
     .from(calendarEvents)
     .orderBy(asc(calendarEvents.heldOn), asc(calendarEvents.slug));
   return rows.map(toEvent);
+}
+
+/**
+ * The whole calendar as a visitor reads it — both sources, one list (#153).
+ *
+ * The school types some of its events on the Events screen and keeps the rest
+ * in its own Google calendar, and which is which is the school's business
+ * rather than a family's. So the page, the subscribed feed and the structured
+ * data all read this, and none of them knows there are two tables.
+ *
+ * **`listEvents` is the other half and stays as it is.** That one is the
+ * admin's own rows, which are the rows the admin can edit; a synced one-off has
+ * no form, no save and no delete there, because the place to change it is
+ * Google and a control that the next sync overwrites is a control that loses.
+ *
+ * Nothing here dedupes. Two entries on one date are two events, and the site
+ * does not decide otherwise: two fundraisers in a fortnight is an ordinary week
+ * at this school, and a rule that hid the second would hide it invisibly. A
+ * real duplicate is visible on the page and whoever made it removes their half.
+ */
+export async function listPublishedEvents(db: Db): Promise<CalendarEvent[]> {
+  const [own, mirrored] = await Promise.all([listEvents(db), listSyncedEvents(db)]);
+
+  const synced = mirrored.map((row) => ({
+    // Google's identity rather than the date and the title, so that a retitle
+    // in Google amends this event rather than removing one and adding another.
+    slug: syncedEventSlug(row.uid),
+    heldOn: row.heldOn,
+    title: row.title,
+    startTime: row.startTime,
+    place: row.place,
+    note: row.note,
+    // No stamp, and it cannot have one: nobody signed in to run a sync, so
+    // there is no actor to name. `synced_at` is a different fact, and it is
+    // read by the cron rather than by a page (ADR-0012).
+    lastEditedBy: null,
+    lastEditedAt: null,
+  }));
+
+  return [...own, ...synced].sort(
+    (a, b) => a.heldOn.localeCompare(b.heldOn) || a.slug.localeCompare(b.slug),
+  );
+}
+
+/**
+ * The mirror as it stands — rows, including when each was last read.
+ *
+ * For the export and for the sync's own reporting, never for a page: what a
+ * page wants is {@link listPublishedEvents}, which merges these in and drops
+ * the bookkeeping.
+ */
+export async function listSyncedEvents(db: Db): Promise<SyncedEventRow[]> {
+  return db.select().from(syncedEvents).orderBy(asc(syncedEvents.heldOn), asc(syncedEvents.uid));
 }
 
 /** One event, or undefined — which the admin 404s on. */

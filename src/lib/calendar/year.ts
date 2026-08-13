@@ -429,6 +429,41 @@ export function schoolToday(now: Date): string {
   }).format(now);
 }
 
+/**
+ * An instant, as the day and the time it is **in Enola** (#153).
+ *
+ * The inverse of `schoolTimeToUtc` in `ics.ts`, and the direction the incoming
+ * Google calendar needs: that feed states its timed events as UTC instants, and
+ * a fundraiser stored from `20260819T210000Z` without this conversion is a
+ * fundraiser the page announces for 9pm.
+ *
+ * The date crosses as readily as the time does — an event at 8pm in Enola is
+ * already tomorrow in UTC — so the two are returned together and from one
+ * format pass, rather than left to a caller to combine and get wrong at
+ * midnight.
+ */
+export function schoolWallClock(instant: Date): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: SCHOOL_TIMEZONE,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(instant);
+
+  const of = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? '';
+
+  return {
+    date: `${of('year')}-${of('month')}-${of('day')}`,
+    // `h23` still prints midnight as `24` in some ICU versions. The date is
+    // already right; only the hour needs bringing back into range.
+    time: `${of('hour') === '24' ? '00' : of('hour')}:${of('minute')}`,
+  };
+}
+
 /** `YYYY-MM-DD` plus seven days, as `YYYY-MM-DD`. UTC throughout. */
 export function addDays(date: string, days: number): string {
   const stepped = new Date(`${date}T00:00:00Z`);

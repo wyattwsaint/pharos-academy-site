@@ -4,7 +4,8 @@
   "buildCommand": "npm run build",
   "installCommand": "npm ci",
   "crons": [
-    { "path": "/api/cron/monthly-backup", "schedule": "0 8 1 * *" }
+    { "path": "/api/cron/monthly-backup", "schedule": "0 8 1 * *" },
+    { "path": "/api/cron/calendar-sync", "schedule": "0 9 * * *" }
   ],
   "headers": [
     {

@@ -99,11 +99,17 @@ test.describe('the events’ structured data', () => {
 
     /*
      * The page filters to what is still ahead; the markup describes exactly what
-     * the page shows, so the two counts agree by construction. That they are both
-     * above zero is guarded in `calendar/structured-data.test.ts` — otherwise a
-     * seeded event falling behind the clock would make this pass on nothing.
+     * the page shows, so the two counts agree by construction.
+     *
+     * Skipped rather than passed on nothing when the calendar is empty. Which
+     * events are on is no longer knowable from the repository — most of them
+     * arrive from the school's own Google calendar overnight (#153) — so the
+     * guard has to be here, and it is a skip on the report rather than a silent
+     * zero-against-zero.
      */
-    expect(events).toHaveLength(await shown.count());
+    const count = await shown.count();
+    test.skip(count === 0, 'Nothing is on the calendar today, so there is nothing to describe.');
+    expect(events).toHaveLength(count);
     for (const event of events) {
       expect(await shown.filter({ hasText: event.name }).count()).toBeGreaterThan(0);
       expect(String(event.startDate)).toMatch(/^\d{4}-\d{2}-\d{2}/);

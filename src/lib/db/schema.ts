@@ -522,6 +522,37 @@ export const calendarEvents = pgTable('calendar_events', {
 });
 
 /**
+ * A one-off the school keeps in its Google calendar, mirrored here (#153).
+ *
+ * **A second table rather than a column on `calendar_events`, and that is the
+ * design** (ADR-0012). The sync replaces the whole of this table on every run,
+ * so "the sync does not overwrite what an admin typed" is a fact about the
+ * schema rather than about a `where` clause somebody has to keep right. The
+ * editable set (CONTEXT.md) is unchanged: nothing on this table is editable
+ * from the admin, because it is edited in Google.
+ *
+ * Keyed on Google's own `uid`, which survives a retitle and a move — that is
+ * what makes an amendment in Google an amendment here rather than a deletion
+ * and a new event on a subscriber's phone.
+ *
+ * There is no stamp. A stamp names an *actor* who saved a record, and nobody
+ * here saved this one; `synced_at` is when the calendar was last read, which is
+ * a different fact and is the one the cron reports on.
+ */
+export const syncedEvents = pgTable('synced_events', {
+  /** Google's UID, verbatim — `5jbbma4mv3fodj7v1banr43b1o@google.com`. */
+  uid: text('uid').primaryKey(),
+  heldOn: date('held_on').notNull(),
+  title: text('title').notNull(),
+  /** `HH:MM`, 24-hour, in the school's own timezone. Null is a whole day. */
+  startTime: text('start_time'),
+  place: text('place'),
+  note: text('note'),
+  /** When the calendar this came from was last read successfully. */
+  syncedAt: timestamp('synced_at', { withTimezone: true }).notNull(),
+});
+
+/**
  * A family's first question, and the record that it was asked (#25).
  *
  * The row exists because an email is not a store: "check the admin panel" is
@@ -699,6 +730,7 @@ export type SchoolYearRow = typeof schoolYear.$inferSelect;
 export type SchoolYearTermRow = typeof schoolYearTerms.$inferSelect;
 export type SchoolYearClosureRow = typeof schoolYearClosures.$inferSelect;
 export type CalendarEventRow = typeof calendarEvents.$inferSelect;
+export type SyncedEventRow = typeof syncedEvents.$inferSelect;
 export type MoneySettingsRow = typeof moneySettings.$inferSelect;
 export type AgreedTermsRow = typeof agreedTerms.$inferSelect;
 export type AdminSession = typeof adminSessions.$inferSelect;

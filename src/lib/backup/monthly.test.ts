@@ -10,7 +10,6 @@ import {
   MAX_ATTACHMENT_BYTES,
   MAX_GMAIL_ATTACHMENT_BYTES,
   configuredMailer,
-  isAuthorisedCron,
   resendSender,
   sendAll,
   sendMonthlyBackup,
@@ -238,38 +237,6 @@ describe('the configured mailer', () => {
     expect(sent).toBe(false);
     expect(error).toContain('RESEND_API_KEY');
     expect(error).toContain('GMAIL_APP_PASSWORD');
-  });
-});
-
-describe('the cron endpoint’s guard', () => {
-  const secret = 'a-long-scheduler-secret-value';
-
-  function request(header?: string): Request {
-    return new Request('https://example.test/api/cron/monthly-backup', {
-      headers: header ? { authorization: header } : {},
-    });
-  }
-
-  it('lets the scheduler through', () => {
-    expect(isAuthorisedCron(request(`Bearer ${secret}`), secret)).toBe(true);
-  });
-
-  it('refuses a wrong token, a missing header, and a token of the wrong length', () => {
-    expect(isAuthorisedCron(request('Bearer nope'), secret)).toBe(false);
-    expect(isAuthorisedCron(request(), secret)).toBe(false);
-    expect(isAuthorisedCron(request(`Bearer ${secret}x`), secret)).toBe(false);
-  });
-
-  /*
-   * The dangerous default. An unset `CRON_SECRET` compared against an unset
-   * header is two empty strings, which is equal — and the endpoint that mails
-   * the school's whole content to anyone who asks would be open on the public
-   * internet.
-   */
-  it('refuses everybody when no secret is configured, rather than everybody through', () => {
-    expect(isAuthorisedCron(request('Bearer '), '')).toBe(false);
-    expect(isAuthorisedCron(request(), '')).toBe(false);
-    expect(isAuthorisedCron(request('Bearer   '), '   ')).toBe(false);
   });
 });
 

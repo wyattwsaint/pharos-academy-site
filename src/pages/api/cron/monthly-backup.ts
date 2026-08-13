@@ -1,10 +1,7 @@
 import type { APIRoute } from 'astro';
 
-import {
-  configuredMailer,
-  isAuthorisedCron,
-  sendMonthlyBackup,
-} from '../../../lib/backup/monthly.js';
+import { configuredMailer, sendMonthlyBackup } from '../../../lib/backup/monthly.js';
+import { cronResponse as text, isAuthorisedCron } from '../../../lib/cron.js';
 import { getDb } from '../../../lib/db/client.js';
 
 /**
@@ -58,10 +55,3 @@ export const GET: APIRoute = async ({ request }) => {
     return text(error instanceof Error ? error.message : String(error), 500);
   }
 };
-
-function text(message: string, status: number): Response {
-  return new Response(`${message}\n`, {
-    status,
-    headers: { 'content-type': 'text/plain; charset=utf-8' },
-  });
-}

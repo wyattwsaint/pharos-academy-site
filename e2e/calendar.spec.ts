@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { eventDateLabel, SEEDED_EVENTS, upcomingEvents } from '../src/lib/calendar/event.js';
+import { eventDateLabel } from '../src/lib/calendar/event.js';
 import { CALENDAR_FEED_PATH } from '../src/lib/calendar/views.js';
 import { CALENDAR_PATH } from '../src/lib/current-families/section.js';
 import { meetingsOf, SEEDED_SCHOOL_YEAR, trackColumn } from '../src/lib/calendar/year.js';
@@ -54,27 +54,48 @@ test.describe('the calendar page', () => {
   });
 
   /*
-   * The fundraiser, to a visitor who is not signed in (#146 ACs 1, 3 and 5).
+   * The events a visitor who is not signed in actually sees (#146 ACs 1, 3
+   * and 5, #153 ACs 1 and 3).
    *
-   * Skipped rather than quietly satisfied once the seeded events have all been
-   * and gone: the page is *right* to have dropped them, and a loop over an empty
-   * list is a test that passes for ever while proving nothing. A skip says so on
-   * the report, and the admin suite proves the same page with an event it
-   * creates itself.
+   * Read off the page rather than off a constant, and that is a change: the
+   * school's events now come from two places — the Events screen and the
+   * school's own Google calendar — and neither the count nor the titles are
+   * knowable from the repository any more. What *is* knowable is the shape of
+   * an event and that the page and the feed agree about it, which is what this
+   * asserts.
+   *
+   * Skipped rather than quietly satisfied when nothing is on. A year with an
+   * empty stretch is an ordinary year and the page is right to say so; a loop
+   * over an empty list is a test that passes for ever while proving nothing. A
+   * skip says so on the report, and the admin suite proves the same page with
+   * an event it creates itself.
    */
-  test('shows the events still ahead, and claims nothing is on while one is', async ({ page }) => {
-    const ahead = upcomingEvents(SEEDED_EVENTS, new Date());
-    test.skip(ahead.length === 0, 'Every seeded event has passed — see admin-calendar.spec.ts.');
-
+  test('shows the events still ahead, from both of the school’s calendars', async ({
+    page,
+    request,
+  }) => {
     await page.goto(CALENDAR_PATH);
-    const events = page.locator('[data-section="calendar-events"]');
+    const section = page.locator('[data-section="calendar-events"]');
+    const shown = section.locator('.events li');
+    const count = await shown.count();
+    test.skip(count === 0, 'Nothing is on the calendar today — see admin-calendar.spec.ts.');
 
-    for (const event of ahead) {
-      await expect(events, event.slug).toContainText(event.title);
-      await expect(events, event.slug).toContainText(eventDateLabel(event.heldOn));
+    await expect(section).not.toContainText('Nothing else is on the calendar');
+
+    const feed = (await (await request.get(CALENDAR_FEED_PATH)).text()).replace(/\r\n /g, '');
+    for (let index = 0; index < count; index += 1) {
+      const event = shown.nth(index);
+      // A date, printed as the sheet prints one, and a title.
+      await expect(event.locator('time')).toHaveAttribute('datetime', /^\d{4}-\d{2}-\d{2}$/);
+      const heldOn = (await event.locator('time').getAttribute('datetime'))!;
+      await expect(event.locator('time')).toHaveText(eventDateLabel(heldOn));
+
+      // And the same event in the subscribed feed, whichever calendar it came
+      // from: that is the whole of what "alongside events entered directly"
+      // means to a family who subscribed once and never touched it again.
+      const title = (await event.locator('h3').innerText()).trim();
+      expect(feed, title).toContain(title.replace(/([;,\\])/g, '\\$1'));
     }
-
-    await expect(events).not.toContainText('Nothing else is on the calendar');
   });
 
   test('prints as the calendar, not as a website', async ({ page }) => {
@@ -98,22 +119,28 @@ test.describe('the subscribe address', () => {
     expect(response.headers()['content-type']).toContain('text/calendar');
 
     const body = await response.text();
-    expect(body.split('BEGIN:VEVENT').length - 1).toBe(
-      meetingsOf(SEEDED_SCHOOL_YEAR).length + SEEDED_EVENTS.length,
-    );
+    /*
+     * Every meeting date, and then the one-offs on top of them.
+     *
+     * A floor rather than an exact count, because the one-offs are no longer
+     * knowable from the repository: some are typed on the Events screen and the
+     * rest arrive from the school's own Google calendar overnight (#153). The
+     * count that *is* fixed is the year's, which is computed from eight numbers.
+     */
+    const meetings = meetingsOf(SEEDED_SCHOOL_YEAR).length;
+    expect(body.split('BEGIN:VEVENT').length - 1).toBeGreaterThanOrEqual(meetings);
+
     // One real date, spot-checked end to end: the Wednesday track's week 10.
     const wednesday = trackColumn(SEEDED_SCHOOL_YEAR, 'Wednesday').find((m) => m.week === 10)!;
     const unfolded = body.replace(/\r\n /g, '');
     expect(unfolded).toContain(`DTSTART;VALUE=DATE:${wednesday.date.replace(/-/g, '')}`);
 
     /*
-     * And every one-off, whether or not it is still ahead (#146 AC 1). The feed
-     * is deliberately unfiltered where the page is not: a subscribed calendar is
-     * the record of the year, and its client is what decides what to draw.
+     * The one-offs are deliberately unfiltered here where the page is not
+     * (#146 AC 1): a subscribed calendar is the record of the year, and its
+     * client is what decides what to draw. That each one the page shows is also
+     * in here is asserted on the page test above, which is where both are known.
      */
-    for (const event of SEEDED_EVENTS) {
-      expect(unfolded, event.slug).toContain(`SUMMARY:${event.title}`);
-    }
   });
 
   test('answers 304 when nothing about the year has changed', async ({ request }) => {

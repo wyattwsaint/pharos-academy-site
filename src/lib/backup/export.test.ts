@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { saveAnnouncement } from '../announcements/store.js';
 import { createEvent } from '../calendar/store.js';
+import { reconcileSyncedEvents } from '../calendar/sync.js';
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import * as schema from '../db/schema.js';
 import { createApplication } from '../application/store.js';
@@ -246,6 +247,23 @@ describe('coverage of the editable set', () => {
         note: null,
       },
       'Jill',
+    );
+    // And one event out of the school's Google calendar (#153), likewise: the
+    // mirror is empty until the nightly sync has run, which is a true state on
+    // a fresh database and tells nothing about whether the table is exported.
+    await reconcileSyncedEvents(
+      db,
+      [
+        {
+          uid: 'abc123@google.com',
+          heldOn: '2026-11-14',
+          title: 'Panera Bread Fundraiser',
+          startTime: '16:00',
+          place: null,
+          note: null,
+        },
+      ],
+      new Date('2026-10-01T12:00:00Z'),
     );
     // And one inquiry (#25), for the same reason again: nobody has asked on a
     // fresh database, which is a real state and a useless one here.
