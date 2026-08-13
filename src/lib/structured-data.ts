@@ -3,7 +3,8 @@ import { absoluteUrl } from './routes.js';
 import { SCHOOL_DESCRIPTION, SCHOOL_NAME, SITE_URL } from './site.js';
 
 /**
- * School / LocalBusiness structured data (#30 AC 6).
+ * School / LocalBusiness structured data (#30 AC 6), and the graph every other
+ * node joins (#151).
  *
  * Findability here is not about the name. "Pharos Academy" is dominated by an
  * unrelated Bronx charter school and no amount of markup changes that; the
@@ -22,6 +23,17 @@ import { SCHOOL_DESCRIPTION, SCHOOL_NAME, SITE_URL } from './site.js';
  * places on the live site and has already drifted, and markup that disagrees
  * with the page it is on is worse than no markup, because it is what a search
  * engine believes.
+ *
+ * Since #151 the school is no longer the only node: a class describes itself, an
+ * event describes itself, and every page below the top level says where it sits.
+ * They all ship in **one** `@graph` on one script tag rather than as three or
+ * four scripts, for two reasons. A crawler reading separate scripts has to
+ * reconcile them by `@id` and only some of them do; and one `@context` for the
+ * page makes it structurally impossible for two nodes to be read against
+ * different vocabularies. {@link jsonLdGraph} is that wrapper, and
+ * {@link schoolId} is the one identifier every other node points at, so the
+ * class, the event and the breadcrumb all hang off the same school rather than
+ * describing three unrelated organisations.
  */
 
 /** The parts of a US postal address schema.org wants separately. */
@@ -63,6 +75,26 @@ export function parsePostalAddress(address: string): PostalAddress | undefined {
 }
 
 /**
+ * The school's identifier, and the whole reason the other nodes are safe to add.
+ *
+ * A fragment on the origin rather than a page URL: the entity is the school, not
+ * the homepage, and it is the same entity whichever page the markup was found
+ * on. Every node that mentions the school — a class's `provider`, an event's
+ * `organizer`, a breadcrumb's home crumb, a `CourseInstance`'s `location` —
+ * refers to *this string* and never restates the school's name and address.
+ * That is #151's fourth criterion, and stating it once is also the only way the
+ * restatements cannot drift.
+ */
+export function schoolId(site: string | URL = SITE_URL): string {
+  return `${new URL(site).origin}/#school`;
+}
+
+/** A reference to the school, for any node that has one. Never a second copy of it. */
+export function schoolRef(site: string | URL = SITE_URL): { '@id': string } {
+  return { '@id': schoolId(site) };
+}
+
+/**
  * The JSON-LD node for the school.
  *
  * `areaServed` is the service-area language the ticket asks for, and it is the
@@ -76,9 +108,8 @@ export function schoolJsonLd(details: SchoolDetails, site: string | URL = SITE_U
   const address = parsePostalAddress(details.address);
 
   return {
-    '@context': 'https://schema.org',
     '@type': 'School',
-    '@id': `${new URL(site).origin}/#school`,
+    '@id': schoolId(site),
     name: SCHOOL_NAME,
     description: details.mission,
     // What kind of school this is, as against what it is *for* — the mission is
@@ -110,6 +141,21 @@ export function schoolJsonLd(details: SchoolDetails, site: string | URL = SITE_U
       '@type': 'WebPage',
       url: absoluteUrl(site, path),
     })),
+  };
+}
+
+/**
+ * Every node this page publishes, as the one document a crawler parses.
+ *
+ * The context is stated here and nowhere else, so a node cannot be written
+ * against a vocabulary the page does not declare. Nodes are dropped when they
+ * are absent rather than emitted empty — a page with no breadcrumb and no course
+ * is one school node, not a graph with two holes in it.
+ */
+export function jsonLdGraph(...nodes: (object | null | undefined)[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': nodes.filter((node): node is object => Boolean(node)),
   };
 }
 

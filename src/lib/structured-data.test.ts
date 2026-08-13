@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
+import { breadcrumbJsonLd } from './breadcrumbs.js';
+import { SEEDED_EVENTS } from './calendar/event.js';
+import { eventJsonLd } from './calendar/structured-data.js';
+import { CALENDAR_PATH } from './calendar/views.js';
+import { CATALOGUE } from './courses/catalogue.js';
+import { courseJsonLd, courseListJsonLd } from './courses/structured-data.js';
+import { CLASS_VIEWS } from './courses/views.js';
 import type { SchoolDetails } from './db/schema.js';
+import { SEEDED_MONEY_SETTINGS } from './money/settings.js';
 import { publicPaths } from './routes.js';
 import { SCHOOL_DESCRIPTION } from './site.js';
-import { parsePostalAddress, renderJsonLd, schoolJsonLd } from './structured-data.js';
+import {
+  jsonLdGraph,
+  parsePostalAddress,
+  renderJsonLd,
+  schoolId,
+  schoolJsonLd,
+  schoolRef,
+} from './structured-data.js';
+import { jsonLdProblems } from './structured-data.test-helper.js';
 
 /**
  * #30 AC 6 — the structured data validates.
@@ -70,8 +86,15 @@ describe('the school’s structured data', () => {
   const node = schoolJsonLd(DETAILS, 'https://example.org') as Record<string, unknown>;
 
   it('is a School, which schema.org already counts as a LocalBusiness', () => {
-    expect(node['@context']).toBe('https://schema.org');
     expect(node['@type']).toBe('School');
+  });
+
+  // The identifier every other node on the page points at (#151). Held here
+  // rather than rebuilt, so a class's `provider` and this cannot drift apart.
+  it('is identified by the origin, not by the page it was found on', () => {
+    expect(node['@id']).toBe(schoolId('https://example.org'));
+    expect(schoolId('https://example.org/about')).toBe('https://example.org/#school');
+    expect(schoolRef('https://example.org')).toEqual({ '@id': node['@id'] });
   });
 
   it('carries the school’s own address, phone and email, not typed ones', () => {
@@ -110,6 +133,108 @@ describe('the school’s structured data', () => {
     for (const page of node.subjectOf as { url: string }[]) {
       expect(served, page.url).toContain(new URL(page.url).pathname);
     }
+  });
+});
+
+describe('the page’s graph', () => {
+  /*
+   * One script, one context, several nodes (#151). The context is stated once
+   * here, so a node cannot be read against a vocabulary the page never declared.
+   */
+  it('declares the vocabulary once, for every node on the page', () => {
+    const graph = jsonLdGraph(schoolJsonLd(DETAILS), { '@type': 'BreadcrumbList' }) as Record<
+      string,
+      unknown
+    >;
+    expect(graph['@context']).toBe('https://schema.org');
+    expect((graph['@graph'] as unknown[]).map((node) => (node as { '@type': string })['@type'])).toEqual([
+      'School',
+      'BreadcrumbList',
+    ]);
+  });
+
+  // A page with no breadcrumb and no course is one school node, not a graph
+  // with holes in it — the builders return `undefined` and this drops them.
+  it('drops the nodes a page does not have', () => {
+    const graph = jsonLdGraph(schoolJsonLd(DETAILS), undefined, null) as Record<string, unknown>;
+    expect(graph['@graph']).toHaveLength(1);
+  });
+});
+
+/**
+ * #151 AC 5 — the emitted structured data validates, with no errors.
+ *
+ * Run over the graphs the site actually builds rather than over a sample: every
+ * class, every list view, the seeded events, and a breadcrumb for every public
+ * route. `structured-data.test-helper.ts` says what "validates" is checked as and
+ * what it cannot check; in short, the structural faults a generated graph
+ * produces, plus every type and property name against the list of terms this site
+ * publishes — which is the typo net, and typos are what fills Search Console.
+ */
+describe('the graphs the site emits', () => {
+  const SITE = 'https://example.org';
+  const { rates } = SEEDED_MONEY_SETTINGS;
+
+  it('has nothing wrong with a class page’s graph', () => {
+    for (const course of CATALOGUE) {
+      const graph = jsonLdGraph(
+        schoolJsonLd(DETAILS, SITE),
+        breadcrumbJsonLd(`/classes/${course.slug}`, course.title, SITE),
+        courseJsonLd({ course, rates, instructorName: 'A Teacher', site: SITE }),
+      );
+      expect(jsonLdProblems(graph), course.slug).toEqual([]);
+    }
+  });
+
+  it('has nothing wrong with a class list view’s graph', () => {
+    for (const view of CLASS_VIEWS) {
+      const graph = jsonLdGraph(
+        schoolJsonLd(DETAILS, SITE),
+        breadcrumbJsonLd(view.path, view.title, SITE),
+        courseListJsonLd(CATALOGUE, view.path, SITE),
+      );
+      expect(jsonLdProblems(graph), view.path).toEqual([]);
+    }
+  });
+
+  it('has nothing wrong with the calendar page’s graph', () => {
+    const graph = jsonLdGraph(
+      schoolJsonLd(DETAILS, SITE),
+      breadcrumbJsonLd(CALENDAR_PATH, 'Calendar', SITE),
+      ...SEEDED_EVENTS.map((seed) =>
+        eventJsonLd({ event: { ...seed, lastEditedBy: null, lastEditedAt: null }, site: SITE }),
+      ),
+    );
+    expect(jsonLdProblems(graph)).toEqual([]);
+  });
+
+  it('has nothing wrong with any other page’s graph', () => {
+    for (const path of publicPaths()) {
+      const graph = jsonLdGraph(
+        schoolJsonLd(DETAILS, SITE),
+        breadcrumbJsonLd(path, 'The page', SITE),
+      );
+      expect(jsonLdProblems(graph), path).toEqual([]);
+    }
+  });
+
+  /*
+   * The other half: the check has to be capable of failing. Each of these is a
+   * real mistake — a node with no type, a blank field emitted as null, a
+   * relative URL, and a reference to a school this page never described.
+   */
+  it.each([
+    ['a node with no type', { name: 'Something' }],
+    ['a field left as null', { '@type': 'Event', location: null }],
+    ['a relative URL', { '@type': 'Event', url: '/current-families/calendar' }],
+    ['a dangling reference', { '@type': 'Event', organizer: { '@id': 'https://elsewhere/#school' } }],
+    // The vocabulary half: a mistyped property is valid JSON, silent in a
+    // browser, and ignored by a crawler.
+    ['a mistyped property', { '@type': 'Event', startdate: '2026-10-17' }],
+    ['a property of another type', { '@type': 'Event', courseSchedule: 'weekly' }],
+    ['a type this site does not publish', { '@type': 'Restaurant', name: 'Not us' }],
+  ])('reports %s', (_case, node) => {
+    expect(jsonLdProblems(jsonLdGraph(node))).not.toEqual([]);
   });
 });
 
