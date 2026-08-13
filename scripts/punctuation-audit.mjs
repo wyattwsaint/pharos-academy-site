@@ -192,6 +192,16 @@ const CLASSES = [
       'listed separately because it is sometimes deliberate.',
   },
   {
+    issue: 'link-spacing',
+    title: 'Spacing around links',
+    intro:
+      'A link is a word in its sentence: one space before it, one after, and nothing underlined ' +
+      'that is not the link. Both classes here are mechanical, and unlike everything else in this ' +
+      'report they are **already applied and kept applied** — `src/lib/punctuation.test.ts` fails ' +
+      'the build if one comes back (#171). A link flush against punctuation — `apply</a>.` — is ' +
+      'correct and not listed.',
+  },
+  {
     issue: 'ellipsis',
     title: 'Ellipses',
     intro: 'The single character …, never three dots, and never dots with spaces between.',
