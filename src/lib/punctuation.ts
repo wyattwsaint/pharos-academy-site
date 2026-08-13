@@ -28,7 +28,7 @@
  *   double space.
  */
 
-import { lineOf, visibleRanges } from './house-style.js';
+import { lineOf, prose, visibleRanges } from './house-style.js';
 
 /** The classes of issue the report groups by. */
 export type Issue =
@@ -37,7 +37,8 @@ export type Issue =
   | 'dashes'
   | 'spacing'
   | 'ellipsis'
-  | 'capitalisation';
+  | 'capitalisation'
+  | 'link-spacing';
 
 /**
  * Whether applying a finding is a decision.
@@ -250,6 +251,7 @@ export function punctuationFindings(source: string, kind: 'astro' | 'ts' | 'text
     }
   }
 
+  if (kind !== 'text') findings.push(...linkSpacingFindings(source, kind));
   if (kind === 'astro') findings.push(...capitalisationFindings(source));
   return findings.sort((a, b) => a.line - b.line || a.issue.localeCompare(b.issue));
 }
@@ -453,6 +455,194 @@ function capitalisationFindings(source: string): Finding[] {
     });
   }
   return findings;
+}
+
+/**
+ * Links, spaced in a sentence the way any other word is (#171).
+ *
+ * A link is a word in a sentence, so it takes one space before it and one
+ * after, and nothing that is not the link is underlined. Two ways that goes
+ * wrong, and both are mechanical:
+ *
+ * - **the gap is missing** — `the<a …>classes page</a>and` — and the sentence
+ *   reads as one long word.
+ * - **the gap is inside the anchor** — `<a …>classes page </a>and` — which
+ *   renders as a gap, so nothing looks wrong in a diff, but the underline runs
+ *   a space past the last letter of the link.
+ *
+ * Everything here is judged on the **rendered** gap rather than the source's.
+ * HTML collapses a newline and its indentation into a single space, so a link
+ * wrapped across lines is correct and must never be reported — that shape is
+ * most of the site, and a rule that flagged it would bury the handful of real
+ * findings under a hundred false ones. Three things follow from reading it that
+ * way, and each is the reason for one of the tests beside this file:
+ *
+ * - **A gap that collapses is still a gap.** `</a>\n  and` renders `</a> and`.
+ * - **A gap at the edge of a block is not a gap at all.** Whitespace at the
+ *   start and the end of a line box is dropped, so `<p>\n  <a>…</a>\n</p>` —
+ *   every nav item, every button-styled call to action — underlines nothing
+ *   extra. Those links are excluded by the shape of the rule rather than by a
+ *   list of elements to skip: a link with no text beside it has no gap to get
+ *   wrong.
+ * - **Which of two collapsing spaces survives decides who owns it.** The first
+ *   one wins. Before a link that means the outer space survives and the
+ *   underline is clean; after a link it means the *inner* space survives and
+ *   the underline extends. So `<a>…</a> and` with a trailing space inside the
+ *   anchor is a finding, and ` <a>…</a>` with a leading one is not.
+ *
+ * A link sitting flush against punctuation — `<a …>apply</a>.`, `(<a …>…</a>)`,
+ * `<a …>Pharos</a>’s` — is correct and not a finding. A space *before* that
+ * punctuation is one, but it is the space-before-a-mark rule above that reports
+ * it, on the text node after the anchor, and one finding per fault is the
+ * point.
+ */
+function linkSpacingFindings(source: string, kind: 'astro' | 'ts'): Finding[] {
+  const markup = readableMarkup(source, kind);
+  // The neighbours are read out of the *prose*, not the markup: what follows a
+  // link is often the `))` closing the expression that rendered it, and code is
+  // not a word the link has run into.
+  const visible = prose(source, kind);
+  const findings: Finding[] = [];
+
+  for (const match of markup.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a\s*>/gi)) {
+    const open = /^<a\b[^>]*>/i.exec(match[0])![0];
+    const inner = match[1] ?? '';
+    const close = match[0].length - open.length - inner.length;
+    if (!/\S/.test(inner)) continue;
+    const at = match.index;
+    const end = at + match[0].length;
+
+    const before = textNodeBefore(markup, visible, at);
+    if (/\S/.test(before) && !/\s$/.test(before)) {
+      if (!FLUSH_BEFORE.test(before)) {
+        findings.push(
+          linkFinding(source, at, open.length, {
+            current: `${excerpt(before, 'end')}${tag(open)}${excerpt(inner, 'start')}`,
+            proposed: `${excerpt(before, 'end')} ${tag(open)}${excerpt(inner.trimStart(), 'start')}`,
+          }),
+        );
+      }
+    }
+
+    const after = textNodeAfter(markup, visible, end);
+    const innerTrail = /\s*$/.exec(inner)![0];
+    if (/\S/.test(after)) {
+      const opens = /^\s/.test(after);
+      const flush = FLUSH_AFTER.test(after);
+      if (opens ? innerTrail !== '' : !flush) {
+        findings.push(
+          linkFinding(source, end - close, close, {
+            current: `${excerpt(inner, 'end')}</a>${excerpt(after, 'start')}`,
+            proposed: `${excerpt(inner.trimEnd(), 'end')}</a> ${excerpt(after.trimStart(), 'start')}`,
+          }),
+        );
+      }
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * Marks a link may sit flush against on its right: the punctuation that closes
+ * a sentence or a bracket, the possessive that hangs off a name, and the
+ * entity a template writes a space or a dash as.
+ */
+const FLUSH_AFTER = /^[,.;:!?)\]}"'’”…/\\&|–—-]/;
+
+/** The same, on a link's left: what opens a bracket, a quotation or a path. */
+const FLUSH_BEFORE = /[([{"'“‘/\\&|$–—-]$/;
+
+/** One link-spacing finding, at `at` and `length` characters long. */
+function linkFinding(
+  source: string,
+  at: number,
+  length: number,
+  said: { current: string; proposed: string },
+): Finding {
+  return {
+    issue: 'link-spacing',
+    call: 'mechanical',
+    line: lineOf(source, at),
+    current: said.current,
+    proposed: said.proposed,
+    context: contextOf(source, at, length),
+  };
+}
+
+/** An opening tag, shortened once its attributes stop being worth printing. */
+function tag(open: string): string {
+  return open.length <= 40 ? open : '<a …>';
+}
+
+/** Enough of one side of a boundary to read it, from whichever end matters. */
+function excerpt(text: string, from: 'start' | 'end'): string {
+  const flat = text.replace(/[\r\n\t]+/g, ' ');
+  if (flat.length <= 12) return flat;
+  return from === 'start' ? `${flat.slice(0, 12)}…` : `…${flat.slice(-12)}`;
+}
+
+/**
+ * The prose written immediately before `at`, back to whatever ended it.
+ *
+ * A tag, an expression's brace or the start of the file all end it, because
+ * none of them is text a rule can read: what `{course.title}` renders as is not
+ * in this file, and a link flush against the *value* of an expression is not
+ * something the scan can claim to have found. The span is found in the markup
+ * and then read out of the prose, so a `)` closing the `.map()` that rendered
+ * the link comes back as the whitespace it renders as — nothing.
+ */
+function textNodeBefore(markup: string, visible: string, at: number): string {
+  const from = Math.max(
+    markup.lastIndexOf('>', at - 1),
+    markup.lastIndexOf('{', at - 1),
+    markup.lastIndexOf('}', at - 1),
+  );
+  return visible.slice(from + 1, at);
+}
+
+/** The same, forwards from `at`. */
+function textNodeAfter(markup: string, visible: string, at: number): string {
+  const ends = [markup.indexOf('<', at), markup.indexOf('{', at), markup.indexOf('}', at)].filter(
+    (index) => index !== -1,
+  );
+  return visible.slice(at, ends.length === 0 ? visible.length : Math.min(...ends));
+}
+
+/**
+ * `source` with everything that is not readable markup replaced by spaces, and
+ * every offset still where it was.
+ *
+ * A `.ts` module is read through {@link prose}: its links, where it has any,
+ * are inside the string literals that hold sentences, and its comments —
+ * this file's own included — are full of `<a …>` written as an example.
+ *
+ * An `.astro` file is read as its template, with the HTML comments, the
+ * `<style>` and `<script>` blocks and the frontmatter blanked. The frontmatter
+ * is code, and a link built there is built out of data — an `href` and a label
+ * assembled a piece at a time, with no sentence around either.
+ */
+function readableMarkup(source: string, kind: 'astro' | 'ts'): string {
+  if (kind === 'ts') return prose(source, 'ts');
+
+  const blanked = Array.from(source);
+  const blank = (from: number, to: number) => {
+    for (let i = Math.max(0, from); i < Math.min(to, source.length); i += 1) {
+      if (blanked[i] !== '\n' && blanked[i] !== '\r') blanked[i] = ' ';
+    }
+  };
+
+  if (/^---\r?\n/.test(source)) {
+    const close = source.search(/\r?\n---\r?\n/);
+    if (close !== -1) blank(0, close + source.slice(close).indexOf('---') + 3);
+  }
+  for (const comment of source.matchAll(/<!--[\s\S]*?-->/g)) {
+    blank(comment.index, comment.index + comment[0].length);
+  }
+  for (const code of source.matchAll(/<(style|script)\b[\s\S]*?<\/\1\s*>/gi)) {
+    blank(code.index, code.index + code[0].length);
+  }
+  return blanked.join('');
 }
 
 /**

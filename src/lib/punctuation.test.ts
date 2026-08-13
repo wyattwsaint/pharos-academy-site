@@ -1,5 +1,8 @@
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { NOT_PROSE, PROSE_ROOTS } from './house-style.js';
 import {
   headingCase,
   punctuationFindings,
@@ -258,6 +261,104 @@ describe('capitalisation', () => {
   });
 });
 
+/**
+ * Link spacing (#171).
+ *
+ * The rule is about what a browser renders, not what the source looks like, and
+ * every test below is a shape the two disagree on. The site is written with its
+ * links wrapped across lines, so the tests that matter most are the ones
+ * asserting *no* finding: a rule that reported those would report a hundred
+ * places and be turned off the same afternoon.
+ */
+describe('links in a sentence', () => {
+  const links = (source: string) =>
+    scan(source, 'astro').filter((finding) => finding.issue === 'link-spacing');
+
+  it('finds a link run into the word after it', () => {
+    const [finding, ...rest] = links('<p>See the <a href="/classes">classes page</a>and apply.</p>');
+    expect(rest).toEqual([]);
+    expect(finding).toMatchObject({ issue: 'link-spacing', call: 'mechanical' });
+    expect(finding?.proposed).toContain('</a> and');
+  });
+
+  it('finds a link run into the word before it', () => {
+    const [finding, ...rest] = links('<p>See the<a href="/classes">classes page</a> today.</p>');
+    expect(rest).toEqual([]);
+    expect(finding?.current).toContain('the<a href="/classes">');
+  });
+
+  it('finds the space swallowed into the end of the anchor', () => {
+    // Renders as a gap, so nothing looks wrong — but the underline runs a space
+    // past the last letter of the link.
+    const [finding, ...rest] = links('<p>See the <a href="/classes">classes page </a>and apply.</p>');
+    expect(rest).toEqual([]);
+    expect(finding?.proposed).toContain('</a> and');
+  });
+
+  it('finds it even when there is a space outside the anchor as well', () => {
+    // Two spaces collapse to one, and the one that survives is the first — the
+    // one inside the anchor. The underline still extends.
+    expect(links('<p>See the <a href="/x">classes page </a> and apply.</p>')).toHaveLength(1);
+  });
+
+  it('leaves a leading space inside the anchor alone when one sits outside it', () => {
+    // The same collapse, the other way round: the outer space is first, so it
+    // is the one that renders, and the anchor underlines only its own text.
+    expect(links('<p>See the <a href="/x"> classes page</a> and apply.</p>')).toEqual([]);
+  });
+
+  it('reads a newline and its indentation as the space it renders as', () => {
+    // Most of the site is written this way. A rule that matched the raw source
+    // would report every one of these.
+    expect(
+      links('<p>\n  See the\n  <a href="/classes">classes page</a>\n  and apply.\n</p>'),
+    ).toEqual([]);
+  });
+
+  it('leaves a link that is the whole of its line alone', () => {
+    // A nav item, a footer link, a button-styled call to action: whitespace at
+    // the start and end of a line box is dropped, so there is nothing to
+    // underline and no gap to get wrong. They are excluded by the shape of the
+    // rule, not by a list of elements to skip.
+    expect(links('<nav>\n  <a href="/classes">\n    Classes\n  </a>\n</nav>')).toEqual([]);
+    expect(links('<p>\n  <a class="btn" href="/inquire"> Inquire </a>\n</p>')).toEqual([]);
+  });
+
+  it('leaves a link flush against the punctuation that follows it', () => {
+    expect(links('<p>Read the <a href="/policies">policies</a>.</p>')).toEqual([]);
+    expect(links('<p>Read the <a href="/policies">policies</a>, then apply.</p>')).toEqual([]);
+    expect(links('<p>Read them (<a href="/policies">policies</a>) first.</p>')).toEqual([]);
+    expect(links('<p>Read <a href="/about">Pharos</a>’s story.</p>')).toEqual([]);
+  });
+
+  it('leaves the space before a mark to the rule that already reports it', () => {
+    // `</a> .` is a space before a full stop, which is a spacing finding on the
+    // text node after the anchor. One fault, one finding.
+    const found = scan('<p>Read the <a href="/policies">policies</a> .</p>', 'astro');
+    expect(found.map((finding) => finding.issue)).toEqual(['spacing']);
+  });
+
+  it('says nothing about a link beside an expression it cannot read', () => {
+    // What `{course.title}` renders as is not in this file, so whether a space
+    // is missing is not something the scan can claim to have found.
+    expect(links('<p>{intro}<a href="/classes">classes page</a>{outro}</p>')).toEqual([]);
+  });
+
+  it('does not read an example in a comment as markup', () => {
+    expect(links('<!-- <a href="/x">classes</a>and -->\n<p>Fine.</p>')).toEqual([]);
+    expect(
+      scan('/** Written `<a href="/x">classes</a>and`. */\nconst a = 1;', 'ts').filter(
+        (finding) => finding.issue === 'link-spacing',
+      ),
+    ).toEqual([]);
+  });
+
+  it('names the line the reader would find it on', () => {
+    const source = ['---', 'const a = 1;', '---', '<p>', '  See<a href="/x">the page</a>', '</p>'];
+    expect(links(source.join('\n'))[0]?.line).toBe(5);
+  });
+});
+
 describe('where a finding is', () => {
   it('counts lines in the source, not in the prose it extracted', () => {
     const source = ['---', "const a = 1;", '---', '<p>', '  The  school day.', '</p>'].join('\n');
@@ -269,10 +370,68 @@ describe('where a finding is', () => {
     expect(finding?.context).toContain('meet on');
   });
 
+  it('names the closing tag rather than the sentence for a link finding', () => {
+    const [finding] = scan('<p>Read the <a href="/x">policies</a>now.</p>', 'astro');
+    expect(finding?.context).toContain('</a>now');
+  });
+
   it('shows the defect in the excerpt rather than tidying it away', () => {
     // The excerpt exists so a reader can see the problem. Collapsing its spaces
     // would print a sentence with nothing wrong in it.
     expect(scan('Classes meet on  Monday mornings.')[0]?.context).toContain('on  Monday');
     expect(scan('Ages 4' + NBSP + 'to 18.')[0]?.context).toContain(NBSP);
+  });
+});
+
+/**
+ * The gate (#171).
+ *
+ * The rest of this scanner reports and never fails a build: the marks in a
+ * school's copy are the school's, and #148 settled that applying a finding is a
+ * separate, approved act. Link spacing is the one class that is different, and
+ * for a reason worth writing down — a link run into the word beside it is a
+ * typo, not a voice, and there is no version of the school's meaning that wants
+ * "thepolicies page". So once the site is clean, the sweep below keeps it that
+ * way, and only for the findings that are mechanical.
+ */
+const ROOT = new URL('../../', import.meta.url);
+
+function filesUnder(entry: string): string[] {
+  const path = fileURLToPath(new URL(entry, ROOT));
+  if (!statSync(path).isDirectory()) return [entry];
+  return readdirSync(path, { withFileTypes: true }).flatMap((child) =>
+    child.name === 'node_modules' ? [] : filesUnder(`${entry}/${child.name}`),
+  );
+}
+
+const SOURCES = PROSE_ROOTS.flatMap(filesUnder).filter(
+  (path) => /\.(astro|ts)$/.test(path) && !NOT_PROSE.test(path),
+);
+
+const LINK_OFFENCES = SOURCES.flatMap((path) => {
+  const source = readFileSync(fileURLToPath(new URL(path, ROOT)), 'utf8');
+  return punctuationFindings(source, path.endsWith('.astro') ? 'astro' : 'ts')
+    .filter((finding) => finding.issue === 'link-spacing' && finding.call === 'mechanical')
+    .map((finding) => `${path}:${finding.line} — ${finding.current} → ${finding.proposed}`);
+});
+
+describe('every link on the site', () => {
+  it('found sources to check, so a broken scan cannot pass silently', () => {
+    expect(SOURCES.length).toBeGreaterThan(80);
+    expect(SOURCES).toContain('src/pages/about/index.astro');
+  });
+
+  it('is spaced from the words around it', () => {
+    expect(LINK_OFFENCES).toEqual([]);
+  });
+
+  it('goes red when a link is run into the word after it', () => {
+    // The sweep being green is only worth something if it is still live on the
+    // files it covers.
+    const source = readFileSync(fileURLToPath(new URL('src/pages/about/index.astro', ROOT)), 'utf8');
+    const introduced = `${source}\n<p>Read the <a href="/policies">policies</a>today.</p>\n`;
+    expect(
+      punctuationFindings(introduced, 'astro').filter((finding) => finding.issue === 'link-spacing'),
+    ).toHaveLength(1);
   });
 });
