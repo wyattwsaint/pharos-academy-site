@@ -719,7 +719,44 @@ export const MIGRATIONS: readonly Migration[] = [
        where slug = ${literal('2026-07-01-texas-roadhouse-night-and-bake-sale-in-august')}`,
     ],
   },
+  {
+    /*
+     * The instructor biography the school supplied (#150).
+     *
+     * The same shape as 0013, and for the same reason: 0003 seeded Mandy Saint
+     * with a null bio, `insertPeople` is `on conflict do nothing`, and her row
+     * is already in Neon — so putting the text in `PEOPLE` alone would publish
+     * it to a fresh database and leave the live one blank for ever.
+     *
+     * Guarded on the bio still being null, so a paragraph Jill has since typed
+     * into the admin is hers and not this migration's to overwrite. The seed's
+     * text is the default, not the truth. Read out of `PEOPLE` rather than
+     * pasted here, so the two copies cannot drift.
+     *
+     * A fresh database gets the same paragraph one migration earlier and finds
+     * nothing to do here, which is the point of the guard rather than an
+     * accident of it.
+     */
+    id: '0019-mandy-saint-biography',
+    statements: [updateBio(PEOPLE, 'mandy-saint')],
+  },
 ];
+
+/**
+ * One seeded biography, as an update rather than an insert.
+ *
+ * Narrow on purpose: a `updatePhotos`-style sweep of every bio would re-land
+ * Jill's, George's and Kathy's alongside it, and those three have been on the
+ * live site — and editable in the admin — since 0003.
+ */
+function updateBio(people: readonly SeedPerson[], slug: string): string {
+  const person = people.find((candidate) => candidate.slug === slug);
+  if (!person) throw new Error(`No seeded person with the slug "${slug}".`);
+  if (person.bio === null) throw new Error(`"${slug}" has no seeded bio to publish.`);
+
+  return `update people set bio = ${literal(person.bio)}
+    where slug = ${literal(person.slug)} and bio is null`;
+}
 
 /** The events the school has already published, idempotent like every other seed. */
 function insertEvents(events: readonly SeedEvent[]): string {

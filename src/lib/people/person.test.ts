@@ -90,11 +90,15 @@ describe('one list, not two', () => {
 });
 
 describe('an optional bio and an optional photo', () => {
-  it('leaves the instructors without a bio, and says nothing about it', () => {
+  it('leaves the instructors the school has written nothing about without a bio', () => {
     // Not a gap to fill with filler: the school has published no bio for them,
-    // and inventing one is the failure this asserts against.
+    // and inventing one is the failure this asserts against. Mandy Saint is
+    // exempt because hers is not invented — the school supplied the text (#150),
+    // and the test above pins the whole set of bios so a second exemption
+    // cannot be smuggled in through this loop.
     for (const entry of instructorsAmong(seeded, CATALOGUE)) {
       if (entry.person.leadershipRank !== null) continue;
+      if (entry.person.slug === 'mandy-saint') continue;
       expect(entry.person.bio, entry.person.name).toBeNull();
     }
   });
@@ -129,9 +133,12 @@ describe('an optional bio and an optional photo', () => {
     }
   });
 
-  it('carries the three bios the live site publishes, and only those', () => {
+  it('carries the four bios the live site publishes, and only those', () => {
+    // Mandy Saint is the first instructor with one (#150). The other six stay
+    // null for the reason the seed gives: the school has published nothing about
+    // them, and a paragraph of filler under a real name is an invention.
     const withBios = seeded.filter((person) => person.bio !== null).map((person) => person.slug);
-    expect(withBios).toEqual(['jill-kilker', 'george-jensen', 'kathy-liddick']);
+    expect(withBios).toEqual(['jill-kilker', 'george-jensen', 'kathy-liddick', 'mandy-saint']);
   });
 });
 
