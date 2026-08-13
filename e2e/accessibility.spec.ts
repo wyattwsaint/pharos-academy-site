@@ -48,6 +48,15 @@ async function openClassPanel(page: Page) {
   await expect(cell.locator('[data-disclosure-panel]')).toBeVisible();
 }
 
+/** Open the one instructor bio the school has published (#152). */
+async function openInstructorBio(page: Page) {
+  const cell = page
+    .locator('[data-disclosure-group="instructors"] [data-disclosure-cell]')
+    .first();
+  await cell.locator('[data-disclosure-trigger]').click();
+  await expect(cell.locator('[data-disclosure-panel]')).toBeVisible();
+}
+
 /** Open the first card on the By Age surface. */
 async function openCatalogueCard(page: Page) {
   const cell = page.locator('.classcard').first();
@@ -124,6 +133,15 @@ const SURFACES = [
   // this is also where "an absent bio renders correctly" is measured at every
   // width rather than only asserted in one.
   { name: 'the staff page', path: STAFF_PATH, state: 'closed', open: noop },
+  // #152. The bio floats over the entry below it at every width, so the state
+  // worth measuring is the open one: a card of prose on parchment, and the
+  // contrast of the name that opened it.
+  {
+    name: 'the staff page',
+    path: STAFF_PATH,
+    state: 'with an instructor bio open',
+    open: openInstructorBio,
+  },
   // #27 AC 5. The list carries dates, links out and PDF links, and it is the
   // one surface whose length is decided by how much the school has posted.
   { name: 'the news page', path: NEWS_PATH, state: 'closed', open: noop },

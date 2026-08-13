@@ -28,6 +28,37 @@ const SUPPLIED_BIO = PEOPLE.find(
   (person) => person.bio !== null && person.leadershipRank === null,
 )!;
 
+/** The widths #152 AC 8 names: a desktop, and a phone with no pointer to hover. */
+const DESKTOP = { width: 1440, height: 900 };
+const PHONE = { width: 390, height: 844 };
+
+/** Who the catalogue names — being an instructor is a fact about it, not a column. */
+const TEACHES = new Set(CATALOGUE.map((course) => course.instructorSlug));
+
+/**
+ * An instructor with a bio, one without, and one whose face is on the page too
+ * (#152).
+ *
+ * All three are *found* rather than named, because which is which is the
+ * school's to change: two of the ten had a bio in this section when the reveal
+ * was built, Mrs. Saint's arrived with #150 while it was in review, and the
+ * rest are still owed by the Head of School. A spec that named a slug would
+ * have to be edited every time the school writes a paragraph.
+ *
+ * `WITH_PORTRAIT` is the one that makes "pointing at their photograph" testable
+ * at all: Pastor Jensen has a face on this page but it runs in leadership, so
+ * his entry down here carries no portrait to point at.
+ */
+const WITH_BIO = PEOPLE.find((person) => TEACHES.has(person.slug) && person.bio !== null)!;
+const WITHOUT_BIO = PEOPLE.find((person) => TEACHES.has(person.slug) && person.bio === null)!;
+const WITH_PORTRAIT = PEOPLE.find(
+  (person) =>
+    TEACHES.has(person.slug) &&
+    person.bio !== null &&
+    person.photo !== null &&
+    person.leadershipRank === null,
+)!;
+
 /** Somebody who is leadership *and* teaches — the one row two sections show. */
 const BOTH = 'george-jensen';
 
@@ -105,6 +136,10 @@ test.describe('the staff page', () => {
     // about them get no paragraph, and the one the school wrote about gets hers
     // — on the page, not merely in the seed. The text is read out of `PEOPLE`
     // rather than pasted here, so an edit for tone is not a broken test.
+    //
+    // It is in the markup rather than on the screen since #152 put it behind
+    // the reveal, which is why this asserts the text and not its visibility;
+    // that it can be *opened* is `an instructor's biography` below.
     await page.goto(STAFF_PATH);
 
     const bio = SUPPLIED_BIO.bio;
@@ -221,6 +256,216 @@ test.describe('the staff page', () => {
       );
       await expect(link, course.slug).toHaveCount(1);
     }
+  });
+});
+
+/**
+ * #152 — an instructor's bio, behind their name.
+ *
+ * The interaction contract itself (hover opens, click sticks, Escape closes,
+ * one at a time) belongs to `<disclosure-group>` and is proved on the homepage
+ * and the class grid. What is asserted here is what this surface adds: that the
+ * staff page uses *that* element rather than a second one of its own, that an
+ * instructor with nothing written about them offers no interaction at all, and
+ * that opening a bio moves nothing a parent was reaching for.
+ */
+test.describe('an instructor’s biography', () => {
+  const entryFor = (slug: string) => `[data-section="staff-instructors"] #${slug}`;
+
+  test('opens on the portrait as well as the name', async ({ page }) => {
+    // AC 1 names both — "pointing at their photograph or name". The trigger is
+    // the name, because a heading cannot go inside a button; the photograph is
+    // covered because the group opens on the whole *cell* being hovered.
+    // Mrs. Saint is what makes this assertable: hers is the one entry in this
+    // list with a face and a paragraph both.
+    await page.setViewportSize(DESKTOP);
+    await page.goto(STAFF_PATH);
+
+    const entry = page.locator(entryFor(WITH_PORTRAIT.slug));
+    const portrait = entry.locator('img.portrait');
+    const panel = entry.locator('[data-disclosure-panel]');
+
+    await expect(portrait).toHaveCount(1);
+    await expect(panel).not.toBeVisible();
+
+    await portrait.hover();
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText(WITH_PORTRAIT.bio!);
+  });
+
+  test('opens on hover, sticks on a click, and closes on Escape', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto(STAFF_PATH);
+
+    const entry = page.locator(entryFor(WITH_BIO.slug));
+    const trigger = entry.locator('[data-disclosure-trigger]');
+    const panel = entry.locator('[data-disclosure-panel]');
+
+    await expect(panel).not.toBeVisible();
+
+    await trigger.hover();
+    await expect(panel).toBeVisible();
+    // The school's own paragraph, not a summary of it: the reveal changed where
+    // the bio is, not what it says.
+    await expect(panel).toContainText(WITH_BIO.bio!);
+
+    await page.mouse.move(2, 2);
+    await expect(panel).not.toBeVisible();
+
+    await trigger.hover();
+    await trigger.click();
+    await page.mouse.move(2, 2);
+    await expect(panel).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(panel).not.toBeVisible();
+  });
+
+  test('is the site’s one reveal rather than a second one that behaves nearly the same', async ({
+    page,
+  }) => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto(STAFF_PATH);
+
+    // AC 7. Asserted structurally, because "it behaves the same today" is what
+    // a second implementation also does, right up until one of them is changed.
+    const group = page.locator('disclosure-group[data-disclosure-group="instructors"]');
+    await expect(group).toHaveCount(1);
+    await expect(group.locator(`#${WITH_BIO.slug}[data-disclosure-cell]`)).toHaveCount(1);
+
+    // And nothing on this page opens a panel any other way: every trigger and
+    // every panel here belongs to that group.
+    await expect(page.locator('[data-disclosure-trigger]')).toHaveCount(
+      await group.locator('[data-disclosure-trigger]').count(),
+    );
+    await expect(page.locator('[data-disclosure-panel]')).toHaveCount(
+      await group.locator('[data-disclosure-panel]').count(),
+    );
+  });
+
+  test('opens on focus and can be dismissed from the keyboard', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto(STAFF_PATH);
+
+    const entry = page.locator(entryFor(WITH_BIO.slug));
+    const trigger = entry.locator('[data-disclosure-trigger]');
+    const panel = entry.locator('[data-disclosure-panel]');
+
+    await trigger.focus();
+    await expect(panel).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(panel).not.toBeVisible();
+    // Escape dismisses the panel and leaves focus where it was, so the next Tab
+    // carries on down the page rather than starting again from the top.
+    await expect(trigger).toBeFocused();
+  });
+
+  test('is announced rather than merely shown', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto(STAFF_PATH);
+
+    const entry = page.locator(entryFor(WITH_BIO.slug));
+    const trigger = entry.locator('[data-disclosure-trigger]');
+    const panel = entry.locator('[data-disclosure-panel]');
+
+    // AC 4: a real control that says what it controls and whether it is open —
+    // not a paragraph revealed by CSS with nothing telling a screen reader.
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    const controls = await trigger.getAttribute('aria-controls');
+    expect(controls).toBeTruthy();
+    await expect(panel).toHaveAttribute('id', controls!);
+
+    await trigger.click();
+    await expect(
+      entry.getByRole('button', { name: WITH_BIO.name, expanded: true }),
+    ).toHaveCount(1);
+    // And the paragraph is in the accessibility tree once it is open, rather
+    // than hidden from it by an `aria-hidden` left on the panel.
+    await expect(entry.getByText(WITH_BIO.bio!)).toBeVisible();
+  });
+
+  test('offers nothing to open for an instructor the school has written nothing about', async ({
+    page,
+  }) => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto(STAFF_PATH);
+
+    const entry = page.locator(entryFor(WITHOUT_BIO.slug));
+    await expect(entry).toHaveCount(1);
+
+    // AC 5: no trigger, no panel, and not even a cell — hovering the entry must
+    // do nothing at all rather than open an empty box.
+    await expect(entry.locator('[data-disclosure-trigger]')).toHaveCount(0);
+    await expect(entry.locator('[data-disclosure-panel]')).toHaveCount(0);
+    await expect(entry).not.toHaveAttribute('data-disclosure-cell', /.*/);
+
+    // Their name is still their name, still a heading, just not a control.
+    await expect(entry.getByRole('heading', { name: WITHOUT_BIO.name })).toBeVisible();
+    await expect(entry.getByRole('button')).toHaveCount(0);
+  });
+
+  for (const [name, viewport] of [
+    ['a desktop', DESKTOP],
+    ['a phone', PHONE],
+  ] as const) {
+    test(`does not move what the visitor was about to click on ${name}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto(STAFF_PATH);
+
+      const entry = page.locator(entryFor(WITH_BIO.slug));
+      const trigger = entry.locator('[data-disclosure-trigger]');
+
+      // AC 6. The class links sit directly under the name and are what a parent
+      // on this page is reaching for, so they are the thing measured — a panel
+      // that expanded in the flow would push them down the page between the
+      // pointer arriving and the click landing.
+      //
+      // Measured in *document* coordinates rather than from `boundingBox()`:
+      // clicking scrolls the trigger into view, which moves every viewport-
+      // relative rect on the page and would fail a correct implementation.
+      const placement = () =>
+        page.locator('.staff-teaching').evaluate((list) => {
+          const at = (element: Element) => {
+            const box = element.getBoundingClientRect();
+            return { x: box.x + scrollX, y: box.y + scrollY, w: box.width, h: box.height };
+          };
+          return {
+            list: at(list),
+            links: [...list.querySelectorAll('.staff-classes')].map(at),
+          };
+        });
+
+      const before = await placement();
+
+      await trigger.click();
+      await expect(entry.locator('[data-disclosure-panel]')).toBeVisible();
+
+      expect(await placement()).toEqual(before);
+    });
+  }
+
+  test('opens on a tap where there is no pointer to hover with', async ({ browser }) => {
+    // AC 2. A real touch, not a click at a phone's width: on a touch device
+    // there is no `mouseenter` to open with, and the tap has to carry it.
+    const context = await browser.newContext({ viewport: PHONE, hasTouch: true, isMobile: true });
+    const page = await context.newPage();
+    await page.goto(STAFF_PATH);
+
+    const entry = page.locator(entryFor(WITH_BIO.slug));
+    const panel = entry.locator('[data-disclosure-panel]');
+    await expect(panel).not.toBeVisible();
+
+    await entry.locator('[data-disclosure-trigger]').tap();
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText(WITH_BIO.bio!);
+
+    // And a tap somewhere else puts it away — the only dismissal a touch device
+    // has, since there is no Escape key and nowhere to move a pointer to.
+    await page.locator('[data-section="staff-header"] h1').tap();
+    await expect(panel).not.toBeVisible();
+
+    await context.close();
   });
 });
 

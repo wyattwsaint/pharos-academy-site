@@ -1237,7 +1237,10 @@ html.nav-menu-open body {
   list-style: none;
 }
 
+/* `position: relative` because the bio panel below anchors to the entry rather
+   than to the list — a panel anchored to the grid would need measuring. */
 .staff-teaching > li {
+  position: relative;
   border-top: 1px solid var(--color-rule);
   padding-top: 20px;
 }
@@ -1258,12 +1261,68 @@ html.nav-menu-open body {
   margin: 6px 0 0;
 }
 
+/* The name, when there is a bio behind it (#152). A button that reads as the
+   heading it sits in — the gold and the underline on hover and focus are what
+   say "there is more here", because a name that opens something and a name that
+   does not must not look identical. */
+.staff-name-trigger {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.staff-name-trigger:hover,
+[data-disclosure-cell][data-open] .staff-name-trigger {
+  color: var(--color-gold-ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.staff-name-trigger:focus-visible {
+  outline: 2px solid var(--color-gold-ink);
+  outline-offset: 3px;
+}
+
 /* A bio when the school has written one, and nothing at all when it has not —
    the gap closes rather than being filled (#26). */
 .staff-bio {
   font-size: 14.5px;
   color: var(--color-ink-2);
-  margin-top: 12px;
+  margin: 0;
+}
+
+/* It floats rather than expanding in place, at every width — unlike the
+   H.O.P.E. card, which goes static on a phone (#152 AC 6). The class links sit
+   directly under the name, and they are the thing a parent on this page is
+   most likely to be reaching for; a paragraph opening in the flow would push
+   them down the page out from under the pointer that just arrived at them.
+   Absolute, so nothing moves and the panel covers rather than displaces.
+
+   Anchored to the bottom of the entry and not measured: George Jensen is the
+   only instructor with a bio today and he sorts last, so the card opens over
+   the paragraph below the list. The band has no overflow clip, so nothing cuts
+   it off there. */
+.staff-bio-panel {
+  display: none;
+  position: absolute;
+  z-index: 6;
+  top: calc(100% - 6px);
+  left: 0;
+  right: 0;
+  background: var(--color-cream);
+  border: 1px solid var(--color-gold-orn);
+  border-radius: 3px;
+  padding: 16px 18px;
+  box-shadow: 0 16px 38px rgb(4 12 26 / 0.18);
+}
+
+[data-disclosure-cell][data-open] .staff-bio-panel {
+  display: block;
 }
 
 .staff-classes {
