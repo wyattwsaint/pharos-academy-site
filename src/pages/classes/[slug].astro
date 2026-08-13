@@ -6,9 +6,11 @@ import { ageLine } from '../../lib/courses/ages.js';
 import { priceSummary } from '../../lib/courses/pricing.js';
 import { coursesOnTrack, timeLabel } from '../../lib/courses/schedule.js';
 import { getCourse, listCourses } from '../../lib/courses/store.js';
+import { courseJsonLd } from '../../lib/courses/structured-data.js';
 import { classPath, CLASS_VIEWS } from '../../lib/courses/views.js';
 import { getDb } from '../../lib/db/client.js';
 import { getMoneySettings } from '../../lib/money/store.js';
+import { SITE_URL } from '../../lib/site.js';
 
 import { INQUIRY_HREF } from '../../lib/home/sections.js';
 import { bySlug, instructorOf } from '../../lib/people/person.js';
@@ -52,9 +54,26 @@ const alongside = course.days
 const description = `${course.title} at Pharos Academy — ${ageLine(course)}, ${course.days.join(
   ' and ',
 )} ${timeLabel(course.start, course.end)}, ${priceSummary(course, rates)}.`;
+
+/*
+ * The class, in structured data (#151).
+ *
+ * Built from the same `course`, the same rates and the same instructor the page
+ * below renders, so the two cannot disagree — a class whose markup quoted a
+ * different price or a different morning from the facts list beside it would be
+ * the #22 failure again, in the half a parent never sees.
+ */
+const jsonLd = [
+  courseJsonLd({
+    course,
+    rates,
+    instructorName: instructor.name,
+    site: Astro.site ?? SITE_URL,
+  }),
+];
 ---
 
-<BaseLayout details={details} title={course.title} description={description}>
+<BaseLayout details={details} title={course.title} description={description} jsonLd={jsonLd}>
   <section class="band band-quiet" data-section="class-header">
     <div class="wide">
       <p class="label">

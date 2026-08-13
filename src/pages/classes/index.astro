@@ -5,9 +5,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import { ageLine, coursesByBand, hasNumericAges } from '../../lib/courses/ages.js';
 import { listCourses } from '../../lib/courses/store.js';
+import { courseListJsonLd } from '../../lib/courses/structured-data.js';
 import { viewFor } from '../../lib/courses/views.js';
 import { getDb } from '../../lib/db/client.js';
 import { getMoneySettings } from '../../lib/money/store.js';
+import { SITE_URL } from '../../lib/site.js';
 
 
 /**
@@ -38,9 +40,29 @@ const courses = await listCourses(db);
 // its own copy of the school’s hourly rate (#29 AC 1).
 const { rates } = await getMoneySettings(db);
 const bands = coursesByBand(courses);
+
+/*
+ * The classes this page lists, as a list of their own pages (#151).
+ *
+ * Not a full description of each — that is on the class's own page, and this
+ * points at it. In the order the bands render, so the markup lists the classes
+ * in the order a reader meets them.
+ */
+const jsonLd = [
+  courseListJsonLd(
+    bands.flatMap((band) => band.courses),
+    view.path,
+    Astro.site ?? SITE_URL,
+  ),
+];
 ---
 
-<BaseLayout details={details} title={view.title} description={view.description}>
+<BaseLayout
+  details={details}
+  title={view.title}
+  description={view.description}
+  jsonLd={jsonLd}
+>
   <ClassesHeader
     current="by-age"
     heading={`${courses.length} classes, by the age they are written for`}

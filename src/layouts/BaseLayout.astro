@@ -2,11 +2,12 @@
 import '../styles/global.css';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
+import { breadcrumbJsonLd } from '../lib/breadcrumbs.js';
 import type { SchoolDetails } from '../lib/db/schema.js';
 import type { AnnouncementBanner } from '../lib/home/announcement-banner.js';
 import { SITE_URL } from '../lib/site.js';
 import { canonicalUrl, pageTitle, socialPreviewTags } from '../lib/social-preview.js';
-import { renderJsonLd, schoolJsonLd } from '../lib/structured-data.js';
+import { jsonLdGraph, renderJsonLd, schoolJsonLd } from '../lib/structured-data.js';
 
 interface Props {
   title: string;
@@ -44,9 +45,29 @@ interface Props {
    * layout that derived it would put it on all nine.
    */
   banner?: AnnouncementBanner | null;
+  /**
+   * What *this page's* own content is, in structured data (#151).
+   *
+   * The school node and the breadcrumb are added here for every page, because
+   * both are properties of being a page of this site. A class node and an event
+   * node are not: they describe rows the page has already read, and only the page
+   * that read them can build them without a second database call in a layout
+   * that renders mid-stream — which is the failure `details` is a prop to avoid.
+   *
+   * So a page hands its nodes down and they join the same `@graph`, pointing at
+   * the same school by `@id`.
+   */
+  jsonLd?: (object | null | undefined)[];
 }
 
-const { title, description, details, overHero = false, banner = null } = Astro.props;
+const {
+  title,
+  description,
+  details,
+  overHero = false,
+  banner = null,
+  jsonLd = [],
+} = Astro.props;
 
 /*
  * The canonical URL, the `<title>` and the link-preview card are all derived
@@ -94,18 +115,33 @@ const preview = socialPreviewTags({ title, description, pathname: Astro.url.path
     }
     {
       /*
-        School / LocalBusiness structured data (#30 AC 6), on every page rather
-        than only the homepage.
+        The page's structured data — one script, one graph (#30 AC 6, #151).
 
-        One node with a stable `@id`, so the pages do not describe three
-        different schools — they all point at the same entity. It is here rather
-        than in a component because it belongs in `<head>`, and it is read from
-        the school details row for the reason the footer is: the address on the
-        live site is hand-typed in 22 places and has already drifted, and markup
-        that disagrees with the page beside it is what a search engine believes.
+        The school with a stable `@id`, so the pages do not describe nine
+        different schools; the breadcrumb, so a page below the top level says
+        where it sits rather than reading as a sibling of the homepage; and
+        whatever the page itself is *about* — a class, the year's events. Every
+        one of them points at the school by that `@id` rather than restating its
+        name and address.
+
+        It is here rather than in a component because it belongs in `<head>`, and
+        every value is read from a row for the reason the footer's is: the
+        address on the live site is hand-typed in 22 places and has already
+        drifted, and markup that disagrees with the page beside it is what a
+        search engine believes.
       */
     }
-    <script type="application/ld+json" set:html={renderJsonLd(schoolJsonLd(details, site))} is:inline />
+    <script
+      type="application/ld+json"
+      set:html={renderJsonLd(
+        jsonLdGraph(
+          schoolJsonLd(details, site),
+          breadcrumbJsonLd(Astro.url.pathname, title, site),
+          ...jsonLd,
+        ),
+      )}
+      is:inline
+    />
   </head>
   <body data-site>
     <a

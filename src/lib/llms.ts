@@ -1,5 +1,9 @@
 import { SUPPORT_PATH } from './about/story.js';
 import { NEWS_PATH } from './announcements/views.js';
+import { APPLICATION_PATH } from './application/application.js';
+import { CALENDAR_PATH } from './calendar/views.js';
+import { CURRENT_FAMILIES_PATH } from './current-families/section.js';
+import { INQUIRY_PATH } from './inquiry/inquiry.js';
 import { STAFF_PATH } from './people/views.js';
 import { POLICIES_PATH } from './policies/views.js';
 import { TEACH_PATH } from './teach/teach.js';
@@ -44,6 +48,27 @@ const SUMMARIES: Record<string, string> = {
   '/admissions':
     'How to apply — the families the school serves, what makes it different, the registration ' +
     'fee and per-class deposit, and which documents families sign.',
+  /*
+   * The four that were missing (#151 AC 8).
+   *
+   * Each was a route in `PUBLIC_ROUTES` appearing here as a bare link, which is
+   * the one thing this file is for and the one thing an unglossed link does not
+   * do: a model reading `/inquire` learns nothing a URL did not already say.
+   * They are the school's two front doors and the section a current family
+   * lives in.
+   */
+  [CURRENT_FAMILIES_PATH]:
+    'The section for families already at the school — the calendar, news and the policies. ' +
+    'Nothing in it requires a login.',
+  [CALENDAR_PATH]:
+    'Every class date for the school year by day track, the days the school is closed, and the ' +
+    'year’s one-off events. Subscribable and printable.',
+  [INQUIRY_PATH]:
+    'The form for asking the school a question, and the school’s own phone number and email ' +
+    'address. This is the school’s preferred first contact.',
+  [APPLICATION_PATH]:
+    'The application itself — the classes a family is enrolling in, the fees due, and the ' +
+    'documents signed. Reached after an inquiry rather than cold.',
 };
 
 /**
@@ -68,7 +93,21 @@ export function renderLlmsTxt(site: string | URL, routes = PUBLIC_ROUTES): strin
     '> Families choose individual classes and teach the rest at home. Classes meet on Monday,',
     '> Wednesday and Thursday mornings.',
     '',
-    'This site is being rebuilt. Only the pages listed below exist so far.',
+    /*
+     * What this file says about the site, reviewed against the site (#151 AC 8).
+     *
+     * It said "This site is being rebuilt. Only the pages listed below exist so
+     * far." for as long as that was true and then for a while after it was not:
+     * the domain now points here, `robots.txt` answers `Allow: /`, and a model
+     * told a live school's website is a work in progress is a model that hedges
+     * a family's question about a school that is enrolling.
+     *
+     * The claim that remains is the one still worth making — this list is
+     * complete, generated from the same route list as the sitemap, so a page
+     * absent from it is a page that does not exist rather than one omitted.
+     */
+    'Every page of the site is listed below, generated from the same route list as the sitemap.',
+    'Each class also has its own page, linked from the class lists.',
     '',
     '## Pages',
     '',
