@@ -30,17 +30,23 @@ test.describe('Current Families', () => {
     await expect(page.locator('h1')).toBeVisible();
   });
 
-  test('sends the calendar section to the calendar, and says what a subscription cannot promise', async ({
+  test('introduces the calendar once, and says what a subscription cannot promise', async ({
     page,
   }) => {
     await page.goto(CURRENT_FAMILIES_PATH);
 
-    const calendar = page.locator('#calendar');
-    // Until #23 this section said the dates were not here yet, and linked
-    // nowhere, because the alternative was a dead link or invented dates.
-    await expect(calendar.locator(`a[href="${CALENDAR_PATH}"]`).first()).toBeVisible();
+    // #179: one card, where there used to be a card and a band under it saying
+    // the same thing. The band is gone; what it alone said is not.
+    const cards = page.locator('#what-is-here');
+    // Until #23 the calendar was named and deliberately not linked, because the
+    // alternative was a dead link or invented dates.
+    await expect(cards.locator(`a[href="${CALENDAR_PATH}"]`).first()).toBeVisible();
     // The one thing no vendor controls and neither do we (#23).
-    await expect(calendar).toContainText('own schedule');
+    await expect(cards).toContainText('own schedule');
+
+    // The duplicate is what #179 removed: the page names the calendar once.
+    await expect(page.locator('#calendar')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'The calendar' })).toHaveCount(1);
   });
 
   for (const link of CURRENT_FAMILIES_LINKS) {

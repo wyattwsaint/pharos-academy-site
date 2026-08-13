@@ -43,9 +43,19 @@ export const CURRENT_FAMILIES_LINKS: readonly CurrentFamiliesLink[] = [
   {
     path: CALENDAR_PATH,
     label: 'The calendar',
+    /*
+     * The second sentence outlived the band it was written for. #179 removed the
+     * calendar section from the index as a duplicate of this card, and the one
+     * thing the band said that the card did not is what a subscription cannot
+     * promise (#23) — a phone refreshes a subscribed calendar on its own
+     * schedule, and a family who assumes otherwise misses a short-notice change.
+     * No vendor controls that and neither do we, so the site says it out loud.
+     */
     blurb:
       'Every class date for the year, by day track, with the days the school is closed and the ' +
-      'year’s events. Subscribe to it, or print the sheet.',
+      'year’s events. Subscribe to it, or print the sheet. A subscribed calendar refreshes on ' +
+      'your phone’s own schedule, so if something changes at short notice the school will ' +
+      'still text you.',
   },
   {
     path: NEWS_PATH,

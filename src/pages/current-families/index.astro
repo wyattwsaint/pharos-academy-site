@@ -1,9 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getSchoolDetails } from '../../lib/admin/school-details.js';
-import { CALENDAR_PATH, CURRENT_FAMILIES_LINKS } from '../../lib/current-families/section.js';
+import { CURRENT_FAMILIES_LINKS } from '../../lib/current-families/section.js';
 import { getDb } from '../../lib/db/client.js';
-import { INQUIRY_HREF } from '../../lib/home/sections.js';
 
 /**
  * Current Families — the section index (#30).
@@ -12,10 +11,14 @@ import { INQUIRY_HREF } from '../../lib/home/sections.js';
  * of its children is a nav item lying about how many children it has. Three
  * things are under it: the calendar, the news and the policies.
  *
- * The calendar section stays a section of its own rather than becoming one more
- * card, because two of the old site's addresses land on it — and because what
- * it says about a subscribed calendar refreshing on the phone's own schedule is
- * the thing families most need told and least expect (#23).
+ * The calendar was a section of its own until #179, which is one card and one
+ * band saying the same thing to the same reader. It is a card now, like the
+ * news and the policies. What did not go with the band is what it said about a
+ * subscribed calendar refreshing on the phone's own schedule — the thing
+ * families most need told and least expect (#23) — which is why that sentence
+ * is on the card in `current-families/section.ts` rather than deleted. The two
+ * old-site addresses that used to land here go to the calendar page itself
+ * (`redirects.ts`), not to an anchor on this one.
  *
  * Nothing on this page or under it is gated. See `current-families/section.ts`
  * for why that is a decision.
@@ -59,23 +62,6 @@ const details = await getSchoolDetails(await getDb());
     </div>
   </section>
 
-  <section class="band band-quiet" id="calendar" data-section="current-families-calendar">
-    <div class="wide">
-      <h2>The calendar</h2>
-      <p class="mt-5">
-        Every class date for the year is on <a href={CALENDAR_PATH}>the calendar</a>, one column
-        per day track — the four do not line up, because each skips only its own holidays, and the
-        page shows them as they really are. There is one file to download or subscribe to, and the
-        sheet prints.
-      </p>
-      <p class="mt-4 text-ink-2">
-        A subscribed calendar refreshes on your phone’s own schedule, so if something changes at
-        short notice the school will still text you. Anything else, <a href={INQUIRY_HREF}
-          >ask us</a
-        >.
-      </p>
-    </div>
-  </section>
 </BaseLayout>
 
 <style>
