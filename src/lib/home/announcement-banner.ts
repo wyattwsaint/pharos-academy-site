@@ -24,23 +24,13 @@ export type AnnouncementBanner = {
   date: string;
   /** Where the whole message points, or null when the office set no link. */
   href: string | null;
-  /**
-   * What a dismissal is remembered against.
-   *
-   * The visitor dismisses *this* message, not the bar as a fixture: change the
-   * words, the date or the link and the key changes, so the next thing the
-   * office puts up is seen by everyone who closed the last one. A key that was
-   * only "dismissed" would make the second message invisible to exactly the
-   * people who read the first.
-   */
-  key: string;
 };
 
 /**
  * The banner to draw, or null for "draw nothing at all".
  *
  * Null rather than a disabled banner because the region has to collapse
- * completely when the office switches it off — an empty bar beneath the header
+ * completely when the office switches it off — an empty bar above the header
  * is the empty space the ticket forbids, and a caller holding a falsy object
  * has to remember to check it.
  *
@@ -59,7 +49,6 @@ export function announcementBanner(details: SchoolDetails): AnnouncementBanner |
     message,
     date: formatBannerDate(date),
     href: details.bannerLink.trim() || null,
-    key: `${message}|${date}|${details.bannerLink.trim()}`,
   };
 }
 
@@ -82,6 +71,3 @@ export function formatBannerDate(date: string): string {
     timeZone: 'UTC',
   }).format(new Date(`${date}T00:00:00Z`));
 }
-
-/** Where a dismissal is remembered. Read by the inline script in the header. */
-export const BANNER_DISMISSED_KEY = 'pharos:banner-dismissed';

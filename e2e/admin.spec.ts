@@ -300,48 +300,35 @@ test.describe('saving school details', () => {
   });
 
   /*
-   * Both widths, because the focus hand-off after a dismissal is width-sensitive
-   * and silently so: `.site-nav` is `display: none` below 860px, and `.focus()`
-   * on a hidden element does nothing and reports nothing. A desktop-only run of
-   * this test passed against a target that did not exist on a phone.
+   * The bar is the office's line and nobody else's to close.
+   *
+   * It used to carry a dismiss button whose click was remembered in
+   * `localStorage` forever, which meant the office could not tell a message
+   * nobody had read from one everyone had hidden — and a visitor who had closed
+   * one in January never saw the snow day in February. The reload is the whole
+   * assertion: whatever the visitor did last time, the line is still there.
    */
-  for (const width of [1280, 390]) {
-    test(`lets a visitor dismiss the banner from the keyboard at ${width}px, and remembers it`, async ({
-      page,
-    }) => {
-      await page.setViewportSize({ width, height: 800 });
-      await signIn(page);
-      await setBanner(page, { message: 'Snow day — no classes', date: '2027-01-05', link: '' });
+  test('keeps the banner up across a reload, with nothing to close it', async ({ page }) => {
+    await signIn(page);
+    await setBanner(page, { message: 'Snow day — no classes', date: '2027-01-05', link: '' });
 
-      await page.goto('/');
-      const bar = page.locator('[data-announcement-bar]');
-      // Named, so a screen reader announces a region called Announcement rather
-      // than an unlabelled group of two controls.
-      await expect(bar).toHaveAttribute('aria-label', 'Announcement');
-      await expect(bar).toContainText('Snow day — no classes January 5');
-      // With no link set, the message is not a link to nowhere.
-      await expect(bar.getByRole('link')).toHaveCount(0);
+    await page.goto('/');
+    const bar = page.locator('[data-announcement-bar]');
+    // Named, so a screen reader announces a region called Announcement rather
+    // than an unlabelled run of text above the header.
+    await expect(bar).toHaveAttribute('aria-label', 'Announcement');
+    await expect(bar).toContainText('Snow day — no classes January 5');
+    // With no link set, the message is not a link to nowhere.
+    await expect(bar.getByRole('link')).toHaveCount(0);
+    // No control of any kind inside the bar — the admin switch is the only
+    // thing that takes it down.
+    await expect(bar.getByRole('button')).toHaveCount(0);
 
-      const heroBefore = await page.locator('[data-section="hero"]').boundingBox();
-      await page.getByRole('button', { name: 'Dismiss this announcement' }).focus();
-      await page.keyboard.press('Enter');
+    await page.reload();
+    await expect(page.locator('[data-announcement-bar]')).toContainText('Snow day — no classes');
 
-      await expect(bar).toHaveCount(0);
-      // Nothing moved: the bar hangs off a fixed header and is not in the flow.
-      const heroAfter = await page.locator('[data-section="hero"]').boundingBox();
-      expect(heroAfter!.y).toBeCloseTo(heroBefore!.y, 0);
-      // Focus did not fall to <body>; the keyboard visitor is still in the
-      // header. The header's CTA, not the nav — the nav is `display: none`
-      // below 860px, and `.focus()` on a hidden element is a silent no-op.
-      await expect(page.locator('[data-site-header] .btn')).toBeFocused();
-
-      // And it stays dismissed, which is the whole reason a dismissal is stored.
-      await page.reload();
-      await expect(page.locator('[data-announcement-bar]')).toHaveCount(0);
-
-      await setBanner(page, null);
-    });
-  }
+    await setBanner(page, null);
+  });
 
   test('has no accessibility failures with the banner live', async ({ page }) => {
     await signIn(page);

@@ -421,13 +421,7 @@ h3 {
   box-shadow: 0 6px 18px rgb(6 16 30 / 0.18);
 }
 
-/* Centred by laying the message across the full width and lifting the dismiss
-   out of the flow, rather than by centring the flex row: as a flex sibling the
-   button's width counts, and the message would sit half a button left of true
-   centre. `right` matches `.wide`'s own 26px so the × lines up with the
-   header's right edge below it. */
 .site-banner .wide {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -440,9 +434,6 @@ h3 {
   color: inherit;
   margin: 0;
   text-align: center;
-  /* Clears the × on both sides, so a long message stays centred on the bar
-     rather than centred on the space left over beside the button. */
-  padding: 0 24px;
 }
 
 .site-banner-message b {
@@ -456,30 +447,6 @@ a.site-banner-message {
 
 a.site-banner-message:hover {
   text-decoration-thickness: 2px;
-}
-
-/* A real button, sized to the 24px target the rest of the site uses. The glyph
-   is decorative and the name is the visually hidden span beside it, so a screen
-   reader hears "Dismiss this announcement" rather than "times". */
-.site-banner-dismiss {
-  position: absolute;
-  top: 50%;
-  right: 26px;
-  transform: translateY(-50%);
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: inherit;
-  font: 400 22px/1 var(--font-sans);
-  cursor: pointer;
-}
-
-.site-banner-dismiss:hover {
-  background: rgb(23 54 92 / 0.12);
 }
 
 @media (max-width: 640px) {
