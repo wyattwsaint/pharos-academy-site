@@ -546,8 +546,8 @@ const description =
             <Fragment>
               <p class="mt-4">
                 The registration — <strong>{formatMoney(cost.total.registration)}</strong> — and the
-                tuition — <strong>{formatMoney(cost.total.tuitionDue)}</strong> at today's rates —
-                online, in one payment, through the church's giving page:
+                tuition — <strong>{formatMoney(cost.total.tuitionDue)}</strong> at today’s rates —
+                online, in one payment, through the church’s giving page:
               </p>
               <p class="mt-4">
                 <a class="btn" href={details.payOnlineUrl} rel="external" data-pay-online>
@@ -570,7 +570,7 @@ const description =
                 A check for <strong>{formatMoney(cost.total.total)}</strong> — that is{' '}
                 {formatMoney(cost.total.registration)} in registration,{' '}
                 {formatMoney(cost.total.deposits)} in deposits and{' '}
-                {formatMoney(cost.total.tuitionDue)} in tuition at today's rates — made out to
+                {formatMoney(cost.total.tuitionDue)} in tuition at today’s rates — made out to
                 Pharos Academy, to:
               </p>
               <p class="address mt-4">{details.address}</p>
@@ -981,7 +981,7 @@ const description =
             {/*
               The payment slot, filled for two of the three amounts (#111, #187).
 
-              All three are the school's money (ADR-0013); what differs is the
+              All three are the school’s money (ADR-0013); what differs is the
               channel. The church takes payments through Vanco, and registration
               and tuition go through it as **one** payment — one campaign, not
               two. The per-class deposit is the exception and is still a check,
@@ -997,7 +997,7 @@ const description =
                 <p class="mt-7">
                   The registration — <strong>{formatMoney(cost.total.registration)}</strong> — and
                   the tuition — <strong>{formatMoney(cost.total.tuitionDue)}</strong> — are paid
-                  online through the church's giving page, in one payment, upfront.
+                  online through the church’s giving page, in one payment, upfront.
                 </p>
                 <p class="mt-5">
                   <a class="btn" href={details.payOnlineUrl} rel="external" data-pay-online>
@@ -1028,12 +1028,13 @@ const description =
               Who is owed what, in every state — including the one where no
               classes have been chosen yet and the deposits above are $0 and
               rightly unwritten. A family reading only this line still knows
-              that every one of the three amounts is the school's, which is the
+              that every one of the three amounts is the school’s, which is the
               half of the ticket that is about wording rather than about a link.
             */}
             <p class="mt-6 text-ink-2">
-              All of it is paid to Pharos Academy — the registration and the tuition{' '}
-              {payOnline ? 'online, in one payment' : 'by check'}, the deposits by check.
+              {payOnline
+                ? 'All of it is paid to Pharos Academy — the registration and the tuition online, in one payment, the deposits by check.'
+                : 'All of it is paid to Pharos Academy — the registration, the tuition and the deposits, all by check.'}
               {payOnline
                 ? ' A payment through Vanco does not reach us attached to this application, so the office matches the two up by hand.'
                 : ' There is no online payment set up at the moment; when there is, it will appear here, and posting a check will still work.'}

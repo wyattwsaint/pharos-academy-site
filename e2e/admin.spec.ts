@@ -234,9 +234,12 @@ test.describe('saving school details', () => {
     await expect(payment.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
     // Every amount is the school's, and the page says which way each is paid —
     // with no classes chosen there are no deposit figures, and this line is
-    // what carries it (#187).
-    await expect(payment).toContainText('All of it is paid to Pharos Academy');
-    await expect(payment).toContainText('the deposits by check');
+    // what carries it (#187). The middle of the sentence is the half that
+    // moves with the link, so it is asserted whole rather than in pieces that
+    // read the same in both states.
+    await expect(payment).toContainText(
+      'the registration and the tuition online, in one payment, the deposits by check',
+    );
 
     await setPayOnlineUrl(page, '');
 
@@ -244,6 +247,10 @@ test.describe('saving school details', () => {
     await page.goto('/admissions/apply');
     await expect(payment.locator('[data-pay-online]')).toHaveCount(0);
     await expect(payment).toContainText('no online payment set up at the moment');
+    // And the same sentence now says every amount is a check.
+    await expect(payment).toContainText(
+      'the registration, the tuition and the deposits, all by check',
+    );
   });
 
   test('refuses an online payment link that is not a web address', async ({ page }) => {

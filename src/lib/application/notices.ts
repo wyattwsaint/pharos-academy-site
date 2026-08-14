@@ -94,7 +94,7 @@ export function applicationNotification(
   // "Offered", not "paid": Vanco tells the site nothing, and a line claiming a
   // payment nobody checked is worse than no line.
   const online = options.payOnlineAt !== '';
-  const posting = online ? cost.total.deposits : cost.total.total;
+  const posting = postedByCheck(cost, online);
   lines.push(
     '',
     'WHAT THEY OWE',
@@ -139,6 +139,19 @@ export function applicationNotification(
     subject: `${flagged ? 'Application (conversation flag) — ' : 'Application — '}${values.familyName}`,
     text: lines.join('\n'),
   };
+}
+
+/**
+ * What an envelope will actually contain (#149, #187).
+ *
+ * Written once because the school's copy and the family's copy have to name the
+ * same figure: an office told to expect $865 and a family told to post $100 is
+ * the same submission saying two things. It is not a field on `AmountOwed`,
+ * because what a cheque covers is a fact about *this deployment* — whether the
+ * office has pasted a Vanco page in — and not about what a family owes.
+ */
+function postedByCheck(cost: ApplicationCost, online: boolean): number {
+  return online ? cost.total.deposits : cost.total.total;
 }
 
 /**
@@ -235,7 +248,7 @@ export function applicationConfirmation(
   // not printed at all rather than printed under a payment they do not owe.
   // Reachable only where the payment link is set: without one a check covers
   // everything, and there is always a registration fee to post one for.
-  const posting = online ? cost.total.deposits : cost.total.total;
+  const posting = postedByCheck(cost, online);
 
   /** What to post, and where — the one instruction, written once. */
   const check = (asking: string): string[] => [

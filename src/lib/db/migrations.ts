@@ -834,10 +834,12 @@ export const MIGRATIONS: readonly Migration[] = [
        begin
          if exists (
               select 1 from information_schema.columns
-              where table_name = 'school_details' and column_name = 'registration_url'
+              where table_schema = current_schema()
+                and table_name = 'school_details' and column_name = 'registration_url'
             ) and not exists (
               select 1 from information_schema.columns
-              where table_name = 'school_details' and column_name = 'pay_online_url'
+              where table_schema = current_schema()
+                and table_name = 'school_details' and column_name = 'pay_online_url'
             )
          then
            alter table school_details rename column registration_url to pay_online_url;
