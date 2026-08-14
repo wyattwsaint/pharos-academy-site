@@ -23,7 +23,7 @@
  */
 
 /** What a submit button says while its POST is in flight. */
-const PENDING = 'Saving…';
+const SAVING = 'Saving…';
 
 /** Per-button override, for the forms whose verb is not "save". */
 const PENDING_LABEL = 'data-pending-label';
@@ -38,27 +38,31 @@ const STANDIN = 'data-pending-standin';
 const PENDING_FORM = 'data-pending';
 
 /**
- * Whether anything on any form has been edited since the page loaded.
+ * The forms carrying edits nobody has saved yet.
  *
- * One flag for the document rather than one per form: the question
- * `beforeunload` asks is about the page, and every admin screen that can be
- * edited has exactly one editor form on it.
+ * A set rather than one flag for the page, because a screen can hold more than
+ * one form — Users has a row of them — and saving one of those is not a promise
+ * about what was typed into another. Emptied a form at a time: the guard warns
+ * while anything on the screen is still unsaved, and stops when nothing is.
  */
-let dirty = false;
-
-/** The first edit arms the guard. Hidden fields and buttons never fire this. */
-document.addEventListener('input', (event) => {
-  if (isFormControl(event.target)) dirty = true;
-});
+const unsaved = new Set<HTMLFormElement>();
 
 /**
- * `input` covers typing and most controls, but a `<select>` changed by keyboard
- * and a file chooser both announce themselves with `change` alone in some
- * browsers. Listening to both costs nothing: the flag is idempotent.
+ * The first edit arms the guard, and nothing before it does: hidden fields and
+ * buttons fire neither of these events, which is what keeps the action forms —
+ * a hidden id, a hidden verb, a button — out of the set for good.
+ *
+ * Both events, because `input` covers typing and most controls but a `<select>`
+ * driven by the keyboard and a file chooser announce themselves with `change`
+ * alone in some browsers. Listening to both costs nothing: a set ignores a
+ * second helping of the same form.
  */
-document.addEventListener('change', (event) => {
-  if (isFormControl(event.target)) dirty = true;
-});
+for (const kind of ['input', 'change'] as const) {
+  document.addEventListener(kind, (event) => {
+    const form = editedForm(event.target);
+    if (form) unsaved.add(form);
+  });
+}
 
 document.addEventListener('submit', (event) => {
   const form = event.target;
@@ -67,15 +71,37 @@ document.addEventListener('submit', (event) => {
   // A second submit while the first is in flight. The button is already
   // disabled, so this is only reachable by Enter in a text field or by a
   // script — but "one click, one POST" has to be true for both.
+  //
+  // The mark is cleared by leaving the page, which is what a submission does.
+  // A submission the office *stops* — Escape, or the browser's stop button —
+  // leaves the form marked and needs a reload, and that is the trade this
+  // takes deliberately: a save the school has to reload for is recoverable,
+  // and the duplicate row it would otherwise create is not.
   if (form.hasAttribute(PENDING_FORM)) {
     event.preventDefault();
     return;
   }
   if (event.defaultPrevented) return;
 
-  // The submission itself is what discards the edits' claim on the page: the
-  // navigation it causes must not be the thing we warn about.
-  dirty = false;
+  // Saving this form is what settles this form: the navigation the submission
+  // causes must not be the thing the guard warns about. Anything typed into
+  // another form on the screen is still unsaved, and still worth a warning.
+  unsaved.delete(form);
+
+  /*
+   * And if something else on the screen *is* still unsaved, this submission is
+   * about to be questioned — the guard below warns, and the office may answer
+   * "stay", which cancels the navigation and the POST with it. A button
+   * disabled and relabeled for a save that was then called off would be a lie
+   * only a reload could clear, so this submission is left exactly as it is
+   * with scripts off: not marked, not relabeled, not refused a second time.
+   *
+   * It costs the enhancement on a rare submit — one made from a screen with
+   * unsaved typing in another of its forms — and it is the answer the file's
+   * own rule gives: the enhancement may do nothing, and may never lie.
+   */
+  if (unsaved.size > 0) return;
+
   form.setAttribute(PENDING_FORM, '');
 
   const submitter = pressedButton(event, form);
@@ -85,14 +111,31 @@ document.addEventListener('submit', (event) => {
 /**
  * Coming back with the Back button.
  *
- * A restored page is a page whose form was submitted, which means its button is
- * still disabled and still says "Saving…" about a save that finished long ago.
- * Put it back the way it was drawn.
+ * A restored page is one that was navigated away from, which for these forms
+ * means submitted: its button is still disabled and still says "Saving…" about
+ * a save that finished long ago. Put it back the way it was drawn.
+ *
+ * What is deliberately *not* touched is `unsaved`. A restored page comes back
+ * with its typing intact and its script's own memory intact with it, so the
+ * form the office was halfway through is still the form the office was halfway
+ * through — clearing the set here would throw the warning away at exactly the
+ * moment the edits came back.
  */
 window.addEventListener('pageshow', (event) => {
-  if (!event.persisted) return;
-  dirty = false;
+  if (event.persisted) releasePending();
+});
 
+window.addEventListener('beforeunload', (event) => {
+  if (unsaved.size === 0) return;
+
+  // The browser writes the wording; ours would not be shown. Both spellings,
+  // because which one a browser honours has never been agreed.
+  event.preventDefault();
+  event.returnValue = '';
+});
+
+/** Every pending button back to the button it was drawn as. */
+function releasePending(): void {
   for (const form of document.querySelectorAll('form')) form.removeAttribute(PENDING_FORM);
   for (const standin of document.querySelectorAll(`[${STANDIN}]`)) standin.remove();
   for (const button of document.querySelectorAll<HTMLButtonElement>(`button[${IDLE_LABEL}]`)) {
@@ -100,22 +143,19 @@ window.addEventListener('pageshow', (event) => {
     button.removeAttribute(IDLE_LABEL);
     button.disabled = false;
   }
-});
+}
 
-window.addEventListener('beforeunload', (event) => {
-  if (!dirty) return;
-  // The browser writes the wording; ours would not be shown. Both spellings,
-  // because which one a browser honours has never been agreed.
-  event.preventDefault();
-  event.returnValue = '';
-});
-
-/** A control whose value a person can change — not a hidden field or a button. */
-function isFormControl(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (!target.closest('form')) return false;
-  if (target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return true;
-  return target instanceof HTMLInputElement && target.type !== 'hidden';
+/**
+ * The form an edit happened in, if the thing edited was a control a person can
+ * change — not a hidden field, and not a button.
+ */
+function editedForm(target: EventTarget | null): HTMLFormElement | null {
+  if (!(target instanceof HTMLElement)) return null;
+  const editable =
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    (target instanceof HTMLInputElement && target.type !== 'hidden');
+  return editable ? target.closest('form') : null;
 }
 
 /**
@@ -124,6 +164,12 @@ function isFormControl(target: EventTarget | null): boolean {
  * `submitter` is the answer wherever it exists; the fallback is for a submit by
  * Enter in a browser that leaves it null, where the browser's own rule — the
  * form's first submit button — is the one to copy.
+ *
+ * A submitter that is not a `<button>` gets no pending state rather than a
+ * wrong one: `<input type="submit">` carries its label in `value`, not in its
+ * text, and the admin renders every one of its buttons through `AdminButton`.
+ * The day one does not, this returns null and the form behaves as it does with
+ * scripts off — which is the failure this whole file is allowed to have.
  */
 function pressedButton(event: SubmitEvent, form: HTMLFormElement): HTMLButtonElement | null {
   const submitter = event.submitter;
@@ -150,7 +196,7 @@ function markPending(button: HTMLButtonElement, form: HTMLFormElement): void {
     form.append(standin);
   }
 
-  const label = button.getAttribute(PENDING_LABEL) ?? PENDING;
+  const label = button.getAttribute(PENDING_LABEL) ?? SAVING;
   button.setAttribute(IDLE_LABEL, button.textContent ?? '');
   button.textContent = label;
   button.disabled = true;

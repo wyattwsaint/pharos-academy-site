@@ -26,6 +26,12 @@ interface Props {
   small?: boolean;
   /** `<button>` only. */
   type?: 'submit' | 'button';
+  /**
+   * What this button says while its form's POST is in flight (#199), for the
+   * buttons whose verb is not "save" — "Deleting…", "Signing in…". Left unset
+   * it says "Saving…", which is what most of the admin's buttons are doing.
+   */
+  pendingLabel?: string;
   name?: string;
   value?: string;
   /** What the browser suite finds this button by. */
@@ -39,6 +45,7 @@ const {
   variant = 'primary',
   small = false,
   type = 'submit',
+  pendingLabel,
   name,
   value,
   testId,
@@ -59,7 +66,14 @@ const classes = ['rounded font-semibold', shape, skin, href ? 'inline-block' : n
       <slot />
     </a>
   ) : (
-    <button type={type} name={name} value={value} data-testid={testId} class:list={classes}>
+    <button
+      type={type}
+      name={name}
+      value={value}
+      data-pending-label={pendingLabel}
+      data-testid={testId}
+      class:list={classes}
+    >
       <slot />
     </button>
   )

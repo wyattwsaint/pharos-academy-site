@@ -79,8 +79,23 @@ async function recordPendingState(page: Page): Promise<void> {
   });
 }
 
-function pendingState(page: Page): Promise<unknown> {
+function pendingState(page: Page): Promise<{ label: string; disabled: boolean } | null> {
   return page.evaluate(() => JSON.parse(sessionStorage.getItem('spec:pending') ?? 'null'));
+}
+
+/**
+ * Every dialog the browser raises from here on, dismissed as it arrives.
+ *
+ * Dismissing a `beforeunload` is what "stay on the page" means, so a spec that
+ * collects these is also a spec that keeps the typing it did.
+ */
+function dismissedDialogs(page: Page): string[] {
+  const dialogs: string[] = [];
+  page.on('dialog', (dialog) => {
+    dialogs.push(dialog.type());
+    void dialog.dismiss();
+  });
+  return dialogs;
 }
 
 test.describe('a save', () => {
@@ -130,11 +145,7 @@ test.describe('leaving a form', () => {
   test('warns when a field has been edited', async ({ page }) => {
     await openScreen(page);
 
-    const dialogs: string[] = [];
-    page.on('dialog', (dialog) => {
-      dialogs.push(dialog.type());
-      void dialog.dismiss();
-    });
+    const dialogs = dismissedDialogs(page);
 
     await page.getByLabel('Mission').fill('An edit that has not been saved.');
     await page.getByRole('link', { name: 'People' }).click();
@@ -147,11 +158,7 @@ test.describe('leaving a form', () => {
   test('says nothing about a form that was only looked at', async ({ page }) => {
     await openScreen(page);
 
-    const dialogs: string[] = [];
-    page.on('dialog', (dialog) => {
-      dialogs.push(dialog.type());
-      void dialog.dismiss();
-    });
+    const dialogs = dismissedDialogs(page);
 
     // Focus and a click, but no change: looking at a form is not editing it.
     await page.getByLabel('Mission').click();
@@ -161,15 +168,31 @@ test.describe('leaving a form', () => {
     expect(dialogs).toEqual([]);
   });
 
+  test('still warns when a different form on the screen is submitted', async ({ page }) => {
+    await openScreen(page);
+
+    const dialogs = dismissedDialogs(page);
+
+    // Saving one form settles that form and nothing else. Sign out is the
+    // other form every admin screen carries, and pressing it with the editor
+    // half-typed is exactly the accident the guard exists for.
+    await page.getByLabel('Mission').fill('An edit nobody has saved.');
+    await page.getByRole('button', { name: 'Sign out' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`${SCREEN}$`));
+    expect(dialogs).toEqual(['beforeunload']);
+
+    // And the button that was pressed is still a button: a warning that can be
+    // answered "stay" must not leave a control behind saying it is working.
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeEnabled();
+    await expect(page.getByLabel('Mission')).toHaveValue('An edit nobody has saved.');
+  });
+
   test('says nothing on the way out of a save', async ({ page }) => {
     await openScreen(page);
     await interceptSaves(page);
 
-    const dialogs: string[] = [];
-    page.on('dialog', (dialog) => {
-      dialogs.push(dialog.type());
-      void dialog.dismiss();
-    });
+    const dialogs = dismissedDialogs(page);
 
     // Typing arms the guard, and the save is what disarms it — a warning here
     // would fire on every save the admin ever makes.
