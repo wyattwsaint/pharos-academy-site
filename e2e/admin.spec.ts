@@ -1272,6 +1272,16 @@ test.describe('applications', () => {
     await expect(rowFor(page, family).getByTestId('application-state')).toContainText(
       'In conversation',
     );
+
+    // And an outcome typed into the URL that the row does not bear out says
+    // nothing at all, rather than announcing a move nobody made.
+    const forged = new URL(page.url());
+    forged.searchParams.set('outcome', 'state-enrolled');
+    await page.goto(`${forged.pathname}${forged.search}`);
+    await expect(page.getByTestId('applications-banner')).toHaveCount(0);
+    await expect(rowFor(page, family).getByTestId('application-state')).toContainText(
+      'In conversation',
+    );
   });
 
   /**

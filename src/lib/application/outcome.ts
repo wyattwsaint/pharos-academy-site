@@ -9,6 +9,12 @@
  * afford. The code names a fact the store already wrote; the wording is decided
  * here, from that fact, exactly as it was when the page rendered it inline.
  *
+ * The code being *well formed* is only half of that, and on its own it would
+ * leave the lie standing — `?outcome=state-enrolled` is well formed beside a
+ * family who is still merely submitted. So `outcomeIsAbout` is the other half:
+ * a banner is only rendered beside a row it agrees with, and a URL cannot
+ * announce a move the row itself does not show.
+ *
  * Unrecognised is no banner rather than a complaint about the URL — a stale
  * bookmark is not something the office did.
  */
@@ -107,4 +113,27 @@ export function applicationOutcome(code: string | null): Banner | null {
     };
   }
   return null;
+}
+
+/**
+ * Whether this outcome is true of *that* row.
+ *
+ * The screen asks before it renders, because the code arrives in a URL and the
+ * URL is a value anybody can type: a well-formed `state-enrolled` beside a
+ * family who is still merely submitted is the school's own screen saying
+ * something that is not so. Asking the row makes the forgery impossible rather
+ * than unlikely — and it is the same question the office would ask, which is
+ * whether the sentence matches the two lines under it.
+ *
+ * The three codes that report no move have no row to agree with: "nothing
+ * changed" is true whatever the row says.
+ */
+export function outcomeIsAbout(
+  code: string,
+  row: { state: ApplicationState; payment: { mode: PaymentMode; status: RecordedPaymentStatus } },
+): boolean {
+  if (code === 'state-unmoved' || code === 'payment-unmoved' || code === 'unreadable') return true;
+  if (code.startsWith('state-')) return code === stateOutcome(row.state);
+  if (code.startsWith('payment-')) return code === paymentOutcome(row.payment.mode, row.payment.status);
+  return false;
 }

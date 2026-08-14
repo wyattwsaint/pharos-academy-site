@@ -806,6 +806,24 @@ wearing the school's own domain.
 
 Not: "deploy" — republishing changes no code and produces no deployment.
 
+### outcome code
+
+What an action says for itself when the answer travels back through a redirect
+rather than being rendered by the post. A short code in the query string —
+`state-enrolled`, `payment-cheque-received` — and never the sentence: a message
+in a URL is a message anybody can rewrite, so the code names a fact the store
+already wrote and the screen decides the wording from it, refusing any part that
+is not in the closed lists (#201).
+
+Where a **return path** names a screen, an outcome code names what happened, and
+on Applications the two halves travel together: the code says what moved, the
+`at` parameter and the fragment say which row it moved on, and the banner renders
+beside the buttons that were pressed.
+
+Not: the only way an outcome is reported. The editors post and render, because
+they hold a revalidation answer a redirect would throw away; a screen with no
+such answer to lose redirects instead, and a refresh then repeats nothing.
+
 ### export
 
 The school's own copy of the **editable set**, as one ZIP: the content as JSON,

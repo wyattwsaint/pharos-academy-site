@@ -8,7 +8,7 @@ import {
   applyApplicationAction,
   parseApplicationAction,
 } from '../../lib/application/admin-flow.js';
-import { applicationOutcome } from '../../lib/application/outcome.js';
+import { applicationOutcome, outcomeIsAbout } from '../../lib/application/outcome.js';
 import { AGREEMENT_DOCUMENTS, agreementLabel } from '../../lib/application/agreements.js';
 import { applicationCost } from '../../lib/application/application.js';
 import {
@@ -95,7 +95,8 @@ if (Astro.request.method === 'POST') {
   return Astro.redirect(`${back.pathname}${back.search}${back.hash}`, 303);
 }
 
-const banner: Banner | null = applicationOutcome(Astro.url.searchParams.get('outcome'));
+const outcomeCode = Astro.url.searchParams.get('outcome');
+const banner: Banner | null = applicationOutcome(outcomeCode);
 /** Which row the banner belongs beside. */
 const actedOn = Astro.url.searchParams.get('at');
 
@@ -139,12 +140,22 @@ const owedOn = (application: ApplicationRecord) => {
 
 
 /**
- * The one case where the outcome cannot be shown beside the row: a post that
- * never named an application, or one naming a row this screen is not showing.
- * It is reported at the top rather than dropped — an answer nobody sees is
- * worse than an answer in the wrong place.
+ * Whether the banner belongs beside this row: it is the row that was acted on,
+ * and the row bears the outcome out. The second half is what makes a hand-typed
+ * `?outcome=` harmless — see `outcomeIsAbout`.
  */
-const strayBanner =
+const bannerFor = (application: ApplicationRecord) =>
+  outcomeCode !== null && actedOn === application.id && outcomeIsAbout(outcomeCode, application)
+    ? banner
+    : null;
+
+/**
+ * Whether no row will show it: a post that never named an application, or one
+ * naming a row this screen is not showing. Then it goes at the top rather than
+ * being dropped — an answer nobody sees is worse than an answer above the list.
+ * An outcome the named row contradicts is not stray, and is shown nowhere.
+ */
+const noRowShowsTheBanner =
   banner !== null && !applications.some((application) => application.id === actedOn);
 
 /** Which applications asked for a seat more than once, for the note on the row. */
@@ -165,7 +176,7 @@ const resubmittedIds = new Set(
   </p>
 
   {
-    banner && strayBanner && (
+    banner && noRowShowsTheBanner && (
       <AdminBanner ok={banner.ok} message={banner.message} testId="applications-banner" />
     )
   }
@@ -201,6 +212,7 @@ const resubmittedIds = new Set(
       <ul class="mt-8 flex flex-col gap-10">
         {applications.map((application) => {
           const owed = owedOn(application);
+          const rowBanner = bannerFor(application);
           const paid = paymentStatusNow(application.payment, now);
           const note = paymentAwaitedNote(application.payment, now);
           const delivery = applicationDeliveryNote(application);
@@ -326,8 +338,12 @@ const resubmittedIds = new Set(
                 the two rows of buttons, so the sentence about what just moved
                 is read against the controls that moved it.
               */}
-              {banner && actedOn === application.id && (
-                <AdminBanner ok={banner.ok} message={banner.message} testId="applications-banner" />
+              {rowBanner && (
+                <AdminBanner
+                  ok={rowBanner.ok}
+                  message={rowBanner.message}
+                  testId="applications-banner"
+                />
               )}
 
               <div class="mt-5 flex flex-col gap-4">
