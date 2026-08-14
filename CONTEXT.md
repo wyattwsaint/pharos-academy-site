@@ -336,9 +336,16 @@ the class pages and the Admissions page in the same republish. A test walks the
 public templates and fails on a dollar figure written as a literal.
 
 Saving it asks for an **explicit confirmation naming the change and its effect
-on every family**, which no other editable record does — and an identical save
-is refused rather than **stamped**, because the stamp is the only control on
-the money once permissions are flat.
+on every family** — the only save on the site that confirms, though the two
+things that take something away now confirm the same way (deleting an account,
+removing a [one-off](#one-off)) — and an identical save is refused rather than
+**stamped**, because the stamp is the only control on the money once
+permissions are flat.
+
+The confirmation is a server round trip, never a browser dialog: the first post
+renders a screen naming what is about to happen, and a second post carrying the
+intent back in hidden fields plus a confirm field carries it out. That is what
+makes it readable with scripts off and assertable from the browser suite.
 
 Separate from **school details** deliberately: sharing a row would mean either a
 phone-number typo asks the "this affects every family" question or a deposit
@@ -501,7 +508,11 @@ record of the year, and the phone reading it decides what to draw.
 
 It is also the one record on this site that is **deleted rather than kept**: a
 cancelled concert left on a subscribed feed is a family driving to a school that
-is dark.
+is dark. Because it is the one delete, removing it **confirms first**, on a
+screen naming the one-off and its date and saying again what a subscribed phone
+will do — the same round trip [money settings](#money-settings) uses. Confirming
+lands back on the list, which names what went and whether the
+[republish](#republish) reached the live site.
 
 Not: "event" on its own (which also names an application's lifecycle events),
 "closure" (a day the school is shut, which belongs to the year), "announcement".
@@ -770,6 +781,11 @@ other** from the Users screen. There are no reset links and no transactional
 email, because there is no mail sender to own. A reset ends that person's
 sessions everywhere, because the usual reason to reset a password is that
 somebody else has it.
+
+Deleting an account is the other half of the screen, and it **confirms first**:
+the admin cannot create an account, so a deleted one is gone until whoever
+installed the site puts it back. The confirmation names the account and says so
+— the same round trip [money settings](#money-settings) uses.
 
 ### stamp
 

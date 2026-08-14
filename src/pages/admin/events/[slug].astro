@@ -3,10 +3,12 @@ export const prerender = false;
 
 import AdminBanner from '../../../components/AdminBanner.astro';
 import AdminButton from '../../../components/AdminButton.astro';
+import AdminConfirm from '../../../components/AdminConfirm.astro';
 import AdminField from '../../../components/AdminField.astro';
 import AdminPublishing from '../../../components/AdminPublishing.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import type { Banner } from '../../../lib/admin/banner.js';
+import { isConfirmed } from '../../../lib/admin/confirmation.js';
 import {
   EMPTY,
   LABELS,
@@ -23,7 +25,13 @@ import {
 } from '../../../lib/admin/revalidate.js';
 import { formatStamp } from '../../../lib/admin/formatting.js';
 import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
-import { eventSlug, TIMED_EVENT_MINUTES, type CalendarEvent } from '../../../lib/calendar/event.js';
+import {
+  eventDateLabel,
+  eventSlug,
+  eventTimeLabel,
+  TIMED_EVENT_MINUTES,
+  type CalendarEvent,
+} from '../../../lib/calendar/event.js';
 import { createEvent, deleteEvent, getEvent, saveEvent } from '../../../lib/calendar/store.js';
 import { getDb } from '../../../lib/db/client.js';
 
@@ -38,6 +46,11 @@ import { getDb } from '../../../lib/db/client.js';
  * **This is the one screen with a delete**, and the reason is the feed. An
  * announcement that has aged out is history and stays; a cancelled concert left
  * on a subscribed calendar is a family driving to a school that is dark.
+ *
+ * Because it is the one delete, it **confirms first** (#200), the way Money
+ * confirms: the first press replaces the form with a screen naming the event
+ * and its date and saying again what a subscribed phone will do, and only the
+ * second press — the same form plus `confirm` — removes it.
  *
  * The field, button, banner and Publishing markup this screen used to spell out
  * for itself now comes from the shared components (#194). Publishing brings its
@@ -69,43 +82,62 @@ if (!adding && !event) {
 let values: EventFields = event ? fieldsOf(event) : EMPTY;
 let errors: EventErrors = {};
 let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republished'));
+/** True only on the confirmation screen, which replaces the form. */
+let confirmingRemoval = false;
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
 
-  if (form.get('remove') !== null && event) {
+  const removing = form.get('remove') !== null && event !== undefined;
+
+  if (removing && !isConfirmed(form)) {
+    // The first press asks. Nothing is written and nothing is parsed: the
+    // removal form carries no fields, so parsing it would refuse an event the
+    // reader has not asked to edit.
+    confirmingRemoval = true;
+  } else if (removing && event) {
+    const removed = event.title;
     await deleteEvent(db, event.slug);
-    await revalidateAll({
+    const result = await revalidateAll({
       origin: revalidationOrigin(Astro.url),
       bypassToken: isrBypassToken(),
     });
-    return Astro.redirect('/admin/events', 303);
-  }
-
-  const parsed = parseEvent(form);
-  values = parsed.values;
-  errors = parsed.errors;
-
-  if (Object.keys(errors).length > 0) {
-    banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+    /*
+     * The answer travels in the query string, the way a republish's does
+     * (#198): this screen no longer exists to show it on, and the list is
+     * where the removal is visible. In the URL rather than rendered here so a
+     * refresh of the list repeats nothing.
+     */
+    const back = new URL('/admin/events', Astro.url.origin);
+    back.searchParams.set('removed', removed);
+    back.searchParams.set('republished', result.ok ? 'live' : 'stale');
+    return Astro.redirect(`${back.pathname}${back.search}`, 303);
   } else {
-    try {
-      event = event
-        ? await saveEvent(db, event.slug, parsed.edit, actor.name)
-        : await createEvent(
-            db,
-            eventSlug(parsed.edit.heldOn, parsed.edit.title),
-            parsed.edit,
-            actor.name,
-          );
-      values = fieldsOf(event);
-      const result = await revalidateAll({
-        origin: revalidationOrigin(Astro.url),
-        bypassToken: isrBypassToken(),
-      });
-      banner = { ok: result.ok, message: describeRevalidation(result) };
-    } catch (error) {
-      banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
+    const parsed = parseEvent(form);
+    values = parsed.values;
+    errors = parsed.errors;
+
+    if (Object.keys(errors).length > 0) {
+      banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+    } else {
+      try {
+        event = event
+          ? await saveEvent(db, event.slug, parsed.edit, actor.name)
+          : await createEvent(
+              db,
+              eventSlug(parsed.edit.heldOn, parsed.edit.title),
+              parsed.edit,
+              actor.name,
+            );
+        values = fieldsOf(event);
+        const result = await revalidateAll({
+          origin: revalidationOrigin(Astro.url),
+          bypassToken: isrBypassToken(),
+        });
+        banner = { ok: result.ok, message: describeRevalidation(result) };
+      } catch (error) {
+        banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
+      }
     }
   }
 }
@@ -169,26 +201,55 @@ function fieldsOf(row: CalendarEvent): EventFields {
 
   {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner" retry />}
 
-  <form method="post" action={action} class="mt-8 flex flex-col gap-6">
-    {
-      FIELDS.map((field) => (
-        <AdminField
-          name={field.name}
-          type={field.type}
-          label={LABELS[field.name]}
-          value={values[field.name]}
-          hint={field.hint}
-          error={errors[field.name]}
-          optional={field.optional}
-        />
-      ))
-    }
+  {
+    confirmingRemoval && event ? (
+      <AdminConfirm
+        heading="Take This Off the Calendar?"
+        action={action}
+        confirmLabel="Yes, take it off the calendar"
+        destructive
+        declineHref={action}
+        declineLabel="Go back without removing it"
+      >
+        <Fragment slot="fields">
+          <input type="hidden" name="remove" value="1" />
+        </Fragment>
 
-    <AdminButton class="self-start">Save</AdminButton>
-  </form>
+        <p class="mt-3">
+          <strong>{event.title}</strong> is on {eventDateLabel(event.heldOn)}
+          {event.startTime ? `, at ${eventTimeLabel(event.startTime)}` : ', all day'}.
+        </p>
+        <p class="mt-3">
+          Taking it off removes it from the calendar page and from the file parents subscribe to.
+          Phones that already have it drop it at their next check — usually within a few hours,
+          sometimes a day or two — so a family who has written it down may turn up anyway. If it
+          is close, text them as well.
+        </p>
+        <p class="mt-3">
+          Putting it back means typing it in again. Nothing else in the admin deletes anything.
+        </p>
+      </AdminConfirm>
+    ) : (
+      <form method="post" action={action} class="mt-8 flex flex-col gap-6">
+        {FIELDS.map((field) => (
+          <AdminField
+            name={field.name}
+            type={field.type}
+            label={LABELS[field.name]}
+            value={values[field.name]}
+            hint={field.hint}
+            error={errors[field.name]}
+            optional={field.optional}
+          />
+        ))}
+
+        <AdminButton class="self-start">Save</AdminButton>
+      </form>
+    )
+  }
 
   {
-    event && (
+    event && !confirmingRemoval && (
       <AdminPublishing stamp={formatStamp(event.lastEditedBy, event.lastEditedAt)}>
         <p class="mt-2">
           Parents’ phones check the subscribed calendar on their own schedule — usually within a
@@ -198,9 +259,10 @@ function fieldsOf(row: CalendarEvent): EventFields {
         <form method="post" action={action} class="mt-6">
           <p class="text-sm">
             Canceled? Take it off, and it disappears from the calendar and from every subscribed
-            phone at their next check. Nothing else here deletes anything.
+            phone at their next check. You will be asked to confirm first. Nothing else here
+            deletes anything.
           </p>
-          <AdminButton variant="secondary" name="remove" value="1" class="mt-3">
+          <AdminButton variant="destructive" name="remove" value="1" class="mt-3">
             Take this off the calendar
           </AdminButton>
         </form>

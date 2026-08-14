@@ -3,11 +3,13 @@ export const prerender = false;
 
 import AdminBanner from '../../components/AdminBanner.astro';
 import AdminButton from '../../components/AdminButton.astro';
+import AdminConfirm from '../../components/AdminConfirm.astro';
 import AdminField from '../../components/AdminField.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import type { Banner } from '../../lib/admin/banner.js';
 import {
   MIN_PASSWORD_LENGTH,
+  type AccountRef,
   applyUserAction,
   humanErrorMessage,
   listUsers,
@@ -31,16 +33,26 @@ import { getDb } from '../../lib/db/client.js';
  *
  * Permissions are flat, so this screen is not gated: whoever is signed in can
  * reset and delete. Attribution is the control, which is why it exists.
+ *
+ * **Deleting confirms first** (#200), the way Money confirms: the first post
+ * renders a confirmation naming the account, and only the second one — carrying
+ * the same hidden fields back plus `confirm` — deletes. An account cannot be
+ * put back from this screen, which makes an unconfirmed click the most
+ * expensive click in the admin.
  */
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
 let banner: Banner | null = null;
+/** Set only on the confirmation screen, which replaces the list. */
+let confirming: AccountRef | null = null;
 
 if (Astro.request.method === 'POST') {
   const action = parseUserAction(await Astro.request.formData());
   if (!action) {
     banner = { ok: false, message: 'Nothing happened — that form did not say what it wanted.' };
+  } else if (action.intent === 'confirm-delete') {
+    confirming = { userId: action.userId, displayName: action.displayName };
   } else {
     try {
       banner = { ok: true, message: await applyUserAction(db, action) };
@@ -61,43 +73,69 @@ const users = await listUsers(db);
 
   {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="users-banner" />}
 
-  <ul class="mt-8 flex flex-col gap-6">
-    {
-      users.map((user) => (
-        <li class="border-t border-navy/15 pt-6">
-          <h2 class="text-xl font-semibold text-navy">{user.displayName}</h2>
-          <p class="mt-1">
-            Signs in as <span class="font-semibold">{user.username}</span>
-          </p>
+  {
+    confirming ? (
+      <AdminConfirm
+        heading={`Delete ${confirming.displayName}?`}
+        confirmLabel={`Yes, delete ${confirming.displayName}`}
+        destructive
+        declineHref="/admin/users"
+        declineLabel="Go back without deleting"
+      >
+        <Fragment slot="fields">
+          <input type="hidden" name="intent" value="delete" />
+          <input type="hidden" name="userId" value={confirming.userId} />
+          <input type="hidden" name="displayName" value={confirming.displayName} />
+        </Fragment>
 
-          <form method="post" class="mt-4 flex flex-wrap items-end gap-3">
-            <input type="hidden" name="intent" value="reset" />
-            <input type="hidden" name="userId" value={user.id} />
-            <input type="hidden" name="displayName" value={user.displayName} />
-            <AdminField
-              name="password"
-              id={`password-${user.id}`}
-              type="password"
-              label={`New password for ${user.displayName}`}
-              autocomplete="new-password"
-              minlength={MIN_PASSWORD_LENGTH}
-              class="min-w-56"
-            />
-            <AdminButton>Reset password</AdminButton>
-          </form>
+        <p class="mt-3">
+          {confirming.displayName} loses their login and is signed out everywhere. Nothing they
+          have edited changes, and their name stays on it.
+        </p>
+        <p class="mt-3">
+          <strong>This screen cannot put the account back.</strong> Accounts are set up when the
+          site is installed, so a new one for {confirming.displayName} is a job for whoever
+          installed the site.
+        </p>
+      </AdminConfirm>
+    ) : (
+      <ul class="mt-8 flex flex-col gap-6">
+        {users.map((user) => (
+          <li class="border-t border-navy/15 pt-6">
+            <h2 class="text-xl font-semibold text-navy">{user.displayName}</h2>
+            <p class="mt-1">
+              Signs in as <span class="font-semibold">{user.username}</span>
+            </p>
 
-          <form method="post" class="mt-3">
-            <input type="hidden" name="intent" value="delete" />
-            <input type="hidden" name="userId" value={user.id} />
-            <input type="hidden" name="displayName" value={user.displayName} />
-            <button type="submit" class="underline underline-offset-4">
-              Delete {user.displayName}
-            </button>
-          </form>
-        </li>
-      ))
-    }
-  </ul>
+            <form method="post" class="mt-4 flex flex-wrap items-end gap-3">
+              <input type="hidden" name="intent" value="reset" />
+              <input type="hidden" name="userId" value={user.id} />
+              <input type="hidden" name="displayName" value={user.displayName} />
+              <AdminField
+                name="password"
+                id={`password-${user.id}`}
+                type="password"
+                label={`New password for ${user.displayName}`}
+                autocomplete="new-password"
+                minlength={MIN_PASSWORD_LENGTH}
+                class="min-w-56"
+              />
+              <AdminButton>Reset password</AdminButton>
+            </form>
+
+            <form method="post" class="mt-3">
+              <input type="hidden" name="intent" value="delete" />
+              <input type="hidden" name="userId" value={user.id} />
+              <input type="hidden" name="displayName" value={user.displayName} />
+              <AdminButton variant="destructive" small>
+                Delete {user.displayName}
+              </AdminButton>
+            </form>
+          </li>
+        ))}
+      </ul>
+    )
+  }
 
   <p class="mt-10 border-t border-navy/15 pt-6">
     Accounts are set up when the site is installed. If someone new needs one, that is a job for

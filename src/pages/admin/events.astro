@@ -1,8 +1,10 @@
 ---
 export const prerender = false;
 
+import AdminBanner from '../../components/AdminBanner.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { formatStamp } from '../../lib/admin/formatting.js';
+import { removalOutcome } from '../../lib/admin/republish-outcome.js';
 import { eventDateLabel, eventTimeLabel } from '../../lib/calendar/event.js';
 import { listEvents, listSyncedEvents } from '../../lib/calendar/store.js';
 import { CALENDAR_PATH } from '../../lib/calendar/views.js';
@@ -40,6 +42,14 @@ const lastRead = synced.reduce<Date | null>(
   (latest, row) => (latest === null || row.syncedAt > latest ? row.syncedAt : latest),
   null,
 );
+/**
+ * What a removal that redirected here has to say for itself (#200). Nothing
+ * else on this screen acts, so this is the only banner it can carry.
+ */
+const banner = removalOutcome(
+  Astro.url.searchParams.get('removed'),
+  Astro.url.searchParams.get('republished'),
+);
 ---
 
 <AdminLayout title="Events" actor={actor}>
@@ -53,6 +63,8 @@ const lastRead = synced.reduce<Date | null>(
       class="underline underline-offset-4">School year</a
     >.
   </p>
+
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="events-banner" retry />}
 
   <p class="mt-8">
     <a

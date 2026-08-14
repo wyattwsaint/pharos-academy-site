@@ -18,6 +18,7 @@
  * where being told the same "no" three times is the correct amount.
  */
 
+import { isConfirmed } from '../admin/confirmation.js';
 import {
   moneyChanges,
   parseMoneySettings,
@@ -25,9 +26,6 @@ import {
   type MoneyErrors,
   type MoneySettings,
 } from './settings.js';
-
-/** The form field whose presence means "yes, I have read what changes". */
-export const CONFIRM_FIELD = 'confirm';
 
 /** One `name`/`value` pair as the form posts it. Repeated names are repeated pairs. */
 export type MoneyFormField = { name: string; value: string };
@@ -82,5 +80,5 @@ export function moneyFormOutcome(form: FormData, current: MoneySettings): MoneyF
   const changes = moneyChanges(current, values);
   if (changes.length === 0) return { kind: 'unchanged', values };
 
-  return { kind: form.get(CONFIRM_FIELD) === null ? 'confirm' : 'save', values, changes };
+  return { kind: isConfirmed(form) ? 'save' : 'confirm', values, changes };
 }

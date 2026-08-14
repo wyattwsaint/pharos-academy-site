@@ -225,8 +225,11 @@ test.describe('the Events screen', () => {
 
     await page.goto(`/admin/events/${eventSlug(heldOn, 'Suite open house')}`);
     await page.getByRole('button', { name: 'Take this off the calendar' }).click();
-    await expect(page).toHaveURL(/\/admin\/events$/);
-    await expect(page.locator('body')).not.toContainText('Suite open house');
+    await page.getByRole('button', { name: 'Yes, take it off the calendar' }).click();
+    await expect(page).toHaveURL(/\/admin\/events\?/);
+    // Gone from the list. The banner still names it, which is the point of the
+    // banner, so this asks the list rather than the whole page.
+    await expect(page.getByRole('link', { name: 'Suite open house' })).toHaveCount(0);
   });
 
   /*
@@ -254,6 +257,62 @@ test.describe('the Events screen', () => {
 
     await page.goto(`/admin/events/${eventSlug(gone, 'Suite spring concert')}`);
     await page.getByRole('button', { name: 'Take this off the calendar' }).click();
-    await expect(page).toHaveURL(/\/admin\/events$/);
+    await page.getByRole('button', { name: 'Yes, take it off the calendar' }).click();
+    await expect(page).toHaveURL(/\/admin\/events\?/);
+  });
+
+  /**
+   * The confirmation the one delete on the site owes (#200).
+   *
+   * The two tests above prove confirming removes; this one proves the press
+   * before it does not, and that declining leaves the event exactly where it
+   * was — which is the half a person only finds out about by making the
+   * mistake.
+   */
+  test('asks before taking a one-off off the calendar, and takes no for an answer', async ({
+    page,
+  }) => {
+    const held = addDays(schoolToday(new Date()), 120);
+    const editor = `/admin/events/${eventSlug(held, 'Suite garden party')}`;
+
+    await page.goto('/admin/events/new');
+    await page.getByLabel('Date').fill(held);
+    await page.getByLabel('What it is').fill('Suite garden party');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+
+    // The first press asks, naming the event, its date and what a subscribed
+    // phone will do about it.
+    await page.getByRole('button', { name: 'Take this off the calendar' }).click();
+    const confirm = page.getByTestId('confirm');
+    await expect(confirm).toContainText('Suite garden party');
+    await expect(confirm).toContainText('subscribe to');
+    await expect(page).toHaveURL(new RegExp(`${editor}$`));
+
+    // Declining leaves it on the calendar and on this screen.
+    await page.getByRole('link', { name: 'Go back without removing it' }).click();
+    await expect(page.getByTestId('confirm')).toHaveCount(0);
+    await expect(page.getByLabel('What it is')).toHaveValue('Suite garden party');
+
+    await page.goto(CALENDAR_PATH);
+    await expect(
+      page.locator(`[data-section="calendar-months"] td:has(time[datetime="${held}"])`),
+    ).toContainText('Suite garden party');
+
+    // And confirming does remove it, says so on the list it lands on, and
+    // takes it off the grid.
+    await page.goto(editor);
+    await page.getByRole('button', { name: 'Take this off the calendar' }).click();
+    await page.getByRole('button', { name: 'Yes, take it off the calendar' }).click();
+    await expect(page).toHaveURL(/\/admin\/events\?/);
+
+    const banner = page.getByTestId('events-banner');
+    await expect(banner).toContainText('Suite garden party is off the calendar.');
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+
+    await page.goto(CALENDAR_PATH);
+    await expect(
+      page.locator(`[data-section="calendar-months"] td:has(time[datetime="${held}"])`),
+    ).not.toContainText('Suite garden party');
   });
 });

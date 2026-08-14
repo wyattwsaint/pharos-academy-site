@@ -526,20 +526,77 @@ test.describe('editing a person', () => {
 });
 
 /**
- * Resetting and deleting are proved against real Postgres in
- * `src/lib/admin/store.test.ts`, not here: every spec in this file shares one
- * dev server and therefore one database, and a browser test that reset the
- * suite's own password would sign every other spec out. What is asserted here
- * is what only a browser can see — that the screen offers the two actions #18
- * §4 asks for, and nothing else.
+ * Resetting is proved against real Postgres in `src/lib/admin/store.test.ts`,
+ * not here: every spec in this file shares one dev server and therefore one
+ * database, and a browser test that reset the suite's own password would sign
+ * every other spec out. What is asserted here is what only a browser can see —
+ * that the screen offers the two actions #18 §4 asks for and nothing else, and
+ * that deleting takes two presses (#200).
+ *
+ * Deleting is aimed at Suite Spare, the second account the throwaway database
+ * seeds for exactly this (`src/lib/db/client.ts`). It is the one account in the
+ * suite whose disappearance costs nothing.
  */
 test.describe('the Users screen', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  /** The account the suite may delete, and the button that starts deleting it. */
+  const SPARE = 'Suite Spare';
+
   test('offers reset and delete, and no way to create an account', async ({ page }) => {
     await signIn(page, '/admin/users');
 
-    await expect(page.getByRole('button', { name: 'Reset password' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Delete / })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Reset password' }).first()).toBeVisible();
+    // By shape, not by name: the spare account below is deleted once per dev
+    // server, and the suite's own account is always here to offer a delete.
+    await expect(page.getByRole('button', { name: /^Delete / }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add account' })).toHaveCount(0);
+  });
+
+  test('lets the school back out of deleting an account', async ({ page }) => {
+    await signIn(page, '/admin/users');
+
+    const start = page.getByRole('button', { name: `Delete ${SPARE}` });
+    // See the test below: the spare can only be deleted once per dev server.
+    test.skip((await start.count()) === 0, `${SPARE} has already been deleted on this server`);
+
+    await start.click();
+    await expect(page.getByTestId('confirm')).toContainText(`Delete ${SPARE}?`);
+
+    await page.getByRole('link', { name: 'Go back without deleting' }).click();
+
+    await expect(page.getByTestId('confirm')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: `Delete ${SPARE}` })).toBeVisible();
+  });
+
+  test('will not delete an account until the school confirms it', async ({ page }) => {
+    await signIn(page, '/admin/users');
+
+    const start = page.getByRole('button', { name: `Delete ${SPARE}` });
+    // A retried run finds this account already gone: it can only be deleted
+    // once per dev server, and no screen can put it back.
+    test.skip((await start.count()) === 0, `${SPARE} has already been deleted on this server`);
+
+    await start.click();
+
+    // Step one: a confirmation naming the account and what cannot be undone,
+    // not a delete.
+    const confirm = page.getByTestId('confirm');
+    await expect(confirm).toContainText(`Delete ${SPARE}?`);
+    await expect(confirm).toContainText('cannot put the account back');
+
+    // Nothing has happened yet: coming back shows the account still there.
+    await page.goto('/admin/users');
+    await expect(page.getByRole('heading', { name: SPARE })).toBeVisible();
+
+    // Step two: confirm, and now it deletes and says so.
+    await page.getByRole('button', { name: `Delete ${SPARE}` }).click();
+    await page.getByRole('button', { name: `Yes, delete ${SPARE}` }).click();
+
+    const banner = page.getByTestId('users-banner');
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+    await expect(banner).toContainText(`Deleted ${SPARE}.`);
+    await expect(page.getByRole('heading', { name: SPARE })).toHaveCount(0);
   });
 });
 
