@@ -2,6 +2,8 @@
 export const prerender = false;
 
 import AdminBanner from '../../components/AdminBanner.astro';
+import AdminButton from '../../components/AdminButton.astro';
+import AdminField from '../../components/AdminField.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import type { Banner } from '../../lib/admin/banner.js';
 import {
@@ -72,26 +74,16 @@ const users = await listUsers(db);
             <input type="hidden" name="intent" value="reset" />
             <input type="hidden" name="userId" value={user.id} />
             <input type="hidden" name="displayName" value={user.displayName} />
-            <div class="flex flex-col gap-2">
-              <label for={`password-${user.id}`} class="font-semibold">
-                New password for {user.displayName}
-              </label>
-              <input
-                id={`password-${user.id}`}
-                name="password"
-                type="password"
-                autocomplete="new-password"
-                minlength={MIN_PASSWORD_LENGTH}
-                required
-                class="rounded border border-navy/40 bg-white px-3 py-2"
-              />
-            </div>
-            <button
-              type="submit"
-              class="rounded bg-navy px-4 py-2.5 font-semibold text-cream hover:bg-navy-deep"
-            >
-              Reset password
-            </button>
+            <AdminField
+              name="password"
+              id={`password-${user.id}`}
+              type="password"
+              label={`New password for ${user.displayName}`}
+              autocomplete="new-password"
+              minlength={MIN_PASSWORD_LENGTH}
+              class="min-w-56"
+            />
+            <AdminButton>Reset password</AdminButton>
           </form>
 
           <form method="post" class="mt-3">

@@ -24,10 +24,22 @@ import type { Person } from './person.js';
  * as a staff page with nobody on it.
  */
 export async function listPeople(db: Db): Promise<Person[]> {
-  const rows = await db.select().from(peopleTable).orderBy(asc(peopleTable.slug));
+  const rows = await listPeopleForAdmin(db);
   if (rows.length === 0) {
     throw new Error('The people list is empty — run `npm run db:migrate`.');
   }
+  return rows;
+}
+
+/**
+ * The same list with the guard left off, for the admin list alone (#197).
+ *
+ * The admin People screen is where an empty table is *reported* — "this
+ * database has not been set up" — rather than shipped to a parent, so it has to
+ * render "nobody" instead of failing the way the staff page must.
+ */
+export async function listPeopleForAdmin(db: Db): Promise<Person[]> {
+  const rows = await db.select().from(peopleTable).orderBy(asc(peopleTable.slug));
   return rows.map(toPerson).sort(byLeadershipThenName);
 }
 

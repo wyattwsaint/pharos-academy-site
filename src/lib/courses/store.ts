@@ -27,10 +27,22 @@ import type { Course, EnrolmentUnit, RateTier, Stage } from './course.js';
  * surfaces is how that ships to production and is discovered by a parent.
  */
 export async function listCourses(db: Db): Promise<Course[]> {
-  const rows = await db.select().from(coursesTable);
+  const rows = await listCoursesForAdmin(db);
   if (rows.length === 0) {
     throw new Error('The course catalog is empty — run `npm run db:migrate`.');
   }
+  return rows;
+}
+
+/**
+ * The same catalogue with the guard left off, for the admin list alone (#197).
+ *
+ * The admin Classes screen is where an empty catalogue is *reported* — "this
+ * database has not been set up" — rather than shipped to a parent, so it has to
+ * render "none" instead of failing the way the public surfaces must.
+ */
+export async function listCoursesForAdmin(db: Db): Promise<Course[]> {
+  const rows = await db.select().from(coursesTable);
   return rows.map(toCourse).sort((a, b) => a.title.localeCompare(b.title));
 }
 

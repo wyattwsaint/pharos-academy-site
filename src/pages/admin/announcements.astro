@@ -1,6 +1,7 @@
 ---
 export const prerender = false;
 
+import AdminButton from '../../components/AdminButton.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { listAnnouncements } from '../../lib/announcements/store.js';
 import { postedOnLabel } from '../../lib/announcements/views.js';
@@ -39,38 +40,42 @@ const announcements = await listAnnouncements(db);
   </p>
 
   <p class="mt-8">
-    <a
-      href="/admin/announcements/new"
-      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
-    >
-      Post an announcement
-    </a>
+    <AdminButton href="/admin/announcements/new">Post an announcement</AdminButton>
   </p>
 
-  <ul class="mt-8 flex flex-col gap-6">
-    {
-      announcements.map((announcement) => (
-        <li class="border-t border-navy/15 pt-6">
-          <h2 class="text-xl font-semibold text-navy">
-            <a
-              href={`/admin/announcements/${announcement.slug}`}
-              class="underline underline-offset-4"
-            >
-              {announcement.headline}
-            </a>
-          </h2>
-          <p class="mt-1 text-sm">
-            {postedOnLabel(announcement.postedOn)}
-            {' · '}
-            {announcement.attachmentFilename ?? 'No PDF'}
-          </p>
-          <p class="mt-1 text-sm" data-testid={`stamp-${announcement.slug}`}>
-            {formatStamp(announcement.lastEditedBy, announcement.lastEditedAt)}
-          </p>
-        </li>
-      ))
-    }
-  </ul>
+  {
+    announcements.length === 0 ? (
+      <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-announcements">
+        Nothing has been announced yet. The first announcement posted here goes to the top of the
+        news page the moment it is saved, and stays there. Nothing has been taken down — an
+        announcement is never deleted — so an empty list is a school that has not said anything
+        here yet.
+      </p>
+    ) : (
+      <ul class="mt-8 flex flex-col gap-6">
+        {announcements.map((announcement) => (
+          <li class="border-t border-navy/15 pt-6">
+            <h2 class="text-xl font-semibold text-navy">
+              <a
+                href={`/admin/announcements/${announcement.slug}`}
+                class="underline underline-offset-4"
+              >
+                {announcement.headline}
+              </a>
+            </h2>
+            <p class="mt-1 text-sm">
+              {postedOnLabel(announcement.postedOn)}
+              {' · '}
+              {announcement.attachmentFilename ?? 'No PDF'}
+            </p>
+            <p class="mt-1 text-sm" data-testid={`stamp-${announcement.slug}`}>
+              {formatStamp(announcement.lastEditedBy, announcement.lastEditedAt)}
+            </p>
+          </li>
+        ))}
+      </ul>
+    )
+  }
 
   <p class="mt-10 border-t border-navy/15 pt-6">
     Nothing is ever deleted here. An old announcement stays on the news page, which is where a

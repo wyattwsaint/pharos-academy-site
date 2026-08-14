@@ -13,7 +13,8 @@
  * Every kind of control the admin has is here, and the wiring is written once
  * for all of them:
  *
- *   text, tel, email, date, url, number, time   an `<input type>`
+ *   text, tel, email, date, url, number, time,
+ *   password                                    an `<input type>`
  *   multiline                                   a textarea
  *   select                                      a `<select>` over `options`
  *   file                                        an upload
@@ -61,6 +62,7 @@ interface Props {
     | 'url'
     | 'number'
     | 'time'
+    | 'password'
     | 'multiline'
     | 'select'
     | 'file'
@@ -105,6 +107,10 @@ interface Props {
   placeholder?: string;
   /** The keypad a phone offers — for a `text` field that holds a number. */
   inputmode?: 'numeric' | 'decimal' | 'tel';
+  /** What the browser may fill in — `new-password`, `current-password`, `username`. */
+  autocomplete?: string;
+  /** The shortest value the browser will submit — `password`'s minimum length. */
+  minlength?: number;
   /**
    * Where this field sits when its row holds more than one — `flex-1`,
    * `min-w-56`. Layout only, never colour or border, exactly as `AdminButton`
@@ -135,6 +141,8 @@ const {
   accept,
   placeholder,
   inputmode,
+  autocomplete,
+  minlength,
   class: extra,
 } = Astro.props;
 
@@ -289,6 +297,8 @@ const chosen = new Set(selected);
           value={value}
           required={requiredControl}
           inputmode={inputmode}
+          autocomplete={autocomplete}
+          minlength={minlength}
           min={min}
           max={max}
           step={step}

@@ -107,6 +107,22 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    server: {
+      // On the empty-lists run (#197) the public pages *are* meant to fail:
+      // with no catalog and no staff they refuse rather than print empty
+      // surfaces to a parent, which is the guard `listCourses` and `listPeople`
+      // exist to be. The dev server pushes those failures to every connected
+      // page as Vite's error overlay, so a background request for the sitemap
+      // or a prefetched public page puts an overlay over the admin screen under
+      // test — measured, not assumed: the suite's clicks on Sign in were
+      // intercepted by `<vite-error-overlay>` until this was turned off.
+      //
+      // It suppresses the overlay, not the errors: the dev server still logs
+      // them, and the specs still assert what the admin screens render. Only
+      // when that flag is set — every other dev server keeps the overlay a
+      // developer wants.
+      hmr: process.env.E2E_EMPTY_LISTS ? { overlay: false } : undefined,
+    },
     // The other half of the pair above. Read only from server-only modules
     // (`src/lib/admin/isr-token.ts`) so it never reaches a browser bundle.
     define: {
