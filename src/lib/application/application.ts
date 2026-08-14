@@ -336,6 +336,20 @@ export type ApplicationCost = {
 };
 
 /**
+ * How a family said they would pay (#221).
+ *
+ * **What they said, not what happened.** Vanco tells the site nothing
+ * (ADR-0013), so this is never evidence a payment arrived — it is the family's
+ * own answer, and its whole job is to let the office know whether to watch for
+ * an envelope and to let the two emails word one instruction instead of two.
+ *
+ * It is one amount one way. There is no third value for a split, because an
+ * application whose money goes two ways is the thing #221 removed: an envelope
+ * contains the whole total or it contains nothing.
+ */
+export type PaymentMethod = 'online' | 'check';
+
+/**
  * What the whole application costs, child by child and then in total (#31 AC 8).
  *
  * Per child rather than per application, because the registration fee is "once

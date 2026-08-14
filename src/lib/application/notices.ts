@@ -33,6 +33,7 @@ import {
   priceUnit,
   type ApplicationCost,
   type ApplicationFields,
+  type PaymentMethod,
 } from './application.js';
 import { title as offeringTitle } from './offerings.js';
 import { tallyLines, type TallyEntry } from './tally.js';
@@ -53,7 +54,96 @@ export type ApplicationSubmission = {
    * refusal: there is no row, so there is nothing to call it by.
    */
   reference: string | null;
+  /**
+   * How the family said they would pay (#219, #221).
+   *
+   * On the submission rather than on `values` because it is not yet a field on
+   * the form: #219 adds the control that asks, and until it lands the caller
+   * derives it from the only fact the site has. Either way it arrives here as
+   * one answer, and the emails read no other.
+   */
+  paymentMethod: PaymentMethod;
 };
+
+/**
+ * The invoice both emails print, written once (#221).
+ *
+ * One writer, because a school told to expect $865 and a family told to send
+ * $100 is the same submission saying two things — and the old shape, three
+ * paragraphs of prose in one email and a four-line table in the other, made
+ * that drift invisible until somebody held the two side by side.
+ *
+ * It is deliberately a *table*: an aligned label column and a right-aligned
+ * amount column, so a plain-text mail client renders the thing a family is
+ * actually looking for. The gross tuition is shown with the deposit credit
+ * subtracting from it, rather than a netted `tuitionDue` arriving unexplained —
+ * a family reading "$740" with nothing to divide it by cannot check the
+ * arithmetic, and neither can the office.
+ */
+function invoice(
+  cost: ApplicationCost,
+  method: PaymentMethod,
+  reference: string | null,
+): string[] {
+  const { total } = cost;
+  const classes = cost.perChild.reduce((count, one) => count + one.offerings.length, 0);
+
+  const lines = [
+    row('Registration', total.registration),
+    row(`Deposits (${classes} ${classes === 1 ? 'class' : 'classes'})`, total.deposits),
+    row('Tuition', total.tuition),
+  ];
+  if (total.creditedAgainstTuition > 0) {
+    lines.push(row('Deposit credit against tuition', -total.creditedAgainstTuition));
+  }
+
+  // A blank line and nothing else separates the total from the items: a rule of
+  // hyphens would be rewritten into an em dash by the house style's own scan
+  // (#148), and the capitals carry the emphasis a plain-text email has.
+  lines.push('', row('TOTAL', total.total), '', `  ${status(total.total, method)}`);
+  if (reference) lines.push(`  Reference: ${reference}`);
+  return lines;
+}
+
+/** How wide the label column is before the amounts start. */
+const LABEL_WIDTH = 32;
+/** And how wide the amount column is, so every amount ends at one place. */
+const AMOUNT_WIDTH = 8;
+
+/** One itemized line: a label, and an amount right-aligned under the last. */
+function row(label: string, amount: number): string {
+  return `  ${label.padEnd(LABEL_WIDTH)}${signed(amount).padStart(AMOUNT_WIDTH)}`;
+}
+
+/** `formatMoney`, with the minus outside the dollar sign as an invoice sets it. */
+function signed(amount: number): string {
+  return amount < 0 ? `-${formatMoney(-amount)}` : formatMoney(amount);
+}
+
+/**
+ * What is due and how it is being paid — the one line under the total.
+ *
+ * It says what the family *told us*, never that money arrived: Vanco sends the
+ * site no confirmation (ADR-0013), and a line claiming a payment nobody checked
+ * is worse than no line.
+ */
+function status(total: number, method: PaymentMethod): string {
+  if (total === 0) return 'Nothing is due yet — no classes have been chosen.';
+  return `Due in full — you told us you are paying ${method === 'online' ? 'online' : 'by check'}.`;
+}
+
+/**
+ * Which instruction the emails write, once the deployment has had its say.
+ *
+ * A family may have chosen "online" on a site whose giving page was later
+ * cleared — and an instruction pointing at an address that is not there is a
+ * blank line where the one thing the email exists to say should be. So the
+ * school's configuration can veto the answer, and never the other way round: it
+ * cannot turn a stated check into an online payment.
+ */
+function methodOf(submission: ApplicationSubmission, payOnlineAt: string): PaymentMethod {
+  return submission.paymentMethod === 'online' && payOnlineAt !== '' ? 'online' : 'check';
+}
 
 /**
  * The message the school receives (#32 AC 6).
@@ -92,27 +182,17 @@ export function applicationNotification(
   lines.push('', 'WHO IS APPLYING, AND FOR WHAT', ...chosen(cost, settings));
 
   // The envelope line is the one the office acts on, so it names the amount an
-  // envelope will actually contain (#149). Money paid online arrives through
-  // Vanco unattached to this application and the office matches the two up by
-  // hand — which it cannot do if this email calls the whole of it a check.
-  // "Offered", not "paid": Vanco tells the site nothing, and a line claiming a
-  // payment nobody checked is worse than no line.
-  const online = options.payOnlineAt !== '';
-  const posting = postedByCheck(cost, online);
+  // envelope will actually contain (#149) — and since #221 that is the whole
+  // total or nothing, never the deposits alone. Which of the two is what the
+  // family *said*, not whether a giving-page address happens to be configured:
+  // an office watching for an envelope the family never meant to send spends a
+  // fortnight chasing it.
+  const method = methodOf(submission, options.payOnlineAt);
   lines.push(
     '',
     'WHAT THEY OWE',
-    `  Registration:           ${formatMoney(cost.total.registration)}`,
-    `  Deposits:               ${formatMoney(cost.total.deposits)}`,
-    `  Tuition:                ${formatMoney(cost.total.tuitionDue)}`,
-    // No envelope to wait for is a fact the office acts on too, and printing
-    // "$0.00" beside "check they are posting" is a line that reads as one.
-    !online
-      ? `  Check they are posting: ${formatMoney(posting)} — all of it`
-      : posting === 0
-        ? '  Check they are posting: nothing — the registration and tuition were offered online'
-        : `  Check they are posting: ${formatMoney(posting)} — the deposits only, the registration ` +
-          'and tuition were offered online',
+    ...invoice(cost, method, null),
+    `  ${envelope(cost, method)}`,
     '',
     'THE STATEMENT OF FAITH',
     ...faithRecord(values),
@@ -146,16 +226,20 @@ export function applicationNotification(
 }
 
 /**
- * What an envelope will actually contain (#149, #187).
+ * What an envelope will actually contain, in the office's words (#149, #221).
  *
- * Written once because the school's copy and the family's copy have to name the
- * same figure: an office told to expect $865 and a family told to post $100 is
- * the same submission saying two things. It is not a field on `AmountOwed`,
- * because what a cheque covers is a fact about *this deployment* — whether the
- * office has pasted a Vanco page in — and not about what a family owes.
+ * The whole amount or nothing. It is not a field on `AmountOwed`, because what
+ * a check covers is a fact about *this submission* — what the family said they
+ * would do — and not about what they owe.
+ *
+ * "Nothing" rather than "$0", because an office reading `$0.00` beside
+ * "envelope to expect" reads a line that says an envelope is coming.
  */
-function postedByCheck(cost: ApplicationCost, online: boolean): number {
-  return online ? cost.total.deposits : cost.total.total;
+function envelope(cost: ApplicationCost, method: PaymentMethod): string {
+  if (cost.total.total === 0) return 'Envelope to expect: nothing — they owe nothing yet.';
+  return method === 'online'
+    ? 'Envelope to expect: nothing — the family said they are paying online.'
+    : `Envelope to expect: ${formatMoney(cost.total.total)} — the whole amount.`;
 }
 
 /**
@@ -221,12 +305,18 @@ function faithRecord(values: ApplicationFields): string[] {
  * The message the family receives when it worked (#18 §13, send 4).
  *
  * The same three things the confirmation screen says — what they chose, what to
- * pay and how, and that a place is held when the check arrives — because
+ * pay and how, and that a place is held when the payment arrives — because
  * the screen is closed within the minute and this is the copy they keep.
  *
- * That "how" is the page's own question asked once more (#149): the school has
- * an online address or it has not, and the answer has to be the same one the
- * family was just shown. A page offering a link beside an email demanding a
+ * **Warm, invoice, warm** (#221). The opening line and the closing are the
+ * school's voice, and the middle is a table: the money used to be three
+ * paragraphs of prose adding up to a number the email never wrote down, and a
+ * family scanning for "how much, and how do I pay it" had to assemble it
+ * themselves.
+ *
+ * That "how" is one instruction and never two — the giving page and the amount
+ * to enter, or the address and the whole total, decided by {@link methodOf}
+ * from what the family said. A page offering a link beside an email demanding a
  * check for the same money is the school contradicting itself in writing, and
  * the email is the half that outlives the screen.
  *
@@ -239,52 +329,39 @@ export function applicationConfirmation(
   options: { from: string; postTo: string; payOnlineAt: string },
 ): Mail {
   const { values, cost, reference } = submission;
-  const lines = [`Thank you — we have your application, ${values.familyName}.`];
+  const total = cost.total.total;
+  const method = methodOf(submission, options.payOnlineAt);
 
-  // Near the top rather than in a footer, because the instruction below asks
-  // the family to write it somewhere — an instruction that names a code they
-  // have not read yet sends them hunting for it (#218).
-  if (reference) lines.push('', `Your reference is ${reference}.`);
-
-  lines.push('', 'What you chose:', ...chosen(cost));
-
-  const online = options.payOnlineAt !== '';
-  // A family who has chosen no classes yet owes no deposits, and "post a check
-  // for $0.00" is an instruction to mail an empty envelope — so the address is
-  // not printed at all rather than printed under a payment they do not owe.
-  // Reachable only where the payment link is set: without one a check covers
-  // everything, and there is always a registration fee to post one for.
-  const posting = postedByCheck(cost, online);
-
-  /** What to post, and where — the one instruction, written once. */
-  const check = (asking: string): string[] => [
+  const lines = [
+    `Thank you — we have your application, ${values.familyName}.`,
     '',
-    asking,
+    'What you chose:',
+    ...chosen(cost),
     '',
-    options.postTo,
+    'What you owe:',
     '',
-    'A place is held for each class as soon as your check reaches us.',
+    // The reference rides inside the invoice rather than in a footer, because
+    // the instruction below asks the family to type it into the giving page —
+    // and an instruction naming a code they have not read yet sends them
+    // hunting for it (#218).
+    ...invoice(cost, method, reference),
   ];
 
-  if (online) {
+  if (total === 0) {
+    // Nothing is owed, so there is no instruction to give: "pay $0 online" and
+    // "post a check for $0.00" are both an instruction to do nothing, written
+    // as though it were something.
     lines.push(
       '',
-      `The registration — ${formatMoney(cost.total.registration)} — and the tuition — ` +
-        `${formatMoney(cost.total.tuitionDue)} at today’s rates — are paid online, in one ` +
-        'payment, through the church’s giving page:',
+      'There is nothing to pay until you have chosen classes. Tell us what you would like and ' +
+        'we will send you the figures.',
+    );
+  } else if (method === 'online') {
+    lines.push(
+      '',
+      `Please pay the whole ${formatMoney(total)} in one payment through the church’s giving page:`,
       '',
       `  ${options.payOnlineAt}`,
-    );
-
-    if (posting > 0) {
-      lines.push(
-        ...check(
-          `The deposits — ${formatMoney(posting)} — are paid by check, made out to ${SCHOOL_NAME}, to:`,
-        ),
-      );
-    }
-
-    lines.push(
       '',
       'A payment through the giving page does not reach us attached to this application, so we ' +
         'match the two up ourselves' +
@@ -292,15 +369,17 @@ export function applicationConfirmation(
           ? ` — please put your reference, ${reference}, in the note when you pay, and there is ` +
             'nothing further for you to send us about it.'
           : ' — there is nothing further for you to send us about it.'),
+      '',
+      'A place is held for each class as soon as your payment reaches us.',
     );
   } else {
     lines.push(
-      ...check(
-        `Please post a check for ${formatMoney(posting)} — ${formatMoney(cost.total.registration)} ` +
-          `in registration, ${formatMoney(cost.total.deposits)} in deposits and ` +
-          `${formatMoney(cost.total.tuitionDue)} in tuition at today’s rates — made out to ` +
-          `${SCHOOL_NAME}, to:`,
-      ),
+      '',
+      `Please post a check for ${formatMoney(total)}, made out to ${SCHOOL_NAME}, to:`,
+      '',
+      options.postTo,
+      '',
+      'A place is held for each class as soon as your check reaches us.',
     );
   }
 

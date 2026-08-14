@@ -293,6 +293,17 @@ if (Astro.request.method === 'POST') {
       tally: classTally(await applicationsForTally(), offerings),
       flagged: parsed.flagged,
       reference,
+      /*
+       * How they said they would pay (#221).
+       *
+       * The form does not ask yet — #219 adds the control and records it on the
+       * row — so until then this is the only fact the site has: a school with a
+       * giving page is offering one, and a school without is asking for a
+       * check. It is derived here rather than inside the emails on purpose, so
+       * that when #219 lands there is one line to change and no wording to
+       * chase.
+       */
+      paymentMethod: details.payOnlineUrl ? ('online' as const) : ('check' as const),
     };
 
     // Spelled out rather than handed the whole of `import.meta.env` — see `MailEnv`.
