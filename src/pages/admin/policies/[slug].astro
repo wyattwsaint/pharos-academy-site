@@ -172,7 +172,7 @@ if (Astro.request.method === 'POST') {
 const versions: PolicyVersion[] = policy ? await listPolicyVersions(db, policy.slug) : [];
 
 const action = policy ? `/admin/policies/${policy.slug}` : '/admin/policies/new';
-const heading = policy ? policy.title : 'Add a policy';
+const heading = policy ? policy.title : 'Add a Policy';
 const stamp = policy ? formatStamp(policy.lastEditedBy, policy.lastEditedAt) : null;
 const control =
   'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';

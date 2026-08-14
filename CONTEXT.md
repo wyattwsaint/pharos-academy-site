@@ -578,6 +578,36 @@ never a step.
 Not: "validated", "approved", "accepted" (the school does that, later, by
 reading it).
 
+### heading case
+
+**Title case, Chicago**, for every heading the site writes for itself: `<h1>` to
+`<h3>`, card and block titles, and `<legend>`. "Our Mission and Vision", "A Week
+in the Life" — every word capitalised except articles, coordinating conjunctions
+and prepositions of fewer than five letters, and even those when first or last.
+Hyphenates capitalise both sides ("Half-Day", "Pre-K"); acronyms stay as
+authored ("FAQ", "K–12").
+
+Public pages and admin, one rule for both (#210). It reverses the sentence-case
+style #148 counted, because the site did both — sometimes on the same page — and
+a mix reads as unfinished rather than as a choice.
+
+Two headings are exempt and stay as written: "Mornings here. Afternoons yours."
+(the two-sentence rhythm is the point) and "This affects every family." (a
+warning, not a section label).
+
+It does **not** reach form labels, buttons, nav links or table column headers —
+that is UI chrome, and title case there looks dated — and it does not reach a
+**verbatim copy** heading or one the site renders from a row, which is the name
+of a thing and keeps the case the school gave it.
+
+**Nothing enforces it.** No linter, and no title-casing at render time: a rule
+that guesses needs a dictionary and mangles proper nouns. `docs/house-style.md`
+holds the long form, and ADR-0015 says why the scan that used to check this was
+deleted rather than inverted.
+
+Not: "sentence case", which is what the site did before #210 and what half of
+`docs/punctuation-audit.md`'s capitalisation section still describes.
+
 ### microschool
 
 What Pharos **is** — a small school that families enrol in for the classes they

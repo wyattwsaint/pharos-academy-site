@@ -81,7 +81,7 @@ test.describe('the four surfaces', () => {
     );
     expect(shown.size).toBeGreaterThanOrEqual(CATALOGUE.length);
     await expect(page.locator('h1')).toHaveText(
-      `${shown.size} classes, by the age they are written for`,
+      `${shown.size} Classes, by the Age They Are Written For`,
     );
 
     await page.goto('/classes/descriptions');

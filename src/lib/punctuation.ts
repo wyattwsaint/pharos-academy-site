@@ -3,9 +3,15 @@
  *
  * The site's copy was written across many pages by several hands, and the marks
  * drifted: curly apostrophes in most places and straight ones in others, em
- * dashes almost everywhere and a spaced hyphen here and there, sentence-case
- * headings on every page but two. This module is the reading that finds those,
- * so the report can list them.
+ * dashes almost everywhere and a spaced hyphen here and there. This module is
+ * the reading that finds those, so the report can list them.
+ *
+ * It once read a heading's capitals too, and no longer does (#210). The site
+ * now sets **every** heading in title case, and a title-case rule is not a rule
+ * a scan can hold: deciding whether "Fit" belongs capitalised in "the Right Fit
+ * for Your Family" needs a dictionary and a part-of-speech reading, and the
+ * false findings would outnumber the real ones. The convention is written down
+ * in `CONTEXT.md` and `docs/house-style.md` instead, and applied by hand.
  *
  * **It reports; it does not rewrite.** Prose on a school's site is the school's
  * voice, and a scan that silently normalised it would be changing copy nobody
@@ -38,7 +44,6 @@ export type Issue =
   | 'dashes'
   | 'spacing'
   | 'ellipsis'
-  | 'capitalisation'
   | 'link-spacing';
 
 /**
@@ -47,8 +52,8 @@ export type Issue =
  * `mechanical` — the correction is the house style and nothing else; a straight
  * apostrophe becomes a typographic one and the sentence is otherwise untouched.
  * `judgement` — the correction rewords, restyles or removes something the
- * school may have meant. A heading in title case is the school's emphasis until
- * the school says otherwise.
+ * school may have meant. A no-break space may be deliberate typographic glue,
+ * and a double prime in a materials list may be an inch mark the school wants.
  */
 export type Call = 'mechanical' | 'judgement';
 
@@ -253,209 +258,7 @@ export function punctuationFindings(source: string, kind: 'astro' | 'ts' | 'text
   }
 
   if (kind !== 'text') findings.push(...linkSpacingFindings(source, kind));
-  if (kind === 'astro') findings.push(...capitalisationFindings(source));
   return findings.sort((a, b) => a.line - b.line || a.issue.localeCompare(b.issue));
-}
-
-/** A heading, and what its capitals say about the style it was written in. */
-export type HeadingCase = 'sentence' | 'title' | 'mixed' | 'name' | 'undetermined';
-
-/**
- * Words whose case says nothing, because both styles agree on them.
- *
- * Articles, coordinating conjunctions and the short prepositions — title case
- * leaves these lowercase too, so finding one lowercase is no evidence. Pronouns
- * are deliberately absent: title case capitalises "Us" and "Your", so those are
- * evidence.
- */
-const SMALL_WORDS = new Set([
-  'a',
-  'an',
-  'and',
-  'as',
-  'at',
-  'but',
-  'by',
-  'for',
-  'from',
-  'in',
-  'into',
-  'nor',
-  'of',
-  'off',
-  'on',
-  'onto',
-  'or',
-  'over',
-  'per',
-  'the',
-  'to',
-  'up',
-  'via',
-  'with',
-]);
-
-/**
- * Names that carry their own capital wherever they appear — including the page
- * names this site capitalises, which is why "About" is here.
- *
- * A named list rather than a rule, for the reason `house-style.ts` gives about
- * its own: any rule general enough to catch "Pharos" catches "Dedicated" too.
- * A word not listed here is treated as an ordinary word, which is the safe
- * direction — it produces a finding a person reads, not a silent rewrite.
- *
- * May is the one month left out. It is a modal verb far more often than it is a
- * month, and listing it would silence "Families May Apply" — a heading in title
- * case that this scan exists to find.
- */
-const PROPER_NOUNS = new Set([
-  'about',
-  'academy',
-  'america',
-  'american',
-  'bible',
-  'biblical',
-  'christ',
-  'christian',
-  'enola',
-  'god',
-  'harrisburg',
-  'pennsylvania',
-  'pharos',
-  'scripture',
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-  'sunday',
-  'january',
-  'february',
-  'march',
-  'april',
-  'june',
-  'july',
-  'august',
-  'september',
-  'october',
-  'november',
-  'december',
-]);
-
-/**
- * Headings that are the name of a document, not a sentence.
- *
- * "Statement of Faith and Practice" is title case because it is what the paper
- * says on its front. Renaming it to match a heading style would rename the
- * document.
- */
-const PROPER_NAMES = new Set(
-  [
-    'Statement of Faith and Practice',
-    'Code of Conduct',
-    'Child Protection',
-    'Child Protection Background Check',
-    'Handbook',
-    'Helping Our Parents Educate',
-  ].map((name) => name.toLowerCase()),
-);
-
-/** What a heading's capitals say about the style it was written in. */
-export function headingCase(heading: string): HeadingCase {
-  const text = heading.trim();
-  if (PROPER_NAMES.has(text.replace(/[.?!]$/, '').toLowerCase())) return 'name';
-
-  const words = text.split(/\s+/).filter(Boolean);
-  const significant = evidenceIndices(words).map((at) => words[at]!);
-  if (significant.length === 0) return 'undetermined';
-
-  const capitals = significant.filter((word) => /^[A-Z]/.test(stripMarks(word))).length;
-  if (capitals === significant.length) return 'title';
-  if (capitals === 0) return 'sentence';
-  return 'mixed';
-}
-
-/** `heading` written the way the house style asks, names and acronyms kept. */
-export function sentenceCase(heading: string): string {
-  // Splitting on a captured separator makes every even element a word and every
-  // odd one the whitespace after it, so the heading rejoins exactly as it was.
-  const parts = heading.split(/(\s+)/);
-  const lower = new Set(evidenceIndices(parts.filter((_, at) => at % 2 === 0)));
-  return parts
-    .map((part, at) => (at % 2 === 0 && lower.has(at / 2) ? part.toLowerCase() : part))
-    .join('');
-}
-
-/**
- * Which words in a heading are evidence of a style.
- *
- * The first word of every sentence is dropped, not just the first word of the
- * heading: "Mornings here. Afternoons yours." is sentence case twice over, and
- * reading its middle capital as a style would both misread it and propose
- * lowercasing the start of a sentence.
- */
-function evidenceIndices(words: readonly string[]): number[] {
-  return words
-    .map((word, at) => {
-      if (at === 0) return -1;
-      if (/[.?!][)”’"']?$/.test(words[at - 1] ?? '')) return -1;
-      return isEvidence(word) ? at : -1;
-    })
-    .filter((at) => at >= 0);
-}
-
-/**
- * Whether a word's case is evidence of a style.
- *
- * A name, an acronym and a small word all look the same in both styles, so only
- * an ordinary word counts either way.
- */
-function isEvidence(word: string): boolean {
-  const bare = stripMarks(word);
-  if (!/^[A-Za-z][a-zA-Z]*$/.test(bare)) return false;
-  if (SMALL_WORDS.has(bare.toLowerCase())) return false;
-  if (PROPER_NOUNS.has(bare.toLowerCase())) return false;
-  // An acronym — `PDF`, and `H.O.P.E.` once its periods are stripped — is
-  // capitalised in every style there is.
-  return !/^[A-Z]+$/.test(bare) || bare.length === 1;
-}
-
-/** A word with the punctuation and quotation marks around it removed. */
-function stripMarks(word: string): string {
-  return word.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '').replace(/\./g, '');
-}
-
-/**
- * Every heading whose capitals disagree with the house style.
- *
- * Only headings written out in full: one holding a `{…}` expression is the
- * school's own name for something, arriving from the database, and neither this
- * scan nor a house style has anything to say about it.
- */
-function capitalisationFindings(source: string): Finding[] {
-  const findings: Finding[] = [];
-  for (const match of source.matchAll(/<(h[1-6]|summary|legend)\b[^>]*>([\s\S]*?)<\/\1>/gi)) {
-    const inner = match[2] ?? '';
-    if (inner.includes('{')) continue;
-    const text = inner
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (!text) continue;
-
-    const style = headingCase(text);
-    if (style !== 'title' && style !== 'mixed') continue;
-    findings.push({
-      issue: 'capitalisation',
-      call: 'judgement',
-      line: lineOf(source, match.index),
-      current: text,
-      proposed: sentenceCase(text),
-      context: `<${match[1]}> ${text}`,
-    });
-  }
-  return findings;
 }
 
 /**

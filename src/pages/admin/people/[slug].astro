@@ -104,7 +104,7 @@ if (Astro.request.method === 'POST') {
  * revalidation answer instead of throwing it away in a redirect.
  */
 const action = person ? `/admin/people/${person.slug}` : '/admin/people/new';
-const heading = person ? person.name : 'Add a person';
+const heading = person ? person.name : 'Add a Person';
 const stamp = person ? formatStamp(person.lastEditedBy, person.lastEditedAt) : null;
 
 /** The form's shape. Type decides the control; nothing else varies. */

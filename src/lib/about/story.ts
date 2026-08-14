@@ -51,12 +51,12 @@ export const ABOUT_CHILDREN: readonly { path: string; label: string; blurb: stri
   },
   {
     path: '/about/staff',
-    label: 'Who teaches here',
+    label: 'Who Teaches Here',
     blurb: 'Everyone who runs the school and everyone who teaches a class, with what they teach.',
   },
   {
     path: SUPPORT_PATH,
-    label: 'Giving and volunteering',
+    label: 'Giving and Volunteering',
     blurb: 'How gifts to the school are handled today, and the five areas we need help in.',
   },
 ];
