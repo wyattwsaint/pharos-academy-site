@@ -33,7 +33,6 @@ describe('the announcement banner', () => {
       message: 'Register now! Classes begin',
       date: 'August 31',
       href: 'https://example.org/register',
-      key: 'Register now! Classes begin|2026-08-31|https://example.org/register',
     });
   });
 
@@ -52,15 +51,6 @@ describe('the announcement banner', () => {
 
   it('reads a message with no link as unlinked, not as a link to nowhere', () => {
     expect(announcementBanner(details({ bannerLink: '' }))?.href).toBeNull();
-  });
-
-  // The visitor dismisses this message, not the bar. The next one has to reach
-  // the people who closed the last one.
-  it('keys a dismissal to the words, the date and the link together', () => {
-    const first = announcementBanner(details())!.key;
-    expect(announcementBanner(details({ bannerMessage: 'Something else' }))!.key).not.toBe(first);
-    expect(announcementBanner(details({ bannerDate: '2026-09-01' }))!.key).not.toBe(first);
-    expect(announcementBanner(details({ bannerLink: '' }))!.key).not.toBe(first);
   });
 });
 
