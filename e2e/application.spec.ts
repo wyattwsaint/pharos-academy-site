@@ -688,10 +688,11 @@ test.describe('the application page', () => {
     expect(await greyed(page)).toBe(false);
     await clickSend(page);
 
-    // The row is the backing for the sentence, and the reference is the row's id.
+    // The row is the backing for the sentence, and the reference is the short
+    // code derived from its id — never the uuid, which nobody retypes (#218).
     const outcome = page.locator('[data-outcome="received"]');
     await expect(outcome).toBeVisible();
-    await expect(outcome).toContainText('Reference');
+    await expect(outcome).toContainText(/Reference PA-[A-Z0-9]{4}-[A-Z0-9]{4}\./);
 
     // The confirmation replays the choice and the check, and promises no clock.
     const confirmation = page.locator('[data-section="apply-confirmation"]');

@@ -220,6 +220,28 @@ line that changes what somebody does about the application.
 
 Not: "rejected", "failed the Statement", "review required".
 
+### reference
+
+The short code one application calls itself by — `PA-` and eight characters,
+grouped in fours, spelled from an alphabet with no `0`/`O`, `1`/`I`/`L` or any
+other pair a family confuses while copying (#218). It is what the family reads
+off the confirmation screen and their email, what both emails print, and what
+the Applications screen shows on every row.
+
+It exists because the office matches a Vanco payment to an application **by
+hand** (ADR-0013): the note a family typed into the church's giving page is the
+only thing joining the two, and a 36-character uuid is not something anybody
+retypes correctly.
+
+**It is derived from the row id, never stored** — one pure function
+(`applicationReference`), no column, no second identity to keep in step, the
+same code for the same row forever. Computing rather than storing, as in
+ADR-0003. A refused submission wrote no row, so it has no reference, and no
+surface invents one.
+
+Not: "application id" (that is the uuid, and no family sees it), "confirmation
+number", "receipt".
+
 ### money settings
 
 The single row holding every number about money the school controls: the two

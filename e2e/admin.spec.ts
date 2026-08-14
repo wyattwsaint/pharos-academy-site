@@ -1130,6 +1130,33 @@ test.describe('applications', () => {
     );
   });
 
+  /**
+   * The match the office makes by hand (#218).
+   *
+   * Vanco sends the site nothing (ADR-0013), so a payment is joined to an
+   * application by somebody reading the code off a giving-page note and finding
+   * it here. That only works if the code the family was shown is the code on
+   * this screen — which is what this walks, family screen to admin row.
+   */
+  test('shows the office the same short code the family was given', async ({ page }) => {
+    const family = 'Suite Reference';
+    await apply(page, {
+      name: family,
+      email: 'suite-reference@example.com',
+      child: 'Reference Child',
+      offering: 'algebra-1:year',
+    });
+
+    const told = await page.locator('[data-outcome="received"]').innerText();
+    const reference = told.match(/PA-[A-Z0-9]{4}-[A-Z0-9]{4}/)?.[0];
+    expect(reference).toBeDefined();
+
+    await signIn(page, '/admin/applications');
+    await expect(rowFor(page, family).getByTestId('application-reference')).toContainText(
+      reference!,
+    );
+  });
+
   test('counts a family that applied twice once, and says so (AC 1)', async ({ page }) => {
     const family = 'Suite Twice';
     const once = {

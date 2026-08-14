@@ -47,7 +47,11 @@ export type ApplicationSubmission = {
   tally: readonly TallyEntry[];
   /** Whether anybody objected. Never a rejection — it starts a conversation. */
   flagged: boolean;
-  /** The row's id, or null when the write failed and this is a refusal. */
+  /**
+   * The row's reference — `applicationReference(id)`, never the raw uuid and
+   * never a format built here (#218). Null when the write failed and this is a
+   * refusal: there is no row, so there is nothing to call it by.
+   */
   reference: string | null;
 };
 
