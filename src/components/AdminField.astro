@@ -19,11 +19,20 @@
  *   file                                        an upload
  *   checkbox                                    one box, its label beside it
  *   checkboxes, radios                          a group, in its own fieldset
+ *   group                                       a fieldset over whatever is
+ *                                               put in its slot
  *
- * The last two are the grouped variant. Their error belongs to the group rather
- * than to any one box — "pick at least one day" is not a complaint about
- * Tuesday — so the fieldset carries the `aria-describedby`, which is what makes
- * a screen reader announce it on entering the group.
+ * The last three are the grouped variant. Their error belongs to the group
+ * rather than to any one box — "pick at least one day" is not a complaint about
+ * Tuesday, and "the four dates must be in order" is not a complaint about the
+ * third one — so the fieldset carries the `aria-describedby`, which is what
+ * makes a screen reader announce it on entering the group.
+ *
+ * `group` is the same fieldset with its contents left to the caller, for the
+ * groups whose members are neither checkboxes nor radios: Money's four
+ * instalment dates are one complaint over four `date` fields (#196). What it
+ * holds is still AdminFields — the slot is where they go, not a licence to
+ * spell a control out by hand.
  *
  * The fieldset carries `aria-describedby` and nothing else. `aria-invalid` is
  * not global in ARIA 1.2 and `group` is not one of the roles that takes it, so
@@ -36,8 +45,14 @@ export type AdminFieldOption = {
 };
 
 interface Props {
-  /** The form field name, and the id the label points at. */
+  /** The form field name, and by default the id the label points at. */
   name: string;
+  /**
+   * The id, where it cannot be the name: a repeating row posts every one of its
+   * rows under the same name, and duplicate ids would leave each label pointing
+   * at the first row's control. The hint and the error are numbered with it.
+   */
+  id?: string;
   type:
     | 'text'
     | 'tel'
@@ -51,9 +66,10 @@ interface Props {
     | 'file'
     | 'checkbox'
     | 'checkboxes'
-    | 'radios';
+    | 'radios'
+    | 'group';
   label: string;
-  /** The single-control value. Ignored by `checkbox`, `checkboxes`, `radios`. */
+  /** The single-control value. Ignored by every grouped type, and `checkbox`. */
   value?: string;
   /** Ticked, for `checkbox`. */
   checked?: boolean;
@@ -69,6 +85,13 @@ interface Props {
   hint?: string;
   /** The server's complaint about this field, if it made one. */
   error?: string;
+  /**
+   * Refused, with the complaint said elsewhere: a member of a group whose
+   * error belongs to the group. The box is marked the way every other refused
+   * box is — the gold border is how a sighted reader finds what to fix, and it
+   * would be lost on exactly the fields whose complaint is not their own.
+   */
+  invalid?: boolean;
   /** True for a field that may be left blank. Most may not. */
   optional?: boolean;
   rows?: number;
@@ -80,10 +103,21 @@ interface Props {
   accept?: string;
   /** `select` only: the empty first entry, for "none chosen yet". */
   placeholder?: string;
+  /** The keypad a phone offers — for a `text` field that holds a number. */
+  inputmode?: 'numeric' | 'decimal' | 'tel';
+  /**
+   * Where this field sits when its row holds more than one — `flex-1`,
+   * `min-w-56`. Layout only, never colour or border, exactly as `AdminButton`
+   * takes it: the alternative is a wrapping `<div>` per field, which is the
+   * hand-copied class string the shared components exist to end (#188). It
+   * sizes the whole field, so a complaint has the same room its control does.
+   */
+  class?: string;
 }
 
 const {
   name,
+  id,
   type,
   label,
   value = '',
@@ -92,6 +126,7 @@ const {
   selected = [],
   hint,
   error,
+  invalid: refused = false,
   optional = false,
   rows = 5,
   min,
@@ -99,17 +134,23 @@ const {
   step,
   accept,
   placeholder,
+  inputmode,
+  class: extra,
 } = Astro.props;
 
-const invalid = Boolean(error);
+/** The name, unless the caller had to say otherwise — a repeating row. */
+const fieldId = id ?? name;
+const complaint = Boolean(error);
+const invalid = complaint || refused;
 const described = hint !== undefined || Astro.slots.has('hint');
 const describedBy =
-  [described ? `${name}-hint` : null, invalid ? `${name}-error` : null].filter(Boolean).join(' ') ||
-  undefined;
+  [described ? `${fieldId}-hint` : null, complaint ? `${fieldId}-error` : null]
+    .filter(Boolean)
+    .join(' ') || undefined;
 const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
 
 /** The grouped variant: several controls under one label, in a fieldset. */
-const grouped = type === 'checkboxes' || type === 'radios';
+const grouped = type === 'checkboxes' || type === 'radios' || type === 'group';
 /**
  * A checkbox is required only in the sense of "must be ticked", which is not
  * what any box on this admin means, so `required` is never put on one. The
@@ -121,40 +162,44 @@ const chosen = new Set(selected);
 
 {
   grouped ? (
-    <fieldset aria-describedby={describedBy} class="flex flex-col gap-2">
+    <fieldset aria-describedby={describedBy} class:list={['flex flex-col gap-2', extra]}>
       <legend class="font-semibold">{label}</legend>
       {described && (
-        <p id={`${name}-hint`} class="text-sm">
+        <p id={`${fieldId}-hint`} class="text-sm">
           {hint}
           <slot name="hint" />
         </p>
       )}
-      <div class="flex flex-col gap-2">
-        {options.map((option) => (
-          <div class="flex items-start gap-3">
-            <input
-              id={`${name}-${option.value}`}
-              name={name}
-              type={type === 'radios' ? 'radio' : 'checkbox'}
-              value={option.value}
-              checked={chosen.has(option.value)}
-              class="mt-1 size-5"
-            />
-            <label for={`${name}-${option.value}`}>{option.label}</label>
-          </div>
-        ))}
-      </div>
-      {invalid && (
-        <p id={`${name}-error`} class="font-semibold">
+      {type === 'group' ? (
+        <slot />
+      ) : (
+        <div class="flex flex-col gap-2">
+          {options.map((option) => (
+            <div class="flex items-start gap-3">
+              <input
+                id={`${fieldId}-${option.value}`}
+                name={name}
+                type={type === 'radios' ? 'radio' : 'checkbox'}
+                value={option.value}
+                checked={chosen.has(option.value)}
+                class="mt-1 size-5"
+              />
+              <label for={`${fieldId}-${option.value}`}>{option.label}</label>
+            </div>
+          ))}
+        </div>
+      )}
+      {complaint && (
+        <p id={`${fieldId}-error`} class="font-semibold">
           {error}
         </p>
       )}
     </fieldset>
   ) : type === 'checkbox' ? (
-    <div class="flex flex-col gap-2">
+    <div class:list={['flex flex-col gap-2', extra]}>
       <div class="flex items-start gap-3">
         <input
-          id={name}
+          id={fieldId}
           name={name}
           type="checkbox"
           checked={checked}
@@ -162,48 +207,52 @@ const chosen = new Set(selected);
           aria-describedby={describedBy}
           class="mt-1 size-5"
         />
-        <label for={name} class="font-semibold">
+        <label for={fieldId} class="font-semibold">
           {label}
         </label>
       </div>
       {described && (
-        <p id={`${name}-hint`} class="text-sm">
+        <p id={`${fieldId}-hint`} class="text-sm">
           {hint}
           <slot name="hint" />
         </p>
       )}
-      {invalid && (
-        <p id={`${name}-error`} class="font-semibold">
+      {complaint && (
+        <p id={`${fieldId}-error`} class="font-semibold">
           {error}
         </p>
       )}
     </div>
   ) : (
-    <div class="flex flex-col gap-2">
-      <label for={name} class="font-semibold">
+    <div class:list={['flex flex-col gap-2', extra]}>
+      <label for={fieldId} class="font-semibold">
         {label}
       </label>
       {described && (
-        <p id={`${name}-hint`} class="text-sm">
+        <p id={`${fieldId}-hint`} class="text-sm">
           {hint}
           <slot name="hint" />
         </p>
       )}
       {type === 'multiline' ? (
+        /*
+          The value sits hard against the tags. A textarea's content is its
+          value, whitespace and all, so a newline and an indent here are ten
+          spaces the school never typed — which is what saving one back does to
+          the next save (#196).
+        */
         <textarea
-          id={name}
+          id={fieldId}
           name={name}
           rows={rows}
           required={requiredControl}
           aria-invalid={invalid ? 'true' : undefined}
           aria-describedby={describedBy}
           class={control}
-        >
-          {value}
-        </textarea>
+        >{value}</textarea>
       ) : type === 'select' ? (
         <select
-          id={name}
+          id={fieldId}
           name={name}
           required={requiredControl}
           aria-invalid={invalid ? 'true' : undefined}
@@ -223,7 +272,7 @@ const chosen = new Set(selected);
         </select>
       ) : type === 'file' ? (
         <input
-          id={name}
+          id={fieldId}
           name={name}
           type="file"
           accept={accept}
@@ -234,11 +283,12 @@ const chosen = new Set(selected);
         />
       ) : (
         <input
-          id={name}
+          id={fieldId}
           name={name}
           type={type}
           value={value}
           required={requiredControl}
+          inputmode={inputmode}
           min={min}
           max={max}
           step={step}
@@ -247,8 +297,8 @@ const chosen = new Set(selected);
           class={control}
         />
       )}
-      {invalid && (
-        <p id={`${name}-error`} class="font-semibold">
+      {complaint && (
+        <p id={`${fieldId}-error`} class="font-semibold">
           {error}
         </p>
       )}
