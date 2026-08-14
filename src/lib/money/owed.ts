@@ -29,7 +29,7 @@ export type Selection = {
 export type AmountOwed = {
   /** The registration fee, once per student per year however many classes. */
   registration: number;
-  /** The deposits — one per class, posted by cheque, holding the seats. */
+  /** The deposits — one per class, holding the seats. */
   deposits: number;
   /** What the classes cost before any deposit is taken off. */
   tuition: number;
@@ -44,12 +44,13 @@ export type AmountOwed = {
 /**
  * The whole of what an application costs, in the figures a family asks for.
  *
- * All of it is owed to the school (ADR-0013) — the three amounts differ in
- * *how* they are paid, not in who holds them: registration and tuition through
- * Vanco in one payment, the deposits by cheque. There is deliberately no
- * "pay this now" figure spanning the two channels; a surface shows each amount
- * beside the way it is paid. `total` never double-counts a credited deposit,
- * which is the arithmetic the flag actually changes.
+ * All of it is owed to the school (ADR-0013) and all of it is paid the same
+ * way (ADR-0017): one lump sum, upfront, through the church's Vanco page, with
+ * a cheque as the fallback for the whole of it rather than for a part. So
+ * `total` is not a summary a surface may skip past — it is the figure a family
+ * types into the giving page, and the itemisation above it is what explains
+ * that number. It never double-counts a credited deposit, which is the
+ * arithmetic the flag actually changes.
  */
 export function amountOwed(
   selections: readonly Selection[],

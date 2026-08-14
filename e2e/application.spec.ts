@@ -149,6 +149,20 @@ async function answerAgreements(page: Page, answer = 'neither') {
 }
 
 /**
+ * Say how this family is paying (#219).
+ *
+ * Conditional, because whether the question is asked at all is a fact about
+ * the deployment: with no Vanco page pasted into the school details there is
+ * one way to pay, the page states it in a hidden field, and there is no radio
+ * to check. Both branches leave the gate satisfied, which is the point — the
+ * two states of that row are driven from the admin, in `admin.spec.ts`.
+ */
+async function statePaymentMethod(page: Page, method: 'online' | 'check' = 'online') {
+  const radio = page.locator(`[data-payment-method] input[value="${method}"]`);
+  if ((await radio.count()) > 0) await radio.check();
+}
+
+/**
  * Everything #85 requires, in the order the page reads.
  *
  * `except` leaves one rule unmet, so a test can be about that rule and nothing
@@ -167,6 +181,7 @@ async function fillSendable(page: Page, except?: string) {
     await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
   }
   if (except !== 'agreements') await answerAgreements(page);
+  if (except !== 'paymentMethod') await statePaymentMethod(page);
 }
 
 test.describe('the application page', () => {

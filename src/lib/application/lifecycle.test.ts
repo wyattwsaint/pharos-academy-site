@@ -14,6 +14,7 @@ import {
   paymentAwaitedNote,
   paymentEventLabel,
   paymentEventsFrom,
+  paymentModeOf,
   paymentOnSubmission,
   paymentStatusLabel,
   paymentStatusNow,
@@ -101,6 +102,14 @@ describe('the payment axis', () => {
       status: 'awaiting',
       since: AT,
     });
+  });
+
+  it('records the stated method in the column’s own spelling (#219)', () => {
+    // The form says `check` because prose is American; the column says
+    // `cheque` because renaming a schema for a spelling costs a migration.
+    // This is the one line where the two vocabularies meet.
+    expect(paymentModeOf('check')).toBe('cheque');
+    expect(paymentModeOf('online')).toBe('online');
   });
 
   it('records a cheque arriving, and moves nothing else', () => {

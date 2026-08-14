@@ -49,6 +49,7 @@ import {
   FAITH_QUESTIONS,
   FAITH_RESPONDENTS,
   faithKey,
+  paymentMethodOf,
   validateApplication,
   type ApplicationChild,
   type ApplicationErrors,
@@ -82,7 +83,9 @@ export const APPLICATION_STAGES = [
   { id: 'faith', title: 'What We Believe' },
   { id: 'classes', title: 'Choosing Classes' },
   { id: 'agreements', title: 'What You Agree To' },
-  { id: 'payment', title: 'What to Post' },
+  // "What to Pay" and no longer "What to Post": the whole of it is one payment
+  // through the giving page, and the envelope is the fallback (#219, ADR-0017).
+  { id: 'payment', title: 'What to Pay' },
   { id: 'confirmation', title: 'Sending It' },
 ] as const;
 
@@ -96,10 +99,12 @@ export {
   ERROR_FIELDS,
   FAITH_QUESTIONS,
   FAITH_RESPONDENTS,
+  PAYMENT_METHODS,
   faithAnswer,
   faithColumn,
   faithKey,
   firstError,
+  paymentMethodOf,
   validateApplication,
 } from './validation.js';
 export type {
@@ -112,6 +117,7 @@ export type {
   FaithAnswers,
   FaithQuestionId,
   FaithRespondent,
+  PaymentMethod,
 } from './validation.js';
 
 export type ParsedApplication = {
@@ -186,6 +192,10 @@ export function parseApplication(
     faith,
     objections: text(form, 'objections'),
     agreements: parseAgreements(form, askable),
+    // Anything but one of the two words is unanswered (#219). A page with no
+    // giving page posts it from a hidden field rather than a radio, because
+    // there is nothing to choose between — and it is the same answer either way.
+    paymentMethod: paymentMethodOf(text(form, 'payment-method')),
   };
 
   // The same `askable` the questions were rendered from, so the gate can only
@@ -240,6 +250,9 @@ export function prefillFrom(inquiry: InquiryPrefill | null): ApplicationFields {
     faith: {},
     objections: '',
     agreements: {},
+    // Nothing on an inquiry says how a family means to pay, and guessing at it
+    // would tick a radio on their behalf for a question they have not read.
+    paymentMethod: '',
   };
 }
 
@@ -334,20 +347,6 @@ export type ApplicationCost = {
   /** Every child's figures added up. What the family actually posts and owes. */
   total: AmountOwed;
 };
-
-/**
- * How a family said they would pay (#221).
- *
- * **What they said, not what happened.** Vanco tells the site nothing
- * (ADR-0013), so this is never evidence a payment arrived — it is the family's
- * own answer, and its whole job is to let the office know whether to watch for
- * an envelope and to let the two emails word one instruction instead of two.
- *
- * It is one amount one way. There is no third value for a split, because an
- * application whose money goes two ways is the thing #221 removed: an envelope
- * contains the whole total or it contains nothing.
- */
-export type PaymentMethod = 'online' | 'check';
 
 /**
  * What the whole application costs, child by child and then in total (#31 AC 8).

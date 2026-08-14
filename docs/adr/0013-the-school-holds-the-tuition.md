@@ -10,10 +10,11 @@
 > instructors', `pay_online_url` is one address, and the application still
 > learns nothing from a payment. ADR-0017 says which is which, and why.
 >
-> The surfaces are moving with it one ticket at a time: #221 has moved both
-> application emails (`PaymentMethod`, and the shared `invoice` writer in
-> `src/lib/application/notices.ts`), and until #219 lands the Apply page still
-> shows the old split.
+> The surfaces have moved with it: #221 moved both application emails
+> (`PaymentMethod`, and the shared `invoice` writer in
+> `src/lib/application/notices.ts`), and #219 moved the Apply page — it asks
+> for the whole sum, offers the check as the fallback, and records the family's
+> answer on the row.
 
 Tuition is paid to Pharos Academy, in one payment, upfront, through the same
 Vanco page the registration fee goes through. It is not paid to the instructors

@@ -151,6 +151,18 @@ export type PaymentMode = (typeof PAYMENT_MODES)[number];
 export const UNSTATED_PAYMENT_MODE: PaymentMode = 'cheque';
 
 /**
+ * The mode a family's stated method records as (#219, ADR-0017).
+ *
+ * The form says `check` because prose is American and the column says `cheque`
+ * because renaming a schema for a spelling costs a migration and buys nothing
+ * (CONTEXT.md, "enrolment unit"). This is the one line where the two meet, so
+ * neither vocabulary leaks into the other's half of the codebase.
+ */
+export function paymentModeOf(method: 'online' | 'check'): PaymentMode {
+  return method === 'online' ? 'online' : 'cheque';
+}
+
+/**
  * What a row may hold.
  *
  * `overdue` is conspicuously absent, and its absence is the design: see the

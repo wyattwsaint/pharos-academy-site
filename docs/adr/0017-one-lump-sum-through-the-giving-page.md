@@ -76,13 +76,22 @@ has no envelope to be late.
 
 ## Consequences
 
-- **The surfaces move ticket by ticket, and the record says so.** Both emails
-  already word the single instruction from one writer (`invoice` in
-  `src/lib/application/notices.ts`,
-  [#221](https://github.com/wyattwsaint/pharos-academy-site/issues/221)). The
-  Apply page still shows the old
-  split until [#219](https://github.com/wyattwsaint/pharos-academy-site/issues/219)
-  lands; this ADR records the decision, not a finished sweep.
+- **The sweep is finished.** Both emails word the single instruction from one
+  writer (`invoice` in `src/lib/application/notices.ts`,
+  [#221](https://github.com/wyattwsaint/pharos-academy-site/issues/221)), and
+  the Apply page asks for the whole sum with the check as a disclosure beside
+  the primary action
+  ([#219](https://github.com/wyattwsaint/pharos-academy-site/issues/219)).
+- **The Apply page asks the method, and the answer gates nothing but itself**
+  ([#219](https://github.com/wyattwsaint/pharos-academy-site/issues/219)). The
+  rule asks whether the question was answered and never which answer it was —
+  the [ADR-0009](0009-the-application-gates-on-answers-not-agreement.md)
+  construction — so choosing the check delays nothing. With no giving page
+  configured there is nothing to choose between: the page states `check` on the
+  family's behalf through a hidden field, before the gate reads it. The form
+  says `check` and the column says `cheque`; `paymentModeOf` in
+  `src/lib/application/lifecycle.ts` is the one line where the two spellings
+  meet.
 - **A family who says check and then pays online is still ordinary.** The office
   can record a match on either mode; only the envelope-shaped actions — the check
   has arrived, wait again for one — are offered on cheque rows.

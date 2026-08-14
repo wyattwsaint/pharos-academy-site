@@ -43,6 +43,8 @@ function fields(over: Partial<ApplicationFields> = {}): ApplicationFields {
     faith: { [faithKey('Father', 'read')]: 'yes', [faithKey('Mother', 'agree')]: 'no' },
     objections: '',
     agreements: {},
+    // The emails read the submission's own `paymentMethod`, never this field.
+    paymentMethod: '',
     ...over,
   };
 }

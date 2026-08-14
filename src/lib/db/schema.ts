@@ -116,9 +116,10 @@ export const schoolDetails = pgTable('school_details', {
    * the giving destination for the same reason it exists at all: the office
    * changes where the money goes without a deploy.
    *
-   * One address, covering **registration and tuition together** in a single
-   * payment, because that is one Vanco campaign and not two (ADR-0013). The
-   * per-class deposit is the exception and stays a cheque to the school.
+   * One address, covering **the whole sum** — registration, deposits and
+   * tuition — in a single payment, because that is one Vanco campaign and not
+   * two (ADR-0013, ADR-0017). There is no second channel: a cheque is the
+   * fallback for all of it, never for a part of it.
    *
    * Empty is a real state, and the only honest default: until someone pastes
    * the page in, the Apply page offers no online option rather than a link
@@ -677,9 +678,12 @@ export const applications = pgTable('applications', {
    * `payment_since` — so a cheque goes overdue with nobody acting and with no
    * nightly job that can quietly stop running (ADR-0008).
    *
-   * `payment_mode` is the payment slot: today every row reads `cheque`, and the
-   * Vanco stage flips it to `online` without any surrounding state changing
-   * shape.
+   * `payment_mode` is **what the family said they would do** (#219): a
+   * statement of intent, not a receipt. It used to be a deployment-wide
+   * constant that put `cheque` on every row; since the Apply page asks, it is
+   * their answer, and it is what tells the office whether to watch the post
+   * tray. It never moves `payment_status`, which opens `awaiting` in both
+   * modes because the site observes no payment in either (ADR-0017).
    */
   paymentMode: text('payment_mode').notNull().default('cheque'),
   paymentStatus: text('payment_status').notNull().default('awaiting'),

@@ -233,14 +233,28 @@ test.describe('saving school details', () => {
     await page.goto('/admissions/apply');
     const payment = page.locator('[data-section="apply-payment"]');
     await expect(payment.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
-    // Every amount is the school's, and the page says which way each is paid —
-    // with no classes chosen there are no deposit figures, and this line is
-    // what carries it (#187). The middle of the sentence is the half that
-    // moves with the link, so it is asserted whole rather than in pieces that
-    // read the same in both states.
+    // One payment for everything (#219). The sentence is asserted whole rather
+    // than in pieces that read the same in both states, because its middle is
+    // the half that moves with the link.
     await expect(payment).toContainText(
-      'the registration and the tuition online, in one payment, the deposits by check',
+      'All of it is paid to Pharos Academy in one payment, online, through the church’s giving page — the registration, the deposits and the tuition together.',
     );
+
+    // The giving page carries no amount, so the figure beside the button and
+    // the "enter it yourself" line both have to agree with the totals list.
+    const total = await payment.locator('.totals > li.due .amount').innerText();
+    await expect(payment.locator('[data-pay-total]')).toHaveText(total);
+    await expect(payment).toContainText(`please enter ${total} yourself`);
+
+    // The check is a closed disclosure asking for the whole total — a fallback,
+    // never a second channel for part of it.
+    const byCheck = payment.locator('[data-pay-by-check]');
+    await expect(byCheck).toHaveJSProperty('open', false);
+    await byCheck.locator('summary', { hasText: 'Prefer to pay by check?' }).click();
+    await expect(byCheck).toContainText(`Post a check for ${total} — all of it`);
+
+    // One call to action: "Pay online" has no peer button beside it.
+    await expect(payment.locator('a.btn, button.btn')).toHaveCount(1);
 
     await setPayOnlineUrl(page, '');
 
@@ -248,10 +262,78 @@ test.describe('saving school details', () => {
     await page.goto('/admissions/apply');
     await expect(payment.locator('[data-pay-online]')).toHaveCount(0);
     await expect(payment).toContainText('no online payment set up at the moment');
-    // And the same sentence now says every amount is a check.
-    await expect(payment).toContainText(
-      'the registration, the tuition and the deposits, all by check',
-    );
+    await expect(payment).toContainText('All of it is paid to Pharos Academy by check');
+    // With nothing to choose between, the method is stated rather than asked —
+    // and the gate does not hold the form open for an answer nobody can give.
+    await expect(payment.locator('[data-payment-method]')).toHaveCount(0);
+    await expect(page.locator('[data-missing-for="paymentMethod"]')).toBeHidden();
+  });
+
+  /*
+   * The stated method, end to end, both answers (#219 AC 4, AC 5): everything
+   * else answered leaves Send greyed, either answer opens it, the confirmation
+   * speaks in the family's own answer, and the admin row reads it back as the
+   * mode-aware "Awaiting" label.
+   */
+  for (const method of ['online', 'check'] as const) {
+    test(`sends an application that says it is paying by ${method}`, async ({ page }) => {
+      test.skip(!!process.env.PLAYWRIGHT_BASE_URL, 'writes an application row');
+
+      await signIn(page);
+      await setPayOnlineUrl(page, VANCO);
+
+      const family = `Suite Paying ${method}`;
+      await page.goto(APPLICATION_PATH);
+      await page.locator('form[data-enhanced]').waitFor();
+      for (const question of FAITH_QUESTIONS) {
+        await page.check(`input[name="${faithKey('Father', question.id)}"][value="yes"]`);
+      }
+      await page.fill('#apply-family-name', family);
+      await page.fill('#apply-email', `suite-paying-${method}@example.com`);
+      await page.fill('#apply-child-0-name', 'Method Child');
+      await page.fill('#apply-child-0-age', '13');
+      await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+      await page.check('[data-agreement="handbook"] input[value="neither"]');
+      await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
+
+      // The method is the one thing still missing, and either answer opens
+      // the gate — choosing check delays nothing (AC 5).
+      const send = page.getByRole('button', { name: 'Send the application' });
+      await expect(send).toHaveAttribute('aria-disabled', 'true');
+      await page.check(`[data-payment-method] input[value="${method}"]`);
+      await expect(send).not.toHaveAttribute('aria-disabled', 'true');
+      await send.click();
+
+      // The confirmation is worded from the answer, not from what the page
+      // could have offered (AC 6).
+      const confirmation = page.locator('[data-section="apply-confirmation"]');
+      await expect(confirmation.locator(`[data-paying="${method}"]`)).toHaveCount(1);
+      if (method === 'online') {
+        await expect(confirmation.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
+        await expect(confirmation).not.toContainText('Post a check');
+      } else {
+        await expect(confirmation).toContainText('A check for');
+        await expect(confirmation.locator('[data-pay-online]')).toHaveCount(0);
+      }
+
+      // And the office knows whether to watch the post for an envelope.
+      await page.goto('/admin/applications');
+      const row = page.getByTestId('application').filter({ hasText: family }).first();
+      await expect(row.getByTestId('application-payment')).toContainText(
+        method === 'online' ? 'Awaiting payment online' : 'Awaiting check',
+      );
+    });
+  }
+
+  // In this serial describe rather than with the other accessibility tests,
+  // because it clicks Save: posting the whole form from a parallel worker
+  // re-posts a stale copy of the one row over whatever a test here just saved,
+  // which is the overwrite the comment at the top of this describe is about.
+  test('the save banner is announced without stealing focus', async ({ page }) => {
+    await signIn(page);
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('role', 'status');
   });
 
   test('refuses an online payment link that is not a web address', async ({ page }) => {
@@ -1063,6 +1145,8 @@ test.describe('applications', () => {
       /** The two agreements (#71), when the test is about them. */
       handbook?: 'student' | 'parent' | 'neither';
       codeOfConduct?: 'student' | 'parent' | 'neither';
+      /** The stated payment method (#219); a check when the test does not care. */
+      paying?: 'online' | 'check';
     },
   ): Promise<void> {
     await page.goto(APPLICATION_PATH);
@@ -1089,6 +1173,13 @@ test.describe('applications', () => {
     await page.check(
       `[data-agreement="code-of-conduct"] input[value="${family.codeOfConduct ?? 'neither'}"]`,
     );
+
+    // Which way the money is coming (#219). Conditional because whether the
+    // radio exists at all depends on the shared `pay_online_url` row.
+    const method = page.locator(
+      `[data-payment-method] input[value="${family.paying ?? 'check'}"]`,
+    );
+    if ((await method.count()) > 0) await method.check();
 
     await page.getByRole('button', { name: 'Send the application' }).click();
     await expect(page.locator('[data-outcome="received"]')).toBeVisible();
@@ -1372,12 +1463,6 @@ test.describe('accessibility', () => {
     }
   }
 
-  test('the save banner is announced without stealing focus', async ({ page }) => {
-    await signIn(page);
-    await page.getByRole('button', { name: 'Save' }).click();
-
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('role', 'status');
-  });
 });
 
 /** A violation rendered so a CI failure names the rule and the element. */

@@ -47,6 +47,7 @@ function fields(overrides: Partial<ApplicationFields> = {}): ApplicationFields {
     },
     objections: '',
     agreements: {},
+    paymentMethod: 'check',
     ...overrides,
   };
 }

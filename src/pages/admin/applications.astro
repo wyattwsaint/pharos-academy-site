@@ -94,7 +94,10 @@ const owedOn = (application: ApplicationRecord) => {
       // The faith answers, the objection and the two agreements are not priced;
       // the cost is over the children and their classes, which is all this
       // shape is for.
-      { ...application, faith: {}, objections: '', agreements: {} },
+      // The money side is on `application.payment`, not on these fields: what
+      // this shape is for is the cost, and the cost is over the children and
+      // their classes.
+      { ...application, faith: {}, objections: '', agreements: {}, paymentMethod: '' },
       offerings,
       agreed ?? settings,
     ),

@@ -167,9 +167,9 @@ details row, so the office moves it without a deploy, and empty there means the
 Apply page offers no online payment at all. A **check** to the school is the
 fallback, for the whole total and never the deposits alone.
 
-The surfaces are catching up one ticket at a time: both emails word it that way
-(#221), and until #219 lands the **Apply page still shows the old split** —
-registration and tuition online, deposits by check.
+Every surface now words it that way: both emails (#221), and the Apply page
+(#219), which asks the family which method they mean and records the answer —
+see **stated payment method** below.
 
 All three are the school's money. Tuition does **not** go to the instructors —
 see [ADR-0013](docs/adr/0013-the-school-holds-the-tuition.md), which reverses
@@ -178,14 +178,15 @@ with the copy; [ADR-0017](docs/adr/0017-one-lump-sum-through-the-giving-page.md)
 supersedes the part of it that kept the deposits on a check, and names what
 survives.
 
-What did *not* move is the application. Vanco sends no confirmation back, so a
-`paid online` flag set from a family clicking a link would be a claim nobody
-checked; the payment state and the amounts owed are exactly what they were, and
-the office matches a Vanco payment to an application by hand.
+**A check is the fallback, never a peer.** On the Apply page paying online is the
+primary action and posting a check is a disclosure beside it — and what it asks
+for is the whole total, because there is no second channel left for the rest of
+it to go down.
 
 *Applied* and *paid* are separate states on separate axes. An application is
-`submitted` while its payment is `awaiting cheque`, then `overdue`, then
-`received`; none of those changes the application's own state.
+`submitted` while its payment is `awaiting`, then `overdue`, then `received`;
+none of those changes the application's own state, and none of them is set by
+what the family said their method would be.
 
 The row also holds a **payment mode** — the payment axis's spelling of the
 family's stated *payment method*, `cheque` or `online` (the column keeps the
@@ -214,6 +215,24 @@ the mode.
 What is offered on **cheque rows only** is the pair that names an envelope: the
 cheque has arrived, and wait again for one. An online row is never asked to
 expect a cheque from a family who said they were not sending one.
+
+### stated payment method
+
+What the family said they would do, recorded on the application as
+`payment_mode` (#219). It is a **statement of intent and never a receipt**: Vanco
+sends no confirmation back, so a `paid online` flag set from a family clicking a
+link would be a claim nobody checked. What it buys is the office knowing whether
+to watch the post tray, and nothing else — the payment state and the amounts owed
+are exactly what they were, and a Vanco payment is still matched to an
+application by hand.
+
+Choosing the check therefore delays nothing. The rule that gates the send button
+asks whether the question was answered and never which answer it was, exactly as
+the Statement of Faith gate does (ADR-0009).
+
+The form spells it `check` and the column spells it `cheque`, which is the
+**enrolment unit** rule above meeting a word that now lives in both halves at
+once; `paymentModeOf` is the one line where they meet.
 
 ### class tally
 
