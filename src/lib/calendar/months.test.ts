@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { DAY_TRACKS } from '../courses/schedule.js';
 import type { CalendarEvent } from './event.js';
 import { monthGrid, type MonthCell } from './months.js';
-import { previewRows, SEEDED_SCHOOL_YEAR, SEMESTERS, type SchoolYear } from './year.js';
+import {
+  addDays,
+  previewRows,
+  SEEDED_SCHOOL_YEAR,
+  SEMESTERS,
+  trackOfDate,
+  type SchoolYear,
+} from './year.js';
 
 /**
  * The month grid, against the year the school has already published (#186).
@@ -14,8 +21,8 @@ import { previewRows, SEEDED_SCHOOL_YEAR, SEMESTERS, type SchoolYear } from './y
  * open. That is asserted date by date rather than spot-checked.
  */
 
-/** Every cell of every month, flattened — the blanks dropped. */
-function cellsOf(blocks: ReturnType<typeof monthGrid>): Map<string, MonthCell> {
+/** Every cell of every month, by date — the blanks dropped. */
+function datedCells(blocks: ReturnType<typeof monthGrid>): Map<string, MonthCell> {
   return new Map(
     blocks.flatMap((block) =>
       block.weeks.flat().filter((cell): cell is MonthCell => cell !== null).map((cell) => [cell.date, cell]),
@@ -86,7 +93,7 @@ describe('the months it draws', () => {
 describe('the one-offs on it', () => {
   it('draws every one the site holds, the ones that have been and gone included', () => {
     const events = [event('2026-09-18', 'Fall open house'), event('2027-03-04', 'Picture day')];
-    const cells = cellsOf(monthGrid(SEEDED_SCHOOL_YEAR, events));
+    const cells = datedCells(monthGrid(SEEDED_SCHOOL_YEAR, events));
 
     expect(cells.get('2026-09-18')?.events.map((one) => one.title)).toEqual(['Fall open house']);
     expect(cells.get('2027-03-04')?.events.map((one) => one.title)).toEqual(['Picture day']);
@@ -94,7 +101,7 @@ describe('the one-offs on it', () => {
 
   it('keeps two one-offs on one date as two, in the order it was given them', () => {
     const events = [event('2026-10-17', 'Open house'), event('2026-10-17', 'Bake sale')];
-    const cells = cellsOf(monthGrid(SEEDED_SCHOOL_YEAR, events));
+    const cells = datedCells(monthGrid(SEEDED_SCHOOL_YEAR, events));
 
     expect(cells.get('2026-10-17')?.events.map((one) => one.title)).toEqual([
       'Open house',
@@ -104,7 +111,7 @@ describe('the one-offs on it', () => {
 });
 
 describe('the days the school is shut', () => {
-  const cells = cellsOf(monthGrid(SEEDED_SCHOOL_YEAR, []));
+  const cells = datedCells(monthGrid(SEEDED_SCHOOL_YEAR, []));
 
   it('marks a closed weekday inside a semester, and names it', () => {
     // Thanksgiving off three tracks, plus the Tuesday the school's own sheets
@@ -129,7 +136,7 @@ describe('the days the school is shut', () => {
         term.track === 'Monday' && term.semester === 'fall' ? { ...term, weeks: 12 } : term,
       ),
     };
-    const shortCells = cellsOf(monthGrid(short, []));
+    const shortCells = datedCells(monthGrid(short, []));
 
     expect(shortCells.get('2026-12-07')).toMatchObject({ noSchool: true, closure: null });
     expect(shortCells.get('2026-12-14')).toMatchObject({ noSchool: true, closure: null });
@@ -159,26 +166,41 @@ describe('the days the school is shut', () => {
    * The one that would be caught in public: one page, two drawings, one year.
    *
    * The sheet is the source a family already trusts — it is the PDF they were
-   * handed — so the grid is held to it rather than the other way round, for
-   * every date in the year rather than for a handful.
+   * handed — so the grid is held to it rather than the other way round, and for
+   * every date of the year rather than for a handful.
+   *
+   * Both directions, because only one of them is the interesting one. That the
+   * grid never contradicts a date the sheet holds is the easy half; that it
+   * marks **every** teaching weekday the sheet leaves out is the half a grid
+   * that simply drew nothing would also pass.
    */
   it('agrees with the sheet, date for date', () => {
-    const sheet = new Set(
-      SEMESTERS.flatMap((semester) => previewRows(SEEDED_SCHOOL_YEAR, semester))
+    const semesters = SEMESTERS.map((semester) => {
+      const dates = previewRows(SEEDED_SCHOOL_YEAR, semester)
         .flatMap((row) => (row.kind === 'week' ? DAY_TRACKS.map((track) => row.cells[track]) : []))
-        .filter((date): date is string => date !== null),
-    );
+        .filter((date): date is string => date !== null)
+        .sort();
+      return { held: new Set(dates), from: dates[0]!, to: dates[dates.length - 1]! };
+    });
 
-    for (const [date, cell] of cells) {
-      if (sheet.has(date)) expect(cell.noSchool, date).toBe(false);
-      else if (cell.noSchool) expect(sheet.has(date), date).toBe(false);
+    let checked = 0;
+    for (const term of semesters) {
+      for (let date = term.from; date <= term.to; date = addDays(date, 1)) {
+        const cell = cells.get(date);
+        expect(cell, date).toBeDefined();
+        // Marked exactly when the school teaches that weekday and no column of
+        // the sheet holds the date.
+        expect(cell!.noSchool, date).toBe(trackOfDate(date) !== null && !term.held.has(date));
+        checked += 1;
+      }
     }
+    expect(checked).toBeGreaterThan(200);
 
-    // And the mark is drawn on every school-shaped day the sheet does not hold,
-    // which is the half a "never marks the wrong day" test would miss.
-    const marked = [...cells.values()].filter((cell) => cell.noSchool).length;
-    expect(marked).toBeGreaterThan(0);
-    for (const date of sheet) expect(cells.get(date)?.noSchool, date).toBe(false);
+    // And nothing between the semesters or outside them is marked at all.
+    for (const [date, cell] of cells) {
+      if (semesters.some((term) => date >= term.from && date <= term.to)) continue;
+      expect(cell.noSchool, date).toBe(false);
+    }
   });
 });
 

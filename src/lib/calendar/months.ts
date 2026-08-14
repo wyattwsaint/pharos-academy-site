@@ -1,5 +1,14 @@
 import type { CalendarEvent } from './event.js';
-import { meetingsOf, SEMESTERS, trackOfDate, type SchoolYear, type Semester } from './year.js';
+import {
+  meetingsOf,
+  monthLabel,
+  SEMESTERS,
+  trackOfDate,
+  weekdayDateLabel,
+  type Meeting,
+  type SchoolYear,
+  type Semester,
+} from './year.js';
 
 /**
  * The year as a month grid — the second half of the calendar page (#186).
@@ -93,7 +102,7 @@ export function monthGrid(year: SchoolYear, events: readonly CalendarEvent[]): M
 
   const meets = new Set(meetings.map((meeting) => meeting.date));
   const closures = new Map(year.closures.map((closure) => [closure.date, closure.label]));
-  const terms = semesterSpans(year);
+  const terms = semesterSpans(year, meetings);
   const held = new Map<string, CalendarEvent[]>();
   for (const event of events) {
     held.set(event.heldOn, [...(held.get(event.heldOn) ?? []), event]);
@@ -102,7 +111,7 @@ export function monthGrid(year: SchoolYear, events: readonly CalendarEvent[]): M
   const cellOf = (date: string): MonthCell => ({
     date,
     day: Number(date.slice(8)),
-    label: cellLabel(date),
+    label: weekdayDateLabel(date),
     events: held.get(date) ?? [],
     noSchool: isNoSchool(date, meets, terms),
     closure: closures.get(date) ?? null,
@@ -110,7 +119,7 @@ export function monthGrid(year: SchoolYear, events: readonly CalendarEvent[]): M
 
   return monthsBetween(dates[0]!, dates[dates.length - 1]!).map((id) => ({
     id,
-    heading: monthHeading(id),
+    heading: monthLabel(id),
     weeks: weeksOf(id, cellOf),
   }));
 }
@@ -151,9 +160,7 @@ type Span = { from: string; to: string };
  * opens on a closed day the two differ, and the school's own answer is that the
  * semester started — the day off belongs to it, and marking it is the point.
  */
-function semesterSpans(year: SchoolYear): Span[] {
-  const meetings = meetingsOf(year);
-
+function semesterSpans(year: SchoolYear, meetings: readonly Meeting[]): Span[] {
   return SEMESTERS.flatMap((semester: Semester) => {
     const starts = year.terms
       .filter((term) => term.semester === semester)
@@ -212,27 +219,3 @@ function columnOf(date: string): number {
   return (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
 }
 
-/** "November 2026" — the heading over one block. */
-function monthHeading(month: string): string {
-  return new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en-GB', {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-}
-
-/**
- * "Wednesday 25 November" — the date, said in full.
- *
- * A wide grid prints the day number and lets the column and the heading say the
- * rest. A phone has neither, so the same cell says the whole thing there, and it
- * is one string computed once rather than a second date format to keep in step.
- */
-function cellLabel(date: string): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC',
-  });
-}

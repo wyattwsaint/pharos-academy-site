@@ -102,9 +102,10 @@ test.describe('the events’ structured data', () => {
      * The grid draws the whole year, past one-offs included, because a cell says
      * its own date (#186). The markup describes what is still ahead, because a
      * crawler has no cell and last spring's concert offered as though it were on
-     * is a wrong claim about today. So the counts do **not** agree — what has to
-     * hold is that every node in the markup is drawn on the grid, and that
-     * nothing in the markup has already happened.
+     * is a wrong claim about today. So the two are counted against each other
+     * through that boundary rather than directly: the markup is exactly the
+     * upcoming subset of what the grid draws — not a node fewer, which an
+     * under-emitting builder would be, and not a node more.
      *
      * Skipped rather than passed on nothing when the calendar is empty. Which
      * events are on is no longer knowable from the repository — most of them
@@ -112,10 +113,19 @@ test.describe('the events’ structured data', () => {
      * guard has to be here, and it is a skip on the report rather than a silent
      * zero-against-zero.
      */
-    test.skip(events.length === 0, 'Nothing is ahead on the calendar, so nothing is described.');
-    expect(await shown.count()).toBeGreaterThanOrEqual(events.length);
+    const drawn = await page
+      .locator('[data-section="calendar-months"] .one-off')
+      .evaluateAll((nodes) =>
+        nodes.map(
+          (node) => node.querySelector('.one-off-panel time')?.getAttribute('datetime') ?? null,
+        ),
+      );
+    test.skip(drawn.length === 0, 'Nothing is on the calendar, so there is nothing to describe.');
 
     const today = schoolToday(new Date());
+    const upcoming = drawn.filter((date): date is string => date !== null && date >= today);
+    expect(events).toHaveLength(upcoming.length);
+
     for (const event of events) {
       expect(await shown.filter({ hasText: event.name }).count()).toBeGreaterThan(0);
       expect(String(event.startDate)).toMatch(/^\d{4}-\d{2}-\d{2}/);

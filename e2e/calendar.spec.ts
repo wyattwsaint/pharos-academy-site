@@ -121,6 +121,34 @@ test.describe('the month grid', () => {
     await expect(cell('2026-11-10')).not.toContainText('No school');
   });
 
+  /*
+   * The one-offs on the grid are the one-offs in the feed (#153 ACs 1 and 3).
+   *
+   * Read off the page rather than off a constant: the school's events come from
+   * two places — the Events screen and the school's own Google calendar — and
+   * neither the count nor the titles are knowable from the repository any more.
+   * What is knowable is that a family who subscribed once and never touched it
+   * again sees the same year the page draws, whichever calendar an event came
+   * from.
+   *
+   * Skipped rather than quietly satisfied when nothing is on: a loop over an
+   * empty list passes for ever while proving nothing, and the admin suite proves
+   * the same page with an event it creates itself.
+   */
+  test('draws the same one-offs the subscribed feed carries', async ({ page, request }) => {
+    await page.goto(CALENDAR_PATH);
+    const shown = page.locator('[data-section="calendar-months"] .one-off-title');
+    const count = await shown.count();
+    test.skip(count === 0, 'Nothing is on the calendar today — see admin-calendar.spec.ts.');
+
+    const feed = (await (await request.get(CALENDAR_FEED_PATH)).text()).replace(/\r\n /g, '');
+    for (let index = 0; index < count; index += 1) {
+      const one = shown.nth(index);
+      const title = (await one.innerText()).trim();
+      expect(feed, title).toContain(title.replace(/([;,\\])/g, '\\$1'));
+    }
+  });
+
   test('opens a one-off’s detail from the keyboard, and closes it again', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
     const trigger = page.locator('[data-section="calendar-months"] .one-off-title').first();
