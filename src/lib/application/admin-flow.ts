@@ -8,20 +8,18 @@
  * money, and neither posts the other's field.
  *
  * Everything here is parse-then-apply, the shape `admin/users.ts` set: a form
- * that does not say what it wants is a banner rather than a throw, and the page
- * stays a page.
+ * that does not say what it wants is an outcome rather than a throw, and the
+ * page stays a page.
  */
 
-import type { Banner } from '../admin/banner.js';
 import type { Db } from '../db/client.js';
 import {
   APPLICATION_EVENTS,
-  APPLICATION_STATE_LABELS,
   PAYMENT_EVENTS,
-  paymentStatusLabel,
   type ApplicationEvent,
   type PaymentEvent,
 } from './lifecycle.js';
+import { paymentOutcome, stateOutcome, type ApplicationOutcomeCode } from './outcome.js';
 import { moveApplication, moveApplicationPayment } from './store.js';
 
 /** One thing the school asked for, on one of the two axes. */
@@ -51,39 +49,24 @@ export function parseApplicationAction(form: FormData): ApplicationAction | null
 }
 
 /**
- * Do it, and say what happened in the school's own words.
+ * Do it, and name what happened.
  *
- * A refused move is not an error and is not reported as one: it means the
- * application had already moved — somebody else's click, or the same person's
- * second one — and the honest banner says so rather than blaming anybody.
+ * A code rather than a sentence, because the answer travels back through a
+ * redirect (#201) and `outcome.ts` is where the wording lives. A refused move
+ * is not an error and is not reported as one: it means the application had
+ * already moved — somebody else's click, or the same person's second one — and
+ * the code says so rather than blaming anybody.
  */
 export async function applyApplicationAction(
   db: Db,
   action: ApplicationAction,
   now = new Date(),
-): Promise<Banner> {
+): Promise<ApplicationOutcomeCode> {
   if (action.axis === 'application') {
     const state = await moveApplication(db, action.id, action.event);
-    return state
-      ? { ok: true, message: `This application is now ${APPLICATION_STATE_LABELS[state].toLowerCase()}.` }
-      : {
-          ok: false,
-          message:
-            'Nothing changed — this application is not somewhere that move is available from. ' +
-            'It may already have moved.',
-        };
+    return state ? stateOutcome(state) : 'state-unmoved';
   }
 
   const payment = await moveApplicationPayment(db, action.id, action.event, now);
-  return payment
-    ? {
-        ok: true,
-        message: `The money side now reads ${paymentStatusLabel(payment.mode, payment.status).toLowerCase()}.`,
-      }
-    : {
-        ok: false,
-        message:
-          'Nothing changed — the money side already reads that, or this payment cannot make ' +
-          'that move. It may already have moved.',
-      };
+  return payment ? paymentOutcome(payment.mode, payment.status) : 'payment-unmoved';
 }
