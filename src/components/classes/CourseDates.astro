@@ -4,10 +4,9 @@ import type { CourseMeetings } from '../../lib/courses/meetings.js';
 /**
  * When this class meets, on the page where the class is named (#233).
  *
- * The question is asked in August and the site's only public answer was the
- * calendar page's semester sheets — a table of week rows and **day track**
- * columns that never says the course's name. Here a parent reads the answer
- * where they already are, and never has to learn which track the course is on.
+ * Why the answer belongs here rather than on the calendar page's semester
+ * sheets is argued once, in `lib/courses/meetings.ts`. What is decided here is
+ * only how it is shown.
  *
  * **The summary line is the answer**; the full list is for the family filling
  * in a wall planner. So the line is printed and the list sits behind a native
@@ -29,7 +28,7 @@ const { meetings } = Astro.props;
 ---
 
 <div class="coursedates mt-9" data-section="class-dates">
-  <h2>When it meets</h2>
+  <h2>When It Meets</h2>
   {
     /*
      * Four states, and each says what it means (#197). "No dates yet" and "no

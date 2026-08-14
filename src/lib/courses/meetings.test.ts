@@ -100,7 +100,7 @@ describe('the summary line (#233)', () => {
   it('counts the meetings, names the weekday and gives the first and last date', () => {
     const { summary } = courseMeetings(year, bySlug('introduction-to-church-and-bible-history'));
 
-    expect(summary).toBe('28 Wednesdays, 2 Sept to 7 Apr');
+    expect(summary).toBe('28 Wednesdays, 2 Sep to 7 Apr');
   });
 
   it('names both weekdays when a course meets twice a week', () => {

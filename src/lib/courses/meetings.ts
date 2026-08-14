@@ -77,16 +77,16 @@ export type CourseMeetings = {
  * whichever track is asked.
  */
 export function courseMeetings(year: SchoolYear, course: Course): CourseMeetings {
-  const perTrack = course.days.map((track) =>
-    meetingDatesOn(year, track, course.enrolment, course.dates),
-  );
-  // Null from any track is the block-with-no-dates state, and it is the whole
-  // course's state: the dates it would show are the dates it has not got.
-  if (perTrack.some((dates) => dates === null)) {
-    return { dates: [], summary: null, unknown: true, months: [] };
+  const perTrack: string[][] = [];
+  for (const track of course.days) {
+    const onTrack = meetingDatesOn(year, track, course.enrolment, course.dates);
+    // Null from any track is the block-with-no-dates state, and it is the whole
+    // course's state: the dates it would show are the dates it has not got.
+    if (onTrack === null) return { dates: [], summary: null, unknown: true, months: [] };
+    perTrack.push(onTrack);
   }
 
-  const dates = [...new Set(perTrack.flat() as string[])].sort();
+  const dates = [...new Set(perTrack.flat())].sort();
   return {
     dates,
     summary: summaryOf(dates),

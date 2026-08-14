@@ -284,13 +284,24 @@ test.describe('a class’s own page', () => {
     }
   });
 
-  test('opens its dates from the keyboard', async ({ page }) => {
-    await page.goto('/classes/the-virtue-of-kindness');
+  test('opens its dates from the keyboard, and they are readable there too', async ({ page }) => {
+    // The longest list the page can hold — Algebra 1's fifty-six dates over two
+    // tracks — because a keyboard is how the parent who most needs the list
+    // reads it, and a short block would not exercise the months.
+    const meetings = courseMeetings(SEEDED_SCHOOL_YEAR, bySlug('algebra-1'));
+    await page.goto('/classes/algebra-1');
     const section = page.locator('[data-section="class-dates"]');
 
     await section.locator('summary').focus();
     await page.keyboard.press('Enter');
     await expect(section.locator('.coursedates-months')).toBeVisible();
+
+    const first = meetings.months[0]!;
+    const last = meetings.months.at(-1)!;
+    await expect(section).toContainText(first.heading);
+    await expect(section).toContainText(last.heading);
+    await expect(section.locator(`time[datetime="${first.dates[0]!.date}"]`)).toBeVisible();
+    await expect(section.locator(`time[datetime="${last.dates.at(-1)!.date}"]`)).toBeVisible();
 
     await page.keyboard.press('Enter');
     await expect(section.locator('.coursedates-months')).toBeHidden();

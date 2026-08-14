@@ -382,15 +382,31 @@ export function weekdayDateLabel(date: string): string {
  * one sentence is the length that stops it being read at a glance. Here rather
  * than in `courses/`, for the reason on {@link americanDateLabel}: a date format
  * kept in the module that happens to want it is one the sweep does not find.
+ *
+ * British order is a debt rather than a preference. The classes flow has not
+ * been moved to American order yet — the fact list beside this line prints
+ * "14 October" — and "Sep 2" above "14 October" would read as an error rather
+ * than as a house style. It moves when its flow does, and this is the docstring
+ * that sweep will find.
  */
 export function shortDateLabel(date: string): string {
-  return SHORT_DATE_FORMAT.format(new Date(`${date}T00:00:00Z`));
+  const parts = SHORT_DATE_FORMAT.formatToParts(new Date(`${date}T00:00:00Z`));
+  const part = (type: 'day' | 'month') => parts.find((one) => one.type === type)?.value ?? '';
+  return `${part('day')} ${part('month')}`;
 }
 
-const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
+/**
+ * American English for the abbreviation and British order for the parts, which
+ * is not a muddle: `en-GB` abbreviates September as "Sept", and one four-letter
+ * month in a line of three-letter ones reads as a typo. `en-US` gives "Sep",
+ * and the day-first order comes from listing the parts rather than the locale.
+ */
+const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
   month: 'short',
   timeZone: 'UTC',
+  // `formatToParts` order is the locale's; `format` is not asked, so the parts
+  // are joined here in the order the rest of this flow prints dates in.
 });
 
 /**
