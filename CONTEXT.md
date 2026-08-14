@@ -372,6 +372,40 @@ home page — the banner is what replaced it in that region), and not the
 [registration call to action](#registration-call-to-action), whose words the
 example above is one keystroke away from.
 
+### closure
+
+A weekday inside a semester when the school is **shut** — Labor Day, Election
+Day, the four days of Thanksgiving week, Easter Monday. It belongs to the school
+year, is typed on the School Year screen beside the eight numbers, and carries a
+date and a label and nothing else.
+
+**It carries no day track and does not need one.** A closure falls on a weekday
+and shuts whichever track meets that day. Thanksgiving is four rows — 25, 26 and
+30 November and 1 December — and takes the week off all four tracks at once.
+
+**A closure is skipped, never counted.** The fourteen weeks a track runs are
+meetings rather than calendar weeks, so a closure pushes that track's remaining
+dates a week later and leaves the other three where they were. It is the whole
+reason week 10 is 9 November on the Monday track and 4 November on the
+Wednesday track.
+
+**It is the shape of the day, not a thing on it.** The sheet writes it into the
+row where it interrupts; the month grid marks the cell *No school —
+Thanksgiving* (#186). Nothing is happening at the school that day, which is
+exactly what a closure says, so it is never drawn as an entry beside the
+[one-offs](#one-off).
+
+**The subscribed feed cannot express one.** `calendar.ics` emits a meeting for
+every date a track meets and a one-off for every event; a closure produces no
+entry at all, so a phone reading the feed shows 25 November as an ordinary blank
+day. That is a real gap rather than a defect in the feed — it is one of the two
+things the site's own calendar has that the family's phone does not.
+
+Not: "holiday" (Election Day is not one, and neither is the school's own Tuesday
+of Thanksgiving week), "one-off" (which is a thing that happens, on a date
+belonging to no track), "break" — the gap between the semesters is typed
+nowhere and is simply where the meeting dates stop.
+
 ### one-off
 
 A single dated thing on the school's calendar that belongs to no day track — an
@@ -385,17 +419,22 @@ computed from eight numbers and belongs to a track; a one-off happens once and
 belongs to nothing. Forcing the two into one model gives every meeting a place
 it never has and every one-off a week number that means nothing.
 
-**The page shows the year; the markup shows what is still ahead; the feed shows
-everything.** The calendar page draws a one-off on its own date in a month grid,
-past ones included, because the cell's position already says the date has gone
-(#186) — the rule that showed only what was ahead (#146) was written for a list,
-where a finished fundraiser led. What still filters is the `Event` structured
-data: a crawler has no cell, and last spring's concert offered to a search result
-as though it were on is a wrong claim about today. The boundary is unchanged — a
-one-off is kept through the whole of its own day, in the school's own timezone,
-and drops the morning after, because a fundraiser is at its most useful on the
-morning it happens. The subscribed calendar is deliberately unfiltered: it is the
-record of the year, and the phone reading it decides what to draw.
+**The page shows the year; the crawler is told what is ahead; the feed shows
+everything.** Until #186 the page showed only what was still ahead: a one-off
+was kept through the whole of its own day, in the school's own timezone, and
+dropped the morning after (#146), because a fundraiser is at its most useful on
+the morning it happens. The month grid replaces that rule rather than keeps it —
+a grid rendering an empty September in November would be lying about the year,
+and a dated cell in a past month misleads nobody, because its position already
+says it is over.
+
+What #146 decided is still true of a **list**, and is part of why there is no
+longer one on the page. It is also still true of the `Event` structured data
+(#151), which is drawn from the upcoming subset rather than from the grid: a
+crawler has no cell, and last spring's concert offered to a search result as
+though it were on is a wrong claim about today. The subscribed calendar stays
+deliberately unfiltered: it is the record of the year, and the phone reading it
+decides what to draw.
 
 It is also the one record on this site that is **deleted rather than kept**: a
 cancelled concert left on a subscribed feed is a family driving to a school that
