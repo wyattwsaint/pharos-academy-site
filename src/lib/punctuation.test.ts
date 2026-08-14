@@ -3,13 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { NOT_PROSE, PROSE_ROOTS } from './house-style.js';
-import {
-  headingCase,
-  punctuationFindings,
-  sentenceCase,
-  type Finding,
-  type Issue,
-} from './punctuation.js';
+import { punctuationFindings, type Finding, type Issue } from './punctuation.js';
 
 /**
  * The punctuation and spacing scanner (#148).
@@ -194,70 +188,6 @@ describe('ellipses', () => {
 
   it('leaves the single character alone', () => {
     expect(issues('Latin, Logic… and more.')).toEqual([]);
-  });
-});
-
-describe('capitalisation', () => {
-  it('reads a heading written in sentence case', () => {
-    expect(headingCase('Our mission and vision')).toBe('sentence');
-    expect(headingCase('What you agree to')).toBe('sentence');
-  });
-
-  it('reads a heading written in title case', () => {
-    expect(headingCase('What Makes Us Different')).toBe('title');
-    expect(headingCase('Our Dedicated Staff')).toBe('title');
-  });
-
-  it('reads a heading that is neither', () => {
-    expect(headingCase('Is Pharos the Right Fit for your Family?')).toBe('mixed');
-  });
-
-  it('reads a heading of two sentences as two sentences', () => {
-    // "Mornings here. Afternoons yours." is sentence case twice over, and the
-    // capital in the middle is a sentence starting, not a style.
-    expect(headingCase('Mornings here. Afternoons yours.')).toBe('sentence');
-    expect(sentenceCase('Mornings here. Afternoons yours.')).toBe('Mornings here. Afternoons yours.');
-  });
-
-  it('has no opinion when every capital in a heading is a name', () => {
-    // "Why Pharos Academy" is written identically in both styles. Reading it as
-    // title case would put a finding on a heading nobody would change.
-    expect(headingCase('Why Pharos Academy')).toBe('undetermined');
-    expect(headingCase('Teaching at Pharos Academy')).toBe('undetermined');
-  });
-
-  it('has no opinion about a heading of one word', () => {
-    expect(headingCase('Notes')).toBe('undetermined');
-    expect(headingCase('Leadership')).toBe('undetermined');
-  });
-
-  it('leaves a document title alone, because that is its name', () => {
-    expect(headingCase('Statement of Faith and Practice')).toBe('name');
-    expect(headingCase('Code of Conduct')).toBe('name');
-  });
-
-  it('proposes the sentence-case rewrite, keeping the names', () => {
-    expect(sentenceCase('What Makes Us Different')).toBe('What makes us different');
-    expect(sentenceCase('Is Pharos the Right Fit for your Family?')).toBe(
-      'Is Pharos the right fit for your family?',
-    );
-  });
-
-  it('reports a title-case heading in a page as a judgement call', () => {
-    const [finding, ...rest] = scan('<h2>What Makes Us Different</h2>', 'astro');
-    expect(rest).toEqual([]);
-    expect(finding).toMatchObject({
-      issue: 'capitalisation',
-      current: 'What Makes Us Different',
-      proposed: 'What makes us different',
-      call: 'judgement',
-    });
-  });
-
-  it('says nothing about a heading whose words come from the database', () => {
-    // `{policy.title}` is the school's own document name, and the scan cannot
-    // see it anyway.
-    expect(issues('<h2>{policy.title}</h2>', 'astro')).toEqual([]);
   });
 });
 

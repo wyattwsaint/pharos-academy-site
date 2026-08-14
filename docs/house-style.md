@@ -99,21 +99,46 @@ The single character `…`. Never three dots, and never dots spaced apart.
 
 ## Capitalisation of headings
 
-**Sentence case.** "Our mission and vision", "What you agree to", "Where we
-meet" — this is what every page does except Admissions and the staff page.
+**Title case, Chicago.** "Our Mission and Vision", "Where We Meet", "A Week in
+the Life". Capitalise every word except articles, coordinating conjunctions and
+prepositions of fewer than five letters — and capitalise even those when they
+are the first or last word of the heading.
 
-Proper nouns keep their capitals, and so do the names of documents: the
-*Statement of Faith and Practice* is a document, not a heading in title case,
-and renaming it would rename the paper the school hands out.
+This reverses what #148 counted, and #210 is the reversal: the site was a mix of
+the two styles, sometimes on one page, and a mix reads as unfinished rather than
+as a choice. Title case was the answer because it is what Admissions and the
+staff page — the two pages a prospective family reads first — already did.
 
-A heading of two sentences is sentence case twice over: "Mornings here.
-Afternoons yours."
+- A hyphenated compound capitalises both sides: "Half-Day", "Pre-K".
+- Acronyms stay as they were authored: "FAQ", "Q&A", "K–12".
+- The names of documents were already title case and are untouched: the
+  *Statement of Faith and Practice* is what the paper says on its front.
+
+**What it reaches:** `<h1>`–`<h3>`, card and block titles, and `<legend>`. On
+the public pages and in the admin alike, because one rule for both is the point.
+
+**What it does not:** form labels, buttons, nav links and table column headers.
+Those are UI chrome, and title case there looks dated.
+
+**Two headings are exempt**, and are deliberate:
+
+- "Mornings here. Afternoons yours." (`WeekSection.astro`) — the two-sentence
+  rhythm is the point, and a comma splice loses the beat.
+- "This affects every family." (`admin/money.astro`) — a warning, not a section
+  label. Retitling it weakens it.
 
 **A name is not a heading.** This rule is not applied to copy stored in the
 database, because every heading the site renders from a row is the name of a
 thing — a course, a policy, an event, a board update — and a name keeps the case
 the school gave it. *Basic Spanish Conversation for Beginners* is what that
 course is called.
+
+**Nothing enforces this.** It is the one rule in this file with no scan behind
+it, and that is on purpose: telling "the Right Fit" from "The Right Fit" needs a
+dictionary and a part-of-speech reading, and a rule that guesses would produce
+more false findings than real ones. Nothing title-cases at render time either —
+an algorithm mangles proper nouns and fights the editor. The convention is
+written down here and in `CONTEXT.md`, and applied by hand.
 
 ## What this style does not reach
 

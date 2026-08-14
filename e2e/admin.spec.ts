@@ -39,7 +39,7 @@ test.describe('the guard', () => {
     await page.goto('/admin/users');
 
     await expect(page).toHaveURL(/\/admin\/login\?next=%2Fadmin%2Fusers$/);
-    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
 
     await page.getByLabel('Username').fill(SUITE_ADMIN.username);
     await page.getByLabel('Password').fill(SUITE_ADMIN.password);
@@ -962,7 +962,7 @@ test.describe('Download everything', () => {
 
     // AC 4 as the school sees it: the screen names the address the send
     // actually uses, so the two cannot disagree.
-    await expect(page.getByRole('heading', { name: 'This also arrives by email' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Also Arrives by Email' })).toBeVisible();
     await expect(page.locator('main')).toContainText(email);
     await expect(page.locator('main')).toContainText('1st of every month');
   });

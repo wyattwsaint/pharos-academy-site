@@ -1,6 +1,10 @@
 # ADR-0011 — The punctuation house style is counted, not chosen, and the audit reports rather than rewrites
 
-**Status:** accepted
+**Status:** accepted; the heading-capitalisation rule superseded by
+[ADR-0015](0015-headings-are-title-case-and-nothing-checks-it.md) (#210). Headings are title
+case now, and the scan that checked their capitals is deleted rather than inverted — a
+title-case rule is not decidable from shape. Every other rule below stands, and so does
+"names are not headings".
 **Date:** 2026-08-12
 **Context:** [#148](https://github.com/wyattwsaint/pharos-academy-site/issues/148), builds on
 [#110](https://github.com/wyattwsaint/pharos-academy-site/issues/110) and

@@ -45,13 +45,10 @@ const OUT = new URL('docs/punctuation-audit.md', ROOT);
  * deliberately absent — that text is a family's own writing, not the school's,
  * and it is not ours to restyle.
  *
- * The capitalisation rule is deliberately **not** run over any of it. Every
- * heading the site renders from a row is the *name of a thing* — a course, a
- * policy, an event, a board update — and a name keeps the case the school gave
- * it. Sentence-casing *Basic Spanish Conversation for Beginners* is not a
- * heading style applied; it is a course renamed, and it lowercases "Spanish"
- * on the way. Everything else in a row is a sentence, and a sentence is already
- * in sentence case.
+ * Capitals are not swept here, or anywhere else: the heading rule is title case
+ * now (#210) and no scan applies it. Every heading the site renders from a row
+ * is the *name of a thing* anyway — a course, a policy, an event, a board
+ * update — and a name keeps the case the school gave it.
  */
 const DB_COPY = [
   {
@@ -207,14 +204,6 @@ const CLASSES = [
     issue: 'ellipsis',
     title: 'Ellipses',
     intro: 'The single character …, never three dots, and never dots with spaces between.',
-  },
-  {
-    issue: 'capitalisation',
-    title: 'Capitalisation of headings',
-    intro:
-      'Headings in sentence case — the site’s own dominant style, on every page but two. ' +
-      'Proper nouns and the names of documents keep their capitals; the *Statement of Faith and ' +
-      'Practice* is a document, not a heading style.',
   },
 ];
 
@@ -388,16 +377,16 @@ function render(all, databaseNote, survivals) {
     databaseNote,
     '',
     'What the sweep **cannot** see: the words inside the policy PDFs, which are documents rather',
-    'than pages; a family’s own writing on an application or an inquiry, which no house style',
-    'applies to; and the capitalisation of a heading whose words are assembled at render, since',
-    'the scan reads a heading only where it is written out in full.',
+    'than pages; and a family’s own writing on an application or an inquiry, which no house style',
+    'applies to.',
     '',
-    'What it deliberately does **not** check: the capitals in copy stored in the database. Every',
-    'heading the site renders from a row is the name of a thing — a course, a policy, an event, a',
-    'board update — and a name keeps the case the school gave it. Sentence-casing *Basic Spanish',
-    'Conversation for Beginners* would not be a heading style applied; it would be a course',
-    'renamed, and it would lowercase "Spanish" on the way. The marks and the spacing in that copy',
-    'are swept as normal.',
+    'What it deliberately does **not** check: the capitals in a heading, anywhere. #210 settled',
+    'the site on title case, and a title-case rule needs a dictionary and a part-of-speech reading',
+    'to tell "the Right Fit" from "The Right Fit" — it would false-positive forever. The',
+    'convention is written down in `CONTEXT.md` and `docs/house-style.md` and applied by hand.',
+    'Copy stored in the database would be out of reach in any case: every heading the site renders',
+    'from a row is the name of a thing, and a name keeps the case the school gave it. The marks',
+    'and the spacing in that copy are swept as normal.',
     '',
     '## Summary',
     '',

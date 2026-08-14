@@ -543,7 +543,7 @@ test.describe('the page', () => {
 
     await expect(
       teachers.getByRole('heading', {
-        name: 'We walk alongside to support and encourage homeschool families',
+        name: 'Alongside Homeschool Families',
       }),
     ).toBeVisible();
     const staffLink = teachers.getByRole('link', { name: /teach/i });

@@ -455,7 +455,7 @@ const description =
   <section class="band band-quiet" data-section="apply-header">
     <div class="wide">
       <p class="label">Applying</p>
-      <h1 class="mt-4">Your application</h1>
+      <h1 class="mt-4">Your Application</h1>
       <p class="sub mt-5">
         All of it on one page: what we believe, the classes you are choosing, the documents families
         sign, what to post, and sending it. Nothing here is a test — the questions about what we
@@ -522,7 +522,7 @@ const description =
             </p>
           )}
 
-          <h3 class="mt-8">What you chose</h3>
+          <h3 class="mt-8">What You Chose</h3>
           <ul class="chosen mt-4">
             {cost.perChild
               .filter((one) => one.child.name || one.offerings.length > 0)
@@ -541,7 +541,7 @@ const description =
               ))}
           </ul>
 
-          <h3 class="mt-8">What to pay</h3>
+          <h3 class="mt-8">What to Pay</h3>
           {payOnline ? (
             <Fragment>
               <p class="mt-4">
@@ -803,7 +803,7 @@ const description =
                 </div>
 
                 <fieldset class="picker mt-6" id={index === 0 ? 'apply-classes' : undefined}>
-                  <legend>Classes for this child</legend>
+                  <legend>Classes for This Child</legend>
                   {offerings.length === 0 ? (
                     <p class="hint">
                       Nothing is open for enrollment at the moment. Please{' '}
@@ -853,7 +853,7 @@ const description =
             <div class="warnings mt-8" data-clashes={clashCount} role="status">
               {clashing.length > 0 && (
                 <>
-                  <h3>Some of these do not fit together</h3>
+                  <h3>Where the Times Clash</h3>
                   {clashing.map(({ child, index, clashes }) => (
                     <div class="mt-4" data-child-clashes={index}>
                       <p><strong>{childLabel(child, index)}</strong></p>

@@ -46,7 +46,7 @@ const details = await getSchoolDetails(await getDb());
     </p>
   </div>
 
-  <h2 class="mt-10 text-xl font-semibold text-navy">This also arrives by email</h2>
+  <h2 class="mt-10 text-xl font-semibold text-navy">Also Arrives by Email</h2>
   <p class="mt-2">
     The same file is sent to <span class="font-semibold">{details.email}</span> on the 1st of every
     month, so a backup does not depend on anyone remembering to come here. That address is the one on
@@ -57,7 +57,7 @@ const details = await getSchoolDetails(await getDb());
     Keep the newest copy somewhere that is not the mailbox it arrived in.
   </p>
 
-  <h2 class="mt-10 text-xl font-semibold text-navy">What is in it</h2>
+  <h2 class="mt-10 text-xl font-semibold text-navy">What Is in It</h2>
   <ul class="mt-3 flex list-disc flex-col gap-2 pl-5" data-testid="exported">
     {EXPORTED_TABLES.map((table) => <li>{EXPORTED_TABLE_LABELS[table]}</li>)}
   </ul>
@@ -67,7 +67,7 @@ const details = await getSchoolDetails(await getDb());
     where.
   </p>
 
-  <h2 class="mt-10 text-xl font-semibold text-navy">What is not in it</h2>
+  <h2 class="mt-10 text-xl font-semibold text-navy">Not Included</h2>
   <ul class="mt-3 flex list-disc flex-col gap-2 pl-5" data-testid="excluded">
     {
       EXCLUDED_TABLES.map((excluded) => (

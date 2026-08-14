@@ -31,7 +31,7 @@ test.describe('the admissions page', () => {
       'Families We Serve',
       'What Makes Us Different',
       'Prices for Partner Families',
-      'Is Pharos the Right Fit for your Family?',
+      'Is Pharos the Right Fit for Your Family?',
       'Become a Pharos Family',
     ]) {
       await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
