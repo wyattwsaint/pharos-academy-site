@@ -1,7 +1,12 @@
 ---
 import type { Course } from '../../lib/courses/course.js';
-import { priceSummary } from '../../lib/courses/pricing.js';
-import { activeDayTracks, classCountOnTrack, TIMETABLE } from '../../lib/home/timetable.js';
+import { cellMeta } from '../../lib/home/cell-meta.js';
+import {
+  activeDayTracks,
+  classCountOnTrack,
+  TIMETABLE,
+  type ClassEntry,
+} from '../../lib/home/timetable.js';
 import type { RateCard } from '../../lib/money/settings.js';
 
 /**
@@ -21,11 +26,13 @@ import type { RateCard } from '../../lib/money/settings.js';
  * (CONTEXT.md, "day track"); an empty track is complete, not incomplete, so it
  * is not drawn as a permanently blank column.
  *
- * The price on each cell is looked up rather than typed (#29 AC 1). The cell
- * carries a catalogue slug; the figure beside it is `priceSummary` at the
- * school's current rates. Two cells the school quotes by length rather than by
- * price ("12 weeks", "rotating") carry no slug and get no figure, which is
- * complete rather than missing.
+ * The price on each cell is looked up rather than typed (#29 AC 1), and so is
+ * the semester of a class that runs only one (#183) — a parent phoned the Head
+ * of School having read this grid rather than the course description. The cell
+ * carries a catalogue slug and `cellMeta` composes the line from the course it
+ * finds; two cells the school quotes by length rather than by price ("12
+ * weeks", "rotating") carry no slug and get neither fact, which is complete
+ * rather than missing.
  *
  * The closing line names no total (#138). The column headings count what the
  * grid holds, but the grid is `TIMETABLE` — the hand-kept mirror, not the
@@ -44,10 +51,9 @@ const { courses, rates } = Astro.props;
 const bySlug = new Map(courses.map((course) => [course.slug, course]));
 const tracks = activeDayTracks();
 
-/** The short price for a cell, or null where the cell does not quote one. */
-function priceFor(slug: string | undefined): string | null {
-  const course = slug ? bySlug.get(slug) : undefined;
-  return course ? priceSummary(course, rates) : null;
+/** The meta line for a cell, with whatever its course adds to what is typed. */
+function metaFor(entry: ClassEntry): string {
+  return cellMeta(entry, entry.slug ? bySlug.get(entry.slug) : undefined, rates);
 }
 ---
 
@@ -85,7 +91,7 @@ function priceFor(slug: string | undefined): string | null {
                   return (
                     <div class:list={['cell', { free: cell.length === 0 }]}>
                       {cell.map((entry) => {
-                        const price = priceFor(entry.slug);
+                        const meta = metaFor(entry);
                         return (
                         <div data-disclosure-cell>
                           <button
@@ -97,7 +103,7 @@ function priceFor(slug: string | undefined): string | null {
                           >
                             <span class="title">{entry.title}</span>
                             <span class="ends">{entry.ends}</span>
-                            <span class="meta">{price ? `${entry.meta} · ${price}` : entry.meta}</span>
+                            <span class="meta">{meta}</span>
                           </button>
                           <div class="class-panel" id={`class-${entry.id}`} data-disclosure-panel>
                             {entry.description}

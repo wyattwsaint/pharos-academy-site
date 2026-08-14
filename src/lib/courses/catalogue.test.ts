@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { seededName } from '../people/person.js';
 import { CATALOGUE } from './catalogue.js';
-import { durationLabel, ENROLMENT_UNITS, RATE_TIERS, STAGES } from './course.js';
+import { durationLabel, ENROLMENT_UNITS, RATE_TIERS, semesterLabel, STAGES } from './course.js';
 import { DAY_TRACKS, timeLabel } from './schedule.js';
 import { MIRROR_COURSES, mirrorFor, sameText } from './mirror.test-helper.js';
 
@@ -106,6 +106,22 @@ describe('the catalogue', () => {
     expect(durationLabel(byslug('backyard-botany'))).toBe('Fall Semester (14 weeks)');
     expect(durationLabel(byslug('drawing-and-painting-grades-2-4'))).toBe('Spring Semester (14 weeks)');
     expect(durationLabel(byslug('what-is-a-community'))).toBe('8 weeks');
+  });
+
+  it('names the semester of a one-semester course, and marks nothing else (#183)', () => {
+    const byslug = (slug: string) => CATALOGUE.find((course) => course.slug === slug)!;
+    expect(semesterLabel(byslug('backyard-botany'))).toBe('fall');
+    expect(semesterLabel(byslug('drawing-and-painting-grades-2-4'))).toBe('spring');
+
+    // The whole year is the default. Marking it would make the exception
+    // harder to see rather than easier, which is the point of the marker.
+    expect(semesterLabel(byslug('algebra-1'))).toBeNull();
+    expect(semesterLabel(byslug('kingdom-math'))).toBeNull();
+
+    // A block is shorter than a semester and names no semester either: it
+    // publishes its length instead ("6 weeks"), which is the fact a parent is
+    // missing there.
+    expect(semesterLabel(byslug('what-is-a-community'))).toBeNull();
   });
 
   it('publishes no numeric age range for Algebra 1, because its gate is a prerequisite', () => {
