@@ -1223,6 +1223,41 @@ test.describe('applications', () => {
   });
 
   /**
+   * The one action that writes "paid online" (#220 AC 3).
+   *
+   * Nothing else can: the giving page reports to nobody (ADR-0013), so the
+   * status the payment slot was once going to write is written by the office,
+   * after a person has matched a payment to this application by hand. The rest
+   * of the row does not move for it — the family's own state is on the other
+   * axis and stays where it was.
+   */
+  test('records a payment matched by hand, and nothing else moves (AC 3)', async ({ page }) => {
+    const family = 'Suite Matched';
+    await apply(page, {
+      name: family,
+      email: 'suite-matched@example.com',
+      child: 'Matched Child',
+      offering: 'algebra-1:year',
+    });
+
+    await signIn(page, '/admin/applications');
+    const row = rowFor(page, family);
+    await expect(row.getByTestId('application-payment')).not.toContainText('Paid online');
+
+    await row.getByRole('button', { name: 'Payment matched by hand' }).click();
+    await expect(rowFor(page, family).getByTestId('application-payment')).toContainText(
+      'Paid online',
+    );
+    await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
+
+    // And the screen stops offering the move it has already made, rather than
+    // offering a click the store would refuse (AC 4).
+    await expect(
+      rowFor(page, family).getByRole('button', { name: 'Payment matched by hand' }),
+    ).toHaveCount(0);
+  });
+
+  /**
    * The match the office makes by hand (#218).
    *
    * Vanco sends the site nothing (ADR-0013), so a payment is joined to an

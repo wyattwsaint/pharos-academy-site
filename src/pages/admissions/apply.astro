@@ -37,6 +37,7 @@ import {
   offeringsOf,
   title as offeringTitle,
 } from '../../lib/application/offerings.js';
+import { paymentModeOf } from '../../lib/application/lifecycle.js';
 import { deliverApplication } from '../../lib/application/notices.js';
 import { applicationReference } from '../../lib/application/reference.js';
 import {
@@ -260,6 +261,10 @@ if (Astro.request.method === 'POST') {
         statementVersion: statementVersion(),
         flagged: parsed.flagged,
         agreedTermsId,
+        // The gate means an unanswered method cannot reach here; if one ever
+        // does, the unstated fallback reads as a check and the office watches
+        // the post, which is what it did before anybody was asked (#219).
+        paymentMode: values.paymentMethod ? paymentModeOf(values.paymentMethod) : undefined,
       });
     } catch (cause) {
       // The operator's copy. The family is told plainly, and given the address
@@ -294,6 +299,16 @@ if (Astro.request.method === 'POST') {
       tally: classTally(await applicationsForTally(), offerings),
       flagged: parsed.flagged,
       reference,
+      /*
+       * How they said they would pay (#221, #219).
+       *
+       * The family's own answer now that the form asks — the line #221 said
+       * would be the one to change. The gate means it cannot be empty here;
+       * if it ever is, a check is the safe reading, because an office watching
+       * for an envelope that never comes chases a family, where one not
+       * watching lets a real envelope sit unopened.
+       */
+      paymentMethod: values.paymentMethod || ('check' as const),
     };
 
     // Spelled out rather than handed the whole of `import.meta.env` — see `MailEnv`.

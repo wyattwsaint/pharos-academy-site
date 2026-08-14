@@ -155,6 +155,10 @@ exactly one thing — the next submission read `paid online` instead of
 `awaiting cheque`. No other state, screen or flag moved. That is what makes it a
 slot rather than a hole.
 
+Since #220 the flip carries less. What a stated `online` submission changes is
+the **mode** and not the status: the row still opens `awaiting`, because nothing
+about the family's answer says money arrived.
+
 Since #111 the slot is **partly filled**, and since #219 it is filled for the
 whole sum. The **registration fee**, the **per-class deposits** and the
 **tuition** are paid together — **one lump sum**, upfront, through the church's
@@ -179,10 +183,33 @@ it to go down.
 none of those changes the application's own state, and none of them is set by
 what the family said their method would be.
 
+The row also holds a **payment mode** — the payment axis's spelling of the
+family's stated *payment method*, `cheque` or `online` (the column keeps the
+British spelling; every label above it reads American). It is what the office
+should be watching for and never evidence of anything, so **both modes open
+`awaiting`** (#220): a row that opened `paid online` because somebody chose
+online would assert money nobody has seen.
+
 The word `overdue` is **never stored**. What the row holds is that a cheque was
 awaited, and from when; a payment past its three-week grace period is overdue
 because the clock says so, which is how it happens "with no human action" and no
-nightly job that can quietly stop running (ADR-0008).
+nightly job that can quietly stop running (ADR-0008). **Only a cheque row can
+be overdue** — the grace period measures the post, and an online row has no
+envelope to be late.
+
+`paid online` is written by the **office**, through one admin action that
+records a payment matched by hand against the reference, and by nothing else
+(#220). It was reserved for a payment slot that would write it the moment a
+family paid; no such slot exists and none is coming, so the alternative to
+somebody ticking it is a status no row could ever hold. It is offered on either
+mode — a family who said cheque and then paid at the giving page is an ordinary
+thing, and the office is still the only witness — and the way back from a match
+made in error is the same move that restarts a cheque's grace period, worded for
+the mode.
+
+What is offered on **cheque rows only** is the pair that names an envelope: the
+cheque has arrived, and wait again for one. An online row is never asked to
+expect a cheque from a family who said they were not sending one.
 
 ### stated payment method
 
@@ -263,6 +290,32 @@ one.
 
 Not: "application id" (that is the uuid, and no family sees it), "confirmation
 number", "receipt".
+
+### payment method
+
+How a family **said** they would pay — `online` or `check`, and nothing else
+(#221). It is never evidence a payment arrived: Vanco still sends the site no
+confirmation, so this is the family's own answer and its whole job is to let the
+office know whether to watch for an envelope.
+
+There is no third value for a split. An envelope now contains the **whole total
+or nothing**, never the deposits alone, and both application emails word one
+instruction from this one answer — the giving page and the amount to enter, or
+the remittance address and the whole total, never both. The school's
+configuration can veto it in one direction only: a giving page that is not set
+turns a stated `online` into a check, because an instruction pointing at an
+address that is not there is a blank line where the one thing the email exists
+to say should be.
+
+Both emails print the same **invoice** from one writer (`invoice` in
+`src/lib/application/notices.ts`): registration, deposits, tuition, the deposit
+credit where it applies, one total, a status line and the reference — aligned
+columns, plain text, no template engine. One writer because a school told to
+expect $865 and a family told to send $100 is the same submission saying two
+things.
+
+Not: "payment status", "paid", "payment state" — none of those are facts this
+site can observe.
 
 ### money settings
 

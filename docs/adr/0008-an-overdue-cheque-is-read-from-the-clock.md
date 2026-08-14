@@ -1,5 +1,15 @@
 # ADR-0008 — An overdue cheque is read from the clock, not written by a job
 
+> **Amended (#220).** The clock now reads the row's **mode** before it reads the
+> date: only a `cheque` row can become `overdue`. The grace period measures an
+> envelope in the post, and a family who said they would pay online never posted
+> one — calling that row overdue would send the office chasing something that was
+> never coming. Everything below about *how* `overdue` is produced — computed on
+> read, never stored, no job that can stop running — is unchanged. The same
+> ticket also made `paid_online` reachable from the admin (`match`), because the
+> payment slot that was going to write it does not exist and is not coming; it is
+> still never written by a family clicking a link.
+
 **Status:** accepted
 **Date:** 2026-08-07
 **Context:** [#32](https://github.com/wyattwsaint/pharos-academy-site/issues/32), implements [#18](https://github.com/wyattwsaint/pharos-academy-site/issues/18) §11

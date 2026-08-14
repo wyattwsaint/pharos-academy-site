@@ -143,6 +143,10 @@ export type ApplicationFields = {
  * Named here rather than imported from `lifecycle.ts` because this file is a
  * leaf the browser downloads (see the note at the top), and because the form's
  * vocabulary is prose: a family reads "check".
+ *
+ * It is one amount one way. There is no third value for a split, because an
+ * application whose money goes two ways is the thing #221 removed: an envelope
+ * contains the whole total or it contains nothing.
  */
 export const PAYMENT_METHODS = ['online', 'check'] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];

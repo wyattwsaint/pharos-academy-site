@@ -78,10 +78,12 @@ export async function applyApplicationAction(
   return payment
     ? {
         ok: true,
-        message: `The money side now reads ${paymentStatusLabel(payment.status, payment.mode).toLowerCase()}.`,
+        message: `The money side now reads ${paymentStatusLabel(payment.mode, payment.status).toLowerCase()}.`,
       }
     : {
         ok: false,
-        message: 'Nothing changed — the money side already reads that. It may already have moved.',
+        message:
+          'Nothing changed — the money side already reads that, or this payment cannot make ' +
+          'that move. It may already have moved.',
       };
 }

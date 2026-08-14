@@ -28,23 +28,24 @@ is what the family said they would do, and that is worth recording: it is the
 difference between an office watching the post tray and an office not.
 
 So the Apply page asks, and the answer lands in `payment_mode`, the column that
-has held `cheque` on every row since #32 because a deployment-wide constant put it
-there. The constant is gone; the mode is the family's answer.
+held `cheque` on every row since #32 because a deployment-wide constant put it
+there. #220 retired the constant and left the mode as a seam on the submission;
+this is the change that fills it with the family's answer.
 
-**The status does not move with it.** `paymentOnSubmission` used to read the mode
-and open an `online` application at `paid_online`; it now opens both at
-`awaiting`. A family ticking a radio button has stated an intention, and a status
-saying they paid would be exactly the claim ADR-0013 refused to store and
+**The status does not move with it.** Both modes open `awaiting` (#220). A
+family ticking a radio button has stated an intention, and a status saying they
+paid would be exactly the claim ADR-0013 refused to store and
 [ADR-0008](0008-an-overdue-cheque-is-read-from-the-clock.md) refuses to compute —
-a fact about money nobody observed. `paid_online` stays named and stays
-unwritable, the fourth of `lifecycle.ts`'s deliberately unreachable states,
-against the day Vanco reports back.
+a fact about money nobody observed. `paid_online` is written by the office and
+by nothing else, through the match action #220 added, after somebody has held a
+payment against the reference by hand.
 
-The three-week grace period runs the same way in both modes, because the office is
-waiting for money either way. What the mode changes is the words: "Awaiting
-check" over a family who said they were paying online sends somebody to the post
-tray for an envelope that is not coming, so `paymentStatusLabel` and
-`paymentEventLabel` are keyed by mode.
+The grace period stays a fact about the post (#220): only a cheque row can run
+overdue, and an online row reads `awaiting` however long it waits, with the
+screen saying beside it that nothing tells the site whether the family paid.
+What the mode changes here is the words: "Awaiting check" over a family who said
+they were paying online sends somebody to the post tray for an envelope that is
+not coming, so the status and button labels are worded by mode.
 
 ## Consequences
 

@@ -184,23 +184,39 @@ describe('applied and paid', () => {
     expect(row!.payment.status).toBe('awaiting');
   });
 
-  it('records the method the family stated, and never that they paid (#219)', async () => {
-    // The mode is the family's own answer since the Apply page asks for it —
-    // it used to be a deployment-wide constant, and what it buys the office is
-    // knowing whether to watch the post tray.
+  it('opens a stated-online submission awaiting too, never paid (#220 AC 1)', async () => {
     const id = await createApplication(
       db,
-      fields({ paymentMethod: 'online' }),
-      { statementVersion: statementVersion() },
+      fields(),
+      { statementVersion: statementVersion(), paymentMode: 'online' },
       new Date('2026-08-01T10:00:00Z'),
     );
     const row = await getApplication(db, id);
 
     expect(row!.payment.mode).toBe('online');
-    // And the status does not move with it. Vanco tells the site nothing, so a
-    // row reading `paid_online` off a radio button would be a claim nobody
-    // checked (ADR-0017) — the money is awaited in both channels.
+    // What the family said, not a payment: the giving page told the site
+    // nothing, and the office has matched nothing yet.
     expect(row!.payment.status).toBe('awaiting');
+    // And the clock never turns it into a chase for an envelope (AC 2).
+    expect(
+      paymentStatusNow(row!.payment, days(new Date('2026-08-01T10:00:00Z'), CHEQUE_GRACE_DAYS + 1)),
+    ).toBe('awaiting');
+  });
+
+  it('records the office matching a payment by hand (#220 AC 3)', async () => {
+    const id = await createApplication(
+      db,
+      fields(),
+      { statementVersion: statementVersion(), paymentMode: 'online' },
+      new Date('2026-08-01T10:00:00Z'),
+    );
+
+    await moveApplicationPayment(db, id, 'match', new Date('2026-08-04T10:00:00Z'));
+
+    const row = await getApplication(db, id);
+    expect(row!.payment.status).toBe('paid_online');
+    // The other axis, untouched, as every money move leaves it (AC 7).
+    expect(row!.state).toBe('submitted');
   });
 
   it('changing the payment never changes the application state (AC 2)', async () => {

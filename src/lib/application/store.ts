@@ -10,7 +10,6 @@ import {
   PAYMENT_MODES,
   nextApplicationState,
   nextPayment,
-  paymentModeOf,
   paymentOnSubmission,
   type ApplicationEvent,
   type ApplicationState,
@@ -82,6 +81,15 @@ export type SubmissionFacts = {
   flagged?: boolean;
   /** The frozen money terms, when `recordAgreedTerms` got that far. */
   agreedTermsId?: string | null;
+  /**
+   * How the family **said** they would pay, when the form asked (#220).
+   *
+   * The stated method and nothing more — an `online` row opens awaiting, the
+   * same as a cheque, because the giving page tells the site nothing. Omitted
+   * means unstated, which reads as a cheque: the office watches the post, which
+   * is what it did before anybody was asked.
+   */
+  paymentMode?: PaymentMode;
 };
 
 /** Write the application down. Answers with the row's id, which is the receipt. */
@@ -104,19 +112,13 @@ export async function createApplication(
       agreements: encodeAgreements(values.agreements),
       agreedTermsId: facts.agreedTermsId ?? null,
       /*
-       * Submitted, and awaiting the money whichever way the family said they
-       * would send it (#32, #219). The mode is what they stated on the form —
-       * it is what tells the office whether to watch for an envelope — and the
-       * status is `awaiting` in both channels, because the site sees no
-       * payment in either (ADR-0017).
-       *
-       * An unstated method cannot reach here through the form, which gates on
-       * it — and if one ever did, `check` is the safe reading: an office
-       * watching for an envelope that never comes chases a family, where one
-       * not watching lets a real envelope sit unopened.
+       * Submitted, and awaiting the money whichever way it was said to be
+       * coming (#32, #220). `paymentOnSubmission` decides both columns, so a
+       * row can never open claiming a payment nobody has seen — the office
+       * records that by hand, and only after matching it.
        */
       status: 'submitted' satisfies ApplicationState,
-      ...paymentColumns(paymentOnSubmission(now, paymentModeOf(values.paymentMethod || 'check'))),
+      ...paymentColumns(paymentOnSubmission(now, facts.paymentMode)),
     })
     .returning();
 

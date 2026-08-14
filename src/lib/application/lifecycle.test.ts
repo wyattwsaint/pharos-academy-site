@@ -4,13 +4,17 @@ import {
   APPLICATION_EVENT_LABELS,
   APPLICATION_STATES,
   CHEQUE_GRACE_DAYS,
+  ONLINE_PAYMENT_STATUS_LABELS,
   PAYMENT_EVENT_LABELS,
   PAYMENT_STATUS_LABELS,
   countsInTally,
   eventsFrom,
   nextApplicationState,
   nextPayment,
+  paymentAwaitedNote,
   paymentEventLabel,
+  paymentEventsFrom,
+  paymentModeOf,
   paymentOnSubmission,
   paymentStatusLabel,
   paymentStatusNow,
@@ -34,6 +38,7 @@ const days = (from: Date, count: number): Date =>
   new Date(from.getTime() + count * 24 * 60 * 60 * 1000);
 
 const awaiting = (since = AT): Payment => ({ mode: 'cheque', status: 'awaiting', since });
+const online = (since = AT): Payment => ({ mode: 'online', status: 'awaiting', since });
 
 describe('the application axis', () => {
   it('takes a draft to submitted, and a submitted application through the conversation', () => {
@@ -84,21 +89,27 @@ describe('the application axis', () => {
 });
 
 describe('the payment axis', () => {
-  it('records what the family said, and never that they paid (#219)', () => {
+  it('opens awaiting whichever way the family said they would pay (#220 AC 1)', () => {
     expect(paymentOnSubmission(AT, 'cheque')).toEqual({
       mode: 'cheque',
       status: 'awaiting',
       since: AT,
     });
-    // The mode moves and the status does not. A family ticking "online" has
-    // told us what they intend to do, and the site sees no money in either
-    // channel — a submission opening `paid_online` off a radio button would be
-    // the claim ADR-0013 refused to store and ADR-0017 goes on refusing.
+    // Never `paid_online`: the giving page sends the site nothing (ADR-0013),
+    // so a row that opened paid would be asserting a payment nobody checked.
     expect(paymentOnSubmission(AT, 'online')).toEqual({
       mode: 'online',
       status: 'awaiting',
       since: AT,
     });
+  });
+
+  it('records the stated method in the column’s own spelling (#219)', () => {
+    // The form says `check` because prose is American; the column says
+    // `cheque` because renaming a schema for a spelling costs a migration.
+    // This is the one line where the two vocabularies meet.
+    expect(paymentModeOf('check')).toBe('cheque');
+    expect(paymentModeOf('online')).toBe('online');
   });
 
   it('records a cheque arriving, and moves nothing else', () => {
@@ -149,28 +160,93 @@ describe('the payment axis', () => {
   });
 });
 
+describe('an online payment', () => {
+  it('never goes overdue, however long it waits (#220 AC 2)', () => {
+    // The grace period is about an envelope in the post. There is no envelope,
+    // so there is nothing to be late — chasing this family for a cheque would
+    // be chasing them for something that was never coming.
+    expect(paymentStatusNow(online(), days(AT, CHEQUE_GRACE_DAYS + 1))).toBe('awaiting');
+    expect(paymentStatusNow(online(), days(AT, 400))).toBe('awaiting');
+    // The same clock, the same day, on a cheque row: overdue.
+    expect(paymentStatusNow(awaiting(), days(AT, CHEQUE_GRACE_DAYS + 1))).toBe('overdue');
+  });
+
+  it('is recorded paid when the office matches it by hand (#220 AC 3)', () => {
+    const matched = nextPayment(online(), 'match', days(AT, 2));
+    expect(matched).toEqual({ mode: 'online', status: 'paid_online', since: days(AT, 2) });
+  });
+
+  it('is never offered a cheque move, and a cheque row keeps all of its own (#220 AC 4, 5)', () => {
+    // The cheque row keeps every move it has today, and gains the match.
+    expect(paymentEventsFrom(awaiting())).toEqual(['receive', 'match', 'expect', 'waive']);
+    // The online row is offered neither "the cheque arrived" nor a wait it is
+    // already in — there is no envelope, and no grace period to restart.
+    expect(paymentEventsFrom(online())).toEqual(['match', 'waive']);
+    expect(nextPayment(online(), 'receive', AT)).toBeNull();
+    expect(nextPayment(online(), 'expect', AT)).toBeNull();
+  });
+
+  it('can be un-matched, because a hand can match the wrong one (#220 AC 3)', () => {
+    // The office is the writer now, so the office has to be able to unwrite it.
+    // The same move that gives a cheque another three weeks is the way back,
+    // worded for a family who is not posting anything.
+    const matched: Payment = { mode: 'online', status: 'paid_online', since: AT };
+    expect(paymentEventsFrom(matched)).toEqual(['expect', 'waive']);
+    expect(nextPayment(matched, 'expect', days(AT, 1))).toEqual({
+      mode: 'online',
+      status: 'awaiting',
+      since: days(AT, 1),
+    });
+    expect(paymentEventLabel('online', 'expect')).toBe('Still waiting for this payment');
+    expect(paymentEventLabel('cheque', 'expect')).toBe('Wait (again) for a check');
+  });
+
+  it('says which sentence a waiting row has earned, and the screen only words it', () => {
+    expect(paymentAwaitedNote(awaiting(), days(AT, 1))).toBe('cheque_due');
+    expect(paymentAwaitedNote(awaiting(), days(AT, CHEQUE_GRACE_DAYS + 1))).toBe('cheque_late');
+    expect(paymentAwaitedNote(online(), days(AT, CHEQUE_GRACE_DAYS + 1))).toBe(
+      'online_unconfirmed',
+    );
+    // Settled money earns nothing beside it, either way.
+    expect(paymentAwaitedNote({ mode: 'cheque', status: 'received', since: AT }, AT)).toBeNull();
+    expect(paymentAwaitedNote({ mode: 'online', status: 'paid_online', since: AT }, AT)).toBeNull();
+  });
+
+  it('offers nothing the store would refuse, from anywhere either mode can be', () => {
+    for (const mode of ['cheque', 'online'] as const) {
+      for (const status of ['not_due', 'awaiting', 'received', 'paid_online'] as const) {
+        const payment: Payment = { mode, status, since: AT };
+        for (const event of paymentEventsFrom(payment)) {
+          expect(nextPayment(payment, event, AT), `${mode}/${status}/${event}`).not.toBeNull();
+        }
+      }
+    }
+  });
+
+  it('reads without ever mentioning a check (#220 AC 6)', () => {
+    expect(paymentStatusLabel('online', 'awaiting')).toBe('Awaiting payment online');
+    expect(paymentStatusLabel('online', 'paid_online')).toBe('Paid online');
+    // And the check row still reads exactly as it did.
+    expect(paymentStatusLabel('cheque', 'awaiting')).toBe('Awaiting check');
+    expect(paymentStatusLabel('cheque', 'overdue')).toBe('Check overdue');
+  });
+});
+
 describe('the words on the buttons', () => {
   it('reads American, over a mode the database still spells its own way (#113)', () => {
     // The split the house style turns on, in one assertion: `mode: 'cheque'` is
     // a column value and never moves, and every label above it is what Jill and
     // the family read.
     const labels = [
-      ...Object.values(PAYMENT_STATUS_LABELS).flatMap((byStatus) => Object.values(byStatus)),
-      ...Object.values(PAYMENT_EVENT_LABELS).flatMap((byEvent) => Object.values(byEvent)),
+      ...Object.values(PAYMENT_STATUS_LABELS),
+      ...Object.values(ONLINE_PAYMENT_STATUS_LABELS),
+      ...Object.values(PAYMENT_EVENT_LABELS),
       ...Object.values(APPLICATION_EVENT_LABELS),
     ];
 
     expect(labels.filter((label) => /cheque|enrol\b/i.test(label))).toEqual([]);
-    expect(paymentStatusLabel('awaiting', 'cheque')).toBe('Awaiting check');
-    expect(paymentEventLabel('receive', 'cheque')).toBe('Check has arrived');
+    expect(PAYMENT_STATUS_LABELS.awaiting).toBe('Awaiting check');
+    expect(PAYMENT_EVENT_LABELS.receive).toBe('Check has arrived');
     expect(APPLICATION_EVENT_LABELS.enrol).toBe('Enroll this family');
-  });
-
-  it('never sends the office to the post tray for a family paying online (#219)', () => {
-    // The whole of what a stated method buys the office is knowing what to
-    // watch for, and a label that ignores the mode spends it.
-    expect(paymentStatusLabel('awaiting', 'online')).toBe('Awaiting payment online');
-    expect(paymentStatusLabel('overdue', 'online')).toBe('Online payment overdue');
-    expect(paymentEventLabel('receive', 'online')).toBe('The payment has arrived');
   });
 });
