@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { SEEDED_SCHOOL_YEAR } from '../src/lib/calendar/year.js';
 import { CATALOGUE } from '../src/lib/courses/catalogue.js';
+import { courseMeetings } from '../src/lib/courses/meetings.js';
 import { coursePrice, priceSummary } from '../src/lib/courses/pricing.js';
 import { SEEDED_MONEY_SETTINGS } from '../src/lib/money/settings.js';
 import { contactHours } from '../src/lib/courses/schedule.js';
@@ -258,6 +260,82 @@ test.describe('a class’s own page', () => {
     // Rather than an empty page, which would claim the school offers it.
     const response = await page.goto('/classes/underwater-basket-weaving');
     expect(response?.status()).toBe(404);
+  });
+
+  test('says when the class meets, and opens every date behind one press', async ({ page }) => {
+    // #233. The dates themselves are proved in `meetings.test.ts`; what needs a
+    // browser is that the summary is readable without pressing anything and the
+    // list is not, which is the whole shape of the section.
+    const course = bySlug('the-virtue-of-kindness');
+    const meetings = courseMeetings(SEEDED_SCHOOL_YEAR, course);
+    await page.goto(`/classes/${course.slug}`);
+
+    const section = page.locator('[data-section="class-dates"]');
+    await expect(section.locator('.coursedates-summary')).toHaveText(meetings.summary!);
+    await expect(section.locator('.coursedates-months')).toBeHidden();
+
+    await section.locator('summary').click();
+    await expect(section.locator('.coursedates-months')).toBeVisible();
+    for (const month of meetings.months) {
+      await expect(section).toContainText(month.heading);
+      for (const meeting of month.dates) {
+        await expect(section.locator(`time[datetime="${meeting.date}"]`)).toHaveText(meeting.label);
+      }
+    }
+  });
+
+  test('opens its dates from the keyboard, and they are readable there too', async ({ page }) => {
+    // The longest list the page can hold — Algebra 1's fifty-six dates over two
+    // tracks — because a keyboard is how the parent who most needs the list
+    // reads it, and a short block would not exercise the months.
+    const meetings = courseMeetings(SEEDED_SCHOOL_YEAR, bySlug('algebra-1'));
+    await page.goto('/classes/algebra-1');
+    const section = page.locator('[data-section="class-dates"]');
+
+    await section.locator('summary').focus();
+    await page.keyboard.press('Enter');
+    await expect(section.locator('.coursedates-months')).toBeVisible();
+
+    const first = meetings.months[0]!;
+    const last = meetings.months.at(-1)!;
+    await expect(section).toContainText(first.heading);
+    await expect(section).toContainText(last.heading);
+    await expect(section.locator(`time[datetime="${first.dates[0]!.date}"]`)).toBeVisible();
+    await expect(section.locator(`time[datetime="${last.dates.at(-1)!.date}"]`)).toBeVisible();
+
+    await page.keyboard.press('Enter');
+    await expect(section.locator('.coursedates-months')).toBeHidden();
+  });
+
+  test.describe('with no JavaScript', () => {
+    test.use({ javaScriptEnabled: false });
+
+    test('still says when the class meets', async ({ page }) => {
+      // The summary line is the answer to the August question, so it may not
+      // depend on a script. Only the full list is behind the disclosure, and a
+      // native `details` opens without one anyway.
+      const course = bySlug('introduction-to-church-and-bible-history');
+      await page.goto(`/classes/${course.slug}`);
+
+      await expect(page.locator('[data-section="class-dates"] .coursedates-summary')).toHaveText(
+        courseMeetings(SEEDED_SCHOOL_YEAR, course).summary!,
+      );
+    });
+  });
+
+  test('shows a fall class no spring date, and a spring class no fall date', async ({ page }) => {
+    // The enrolment unit decides the dates, which is the reason the section
+    // could not have been a link to the day track's column.
+    for (const slug of ['drawing-and-painting-grades-5-8', 'drawing-and-painting-grades-2-4']) {
+      const { dates } = courseMeetings(SEEDED_SCHOOL_YEAR, bySlug(slug));
+      await page.goto(`/classes/${slug}`);
+      await page.locator('[data-section="class-dates"] summary').click();
+
+      const shown = await page
+        .locator('[data-section="class-dates"] time')
+        .evaluateAll((times) => times.map((time) => time.getAttribute('datetime')));
+      expect(shown, slug).toEqual(dates);
+    }
   });
 
   test('is reachable from every list surface', async ({ page }) => {
