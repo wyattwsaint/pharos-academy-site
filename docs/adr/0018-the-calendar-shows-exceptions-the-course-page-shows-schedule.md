@@ -3,6 +3,7 @@
 **Status:** accepted
 **Date:** 2026-08-14
 **Context:** [#215](https://github.com/wyattwsaint/pharos-academy-site/issues/215),
+[#232](https://github.com/wyattwsaint/pharos-academy-site/issues/232),
 [#233](https://github.com/wyattwsaint/pharos-academy-site/issues/233),
 [#234](https://github.com/wyattwsaint/pharos-academy-site/issues/234),
 [#235](https://github.com/wyattwsaint/pharos-academy-site/issues/235),
@@ -35,8 +36,8 @@ shows no dates at all.
 Two more problems follow from one page trying to be two things. The sheet and the
 grid are presented as peers, so the page reads as two schedules that might
 disagree and needs a test proving they cannot. And print keeps the sheet and
-drops the grid, so a school office pins up a table of week numbers with no events
-on it, while the **one-offs** — the fundraisers, the picture days, the open
+drops the grid, so a school office pins up a table of week numbers and nothing
+else, while the **one-offs** — the fundraisers, the picture days, the open
 houses — are on the half print hides.
 
 ## Decision
@@ -54,10 +55,10 @@ lists what meets that day, grouped by time slot, each offering linking to its
 course page.
 
 The whole list of a course's meeting dates belongs on the **course page**, where
-the course is named — a summary line a parent reads at a glance (*"28
-Wednesdays, 9 Sep to 20 May"*), with the dates grouped by month behind a
-disclosure. That answers the August question without the parent ever needing to
-know which **day track** the course is on, which is the sheet's whole failure.
+the course is named — a summary line a parent reads at a glance, naming how many
+**meetings** there are and the first and last of them, with the dates themselves
+grouped by month behind a disclosure. That answers the August question without
+the parent ever needing to know which **day track** the course is on.
 
 The two public semester sheets are deleted.
 
@@ -67,8 +68,8 @@ screen.
 
 ## What #186 decided, and what happened to each of its reasons
 
-#186 asked, as the fourth of its grilling questions, whether the classes go on
-the grid and at what grain. It answered **"Not at all"**, and its scope note put
+#186 asked, as the fourth of its grilling questions, whether the **offerings** go
+on the grid and at what grain. It answered **"Not at all"**, and its scope note put
 the same thing the other way round: "No **offering** names, no counts, and no
 links from a cell to the by-day timetable." That is the decision this record
 reverses, and it rested on two reasons.
@@ -184,11 +185,14 @@ Recorded here because it is the part most likely to be proposed back.
   result claiming "Art, 4 Nov" is a wrong-shaped claim about a thing families
   enrol in for a term. If offerings ever want markup it is `Course`, on the
   course page, and it is a different ticket.
-- **The test that the two halves of the page agree is deleted** with the sheet it
-  compared against. What takes its place is that the course page presents the
-  dates the meeting computation returns, so a second implementation of the same
-  dates is still caught.
-- **`quiet` needs a new name.** The month view model's class means *this cell
-  carries nothing*; under this decision the word wants to mean *this cell carries
-  classes it is not printing*. Two meanings and one name — rename rather than
+- **The check that the page's two halves agree goes with the sheet.** `agrees
+  with the sheet, date for date`, in `src/lib/calendar/months.test.ts`, measures
+  the grid's school days against the sheet's own dates, and a page with one half
+  has nothing left to compare. Separately, the course page's dates are tested to
+  be the dates the meeting computation returns, so a second implementation of the
+  same dates is still caught.
+- **`quiet` needs a new name.** The CSS class the calendar page puts on a cell
+  (`src/pages/current-families/calendar.astro`) means *this cell carries
+  nothing*; under this decision the word wants to mean *this cell carries
+  meetings it is not printing*. Two meanings and one name — rename rather than
   overload.
