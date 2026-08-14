@@ -101,6 +101,7 @@ code.
 | `SEED_DEV_NAME` | Its display name. Defaults to `Site developer` |
 | `E2E_ADMIN_USERNAME` | Makes a dev server open an **ephemeral PGlite database** with this account in it, instead of connecting to Neon. Set only by the Playwright config. `src/lib/db/client.ts` **throws on startup** if it is set on a deployed environment — left to run it would serve an empty database opened by a password committed to this repo |
 | `E2E_ADMIN_PASSWORD` | That account's password. Both or neither |
+| `E2E_EMPTY_LISTS` | Makes that ephemeral database delete its seeded people, classes, announcements and policies, so the admin's empty-list states are reachable. Set only by `playwright.empty-lists.config.ts`, and meaningless without the two above |
 | `REVALIDATE_ORIGIN` | Overrides the origin a save revalidates. Exists so `playwright.revalidation.config.ts` can point it at a dead port and exercise a genuinely failed revalidation without a fault-injection hook in the app |
 | `PLAYWRIGHT_BASE_URL` | Points the browser suite at a real deployment instead of starting a local dev server. How CI runs axe against the deployed page |
 | `ASTRO_DEV_TOOLBAR` | `off` suppresses Astro's dev toolbar, whose injected `<h1>`s would otherwise race the accessibility assertions. Set by the Playwright config only — a person running `astro dev` still gets the toolbar |

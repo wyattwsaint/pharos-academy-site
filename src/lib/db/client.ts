@@ -50,7 +50,16 @@ async function open(): Promise<Db> {
     // suite against a throwaway database rather than against the school's.
     const db = await createEphemeralDatabase();
     await seedSuiteAdmin(db, suite);
-    await seedSuitePolicyFiles(db);
+    if (process.env.E2E_EMPTY_LISTS?.trim()) {
+      // The empty-lists run (#197): the migrations seed a full catalogue,
+      // staff list, announcement history and policy set, so the four admin
+      // lists are never empty on an ordinary throwaway database — and the
+      // empty states those screens promise would otherwise ship untested.
+      // Only meaningful inside suite mode, which already refuses production.
+      await deleteSeededContent(db);
+    } else {
+      await seedSuitePolicyFiles(db);
+    }
     return db;
   }
 
@@ -144,7 +153,10 @@ function suiteAdmin(): { username: string; password: string } | undefined {
  * to build a decoy hash — is never loaded by a process that is not running the
  * suite.
  */
-async function seedSuiteAdmin(db: Db, admin: { username: string; password: string }): Promise<void> {
+async function seedSuiteAdmin(
+  db: Db,
+  admin: { username: string; password: string },
+): Promise<void> {
   const { createUser } = await import('../admin/users.js');
   await createUser(db, { ...admin, displayName: 'Suite Admin' });
 }
@@ -170,13 +182,25 @@ async function seedSuitePolicyFiles(db: Db): Promise<void> {
 
   const bytes = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
   for (const seed of SEEDED_POLICIES) {
-    await replacePolicyFile(
-      db,
-      seed.slug,
-      { filename: `${seed.slug}.pdf`, bytes },
-      'Suite Admin',
-    );
+    await replacePolicyFile(db, seed.slug, { filename: `${seed.slug}.pdf`, bytes }, 'Suite Admin');
   }
+}
+
+/**
+ * Delete every row the migrations seeded into the four admin lists, in the
+ * order the foreign keys allow: a course names its teacher, so courses go
+ * before people; a policy's versions cascade with their policy.
+ *
+ * This is the whole of the `E2E_EMPTY_LISTS` seam. It deletes list content
+ * only — school details, money, the school year and the calendar stay, because
+ * the screens under test are the four lists and a half-emptied database that
+ * cannot render the admin chrome would test nothing.
+ */
+export async function deleteSeededContent(db: Db): Promise<void> {
+  await db.delete(schema.courses);
+  await db.delete(schema.people);
+  await db.delete(schema.announcements);
+  await db.delete(schema.policies);
 }
 
 function connectionString(): string | undefined {

@@ -107,6 +107,17 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    server: {
+      // On the empty-lists run (#197) the public pages *are* meant to fail:
+      // with no catalog and no staff they refuse rather than print empty
+      // surfaces to a parent, which is the guard `listCourses` and `listPeople`
+      // exist to be. Vite broadcasts any such server error as a full-screen
+      // overlay to every open page, including the admin screens under test, and
+      // an overlay over the Sign in button is a suite that cannot click it.
+      // Suppressed only when that flag is set; every other dev server keeps the
+      // overlay a developer wants.
+      hmr: process.env.E2E_EMPTY_LISTS ? { overlay: false } : undefined,
+    },
     // The other half of the pair above. Read only from server-only modules
     // (`src/lib/admin/isr-token.ts`) so it never reaches a browser bundle.
     define: {

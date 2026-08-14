@@ -1,10 +1,11 @@
 ---
 export const prerender = false;
 
+import AdminButton from '../../components/AdminButton.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { formatStamp } from '../../lib/admin/formatting.js';
 import { getDb } from '../../lib/db/client.js';
-import { listPeople } from '../../lib/people/store.js';
+import { listPeopleForAdmin } from '../../lib/people/store.js';
 
 /**
  * Everybody the school has, in the order the staff page renders them (#26).
@@ -23,7 +24,7 @@ import { listPeople } from '../../lib/people/store.js';
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
-const people = await listPeople(db);
+const people = await listPeopleForAdmin(db);
 ---
 
 <AdminLayout title="People" actor={actor}>
@@ -34,40 +35,43 @@ const people = await listPeople(db);
   </p>
 
   <p class="mt-8">
-    <a
-      href="/admin/people/new"
-      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
-    >
-      Add a person
-    </a>
+    <AdminButton href="/admin/people/new">Add a person</AdminButton>
   </p>
 
-  <ul class="mt-8 flex flex-col gap-6">
-    {
-      people.map((person) => (
-        <li class="border-t border-navy/15 pt-6">
-          <h2 class="text-xl font-semibold text-navy">
-            <a href={`/admin/people/${person.slug}`} class="underline underline-offset-4">
-              {person.name}
-            </a>
-          </h2>
-          <p class="mt-1">{person.role}</p>
-          <p class="mt-1 text-sm">
-            {person.leadershipRank === null
-              ? 'Not leadership'
-              : `Leadership, number ${person.leadershipRank} on the staff page`}
-            {' · '}
-            {person.bio ? 'Has a written bio' : 'No bio yet'}
-            {' · '}
-            {person.photo ? 'Has a photograph' : 'No photograph yet'}
-          </p>
-          <p class="mt-1 text-sm" data-testid={`stamp-${person.slug}`}>
-            {formatStamp(person.lastEditedBy, person.lastEditedAt)}
-          </p>
-        </li>
-      ))
-    }
-  </ul>
+  {
+    people.length === 0 ? (
+      <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-people">
+        Nobody is listed. People are put here when the site is installed and nothing on this screen
+        can be deleted, so an empty list means this database has not been set up yet — a job for
+        whoever installed the site, not a sign anyone has been removed.
+      </p>
+    ) : (
+      <ul class="mt-8 flex flex-col gap-6">
+        {people.map((person) => (
+          <li class="border-t border-navy/15 pt-6">
+            <h2 class="text-xl font-semibold text-navy">
+              <a href={`/admin/people/${person.slug}`} class="underline underline-offset-4">
+                {person.name}
+              </a>
+            </h2>
+            <p class="mt-1">{person.role}</p>
+            <p class="mt-1 text-sm">
+              {person.leadershipRank === null
+                ? 'Not leadership'
+                : `Leadership, number ${person.leadershipRank} on the staff page`}
+              {' · '}
+              {person.bio ? 'Has a written bio' : 'No bio yet'}
+              {' · '}
+              {person.photo ? 'Has a photograph' : 'No photograph yet'}
+            </p>
+            <p class="mt-1 text-sm" data-testid={`stamp-${person.slug}`}>
+              {formatStamp(person.lastEditedBy, person.lastEditedAt)}
+            </p>
+          </li>
+        ))}
+      </ul>
+    )
+  }
 
   <p class="mt-10 border-t border-navy/15 pt-6">
     A bio and a photograph are optional. The staff page shows a person with neither correctly —

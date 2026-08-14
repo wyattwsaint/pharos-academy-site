@@ -1,6 +1,8 @@
 ---
 export const prerender = false;
 
+import AdminBanner from '../../components/AdminBanner.astro';
+import AdminButton from '../../components/AdminButton.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { getDb } from '../../lib/db/client.js';
 import { attemptLogin, LOGIN_FAILED } from '../../lib/admin/login.js';
@@ -49,11 +51,10 @@ function safeNext(value: string | null): string {
   <h1 class="text-3xl font-semibold text-navy">Sign In</h1>
 
   {
-    error && (
-      <p role="alert" class="mt-6 border-l-4 border-navy bg-parchment px-4 py-3">
-        {error}
-      </p>
-    )
+    /* The one shared banner that interrupts: the refusal answers the submission
+       the reader just made, so it is `alert` where every other banner is
+       `status` — see the role note in AdminBanner. */
+    error && <AdminBanner ok={false} message={error} testId="login-error" role="alert" />
   }
 
   <form method="post" class="mt-8 flex max-w-sm flex-col gap-5">
@@ -84,11 +85,6 @@ function safeNext(value: string | null): string {
       />
     </div>
 
-    <button
-      type="submit"
-      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
-    >
-      Sign in
-    </button>
+    <AdminButton class="self-start">Sign in</AdminButton>
   </form>
 </AdminLayout>

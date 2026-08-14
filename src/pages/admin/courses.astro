@@ -1,13 +1,14 @@
 ---
 export const prerender = false;
 
+import AdminButton from '../../components/AdminButton.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { UNIT_LABELS } from '../../lib/admin/courses.js';
 import { formatStamp } from '../../lib/admin/formatting.js';
 import { durationLabel } from '../../lib/courses/course.js';
 import { priceSummary } from '../../lib/courses/pricing.js';
 import { timeLabel } from '../../lib/courses/schedule.js';
-import { listCourses } from '../../lib/courses/store.js';
+import { listCoursesForAdmin } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
 import { getMoneySettings } from '../../lib/money/store.js';
 
@@ -29,7 +30,7 @@ import { getMoneySettings } from '../../lib/money/store.js';
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
-const courses = await listCourses(db);
+const courses = await listCoursesForAdmin(db);
 const settings = await getMoneySettings(db);
 ---
 
@@ -41,43 +42,46 @@ const settings = await getMoneySettings(db);
   </p>
 
   <p class="mt-8">
-    <a
-      href="/admin/courses/new"
-      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
-    >
-      Add a course
-    </a>
+    <AdminButton href="/admin/courses/new">Add a course</AdminButton>
   </p>
 
-  <ul class="mt-8 flex flex-col gap-6">
-    {
-      courses.map((course) => (
-        <li class="border-t border-navy/15 pt-6">
-          <h2 class="text-xl font-semibold text-navy">
-            <a href={`/admin/courses/${course.slug}`} class="underline underline-offset-4">
-              {course.title}
-            </a>
-          </h2>
-          <p class="mt-1">
-            {course.days.join(', ')}
-            {' · '}
-            {timeLabel(course.start, course.end)}
-            {' · '}
-            {durationLabel(course)}
-            {' · '}
-            {priceSummary(course, settings.rates)}
-          </p>
-          <p class="mt-1 text-sm" data-testid={`units-${course.slug}`}>
-            Families can enroll for:{' '}
-            {course.enrolmentUnits.map((unit) => UNIT_LABELS[unit]).join(', ')}
-          </p>
-          <p class="mt-1 text-sm" data-testid={`stamp-${course.slug}`}>
-            {formatStamp(course.lastEditedBy, course.lastEditedAt)}
-          </p>
-        </li>
-      ))
-    }
-  </ul>
+  {
+    courses.length === 0 ? (
+      <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-courses">
+        No classes are listed. The catalog is put here when the site is installed and nothing on
+        this screen can be deleted, so an empty list means this database has not been set up yet —
+        and until it is, the public class pages have nothing to print either.
+      </p>
+    ) : (
+      <ul class="mt-8 flex flex-col gap-6">
+        {courses.map((course) => (
+          <li class="border-t border-navy/15 pt-6">
+            <h2 class="text-xl font-semibold text-navy">
+              <a href={`/admin/courses/${course.slug}`} class="underline underline-offset-4">
+                {course.title}
+              </a>
+            </h2>
+            <p class="mt-1">
+              {course.days.join(', ')}
+              {' · '}
+              {timeLabel(course.start, course.end)}
+              {' · '}
+              {durationLabel(course)}
+              {' · '}
+              {priceSummary(course, settings.rates)}
+            </p>
+            <p class="mt-1 text-sm" data-testid={`units-${course.slug}`}>
+              Families can enroll for:{' '}
+              {course.enrolmentUnits.map((unit) => UNIT_LABELS[unit]).join(', ')}
+            </p>
+            <p class="mt-1 text-sm" data-testid={`stamp-${course.slug}`}>
+              {formatStamp(course.lastEditedBy, course.lastEditedAt)}
+            </p>
+          </li>
+        ))}
+      </ul>
+    )
+  }
 
   <p class="mt-10 border-t border-navy/15 pt-6">
     The price is never typed. It is the meeting length × the weeks × the rate on the <a

@@ -70,6 +70,15 @@ jobs:
       - name: Browser tests (stopped database)
         run: npm run test:e2e:database-down
 
+      # The four seeded lists, emptied (#197): the migrations seed People,
+      # Classes, Announcements and Policies and nothing deletes, so the empty
+      # states those screens promise are only reachable on a server whose
+      # throwaway database was emptied on purpose. A fourth dev server,
+      # configured in a fourth way, for the same one-server-per-directory
+      # reason as the two above.
+      - name: Browser tests (empty lists)
+        run: npm run test:e2e:empty-lists
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
