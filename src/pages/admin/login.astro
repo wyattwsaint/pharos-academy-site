@@ -5,6 +5,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import { getDb } from '../../lib/db/client.js';
 import { attemptLogin, LOGIN_FAILED } from '../../lib/admin/login.js';
 import { setSessionCookie } from '../../lib/admin/session-cookie.js';
+import { returnPath } from '../../lib/admin/return-path.js';
 import { startSession } from '../../lib/admin/sessions.js';
 
 /**
@@ -14,7 +15,7 @@ import { startSession } from '../../lib/admin/sessions.js';
  * `next` carries the page the guard bounced away from, so signing in lands on
  * the thing that was actually being opened.
  */
-const next = safeNext(Astro.url.searchParams.get('next'));
+const next = returnPath(Astro.url.searchParams.get('next'));
 
 let username = '';
 let error: string | null = null;
@@ -29,19 +30,9 @@ if (Astro.request.method === 'POST') {
   if (outcome) {
     const { token, expiresAt } = await startSession(await getDb(), outcome);
     setSessionCookie(Astro.cookies, token, expiresAt);
-    return Astro.redirect(safeNext(String(form.get('next') ?? '')), 303);
+    return Astro.redirect(returnPath(String(form.get('next') ?? '')), 303);
   }
   error = LOGIN_FAILED;
-}
-
-/**
- * Only ever redirect to a path on this site. An open redirect on the login page
- * is how a phishing link borrows the school's own domain.
- */
-function safeNext(value: string | null): string {
-  const fallback = '/admin/school-details';
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return fallback;
-  return value;
 }
 ---
 

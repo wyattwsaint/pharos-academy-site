@@ -28,6 +28,7 @@ import {
   revalidationOrigin,
 } from '../../../lib/admin/revalidate.js';
 import { formatStamp } from '../../../lib/admin/formatting.js';
+import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
 import { fullDateLabel, type SchoolYear } from '../../../lib/calendar/year.js';
 import { getSchoolYear } from '../../../lib/calendar/store.js';
 import { ENROLMENT_UNITS, RATE_TIERS, STAGES } from '../../../lib/courses/course.js';
@@ -126,7 +127,7 @@ const courses = await listCourses(db);
 
 let values: CourseFields = course ? fieldsOf(course) : emptyFields();
 let errors: CourseErrors = {};
-let banner: Banner | null = null;
+let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republished'));
 /*
  * The parser's reading of the posted form, kept so the view below is not a
  * second reading of the same strings (#75). Null on a GET, where there is no
