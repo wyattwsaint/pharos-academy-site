@@ -244,6 +244,32 @@ one.
 Not: "application id" (that is the uuid, and no family sees it), "confirmation
 number", "receipt".
 
+### payment method
+
+How a family **said** they would pay — `online` or `check`, and nothing else
+(#221). It is never evidence a payment arrived: Vanco still sends the site no
+confirmation, so this is the family's own answer and its whole job is to let the
+office know whether to watch for an envelope.
+
+There is no third value for a split. An envelope now contains the **whole total
+or nothing**, never the deposits alone, and both application emails word one
+instruction from this one answer — the giving page and the amount to enter, or
+the remittance address and the whole total, never both. The school's
+configuration can veto it in one direction only: a giving page that is not set
+turns a stated `online` into a check, because an instruction pointing at an
+address that is not there is a blank line where the one thing the email exists
+to say should be.
+
+Both emails print the same **invoice** from one writer (`invoice` in
+`src/lib/application/notices.ts`): registration, deposits, tuition, the deposit
+credit where it applies, one total, a status line and the reference — aligned
+columns, plain text, no template engine. One writer because a school told to
+expect $865 and a family told to send $100 is the same submission saying two
+things.
+
+Not: "payment status", "paid", "payment state" — none of those are facts this
+site can observe.
+
 ### money settings
 
 The single row holding every number about money the school controls: the two
