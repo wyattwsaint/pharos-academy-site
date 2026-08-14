@@ -2,11 +2,13 @@
 export const prerender = false;
 
 import AdminBanner from '../../components/AdminBanner.astro';
+import AdminButton from '../../components/AdminButton.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import {
   applyApplicationAction,
   parseApplicationAction,
 } from '../../lib/application/admin-flow.js';
+import { applicationOutcome, outcomeIsAbout } from '../../lib/application/outcome.js';
 import { AGREEMENT_DOCUMENTS, agreementLabel } from '../../lib/application/agreements.js';
 import { applicationCost } from '../../lib/application/application.js';
 import {
@@ -57,14 +59,46 @@ import { getMoneySettings, listAgreedTerms } from '../../lib/money/store.js';
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
-let banner: Banner | null = null;
+/**
+ * Post, redirect, get — with the answer beside the row it is about (#201).
+ *
+ * Both moves land the browser back on this screen anchored at the application
+ * that was acted on, carrying a code the redirect cannot forge into a claim
+ * (`outcome.ts`). Two things follow, and both are the point: a refresh repeats
+ * nothing, and on a screen that is one long list the outcome is read where the
+ * button was pressed rather than at a top the office has already scrolled past.
+ *
+ * The editors trade this away deliberately — they hold a revalidation answer a
+ * redirect would throw out — and this screen has no such answer to lose.
+ */
+const anchorFor = (id: string) => `application-${id}`;
 
 if (Astro.request.method === 'POST') {
   const action = parseApplicationAction(await Astro.request.formData());
-  banner = action
-    ? await applyApplicationAction(db, action)
-    : { ok: false, message: 'Nothing happened — that form did not say what it wanted.' };
+  const outcome = action ? await applyApplicationAction(db, action) : 'unreadable';
+
+  /*
+   * Built through `URL` rather than concatenated, because the id is a value the
+   * browser posted and this one goes into a response header: the query and the
+   * fragment are both escaped on the way in, so a real id — a UUID — comes back
+   * unchanged and anything else cannot spell a second header or a second URL.
+   * A fragment that then matches no row is not lost: the outcome is reported at
+   * the top instead.
+   */
+  const back = new URL(Astro.url.pathname, Astro.url);
+  back.searchParams.set('outcome', outcome);
+  if (action) {
+    back.searchParams.set('at', action.id);
+    back.hash = anchorFor(action.id);
+  }
+
+  return Astro.redirect(`${back.pathname}${back.search}${back.hash}`, 303);
 }
+
+const outcomeCode = Astro.url.searchParams.get('outcome');
+const banner: Banner | null = applicationOutcome(outcomeCode);
+/** Which row the banner belongs beside. */
+const actedOn = Astro.url.searchParams.get('at');
 
 const applications = await listApplications(db);
 const settings = await getMoneySettings(db);
@@ -105,6 +139,25 @@ const owedOn = (application: ApplicationRecord) => {
 };
 
 
+/**
+ * Whether the banner belongs beside this row: it is the row that was acted on,
+ * and the row bears the outcome out. The second half is what makes a hand-typed
+ * `?outcome=` harmless — see `outcomeIsAbout`.
+ */
+const bannerFor = (application: ApplicationRecord) =>
+  outcomeCode !== null && actedOn === application.id && outcomeIsAbout(outcomeCode, application)
+    ? banner
+    : null;
+
+/**
+ * Whether no row will show it: a post that never named an application, or one
+ * naming a row this screen is not showing. Then it goes at the top rather than
+ * being dropped — an answer nobody sees is worse than an answer above the list.
+ * An outcome the named row contradicts is not stray, and is shown nowhere.
+ */
+const noRowShowsTheBanner =
+  banner !== null && !applications.some((application) => application.id === actedOn);
+
 /** Which applications asked for a seat more than once, for the note on the row. */
 const resubmittedIds = new Set(
   tally.flatMap((entry) =>
@@ -122,7 +175,11 @@ const resubmittedIds = new Set(
     application itself: an email is a thing that can fail, and this screen says which ones did.
   </p>
 
-  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="applications-banner" />}
+  {
+    banner && noRowShowsTheBanner && (
+      <AdminBanner ok={banner.ok} message={banner.message} testId="applications-banner" />
+    )
+  }
 
   <section class="mt-8 border-t border-navy/15 pt-6" data-testid="class-tally">
     <h2 class="text-2xl font-semibold text-navy">Class Tally</h2>
@@ -155,12 +212,17 @@ const resubmittedIds = new Set(
       <ul class="mt-8 flex flex-col gap-10">
         {applications.map((application) => {
           const owed = owedOn(application);
+          const rowBanner = bannerFor(application);
           const paid = paymentStatusNow(application.payment, now);
           const note = paymentAwaitedNote(application.payment, now);
           const delivery = applicationDeliveryNote(application);
 
           return (
-            <li class="border-t border-navy/15 pt-6" data-testid="application">
+            <li
+              id={anchorFor(application.id)}
+              class="border-t border-navy/15 pt-6"
+              data-testid="application"
+            >
               <h2 class="text-xl font-semibold text-navy" data-testid="application-family">
                 {application.familyName}
               </h2>
@@ -271,6 +333,19 @@ const resubmittedIds = new Set(
                 one control moved both would put back exactly what the store
                 keeps apart.
               */}
+              {/*
+                The answer where the question was asked (#201). It sits above
+                the two rows of buttons, so the sentence about what just moved
+                is read against the controls that moved it.
+              */}
+              {rowBanner && (
+                <AdminBanner
+                  ok={rowBanner.ok}
+                  message={rowBanner.message}
+                  testId="applications-banner"
+                />
+              )}
+
               <div class="mt-5 flex flex-col gap-4">
                 <div data-testid="application-state">
                   <p>
@@ -282,12 +357,9 @@ const resubmittedIds = new Set(
                         <form method="post">
                           <input type="hidden" name="id" value={application.id} />
                           <input type="hidden" name="event" value={event} />
-                          <button
-                            type="submit"
-                            class="rounded border border-navy px-3 py-1 underline-offset-4 hover:underline"
-                          >
+                          <AdminButton variant="secondary" small>
                             {APPLICATION_EVENT_LABELS[event]}
-                          </button>
+                          </AdminButton>
                         </form>
                       ))}
                     </div>
@@ -327,12 +399,9 @@ const resubmittedIds = new Set(
                       <form method="post">
                         <input type="hidden" name="id" value={application.id} />
                         <input type="hidden" name="event" value={event} />
-                        <button
-                          type="submit"
-                          class="rounded border border-navy px-3 py-1 underline-offset-4 hover:underline"
-                        >
+                        <AdminButton variant="secondary" small>
                           {paymentEventLabel(application.payment.mode, event)}
-                        </button>
+                        </AdminButton>
                       </form>
                     ))}
                   </div>

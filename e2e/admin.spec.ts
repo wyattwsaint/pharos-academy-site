@@ -1281,6 +1281,67 @@ test.describe('applications', () => {
   });
 
   /**
+   * The answer where the question was asked (#201).
+   *
+   * This screen is one long list, and an outcome at the top of it is an outcome
+   * the office has already scrolled past. So the action redirects — anchored at
+   * the row it moved, carrying the outcome in the URL — and the banner renders
+   * beside the buttons that were pressed. The redirect is also what makes the
+   * refresh below safe: there is no post left to repeat.
+   */
+  test('reports the outcome at the row acted on, and a refresh repeats nothing (AC 1, AC 2)', async ({
+    page,
+  }) => {
+    const family = 'Suite Outcome';
+    await apply(page, {
+      name: family,
+      email: 'suite-outcome@example.com',
+      child: 'Outcome Child',
+      offering: 'algebra-1:year',
+    });
+
+    await signIn(page, '/admin/applications');
+    await rowFor(page, family).getByRole('button', { name: 'Start a conversation' }).click();
+
+    const row = rowFor(page, family);
+    const banner = row.getByTestId('applications-banner');
+    await expect(banner).toBeVisible();
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+    await expect(banner).toContainText('in conversation');
+    // Beside that row and nowhere else — no second copy at the top of the page.
+    await expect(page.getByTestId('applications-banner')).toHaveCount(1);
+
+    // And the browser is standing at the row, not at the top of the list.
+    const anchor = await row.getAttribute('id');
+    expect(anchor).toMatch(/^application-/);
+    await expect(page).toHaveURL(new RegExp(`#${anchor}$`));
+
+    /*
+     * The refresh. Were the outcome still being rendered from the post, this
+     * would re-fire the move and the banner would flip to "Nothing changed —
+     * it may already have moved". It says the same thing it said before.
+     */
+    await page.reload();
+    await expect(rowFor(page, family).getByTestId('applications-banner')).toHaveAttribute(
+      'data-ok',
+      'true',
+    );
+    await expect(rowFor(page, family).getByTestId('application-state')).toContainText(
+      'In conversation',
+    );
+
+    // And an outcome typed into the URL that the row does not bear out says
+    // nothing at all, rather than announcing a move nobody made.
+    const forged = new URL(page.url());
+    forged.searchParams.set('outcome', 'state-enrolled');
+    await page.goto(`${forged.pathname}${forged.search}`);
+    await expect(page.getByTestId('applications-banner')).toHaveCount(0);
+    await expect(rowFor(page, family).getByTestId('application-state')).toContainText(
+      'In conversation',
+    );
+  });
+
+  /**
    * The one action that writes "paid online" (#220 AC 3).
    *
    * Nothing else can: the giving page reports to nobody (ADR-0013), so the
