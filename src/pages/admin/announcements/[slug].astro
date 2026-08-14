@@ -2,6 +2,9 @@
 export const prerender = false;
 
 import AdminBanner from '../../../components/AdminBanner.astro';
+import AdminButton from '../../../components/AdminButton.astro';
+import AdminField from '../../../components/AdminField.astro';
+import AdminPublishing from '../../../components/AdminPublishing.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import {
   LABELS,
@@ -52,6 +55,12 @@ import { getDb } from '../../../lib/db/client.js';
  * minted once from the date it was first posted and then stays put, because it
  * is a URL somebody may already have followed — a link Jill sent in July does
  * not stop working because she corrected the date in August.
+ *
+ * The field, button, banner and Publishing markup this screen used to spell out
+ * for itself now comes from the shared components (#194). The PDF is the one
+ * that gained something: what is attached now is said *in the field's hint*
+ * rather than in a loose paragraph beside it, so a screen reader hears "there
+ * is already a flyer on this" while it is on the control that would replace it.
  */
 /** The one slug that is not an announcement: the post form's address. */
 const NEW = 'new';
@@ -140,42 +149,41 @@ const action = announcement
 const heading = announcement ? announcement.headline : 'Post an Announcement';
 const stamp = announcement ? formatStamp(announcement.lastEditedBy, announcement.lastEditedAt) : null;
 const attached = announcement?.attachmentFilename ?? null;
-const control =
-  'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
 
 /** The typed fields, in the order they are asked for. */
 const FIELDS: {
   name: keyof AnnouncementFields;
   type: 'text' | 'multiline' | 'date' | 'url';
-  required?: boolean;
+  optional?: true;
   hint?: string;
+  rows?: number;
 }[] = [
   {
     name: 'headline',
     type: 'text',
-    required: true,
     hint: 'The one line a parent reads at a glance.',
   },
   {
     name: 'body',
     type: 'multiline',
-    required: true,
+    rows: 8,
     hint: 'A short paragraph. What it is, when it is, and what to do about it.',
   },
   {
     name: 'postedOn',
     type: 'date',
-    required: true,
     hint: 'The date this goes out. It orders the news page and is the date printed beside the headline.',
   },
   {
     name: 'linkUrl',
     type: 'url',
+    optional: true,
     hint: 'Optional. A registration page, a form — “https://…”.',
   },
   {
     name: 'linkLabel',
     type: 'text',
+    optional: true,
     hint: 'What that link is called. Needed whenever there is a link.',
   },
 ];
@@ -199,145 +207,74 @@ function fieldsOf(row: Announcement): AnnouncementFields {
     Saved here, this appears on the news page.
   </p>
 
-  {
-    banner && (
-      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
-        {!banner.ok && (
-          <form method="post" action="/admin/republish" class="mt-3">
-            <button
-              type="submit"
-              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-navy-deep"
-            >
-              Retry
-            </button>
-          </form>
-        )}
-      </AdminBanner>
-    )
-  }
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner" retry />}
 
   <form method="post" action={action} enctype="multipart/form-data" class="mt-8 flex flex-col gap-6">
     {
-      FIELDS.map((field) => {
-        const invalid = Boolean(errors[field.name]);
-        const describedBy =
-          [field.hint ? `${field.name}-hint` : null, invalid ? `${field.name}-error` : null]
-            .filter(Boolean)
-            .join(' ') || undefined;
-        const value = values[field.name];
-
-        return (
-          <div class="flex flex-col gap-2">
-            <label for={field.name} class="font-semibold">
-              {LABELS[field.name]}
-            </label>
-            {field.hint && (
-              <p id={`${field.name}-hint`} class="text-sm">
-                {field.hint}
-              </p>
-            )}
-            {field.type === 'multiline' ? (
-              <textarea
-                id={field.name}
-                name={field.name}
-                rows={8}
-                required={field.required}
-                aria-invalid={invalid ? 'true' : undefined}
-                aria-describedby={describedBy}
-                class={control}
-              >
-                {value ?? ''}
-              </textarea>
-            ) : (
-              <input
-                id={field.name}
-                name={field.name}
-                type={field.type === 'date' ? 'date' : field.type === 'url' ? 'url' : 'text'}
-                value={value ?? ''}
-                required={field.required}
-                aria-invalid={invalid ? 'true' : undefined}
-                aria-describedby={describedBy}
-                class={control}
-              />
-            )}
-            {invalid && (
-              <p id={`${field.name}-error`} class="font-semibold">
-                {errors[field.name]}
-              </p>
-            )}
-          </div>
-        );
-      })
+      FIELDS.map((field) => (
+        <AdminField
+          name={field.name}
+          type={field.type}
+          label={LABELS[field.name]}
+          value={values[field.name] ?? ''}
+          hint={field.hint}
+          error={errors[field.name]}
+          optional={field.optional}
+          rows={field.rows}
+        />
+      ))
     }
 
     <div class="flex flex-col gap-2">
-      <label for="attachment" class="font-semibold">{LABELS.attachment}</label>
-      <p id="attachment-hint" class="text-sm">
-        Optional, and a PDF — the board update, a flyer. Choosing one here replaces whatever is
-        attached now.
-      </p>
-      {
-        attached && (
-          <p class="text-sm">
-            Attached now:{' '}
-            <a
-              href={attachmentPath(announcement!.slug)}
-              class="underline underline-offset-4"
-              data-testid="current-attachment"
-            >
-              {attached}
-            </a>
-          </p>
-        )
-      }
-      <input
-        id="attachment"
+      <AdminField
         name="attachment"
         type="file"
+        label={LABELS.attachment}
         accept="application/pdf"
-        aria-invalid={errors.attachment ? 'true' : undefined}
-        aria-describedby={errors.attachment ? 'attachment-hint attachment-error' : 'attachment-hint'}
-        class={control}
-      />
-      {
-        errors.attachment && (
-          <p id="attachment-error" class="font-semibold">
-            {errors.attachment}
-          </p>
-        )
-      }
+        error={errors.attachment}
+        optional
+      >
+        <Fragment slot="hint">
+          Optional, and a PDF — the board update, a flyer. Choosing one here replaces whatever is
+          attached now.
+          {
+            attached && (
+              <>
+                {' '}
+                Right now that is{' '}
+                <a
+                  href={attachmentPath(announcement!.slug)}
+                  class="underline underline-offset-4"
+                  data-testid="current-attachment"
+                >{attached}</a>.
+              </>
+            )
+          }
+        </Fragment>
+      </AdminField>
+
       {
         /*
-          Only offered when there is something to remove. A checkbox that took
-          down a file that was not there would be a control with no effect,
-          which is the kind of thing somebody ticks to find out what it does.
+          Only offered when there is something to remove, and kept in the
+          upload's own group so it reads as an option on the PDF rather than as
+          a field of its own. A checkbox that took down a file that was not
+          there would be a control with no effect, which is the kind of thing
+          somebody ticks to find out what it does.
         */
       }
       {
         attached && (
-          <label class="flex items-center gap-2">
-            <input type="checkbox" name="removeAttachment" value="on" />
-            Remove the attached PDF
-          </label>
+          <AdminField name="removeAttachment" type="checkbox" label="Remove the attached PDF" />
         )
       }
     </div>
 
-    <button
-      type="submit"
-      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
-    >
-      Save
-    </button>
+    <AdminButton class="self-start">Save</AdminButton>
   </form>
 
   {
     stamp && (
-      <section class="mt-10 border-t border-navy/15 pt-6">
-        <h2 class="text-xl font-semibold text-navy">Publishing</h2>
-        <p class="mt-2" data-testid="stamp">
-          {stamp}
-        </p>
+      <AdminPublishing stamp={stamp}>
         <p class="mt-2" data-testid="homepage-state">
           On the news page, for good — nothing here ages off a page.
         </p>
@@ -345,15 +282,7 @@ function fieldsOf(row: Announcement): AnnouncementFields {
           Saving republishes the whole site, because the news page is not the only page that prints
           what the school has said.
         </p>
-        <form method="post" action="/admin/republish" class="mt-4">
-          <button
-            type="submit"
-            class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
-          >
-            Republish
-          </button>
-        </form>
-      </section>
+      </AdminPublishing>
     )
   }
 </AdminLayout>
