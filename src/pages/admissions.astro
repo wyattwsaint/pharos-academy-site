@@ -49,8 +49,25 @@ const description =
 <BaseLayout details={details} title="Admissions" description={description}>
   <section class="band band-quiet" data-section="admissions-header">
     <div class="wide">
-      <p class="label">Admissions</p>
-      <h1 class="mt-4">How Applying Works</h1>
+      {/*
+        The plate is the homepage's accent treatment, unchanged: heading left,
+        picture in the 38% column, dissolved into the band. It is the H.O.P.E.
+        "Educate" painting — the globe, the botanical book, the blue-and-gold
+        bindings — reused at the size it is already built for rather than
+        re-cropped, because the accent column and an H.O.P.E. card are the same
+        width to within a few pixels and a second encode of one painting buys
+        nothing. Decorative, so `alt` is empty: the heading beside it already
+        says what the section is.
+      */}
+      <div class="accent">
+        <div>
+          <p class="label">Admissions</p>
+          <h1 class="mt-4">How Applying Works</h1>
+        </div>
+        <figure class="plate">
+          <img src="/imagery/hope-e.webp" alt="" width="800" height="533" loading="eager" />
+        </figure>
+      </div>
     </div>
   </section>
 
