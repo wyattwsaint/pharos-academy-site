@@ -159,19 +159,24 @@ Since #220 the flip carries less. What a stated `online` submission changes is
 the **mode** and not the status: the row still opens `awaiting`, because nothing
 about the family's answer says money arrived.
 
-Since #111 the slot is **partly filled**, and since #219 it is filled for the
-whole sum. The **registration fee**, the **per-class deposits** and the
-**tuition** are paid together — **one lump sum**, upfront, through the church's
-Vanco page. One campaign, held as `pay_online_url` on the school details row
-beside the giving URL, so the office moves it without a deploy, and empty there
-means the Apply page offers no online payment at all and asks for a check
-covering everything.
+Since #111 the slot is **partly filled**, and it is filled for **all three
+amounts through one channel**. The **registration fee**, the **per-class
+deposits** and the **tuition** are one lump sum, paid upfront through the
+church's Vanco giving page — one campaign, held as `pay_online_url` on the school
+details row, so the office moves it without a deploy, and empty there means the
+Apply page offers no online payment at all. A **check** to the school is the
+fallback, for the whole total and never the deposits alone.
+
+Every surface now words it that way: both emails (#221), and the Apply page
+(#219), which asks the family which method they mean and records the answer —
+see **stated payment method** below.
 
 All three are the school's money. Tuition does **not** go to the instructors —
 see [ADR-0013](docs/adr/0013-the-school-holds-the-tuition.md), which reverses
 what this section said until #187 and explains why the field names had to move
-with the copy. That its channel split survived only until #219 is
-[ADR-0017](docs/adr/0017-one-payment-and-the-check-is-the-fallback.md).
+with the copy; [ADR-0017](docs/adr/0017-one-lump-sum-through-the-giving-page.md)
+supersedes the part of it that kept the deposits on a check, and names what
+survives.
 
 **A check is the fallback, never a peer.** On the Apply page paying online is the
 primary action and posting a check is a disclosure beside it — and what it asks
@@ -784,6 +789,20 @@ button does with no edit attached.
 
 Whole-site on purpose: a per-path invalidation map is a second source of truth
 about which edit touches which page, and it drifts silently.
+
+Answered where it was asked: the button carries a **return path** and the
+outcome is reported back there, not on School details (#198).
+
+### return path
+
+The screen a form comes back to when the work happens somewhere else — the page
+sign-in was bounced away from, or the screen **Republish** was pressed on. It
+travels as a hidden field, so it is always a value somebody else could have
+written: only a path on this site is honoured, and anything else falls back to
+School details.
+
+Not: a URL. A return path that could name another host is an open redirect
+wearing the school's own domain.
 
 Not: "deploy" — republishing changes no code and produces no deployment.
 

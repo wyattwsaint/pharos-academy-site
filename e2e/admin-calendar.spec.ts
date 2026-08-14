@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { eventSlug } from '../src/lib/calendar/event.js';
 import { schoolTimeToUtc, utcStamp } from '../src/lib/calendar/ics.js';
@@ -22,6 +22,23 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
+/**
+ * That a control's complaint is announced *with* it, rather than merely
+ * printed near it — which is the whole of what the shared field wires up and
+ * the whole of what rots when a screen hand-copies a control (#190, #196).
+ *
+ * Asserted through `aria-describedby` because that is what a screen reader
+ * reads; the ids are looked up by attribute rather than as a `#` selector,
+ * since a described-by holds a space-separated list and admin ids contain dots.
+ */
+async function announces(page: Page, control: Locator, says: string): Promise<void> {
+  const described = await control.getAttribute('aria-describedby');
+  expect(described, 'the control names what describes it').toBeTruthy();
+  const complaint = described!.split(' ').filter((id) => id.endsWith('-error'));
+  expect(complaint).toHaveLength(1);
+  await expect(page.locator(`[id="${complaint[0]}"]`)).toContainText(says);
+}
+
 test.describe('the School Year screen', () => {
   test('previews the four-column sheet as the year is typed', async ({ page }) => {
     await page.goto('/admin/school-year');
@@ -40,6 +57,23 @@ test.describe('the School Year screen', () => {
     // …and the other three have not moved: this is per-track, not a shift.
     await expect(preview).toContainText('4 Nov 2026');
     await expect(preview).toContainText('15 Dec 2026');
+
+    /*
+     * And the sheet it draws declares its headers (#196 AC 4, #190).
+     *
+     * Every date in here answers a track *and* a week, so both directions are
+     * named: the track across the top, the week number down the side. Without
+     * them a screen reader reads four loose dates per row and the reader has
+     * to hold the column order in their head. Asserted on the redrawn table
+     * rather than in a spec of its own, because the script that draws the
+     * dates is the same script that declares the headers.
+     */
+    const table = preview.locator('table').first();
+    await expect(table.locator('thead th[scope="col"]')).toHaveCount(5);
+    await expect(table.locator('thead th[scope="col"]').first()).toHaveText('Week');
+    const weekOne = table.locator('tbody tr').first();
+    await expect(weekOne.locator('th[scope="row"]')).toHaveCount(1);
+    await expect(weekOne.locator('th[scope="row"]')).toHaveText('1');
   });
 
   test('saves a year with no Tuesday track as complete', async ({ page }) => {
@@ -86,10 +120,51 @@ test.describe('the School Year screen', () => {
     await page.getByRole('button', { name: 'Save the year' }).click();
 
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
-    await expect(page.locator('#fall\\.Wednesday\\.firstClassDate')).toHaveAttribute(
-      'aria-invalid',
-      'true',
+    const refused = page.locator('#fall\\.Wednesday\\.firstClassDate');
+    await expect(refused).toHaveAttribute('aria-invalid', 'true');
+    // And the complaint is announced with the box, not merely printed beside
+    // it (#196 AC 3): the term rows' errors were loose paragraphs.
+    await announces(page, refused, 'Wednesday');
+  });
+
+  /**
+   * A closure row that is wrong twice says so twice (#196 AC 2, #190).
+   *
+   * Both complaints were rendered as one unlabelled paragraph, so a screen
+   * reader on either box heard nothing and the row had to be fixed in two
+   * passes. Asserted through `aria-describedby` rather than the markup: what
+   * matters is that the complaint is announced *with* the box it is about.
+   *
+   * The two are provoked together by repeating a day already on the list and
+   * leaving its label blank — a date box cannot hold an unparseable date, so a
+   * duplicate is the only way one is filled in and still refused.
+   */
+  test('announces both complaints on a closure row that is wrong twice', async ({ page }) => {
+    await page.goto('/admin/school-year');
+
+    const rows = page.locator('[data-closure-row]');
+    const before = await rows.count();
+    const already = await rows.first().locator('input[name="closure.date"]').inputValue();
+
+    await rows.last().locator('input[name="closure.date"]').fill(already);
+    await page.getByRole('button', { name: 'Save the year' }).click();
+
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
+
+    const refused = page
+      .locator('[data-closure-row]')
+      .filter({ hasText: 'That day is already on the list.' });
+
+    await announces(page, refused.locator('input[name="closure.date"]'), 'already on the list');
+    await announces(
+      page,
+      refused.locator('input[name="closure.label"]'),
+      'Say what the school is closed for',
     );
+
+    // And nothing was saved: the refusal is the whole form's, not the row's.
+    await page.goto('/admin/school-year');
+    await expect(page.locator('[data-closure-row]')).toHaveCount(before);
   });
 });
 

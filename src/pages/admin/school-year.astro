@@ -2,6 +2,9 @@
 export const prerender = false;
 
 import AdminBanner from '../../components/AdminBanner.astro';
+import AdminButton from '../../components/AdminButton.astro';
+import AdminField from '../../components/AdminField.astro';
+import AdminPublishing from '../../components/AdminPublishing.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import type { Banner } from '../../lib/admin/banner.js';
 import { isrBypassToken } from '../../lib/admin/isr-token.js';
@@ -11,6 +14,7 @@ import {
   revalidationOrigin,
 } from '../../lib/admin/revalidate.js';
 import { formatStamp } from '../../lib/admin/formatting.js';
+import { republishOutcome } from '../../lib/admin/republish-outcome.js';
 import {
   emptyFields,
   fieldsOf,
@@ -52,7 +56,7 @@ const actor = Astro.locals.actor!;
 let year = await getSchoolYear(db);
 let values: SchoolYearFields = year ? fieldsOf(year) : emptyFields();
 let errors: SchoolYearErrors = {};
-let banner: Banner | null = null;
+let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republished'));
 
 if (Astro.request.method === 'POST') {
   const parsed = parseSchoolYear(await Astro.request.formData());
@@ -84,8 +88,6 @@ const closureRows = [
   ...values.closures,
   ...Array.from({ length: SPARE_CLOSURE_ROWS }, () => ({ date: '', label: '' })),
 ];
-
-const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
 ---
 
 <AdminLayout title="School Year" actor={actor}>
@@ -97,40 +99,26 @@ const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[i
     this screen.
   </p>
 
-  {
-    banner && (
-      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
-        {!banner.ok && (
-          <form method="post" action="/admin/republish" class="mt-3">
-            <button
-              type="submit"
-              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-navy-deep"
-            >
-              Retry
-            </button>
-          </form>
-        )}
-      </AdminBanner>
-    )
-  }
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner" retry />}
 
   <form method="post" action="/admin/school-year" class="mt-8 flex flex-col gap-10" data-year-form>
-    <div class="flex flex-col gap-2">
-      <label for="label" class="font-semibold">Which year this is</label>
-      <p id="label-hint" class="text-sm">As it is written on the sheets — “2026–2027”.</p>
-      <input
-        id="label"
-        name="label"
-        type="text"
-        value={values.label}
-        required
-        aria-invalid={errors.label ? 'true' : undefined}
-        aria-describedby={['label-hint', errors.label ? 'label-error' : null].filter(Boolean).join(' ')}
-        class={control}
-      />
-      {errors.label && <p id="label-error" class="font-semibold">{errors.label}</p>}
-    </div>
+    <AdminField
+      name="label"
+      type="text"
+      label="Which year this is"
+      hint="As it is written on the sheets — “2026–2027”."
+      value={values.label}
+      error={errors.label}
+    />
 
+    {
+      /*
+        Every control below is `optional` in the HTML sense: the browser must
+        not stop the form. A blank Tuesday row is a complete year (#14) and a
+        blank closure row is a spare, so the parser is the only thing that
+        knows whether what is missing is missing wrongly.
+      */
+    }
     {
       SEMESTERS.map((semester) => (
         <fieldset class="flex flex-col gap-4">
@@ -148,47 +136,27 @@ const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[i
             const weeksError = errors[`${key}.weeks`];
 
             return (
-              <div class="flex flex-wrap items-end gap-4">
-                <div class="flex flex-col gap-2">
-                  <label for={`${key}.firstClassDate`} class="font-semibold">
-                    {track} — first class
-                  </label>
-                  <input
-                    id={`${key}.firstClassDate`}
-                    name={`${key}.firstClassDate`}
-                    type="date"
-                    value={fields.firstClassDate}
-                    aria-invalid={dateError ? 'true' : undefined}
-                    aria-describedby={dateError ? `${key}.firstClassDate-error` : undefined}
-                    class="rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
-                  />
-                </div>
-                <div class="flex flex-col gap-2">
-                  <label for={`${key}.weeks`} class="font-semibold">
-                    Weeks
-                  </label>
-                  <input
-                    id={`${key}.weeks`}
-                    name={`${key}.weeks`}
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={fields.weeks}
-                    aria-invalid={weeksError ? 'true' : undefined}
-                    aria-describedby={weeksError ? `${key}.weeks-error` : undefined}
-                    class="w-24 rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
-                  />
-                </div>
-                {dateError && (
-                  <p id={`${key}.firstClassDate-error`} class="w-full font-semibold">
-                    {dateError}
-                  </p>
-                )}
-                {weeksError && (
-                  <p id={`${key}.weeks-error`} class="w-full font-semibold">
-                    {weeksError}
-                  </p>
-                )}
+              <div class="flex flex-wrap gap-4">
+                <AdminField
+                  name={`${key}.firstClassDate`}
+                  type="date"
+                  label={`${track} — first class`}
+                  value={fields.firstClassDate}
+                  error={dateError}
+                  class="min-w-56 flex-1"
+                  optional
+                />
+                <AdminField
+                  name={`${key}.weeks`}
+                  type="number"
+                  label="Weeks"
+                  value={fields.weeks}
+                  error={weeksError}
+                  min={1}
+                  step={1}
+                  class="min-w-56 flex-1"
+                  optional
+                />
               </div>
             );
           })}
@@ -208,36 +176,34 @@ const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[i
           const dateError = errors[`closures.${index}.date`];
           const labelError = errors[`closures.${index}.label`];
           return (
-            <div class="flex flex-wrap items-end gap-4" data-closure-row>
-              <div class="flex flex-col gap-2">
-                <label class="font-semibold" for={`closure-date-${index}`}>
-                  Closed on
-                </label>
-                <input
-                  id={`closure-date-${index}`}
-                  name="closure.date"
-                  type="date"
-                  value={closure.date}
-                  aria-invalid={dateError ? 'true' : undefined}
-                  class="rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
-                />
-              </div>
-              <div class="flex flex-1 flex-col gap-2">
-                <label class="font-semibold" for={`closure-label-${index}`}>
-                  What for
-                </label>
-                <input
-                  id={`closure-label-${index}`}
-                  name="closure.label"
-                  type="text"
-                  value={closure.label}
-                  aria-invalid={labelError ? 'true' : undefined}
-                  class={control}
-                />
-              </div>
-              {(dateError || labelError) && (
-                <p class="w-full font-semibold">{dateError ?? labelError}</p>
-              )}
+            /*
+              Both complaints, each with its own control (#196, #190).
+              Every row posts under the same two names, so the ids are the
+              row's rather than the field's — and the row that is wrong twice
+              says so twice, which is the difference between fixing it in one
+              pass and being told about the date only after the label is fixed.
+            */
+            <div class="flex flex-wrap gap-4" data-closure-row>
+              <AdminField
+                name="closure.date"
+                id={`closure-date-${index}`}
+                type="date"
+                label="Closed on"
+                value={closure.date}
+                error={dateError}
+                class="min-w-56"
+                optional
+              />
+              <AdminField
+                name="closure.label"
+                id={`closure-label-${index}`}
+                type="text"
+                label="What for"
+                value={closure.label}
+                error={labelError}
+                class="min-w-56 flex-1"
+                optional
+              />
             </div>
           );
         })
@@ -249,12 +215,7 @@ const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[i
       </p>
     </fieldset>
 
-    <button
-      type="submit"
-      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
-    >
-      Save the year
-    </button>
+    <AdminButton class="self-start">Save the year</AdminButton>
   </form>
 
   <section class="mt-12 border-t border-navy/15 pt-6">
@@ -268,24 +229,14 @@ const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[i
     </div>
   </section>
 
-  <section class="mt-10 border-t border-navy/15 pt-6">
-    <h2 class="text-xl font-semibold text-navy">Publishing</h2>
-    <p class="mt-2" data-testid="stamp">{formatStamp(year?.lastEditedBy ?? null, year?.lastEditedAt ?? null)}</p>
+  <AdminPublishing stamp={formatStamp(year?.lastEditedBy ?? null, year?.lastEditedAt ?? null)}>
     <p class="mt-2">
       Saving republishes the whole site, and changes what
       <code>/calendar.ics</code> hands to every subscribed phone. Those phones check on their own
       schedule — usually within a few hours, sometimes a day or two — so a change made this week
       still needs a text message. Nobody controls that, and no calendar service would change it.
     </p>
-    <form method="post" action="/admin/republish" class="mt-4">
-      <button
-        type="submit"
-        class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
-      >
-        Republish
-      </button>
-    </form>
-  </section>
+  </AdminPublishing>
 </AdminLayout>
 
 <script>
@@ -354,7 +305,7 @@ const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[i
       const table = document.createElement('table');
       table.className = 'mt-3 w-full text-sm';
       const head = document.createElement('thead');
-      head.append(row(['Week', ...DAY_TRACKS], 'th'));
+      head.append(row(['Week', ...DAY_TRACKS], 'col'));
       const body = document.createElement('tbody');
 
       for (const entry of rows) {
@@ -362,7 +313,7 @@ const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[i
           entry.kind === 'week'
             ? [String(entry.week), ...DAY_TRACKS.map((track) => label(entry.cells[track]))]
             : ['', ...DAY_TRACKS.map((track) => entry.cells[track] ?? '')];
-        const line = row(cells, 'td');
+        const line = row(cells, entry.kind === 'week' ? 'row' : null);
         if (entry.kind === 'closure') line.className = 'italic';
         body.append(line);
       }
@@ -380,14 +331,30 @@ const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[i
     return sections;
   }
 
-  function row(cells: readonly string[], kind: 'th' | 'td'): HTMLTableRowElement {
+  /**
+   * One row, with its headers declared (#196, #190).
+   *
+   * `scope` is what turns four columns of computed dates into something a
+   * screen reader can read cell by cell: `col` for the track names across the
+   * top, `row` for the week number down the side. Both are needed, because
+   * every date in here answers a track *and* a week. A closure row has no week
+   * number, so its first cell is an empty `td` rather than a header of
+   * nothing.
+   */
+  function row(cells: readonly string[], scope: 'col' | 'row' | null): HTMLTableRowElement {
     const line = document.createElement('tr');
-    for (const value of cells) {
-      const cell = document.createElement(kind);
+    cells.forEach((value, index) => {
+      const header = scope !== null && (scope === 'col' || index === 0);
+      const cell = header ? document.createElement('th') : document.createElement('td');
+      if (header && scope) cell.scope = scope;
       cell.className = 'border-b border-navy/15 py-1 pr-3 text-left';
+      // A row header is still a week number, not a heading: `font-normal`
+      // keeps the sheet looking exactly as it did, the way the Money
+      // confirmation's row headers already do.
+      if (scope === 'row') cell.classList.add('font-normal');
       cell.textContent = value;
       line.append(cell);
-    }
+    });
     return line;
   }
 

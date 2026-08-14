@@ -1,16 +1,20 @@
 # The school holds the tuition
 
 > **Partly superseded by
-> [ADR-0017](0017-one-payment-and-the-check-is-the-fallback.md) (#219, #221).**
-> Who holds the money is still this ADR's answer and has not moved, as is "the
-> application still learns nothing from a payment". The channel split below —
-> registration and tuition online, the per-class deposit by check — is
-> reversed: the family pays **one lump sum** by **one method they state**, all
-> of it through Vanco or all of it by check. #221 moved both application emails
-> onto that model (`PaymentMethod`, and the shared `invoice` writer in
-> `src/lib/application/notices.ts`); #219 moved the Apply page and records the
-> answer on the row. Read this for the rename and the reasoning; read ADR-0017
-> for how a family pays today.
+> [ADR-0017](0017-one-lump-sum-through-the-giving-page.md).** "What did not
+> change" below says the per-class deposit is still a check while the
+> registration and tuition go online. That split is reversed: the family pays
+> **one lump sum** by **one method they state** — everything online, or
+> everything by check — and an envelope contains the whole total or nothing.
+> Everything else here stands: the school holds all of it, none of it is the
+> instructors', `pay_online_url` is one address, and the application still
+> learns nothing from a payment. ADR-0017 says which is which, and why.
+>
+> The surfaces have moved with it: #221 moved both application emails
+> (`PaymentMethod`, and the shared `invoice` writer in
+> `src/lib/application/notices.ts`), and #219 moved the Apply page — it asks
+> for the whole sum, offers the check as the fallback, and records the family's
+> answer on the row.
 
 Tuition is paid to Pharos Academy, in one payment, upfront, through the same
 Vanco page the registration fee goes through. It is not paid to the instructors
@@ -42,15 +46,21 @@ not tidying after it:
 application. It is dropped rather than renamed because it no longer names one
 channel — the registration is online and the deposits are the cheque, and a
 figure spanning both is an amount nobody can pay in one act. Surfaces state the
-amounts beside the way each is paid instead.
+amounts beside the way each is paid instead. *(The two channels this paragraph
+reasons from are superseded by
+[ADR-0017](0017-one-lump-sum-through-the-giving-page.md) — there is one total
+now, and `dueNow` stays dropped for the same reason it went.)*
 
-`pay_online_url` is one address covering registration *and* tuition, because
+`pay_online_url` is one address covering registration *and* tuition — and, since
+[ADR-0017](0017-one-lump-sum-through-the-giving-page.md), the deposits too —
+because
 that is **one Vanco campaign and not two**. A second column for a second
 campaign would give the office two boxes for a link it pastes once.
 
 ## What did not change
 
-**The per-class deposit is still a cheque to the school**, and the deposit
+**The per-class deposit is still a cheque to the school** *(superseded — see
+[ADR-0017](0017-one-lump-sum-through-the-giving-page.md))*, and the deposit
 credit still works exactly as it did — `depositCreditedAgainstTuition` takes the
 deposits off the tuition owed, capped at the tuition. Only who that tuition is
 owed to has changed, which is a wording fact and not an arithmetic one.
