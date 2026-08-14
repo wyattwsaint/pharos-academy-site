@@ -2,6 +2,7 @@ import { asc, eq, ne } from 'drizzle-orm';
 
 import type { Db } from '../db/client.js';
 import { adminUsers, type AdminUser } from '../db/schema.js';
+import { isConfirmed } from './confirmation.js';
 import { hashPassword, verifyPassword } from './passwords.js';
 import { endSessionsForUser } from './sessions.js';
 
@@ -160,11 +161,33 @@ const DECOY_HASH = hashPassword('decoy-so-an-unknown-username-costs-the-same');
  * form to parse. `displayName` rides along on the form only so the confirmation
  * can name the person without a second read.
  */
-export type UserAction =
-  | { intent: 'reset'; userId: string; displayName: string; password: string }
-  | { intent: 'delete'; userId: string; displayName: string };
+/**
+ * Which account an action is about, and what to call it out loud.
+ *
+ * The two travel together everywhere — the id does the work and the name says
+ * whose password was changed or who is about to be deleted — so they are one
+ * thing rather than two arguments in a fixed order.
+ */
+export type AccountRef = { userId: string; displayName: string };
 
-/** A submitted form as one of the two things it can be, or null for neither. */
+export type UserAction =
+  | ({ intent: 'reset'; password: string } & AccountRef)
+  /** Asked for, not agreed to yet: the screen owes a confirmation first (#200). */
+  | ({ intent: 'confirm-delete' } & AccountRef)
+  | ({ intent: 'delete' } & AccountRef);
+
+/** Everything `applyUserAction` will actually carry out. */
+export type ConfirmedUserAction = Exclude<UserAction, { intent: 'confirm-delete' }>;
+
+/**
+ * A submitted form as one of the things it can be, or null for none of them.
+ *
+ * A delete arrives twice: once from the list, which becomes `confirm-delete`
+ * and renders the confirmation, and once from the confirmation itself, which
+ * carries `confirm` and becomes the delete. The two are separate members rather
+ * than a flag so that an unconfirmed delete cannot be handed to
+ * `applyUserAction` at all — the type refuses it before a reviewer has to.
+ */
 export function parseUserAction(form: FormData): UserAction | null {
   const userId = String(form.get('userId') ?? '').trim();
   const displayName = String(form.get('displayName') ?? '').trim() || 'that account';
@@ -174,7 +197,9 @@ export function parseUserAction(form: FormData): UserAction | null {
       // Not trimmed: a leading or trailing space is part of a password.
       return { intent: 'reset', userId, displayName, password: String(form.get('password') ?? '') };
     case 'delete':
-      return { intent: 'delete', userId, displayName };
+      return isConfirmed(form)
+        ? { intent: 'delete', userId, displayName }
+        : { intent: 'confirm-delete', userId, displayName };
     default:
       return null;
   }
@@ -187,7 +212,7 @@ export function parseUserAction(form: FormData): UserAction | null {
  * ("A password needs at least 12 characters."), so the screen shows them rather
  * than replacing them.
  */
-export async function applyUserAction(db: Db, action: UserAction): Promise<string> {
+export async function applyUserAction(db: Db, action: ConfirmedUserAction): Promise<string> {
   switch (action.intent) {
     case 'reset':
       await setPassword(db, action.userId, action.password);

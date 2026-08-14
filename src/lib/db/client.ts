@@ -156,7 +156,25 @@ function suiteAdmin(): { username: string; password: string } | undefined {
 async function seedSuiteAdmin(db: Db, admin: { username: string; password: string }): Promise<void> {
   const { createUser } = await import('../admin/users.js');
   await createUser(db, { ...admin, displayName: 'Suite Admin' });
+  await createUser(db, SUITE_SPARE_ACCOUNT);
 }
+
+/**
+ * A second account the suite exists to delete (#200).
+ *
+ * The Users screen offers no way to add one, on purpose, and the last account
+ * cannot be deleted — so without this the browser suite could prove the
+ * confirmation appears but never that confirming it deletes anybody. Deleting
+ * the suite's own account instead would sign every other spec out.
+ *
+ * Its password is never typed: nothing signs in as this account, it only waits
+ * to be removed.
+ */
+const SUITE_SPARE_ACCOUNT = {
+  username: 'suite-spare',
+  displayName: 'Suite Spare',
+  password: 'a-long-enough-spare-passphrase',
+};
 
 /**
  * A stand-in PDF on every seeded policy, so the suite has a page to measure.

@@ -1,0 +1,60 @@
+---
+import AdminButton from './AdminButton.astro';
+import { CONFIRM_FIELD } from '../lib/admin/confirmation.js';
+
+/**
+ * The screen that asks "are you sure?" — the admin's one shape for it (#200).
+ *
+ * Money proved the mechanism (#29) and two more screens now need it, so it is a
+ * component rather than a third hand copy: a heading, whatever the screen wants
+ * to say about the consequence, and two controls — a form carrying the intent
+ * back plus `confirm`, and a plain link that goes back without doing anything.
+ *
+ * It is a **round trip, not a dialog**. Nothing here is JavaScript, so this
+ * works with scripts off and the browser suite can drive it; a `confirm()` call
+ * could do neither, and could not say what is at stake either.
+ *
+ * The intent travels in the `fields` slot, as hidden inputs named exactly as
+ * the first post named them, so that the confirming post parses identically to
+ * the one that asked.
+ */
+interface Props {
+  /** Title case, like every other heading — the copy is the caller's. */
+  heading: string;
+  /** Where the confirming post goes. The current screen, when absent. */
+  action?: string;
+  /** The words on the button that does the thing. Say the thing, not "OK". */
+  confirmLabel: string;
+  /** Painted as a taking-away, rather than as an ordinary primary action. */
+  destructive?: boolean;
+  /** Where backing out goes — a GET, because nothing has happened yet. */
+  declineHref: string;
+  declineLabel: string;
+  /** What the browser suite finds this screen by. */
+  testId?: string;
+}
+
+const {
+  heading,
+  action,
+  confirmLabel,
+  destructive = false,
+  declineHref,
+  declineLabel,
+  testId = 'confirm',
+} = Astro.props;
+---
+
+<section class="mt-8" data-testid={testId}>
+  <h2 class="text-2xl font-semibold text-navy">{heading}</h2>
+  <slot />
+
+  <div class="mt-8 flex flex-wrap gap-4">
+    <form method="post" action={action}>
+      <slot name="fields" />
+      <input type="hidden" name={CONFIRM_FIELD} value="yes" />
+      <AdminButton variant={destructive ? 'destructive' : 'primary'}>{confirmLabel}</AdminButton>
+    </form>
+    <AdminButton href={declineHref} variant="secondary">{declineLabel}</AdminButton>
+  </div>
+</section>

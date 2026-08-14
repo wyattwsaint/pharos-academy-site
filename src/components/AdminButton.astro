@@ -21,7 +21,14 @@
 interface Props {
   /** Renders an `<a>` instead of a `<button>`. */
   href?: string;
-  variant?: 'primary' | 'secondary';
+  /**
+   * `destructive` is for a control that takes something away — deleting an
+   * account, taking an event off the calendar. It is a button in the gold ink
+   * the admin already uses to edge a thing gone wrong, so that it reads as
+   * consequence rather than as navigation (#200); the palette does not grow a
+   * red for it, because nothing else in this admin shouts.
+   */
+  variant?: 'primary' | 'secondary' | 'destructive';
   /** The tighter padding the in-banner and in-row buttons use. */
   small?: boolean;
   /** `<button>` only. */
@@ -46,10 +53,12 @@ const {
 } = Astro.props;
 
 const shape = small ? 'px-4 py-2' : 'px-5 py-2.5';
-const skin =
-  variant === 'primary'
-    ? 'bg-navy text-cream hover:bg-navy-deep'
-    : 'border-2 border-navy text-navy hover:bg-parchment';
+const SKINS = {
+  primary: 'bg-navy text-cream hover:bg-navy-deep',
+  secondary: 'border-2 border-navy text-navy hover:bg-parchment',
+  destructive: 'border-2 border-gold-ink text-gold-ink hover:bg-parchment',
+} as const;
+const skin = SKINS[variant];
 const classes = ['rounded font-semibold', shape, skin, href ? 'inline-block' : null, extra];
 ---
 

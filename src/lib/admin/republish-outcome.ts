@@ -13,6 +13,25 @@ import type { Banner } from './banner.js';
  * An unrecognised value — a hand-typed URL, a stale bookmark — is no banner
  * rather than a complaint about the URL, which is not a thing the office did.
  */
+/**
+ * What `?removed=` on the Events list means (#200 AC 2).
+ *
+ * Removing a one-off redirects to the list, which is the screen that shows the
+ * removal happened — but "it is gone from a list" is not the same as "the live
+ * calendar no longer offers it", so the republish answer rides along in the
+ * same query string and is said in the same words every other screen says it
+ * in. A refresh cannot re-fire either half: the delete already happened and the
+ * URL only reports it.
+ */
+export function removalOutcome(removed: string | null, published: string | null): Banner | null {
+  if (removed === null) return null;
+  const republish = republishOutcome(published);
+  return {
+    ok: republish?.ok ?? true,
+    message: `${removed} is off the calendar.${republish ? ` ${republish.message}` : ''}`,
+  };
+}
+
 export function republishOutcome(published: string | null): Banner | null {
   if (published === 'live') {
     return { ok: true, message: 'Republished — the live site is up to date.' };
