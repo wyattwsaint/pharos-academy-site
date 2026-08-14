@@ -385,11 +385,17 @@ computed from eight numbers and belongs to a track; a one-off happens once and
 belongs to nothing. Forcing the two into one model gives every meeting a place
 it never has and every one-off a week number that means nothing.
 
-**The page shows what is still ahead; the feed shows everything.** A one-off is
-kept through the whole of its own day, in the school's own timezone, and drops
-the morning after (#146) — a fundraiser is at its most useful on the morning it
-happens. The subscribed calendar is deliberately unfiltered: it is the record of
-the year, and the phone reading it decides what to draw.
+**The page shows the year; the markup shows what is still ahead; the feed shows
+everything.** The calendar page draws a one-off on its own date in a month grid,
+past ones included, because the cell's position already says the date has gone
+(#186) — the rule that showed only what was ahead (#146) was written for a list,
+where a finished fundraiser led. What still filters is the `Event` structured
+data: a crawler has no cell, and last spring's concert offered to a search result
+as though it were on is a wrong claim about today. The boundary is unchanged — a
+one-off is kept through the whole of its own day, in the school's own timezone,
+and drops the morning after, because a fundraiser is at its most useful on the
+morning it happens. The subscribed calendar is deliberately unfiltered: it is the
+record of the year, and the phone reading it decides what to draw.
 
 It is also the one record on this site that is **deleted rather than kept**: a
 cancelled concert left on a subscribed feed is a family driving to a school that

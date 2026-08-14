@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { CALENDAR_PATH } from '../src/lib/calendar/views.js';
+import { schoolToday } from '../src/lib/calendar/year.js';
 import { jsonLdProblems } from '../src/lib/structured-data.test-helper.js';
 
 /**
@@ -92,14 +93,18 @@ test.describe('a class’s structured data', () => {
 });
 
 test.describe('the events’ structured data', () => {
-  test('describes every event the page shows', async ({ page }) => {
+  test('describes the upcoming subset of what the grid draws', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
     const events = nodesOfType<EventNode>(await graphOf(page), 'Event');
-    const shown = page.locator('[data-section="calendar-events"] .events li');
+    const shown = page.locator('[data-section="calendar-months"] .one-off-title');
 
     /*
-     * The page filters to what is still ahead; the markup describes exactly what
-     * the page shows, so the two counts agree by construction.
+     * The grid draws the whole year, past one-offs included, because a cell says
+     * its own date (#186). The markup describes what is still ahead, because a
+     * crawler has no cell and last spring's concert offered as though it were on
+     * is a wrong claim about today. So the counts do **not** agree — what has to
+     * hold is that every node in the markup is drawn on the grid, and that
+     * nothing in the markup has already happened.
      *
      * Skipped rather than passed on nothing when the calendar is empty. Which
      * events are on is no longer knowable from the repository — most of them
@@ -107,12 +112,14 @@ test.describe('the events’ structured data', () => {
      * guard has to be here, and it is a skip on the report rather than a silent
      * zero-against-zero.
      */
-    const count = await shown.count();
-    test.skip(count === 0, 'Nothing is on the calendar today, so there is nothing to describe.');
-    expect(events).toHaveLength(count);
+    test.skip(events.length === 0, 'Nothing is ahead on the calendar, so nothing is described.');
+    expect(await shown.count()).toBeGreaterThanOrEqual(events.length);
+
+    const today = schoolToday(new Date());
     for (const event of events) {
       expect(await shown.filter({ hasText: event.name }).count()).toBeGreaterThan(0);
       expect(String(event.startDate)).toMatch(/^\d{4}-\d{2}-\d{2}/);
+      expect(String(event.startDate).slice(0, 10) >= today, event.name).toBe(true);
     }
   });
 });

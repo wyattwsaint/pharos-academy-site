@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { eventDateLabel } from '../src/lib/calendar/event.js';
+import { monthGrid } from '../src/lib/calendar/months.js';
 import { CALENDAR_FEED_PATH } from '../src/lib/calendar/views.js';
 import { CALENDAR_PATH } from '../src/lib/current-families/section.js';
 import { meetingsOf, SEEDED_SCHOOL_YEAR, trackColumn } from '../src/lib/calendar/year.js';
@@ -36,7 +36,9 @@ test.describe('the calendar page', () => {
 
   test('renders every one of the year’s dates', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
-    const cells = page.locator('[data-section^="calendar-"] tbody td time');
+    // The sheet's own cells, not the month grid's below it: both are tables of
+    // dates on this page, and the count that is fixed at 112 is the sheet's.
+    const cells = page.locator('.sheet tbody td time');
     await expect(cells).toHaveCount(meetingsOf(SEEDED_SCHOOL_YEAR).length);
   });
 
@@ -53,51 +55,6 @@ test.describe('the calendar page', () => {
     await expect(page.getByTestId('subscription-caveat')).toContainText('own schedule');
   });
 
-  /*
-   * The events a visitor who is not signed in actually sees (#146 ACs 1, 3
-   * and 5, #153 ACs 1 and 3).
-   *
-   * Read off the page rather than off a constant, and that is a change: the
-   * school's events now come from two places — the Events screen and the
-   * school's own Google calendar — and neither the count nor the titles are
-   * knowable from the repository any more. What *is* knowable is the shape of
-   * an event and that the page and the feed agree about it, which is what this
-   * asserts.
-   *
-   * Skipped rather than quietly satisfied when nothing is on. A year with an
-   * empty stretch is an ordinary year and the page is right to say so; a loop
-   * over an empty list is a test that passes for ever while proving nothing. A
-   * skip says so on the report, and the admin suite proves the same page with
-   * an event it creates itself.
-   */
-  test('shows the events still ahead, from both of the school’s calendars', async ({
-    page,
-    request,
-  }) => {
-    await page.goto(CALENDAR_PATH);
-    const section = page.locator('[data-section="calendar-events"]');
-    const shown = section.locator('.events li');
-    const count = await shown.count();
-    test.skip(count === 0, 'Nothing is on the calendar today — see admin-calendar.spec.ts.');
-
-    await expect(section).not.toContainText('Nothing else is on the calendar');
-
-    const feed = (await (await request.get(CALENDAR_FEED_PATH)).text()).replace(/\r\n /g, '');
-    for (let index = 0; index < count; index += 1) {
-      const event = shown.nth(index);
-      // A date, printed as the sheet prints one, and a title.
-      await expect(event.locator('time')).toHaveAttribute('datetime', /^\d{4}-\d{2}-\d{2}$/);
-      const heldOn = (await event.locator('time').getAttribute('datetime'))!;
-      await expect(event.locator('time')).toHaveText(eventDateLabel(heldOn));
-
-      // And the same event in the subscribed feed, whichever calendar it came
-      // from: that is the whole of what "alongside events entered directly"
-      // means to a family who subscribed once and never touched it again.
-      const title = (await event.locator('h3').innerText()).trim();
-      expect(feed, title).toContain(title.replace(/([;,\\])/g, '\\$1'));
-    }
-  });
-
   test('prints as the calendar, not as a website', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
     await page.emulateMedia({ media: 'print' });
@@ -105,8 +62,105 @@ test.describe('the calendar page', () => {
     await expect(page.locator('.site-header')).toBeHidden();
     await expect(page.locator('.site-footer')).toBeHidden();
     await expect(page.getByTestId('calendar-download')).toBeHidden();
+    // The grid comes off with the buttons: what is pinned up is the sheet.
+    await expect(page.locator('.months')).toBeHidden();
     // The sheet itself is still there, and still whole.
     await expect(page.locator('[data-section="calendar-fall"] tbody tr').first()).toBeVisible();
+  });
+});
+
+/**
+ * The month grid (#186).
+ *
+ * The view model is proved without a browser in
+ * `src/lib/calendar/months.test.ts`, date by date and against the sheet. What is
+ * only true in a browser is here: that the months are drawn, that the page opens
+ * on the one it currently is, that a one-off's detail can be opened from a
+ * keyboard, and that a phone gets a list rather than seven columns it cannot
+ * read.
+ *
+ * That a **past** one-off is drawn is proved in `admin-calendar.spec.ts`, which
+ * can make one; which one-offs the site holds today is no longer knowable from
+ * the repository (#153).
+ */
+test.describe('the month grid', () => {
+  test('draws every month the year touches, and opens on the current one', async ({ page }) => {
+    await page.goto(CALENDAR_PATH);
+
+    const months = page.locator('[data-section="calendar-months"] .month');
+    const drawn = await months.evaluateAll((nodes) =>
+      nodes.map((node) => (node as HTMLElement).dataset.month!),
+    );
+    const expected = monthGrid(SEEDED_SCHOOL_YEAR, []).map((month) => month.id);
+    // A floor rather than an exact list: a one-off outside the term dates pulls
+    // the span out to it, and the one-offs are not knowable from here.
+    for (const month of expected) expect(drawn, month).toContain(month);
+
+    // Contiguous, so a family reading November is not reading October's grid.
+    for (const [index, month] of drawn.slice(1).entries()) {
+      expect(month > drawn[index]!, month).toBe(true);
+    }
+
+    const current = page.locator('[data-current-month]');
+    if ((await current.count()) > 0) await expect(current).toBeInViewport();
+  });
+
+  test('marks the weekdays in term time that nobody meets on', async ({ page }) => {
+    await page.goto(CALENDAR_PATH);
+    const cell = (date: string) =>
+      page.locator(`[data-section="calendar-months"] td:has(time[datetime="${date}"])`);
+
+    // Election Day, then Thanksgiving off four tracks in six days.
+    await expect(cell('2026-11-03')).toContainText('No school — Election Day');
+    for (const date of ['2026-11-25', '2026-11-26', '2026-11-30', '2026-12-01']) {
+      await expect(cell(date), date).toContainText('No school — Thanksgiving');
+    }
+
+    // And a Tuesday the Tuesday track meets, which carries no courses at all
+    // and is a school day all the same — the sheet above prints it.
+    await expect(cell('2026-11-10')).not.toContainText('No school');
+  });
+
+  test('opens a one-off’s detail from the keyboard, and closes it again', async ({ page }) => {
+    await page.goto(CALENDAR_PATH);
+    const trigger = page.locator('[data-section="calendar-months"] .one-off-title').first();
+    test.skip((await trigger.count()) === 0, 'Nothing is on the calendar — see admin-calendar.');
+
+    const panel = page.locator(`#${await trigger.getAttribute('aria-controls')}`);
+    await expect(panel).toBeHidden();
+
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    // Revealed, not merely announced: an off-screen detail is not a disclosure.
+    await expect(panel).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+  });
+
+  test('is a dated list on a phone, with nothing off the side of the page', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(CALENDAR_PATH);
+
+    const section = page.locator('[data-section="calendar-months"]');
+    // A date with nothing true of it steps out; a marked one stays and says
+    // which day it is in full, because there is no column heading left to.
+    await expect(section.locator('td:has(time[datetime="2026-11-04"])')).toBeHidden();
+    await expect(section.locator('td:has(time[datetime="2026-11-25"])')).toBeVisible();
+    await expect(section.locator('time[datetime="2026-11-25"]')).toContainText(
+      'Wednesday 25 November',
+    );
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+
+  test('has no events list left on it', async ({ page }) => {
+    await page.goto(CALENDAR_PATH);
+    await expect(page.locator('[data-section="calendar-events"]')).toHaveCount(0);
   });
 });
 
