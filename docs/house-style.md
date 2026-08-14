@@ -78,6 +78,21 @@ its neighbour. The reason it earns that and a heading's capitals do not is that
 there is no version of the school's voice that wants "thepolicies page" — it is
 a typo, and #171 corrected the one the site had.
 
+### When the source is right and the page is not
+
+#184 found the same fault with nothing wrong in any file. Astro's `compressHTML`
+defaults to `'jsx'`, which does not collapse the newline between a line of prose
+and the `<a>` on the next line — it deletes it, and the live site read "Pharos
+Academy meets at**Enola First Church of God**". Reading source could not have
+caught it, and rewrapping any paragraph would have brought it back.
+
+So the rule is now read in two places against one verdict
+(`src/lib/link-gaps.ts`): `punctuation.ts` reads the `.astro` files and names the
+line to fix, and `e2e/link-spacing.spec.ts` reads every public page as a browser
+receives it. `compressHTML` is set to `true`, which collapses whitespace the way
+HTML does and leaves the gap where it was. See
+[ADR-0014](adr/0014-the-build-does-not-compress-the-markup.md).
+
 ## Ellipses
 
 The single character `…`. Never three dots, and never dots spaced apart.

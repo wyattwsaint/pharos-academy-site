@@ -29,6 +29,7 @@
  */
 
 import { lineOf, prose, visibleRanges } from './house-style.js';
+import { FLUSH_AFTER, FLUSH_BEFORE } from './link-gaps.js';
 
 /** The classes of issue the report groups by. */
 export type Issue =
@@ -495,6 +496,12 @@ function capitalisationFindings(source: string): Finding[] {
  * punctuation is one, but it is the space-before-a-mark rule above that reports
  * it, on the text node after the anchor, and one finding per fault is the
  * point.
+ *
+ * The conditions below are `link-gaps.ts`'s, which is also what reads the
+ * *rendered* page (#184) — including which marks count as flush. This one reads
+ * source and cannot see what the build did to it; that one reads the DOM and
+ * cannot say which line to fix. Neither is allowed to call a sentence faulty
+ * that the other calls clean, so a change to one belongs in both.
  */
 function linkSpacingFindings(source: string, kind: 'astro' | 'ts'): Finding[] {
   const markup = readableMarkup(source, kind);
@@ -542,16 +549,6 @@ function linkSpacingFindings(source: string, kind: 'astro' | 'ts'): Finding[] {
 
   return findings;
 }
-
-/**
- * Marks a link may sit flush against on its right: the punctuation that closes
- * a sentence or a bracket, the possessive that hangs off a name, and the
- * entity a template writes a space or a dash as.
- */
-const FLUSH_AFTER = /^[,.;:!?)\]}"'’”…/\\&|–—-]/;
-
-/** The same, on a link's left: what opens a bracket, a quotation or a path. */
-const FLUSH_BEFORE = /[([{"'“‘/\\&|$–—-]$/;
 
 /** One link-spacing finding, at `at` and `length` characters long. */
 function linkFinding(
