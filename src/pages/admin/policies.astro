@@ -2,7 +2,7 @@
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { formatStamp } from '../../lib/admin/school-details.js';
+import { formatStamp } from '../../lib/admin/formatting.js';
 import { getDb } from '../../lib/db/client.js';
 import { listPolicies } from '../../lib/policies/store.js';
 import { updatedOnLabel } from '../../lib/policies/views.js';
@@ -49,7 +49,7 @@ const awaiting = policies.filter((policy) => policy.version === null).length;
   <p class="mt-8">
     <a
       href="/admin/policies/new"
-      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
     >
       Add a policy
     </a>

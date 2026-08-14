@@ -10,7 +10,7 @@ import {
   revalidateAll,
   revalidationOrigin,
 } from '../../lib/admin/revalidate.js';
-import { formatStamp } from '../../lib/admin/school-details.js';
+import { formatStamp } from '../../lib/admin/formatting.js';
 import {
   emptyFields,
   fieldsOf,
@@ -104,7 +104,7 @@ const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[i
           <form method="post" action="/admin/republish" class="mt-3">
             <button
               type="submit"
-              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-navy-deep"
             >
               Retry
             </button>
@@ -251,7 +251,7 @@ const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[i
 
     <button
       type="submit"
-      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
     >
       Save the year
     </button>

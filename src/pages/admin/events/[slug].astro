@@ -12,12 +12,13 @@ import {
   type EventFields,
 } from '../../../lib/admin/calendar-events.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
+import { saveErrorMessage } from '../../../lib/admin/save-errors.js';
 import {
   describeRevalidation,
   revalidateAll,
   revalidationOrigin,
 } from '../../../lib/admin/revalidate.js';
-import { formatStamp } from '../../../lib/admin/school-details.js';
+import { formatStamp } from '../../../lib/admin/formatting.js';
 import { eventSlug, TIMED_EVENT_MINUTES, type CalendarEvent } from '../../../lib/calendar/event.js';
 import { createEvent, deleteEvent, getEvent, saveEvent } from '../../../lib/calendar/store.js';
 import { getDb } from '../../../lib/db/client.js';
@@ -35,6 +36,14 @@ import { getDb } from '../../../lib/db/client.js';
  * on a subscribed calendar is a family driving to a school that is dark.
  */
 const NEW = 'new';
+
+/**
+ * The one refusal that actually happens here: the same event entered twice on
+ * the same day, which is a second hand adding what a first hand already did.
+ */
+const SAVE_ERROR = {
+  duplicate: 'there is already an event with that name on that day. Edit that one instead.',
+} as const;
 
 const db = await getDb();
 const actor = Astro.locals.actor!;
@@ -86,13 +95,7 @@ if (Astro.request.method === 'POST') {
       });
       banner = { ok: result.ok, message: describeRevalidation(result) };
     } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error);
-      banner = {
-        ok: false,
-        message: /duplicate key|unique/i.test(detail)
-          ? 'Nothing was saved — there is already an event with that name on that day. Edit that one instead.'
-          : `Nothing was saved — ${detail}`,
-      };
+      banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
     }
   }
 }
@@ -152,7 +155,7 @@ function fieldsOf(row: CalendarEvent): EventFields {
           <form method="post" action="/admin/republish" class="mt-3">
             <button
               type="submit"
-              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-navy-deep"
             >
               Retry
             </button>
@@ -216,7 +219,7 @@ function fieldsOf(row: CalendarEvent): EventFields {
 
     <button
       type="submit"
-      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
     >
       Save
     </button>

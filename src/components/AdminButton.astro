@@ -1,0 +1,66 @@
+---
+/**
+ * Every button and button-link in the admin.
+ *
+ * The audit counted the same three class strings hand-copied across 22 screens
+ * (#188), which is how "Add a class" and "Add a policy" ended up different
+ * sizes. One component, three variants, so that a primary action looks like a
+ * primary action wherever the office meets one.
+ *
+ * `href` decides the element. A thing that navigates is a link and a thing that
+ * acts is a button, whatever it is painted like — the admin has to work with a
+ * keyboard, and a link styled as a button that is really a button is where that
+ * stops being true.
+ *
+ * Hover is the accessibility fix this ticket carries (#193, #190): the old
+ * hover moved to `deep-blue`, which puts the cream label at 3.0:1 — under AA,
+ * and worst at the moment before the click. It moves to `navy-deep` instead,
+ * the deepest navy already in the palette, which measures 14.1:1. The palette
+ * does not change; only which of its navies the hover uses.
+ */
+interface Props {
+  /** Renders an `<a>` instead of a `<button>`. */
+  href?: string;
+  variant?: 'primary' | 'secondary';
+  /** The tighter padding the in-banner and in-row buttons use. */
+  small?: boolean;
+  /** `<button>` only. */
+  type?: 'submit' | 'button';
+  name?: string;
+  value?: string;
+  /** What the browser suite finds this button by. */
+  testId?: string;
+  /** Extra layout classes from the caller — `self-start`, `mt-3`. Never colour. */
+  class?: string;
+}
+
+const {
+  href,
+  variant = 'primary',
+  small = false,
+  type = 'submit',
+  name,
+  value,
+  testId,
+  class: extra,
+} = Astro.props;
+
+const shape = small ? 'px-4 py-2' : 'px-5 py-2.5';
+const skin =
+  variant === 'primary'
+    ? 'bg-navy text-cream hover:bg-navy-deep'
+    : 'border-2 border-navy text-navy hover:bg-parchment';
+const classes = ['rounded font-semibold', shape, skin, href ? 'inline-block' : null, extra];
+---
+
+{
+  href ? (
+    <a href={href} data-testid={testId} class:list={classes}>
+      <slot />
+    </a>
+  ) : (
+    <button type={type} name={name} value={value} data-testid={testId} class:list={classes}>
+      <slot />
+    </button>
+  )
+}

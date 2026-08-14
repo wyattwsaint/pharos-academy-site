@@ -3,7 +3,7 @@ export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { UNIT_LABELS } from '../../lib/admin/courses.js';
-import { formatStamp } from '../../lib/admin/school-details.js';
+import { formatStamp } from '../../lib/admin/formatting.js';
 import { durationLabel } from '../../lib/courses/course.js';
 import { priceSummary } from '../../lib/courses/pricing.js';
 import { timeLabel } from '../../lib/courses/schedule.js';
@@ -43,7 +43,7 @@ const settings = await getMoneySettings(db);
   <p class="mt-8">
     <a
       href="/admin/courses/new"
-      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
     >
       Add a course
     </a>

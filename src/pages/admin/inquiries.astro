@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import { formatTimestamp } from '../../lib/admin/formatting.js';
 import { getDb } from '../../lib/db/client.js';
 import { listInquiries } from '../../lib/inquiry/store.js';
 import { getMoneySettings } from '../../lib/money/store.js';
@@ -25,16 +26,6 @@ const actor = Astro.locals.actor!;
 const inquiries = await listInquiries(db);
 const settings = await getMoneySettings(db);
 
-/** "5 August 2026, 09:14" — the day and the time, in the school's own zone. */
-const when = (at: Date): string =>
-  new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'America/New_York',
-  }).format(at);
 ---
 
 <AdminLayout title="Inquiries" actor={actor}>
@@ -75,7 +66,7 @@ const when = (at: Date): string =>
                 {inquiry.message}
               </p>
             )}
-            <p class="mt-2 text-sm">{when(inquiry.receivedAt)}</p>
+            <p class="mt-2 text-sm">{formatTimestamp(inquiry.receivedAt)}</p>
             {inquiry.notifiedAt ? (
               <p class="mt-1 text-sm" data-testid="inquiry-delivery">
                 Emailed to the school.

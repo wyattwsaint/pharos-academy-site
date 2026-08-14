@@ -4,7 +4,7 @@ export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { listAnnouncements } from '../../lib/announcements/store.js';
 import { postedOnLabel } from '../../lib/announcements/views.js';
-import { formatStamp } from '../../lib/admin/school-details.js';
+import { formatStamp } from '../../lib/admin/formatting.js';
 import { getDb } from '../../lib/db/client.js';
 import { NEWS_PATH } from '../../lib/announcements/views.js';
 
@@ -41,7 +41,7 @@ const announcements = await listAnnouncements(db);
   <p class="mt-8">
     <a
       href="/admin/announcements/new"
-      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
     >
       Post an announcement
     </a>

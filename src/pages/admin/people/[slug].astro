@@ -5,13 +5,14 @@ import AdminBanner from '../../../components/AdminBanner.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import type { Banner } from '../../../lib/admin/banner.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
+import { saveErrorMessage } from '../../../lib/admin/save-errors.js';
 import { LABELS, parsePerson, type PersonErrors, type PersonFields } from '../../../lib/admin/people.js';
 import {
   describeRevalidation,
   revalidateAll,
   revalidationOrigin,
 } from '../../../lib/admin/revalidate.js';
-import { formatStamp } from '../../../lib/admin/school-details.js';
+import { formatStamp } from '../../../lib/admin/formatting.js';
 import { getDb } from '../../../lib/db/client.js';
 import { slugify, type Person } from '../../../lib/people/person.js';
 import { createPerson, getPerson, savePerson } from '../../../lib/people/store.js';
@@ -47,6 +48,15 @@ const EMPTY: PersonFields = {
   leadershipRank: null,
 };
 
+/**
+ * The one refusal that actually happens here is a duplicate slug: two people
+ * whose names slugify the same, which is a real thing in a school with two
+ * Millers.
+ */
+const SAVE_ERROR = {
+  duplicate: 'somebody with that name is already on the list. Edit them instead.',
+} as const;
+
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
@@ -81,7 +91,7 @@ if (Astro.request.method === 'POST') {
       });
       banner = { ok: result.ok, message: describeRevalidation(result) };
     } catch (error) {
-      banner = { ok: false, message: humanErrorMessage(error) };
+      banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
     }
   }
 }
@@ -157,19 +167,6 @@ function slugFor(name: string): string {
   return slug;
 }
 
-/**
- * A failed write, said in words Jill can act on.
- *
- * The one that actually happens is a duplicate slug: two people whose names
- * slugify the same, which is a real thing in a school with two Millers.
- */
-function humanErrorMessage(error: unknown): string {
-  const detail = error instanceof Error ? error.message : String(error);
-  if (/duplicate key|unique/i.test(detail)) {
-    return 'Nothing was saved — somebody with that name is already on the list. Edit them instead.';
-  }
-  return `Nothing was saved — ${detail}`;
-}
 ---
 
 <AdminLayout title={heading} actor={actor}>
@@ -186,7 +183,7 @@ function humanErrorMessage(error: unknown): string {
           <form method="post" action="/admin/republish" class="mt-3">
             <button
               type="submit"
-              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-navy-deep"
             >
               Retry
             </button>
@@ -255,7 +252,7 @@ function humanErrorMessage(error: unknown): string {
 
     <button
       type="submit"
-      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
     >
       Save
     </button>

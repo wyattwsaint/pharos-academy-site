@@ -2,7 +2,7 @@
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { formatStamp } from '../../lib/admin/school-details.js';
+import { formatStamp } from '../../lib/admin/formatting.js';
 import { eventDateLabel, eventTimeLabel } from '../../lib/calendar/event.js';
 import { listEvents, listSyncedEvents } from '../../lib/calendar/store.js';
 import { CALENDAR_PATH } from '../../lib/calendar/views.js';
@@ -57,7 +57,7 @@ const lastRead = synced.reduce<Date | null>(
   <p class="mt-8">
     <a
       href="/admin/events/new"
-      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+      class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
     >
       Add an event
     </a>

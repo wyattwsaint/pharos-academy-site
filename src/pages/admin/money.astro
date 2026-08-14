@@ -10,7 +10,8 @@ import {
   revalidateAll,
   revalidationOrigin,
 } from '../../lib/admin/revalidate.js';
-import { formatStamp } from '../../lib/admin/school-details.js';
+import { formatStamp } from '../../lib/admin/formatting.js';
+import { republishOutcome } from '../../lib/admin/republish-outcome.js';
 import { getDb } from '../../lib/db/client.js';
 import {
   CONFIRM_FIELD,
@@ -59,7 +60,7 @@ const actor = Astro.locals.actor!;
 let row = await getMoneySettings(db);
 let values: MoneySettings = row;
 let errors: MoneyErrors = {};
-let banner: Banner | null = republishBanner(Astro.url.searchParams.get('republished'));
+let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republished'));
 /** Non-empty only on the confirmation screen, which replaces the form. */
 let confirming: MoneyChange[] | null = null;
 
@@ -130,13 +131,6 @@ function describedBy(name: string, hint: boolean, invalid: boolean): string | un
   );
 }
 
-function republishBanner(published: string | null): Banner | null {
-  if (published === 'live') return { ok: true, message: 'Republished — the live site is up to date.' };
-  if (published === 'stale') {
-    return { ok: false, message: "Republishing didn't reach the live site — Retry." };
-  }
-  return null;
-}
 ---
 
 <AdminLayout title="Money" actor={actor}>
@@ -153,7 +147,7 @@ function republishBanner(published: string | null): Banner | null {
           <form method="post" action="/admin/republish" class="mt-3">
             <button
               type="submit"
-              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-navy-deep"
             >
               Retry
             </button>
@@ -213,7 +207,7 @@ function republishBanner(published: string | null): Banner | null {
             <input type="hidden" name={CONFIRM_FIELD} value="yes" />
             <button
               type="submit"
-              class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+              class="rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
             >
               Yes, change it for everyone
             </button>
@@ -367,7 +361,7 @@ function republishBanner(published: string | null): Banner | null {
 
         <button
           type="submit"
-          class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+          class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
         >
           Save
         </button>

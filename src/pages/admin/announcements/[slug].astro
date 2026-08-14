@@ -11,12 +11,13 @@ import {
 } from '../../../lib/admin/announcements.js';
 import type { Banner } from '../../../lib/admin/banner.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
+import { saveErrorMessage } from '../../../lib/admin/save-errors.js';
 import {
   describeRevalidation,
   revalidateAll,
   revalidationOrigin,
 } from '../../../lib/admin/revalidate.js';
-import { formatStamp } from '../../../lib/admin/school-details.js';
+import { formatStamp } from '../../../lib/admin/formatting.js';
 import { announcementSlug, type Announcement } from '../../../lib/announcements/announcement.js';
 import {
   createAnnouncement,
@@ -54,6 +55,16 @@ import { getDb } from '../../../lib/db/client.js';
  */
 /** The one slug that is not an announcement: the post form's address. */
 const NEW = 'new';
+
+/**
+ * The one refusal that actually happens here: two announcements posted the same
+ * day with the same headline, which is a repost rather than a mistake — so the
+ * message says where the first one is.
+ */
+const SAVE_ERROR = {
+  duplicate:
+    'there is already an announcement with that headline on that date. Edit that one instead.',
+} as const;
 
 const db = await getDb();
 const actor = Astro.locals.actor!;
@@ -111,7 +122,7 @@ if (Astro.request.method === 'POST') {
       });
       banner = { ok: result.ok, message: describeRevalidation(result) };
     } catch (error) {
-      banner = { ok: false, message: humanErrorMessage(error) };
+      banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
     }
   }
 }
@@ -179,20 +190,6 @@ function fieldsOf(row: Announcement): AnnouncementFields {
   };
 }
 
-/**
- * A failed write, said in words Jill can act on.
- *
- * The one that actually happens is two announcements posted the same day with
- * the same headline, which is a repost rather than a mistake — so the message
- * says where the first one is.
- */
-function humanErrorMessage(error: unknown): string {
-  const detail = error instanceof Error ? error.message : String(error);
-  if (/duplicate key|unique/i.test(detail)) {
-    return 'Nothing was saved — there is already an announcement with that headline on that date. Edit that one instead.';
-  }
-  return `Nothing was saved — ${detail}`;
-}
 ---
 
 <AdminLayout title={heading} actor={actor}>
@@ -209,7 +206,7 @@ function humanErrorMessage(error: unknown): string {
           <form method="post" action="/admin/republish" class="mt-3">
             <button
               type="submit"
-              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-navy-deep"
             >
               Retry
             </button>
@@ -328,7 +325,7 @@ function humanErrorMessage(error: unknown): string {
 
     <button
       type="submit"
-      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
     >
       Save
     </button>

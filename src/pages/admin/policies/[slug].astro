@@ -5,6 +5,7 @@ import AdminBanner from '../../../components/AdminBanner.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import type { Banner } from '../../../lib/admin/banner.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
+import { saveErrorMessage } from '../../../lib/admin/save-errors.js';
 import {
   LABELS,
   parsePolicy,
@@ -18,7 +19,7 @@ import {
   revalidateAll,
   revalidationOrigin,
 } from '../../../lib/admin/revalidate.js';
-import { formatStamp } from '../../../lib/admin/school-details.js';
+import { formatStamp } from '../../../lib/admin/formatting.js';
 import { getDb } from '../../../lib/db/client.js';
 import { policySlug, type Policy, type PolicyVersion } from '../../../lib/policies/policy.js';
 import {
@@ -56,6 +57,16 @@ import {
  * redirect, and the version it replaced keeps its own address forever.
  */
 const NEW = 'new';
+
+/**
+ * The one refusal that actually happens here is a second policy with a title
+ * that slugs to the same address as an existing one — which is not a new
+ * document, it is the old one under a near-identical name.
+ */
+const CREATE_ERROR = {
+  duplicate: 'there is already a policy at that address. Edit that one instead.',
+  verb: 'created',
+} as const;
 
 const db = await getDb();
 const actor = Astro.locals.actor!;
@@ -152,7 +163,7 @@ if (Astro.request.method === 'POST') {
             'Created. It is not on the policies page yet — write the line that says what it is, choose the PDF, and save.',
         };
       } catch (error) {
-        banner = { ok: false, message: humanCreateError(error) };
+        banner = { ok: false, message: saveErrorMessage(error, CREATE_ERROR) };
       }
     }
   }
@@ -187,20 +198,6 @@ function detailOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/**
- * A failed creation, said in words Jill can act on.
- *
- * The one that actually happens is a second policy with a title that slugs to
- * the same address as an existing one — which is not a new document, it is the
- * old one under a near-identical name.
- */
-function humanCreateError(error: unknown): string {
-  const detail = detailOf(error);
-  if (/duplicate key|unique/i.test(detail)) {
-    return 'Nothing was created — there is already a policy at that address. Edit that one instead.';
-  }
-  return `Nothing was created — ${detail}`;
-}
 ---
 
 <AdminLayout title={heading} actor={actor}>
@@ -230,7 +227,7 @@ function humanCreateError(error: unknown): string {
           <form method="post" action="/admin/republish" class="mt-3">
             <button
               type="submit"
-              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-deep-blue"
+              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-navy-deep"
             >
               Retry
             </button>
@@ -382,7 +379,7 @@ function humanCreateError(error: unknown): string {
 
     <button
       type="submit"
-      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-deep-blue"
+      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
     >
       {policy ? 'Save' : 'Create'}
     </button>
