@@ -81,6 +81,15 @@ export type SubmissionFacts = {
   flagged?: boolean;
   /** The frozen money terms, when `recordAgreedTerms` got that far. */
   agreedTermsId?: string | null;
+  /**
+   * How the family **said** they would pay, when the form asked (#220).
+   *
+   * The stated method and nothing more — an `online` row opens awaiting, the
+   * same as a cheque, because the giving page tells the site nothing. Omitted
+   * means unstated, which reads as a cheque: the office watches the post, which
+   * is what it did before anybody was asked.
+   */
+  paymentMode?: PaymentMode;
 };
 
 /** Write the application down. Answers with the row's id, which is the receipt. */
@@ -103,13 +112,13 @@ export async function createApplication(
       agreements: encodeAgreements(values.agreements),
       agreedTermsId: facts.agreedTermsId ?? null,
       /*
-       * Submitted, and awaiting whatever the payment slot takes today (#32).
-       * The mode is read from `paymentOnSubmission` rather than typed here, so
-       * the Vanco stage flips one constant and this row starts `paid online`
-       * with nothing else in the codebase moving.
+       * Submitted, and awaiting the money whichever way it was said to be
+       * coming (#32, #220). `paymentOnSubmission` decides both columns, so a
+       * row can never open claiming a payment nobody has seen — the office
+       * records that by hand, and only after matching it.
        */
       status: 'submitted' satisfies ApplicationState,
-      ...paymentColumns(paymentOnSubmission(now)),
+      ...paymentColumns(paymentOnSubmission(now, facts.paymentMode)),
     })
     .returning();
 

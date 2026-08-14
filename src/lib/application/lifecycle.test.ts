@@ -4,13 +4,18 @@ import {
   APPLICATION_EVENT_LABELS,
   APPLICATION_STATES,
   CHEQUE_GRACE_DAYS,
+  ONLINE_PAYMENT_STATUS_LABELS,
   PAYMENT_EVENT_LABELS,
   PAYMENT_STATUS_LABELS,
   countsInTally,
   eventsFrom,
   nextApplicationState,
   nextPayment,
+  paymentAwaitedNote,
+  paymentEventLabel,
+  paymentEventsFrom,
   paymentOnSubmission,
+  paymentStatusLabel,
   paymentStatusNow,
   tellsTheFamily,
   type Payment,
@@ -32,6 +37,7 @@ const days = (from: Date, count: number): Date =>
   new Date(from.getTime() + count * 24 * 60 * 60 * 1000);
 
 const awaiting = (since = AT): Payment => ({ mode: 'cheque', status: 'awaiting', since });
+const online = (since = AT): Payment => ({ mode: 'online', status: 'awaiting', since });
 
 describe('the application axis', () => {
   it('takes a draft to submitted, and a submitted application through the conversation', () => {
@@ -82,17 +88,17 @@ describe('the application axis', () => {
 });
 
 describe('the payment axis', () => {
-  it('starts a cheque application awaiting, and an online one paid', () => {
+  it('opens awaiting whichever way the family said they would pay (#220 AC 1)', () => {
     expect(paymentOnSubmission(AT, 'cheque')).toEqual({
       mode: 'cheque',
       status: 'awaiting',
       since: AT,
     });
-    // The whole of what the Vanco stage changes: the next submission reads
-    // "paid online" rather than "awaiting cheque".
+    // Never `paid_online`: the giving page sends the site nothing (ADR-0013),
+    // so a row that opened paid would be asserting a payment nobody checked.
     expect(paymentOnSubmission(AT, 'online')).toEqual({
       mode: 'online',
-      status: 'paid_online',
+      status: 'awaiting',
       since: AT,
     });
   });
@@ -145,6 +151,78 @@ describe('the payment axis', () => {
   });
 });
 
+describe('an online payment', () => {
+  it('never goes overdue, however long it waits (#220 AC 2)', () => {
+    // The grace period is about an envelope in the post. There is no envelope,
+    // so there is nothing to be late — chasing this family for a cheque would
+    // be chasing them for something that was never coming.
+    expect(paymentStatusNow(online(), days(AT, CHEQUE_GRACE_DAYS + 1))).toBe('awaiting');
+    expect(paymentStatusNow(online(), days(AT, 400))).toBe('awaiting');
+    // The same clock, the same day, on a cheque row: overdue.
+    expect(paymentStatusNow(awaiting(), days(AT, CHEQUE_GRACE_DAYS + 1))).toBe('overdue');
+  });
+
+  it('is recorded paid when the office matches it by hand (#220 AC 3)', () => {
+    const matched = nextPayment(online(), 'match', days(AT, 2));
+    expect(matched).toEqual({ mode: 'online', status: 'paid_online', since: days(AT, 2) });
+  });
+
+  it('is never offered a cheque move, and a cheque row keeps all of its own (#220 AC 4, 5)', () => {
+    // The cheque row keeps every move it has today, and gains the match.
+    expect(paymentEventsFrom(awaiting())).toEqual(['receive', 'match', 'expect', 'waive']);
+    // The online row is offered neither "the cheque arrived" nor a wait it is
+    // already in — there is no envelope, and no grace period to restart.
+    expect(paymentEventsFrom(online())).toEqual(['match', 'waive']);
+    expect(nextPayment(online(), 'receive', AT)).toBeNull();
+    expect(nextPayment(online(), 'expect', AT)).toBeNull();
+  });
+
+  it('can be un-matched, because a hand can match the wrong one (#220 AC 3)', () => {
+    // The office is the writer now, so the office has to be able to unwrite it.
+    // The same move that gives a cheque another three weeks is the way back,
+    // worded for a family who is not posting anything.
+    const matched: Payment = { mode: 'online', status: 'paid_online', since: AT };
+    expect(paymentEventsFrom(matched)).toEqual(['expect', 'waive']);
+    expect(nextPayment(matched, 'expect', days(AT, 1))).toEqual({
+      mode: 'online',
+      status: 'awaiting',
+      since: days(AT, 1),
+    });
+    expect(paymentEventLabel('online', 'expect')).toBe('Still waiting for this payment');
+    expect(paymentEventLabel('cheque', 'expect')).toBe('Wait (again) for a check');
+  });
+
+  it('says which sentence a waiting row has earned, and the screen only words it', () => {
+    expect(paymentAwaitedNote(awaiting(), days(AT, 1))).toBe('cheque_due');
+    expect(paymentAwaitedNote(awaiting(), days(AT, CHEQUE_GRACE_DAYS + 1))).toBe('cheque_late');
+    expect(paymentAwaitedNote(online(), days(AT, CHEQUE_GRACE_DAYS + 1))).toBe(
+      'online_unconfirmed',
+    );
+    // Settled money earns nothing beside it, either way.
+    expect(paymentAwaitedNote({ mode: 'cheque', status: 'received', since: AT }, AT)).toBeNull();
+    expect(paymentAwaitedNote({ mode: 'online', status: 'paid_online', since: AT }, AT)).toBeNull();
+  });
+
+  it('offers nothing the store would refuse, from anywhere either mode can be', () => {
+    for (const mode of ['cheque', 'online'] as const) {
+      for (const status of ['not_due', 'awaiting', 'received', 'paid_online'] as const) {
+        const payment: Payment = { mode, status, since: AT };
+        for (const event of paymentEventsFrom(payment)) {
+          expect(nextPayment(payment, event, AT), `${mode}/${status}/${event}`).not.toBeNull();
+        }
+      }
+    }
+  });
+
+  it('reads without ever mentioning a check (#220 AC 6)', () => {
+    expect(paymentStatusLabel('online', 'awaiting')).toBe('Awaiting payment online');
+    expect(paymentStatusLabel('online', 'paid_online')).toBe('Paid online');
+    // And the check row still reads exactly as it did.
+    expect(paymentStatusLabel('cheque', 'awaiting')).toBe('Awaiting check');
+    expect(paymentStatusLabel('cheque', 'overdue')).toBe('Check overdue');
+  });
+});
+
 describe('the words on the buttons', () => {
   it('reads American, over a mode the database still spells its own way (#113)', () => {
     // The split the house style turns on, in one assertion: `mode: 'cheque'` is
@@ -152,6 +230,7 @@ describe('the words on the buttons', () => {
     // the family read.
     const labels = [
       ...Object.values(PAYMENT_STATUS_LABELS),
+      ...Object.values(ONLINE_PAYMENT_STATUS_LABELS),
       ...Object.values(PAYMENT_EVENT_LABELS),
       ...Object.values(APPLICATION_EVENT_LABELS),
     ];

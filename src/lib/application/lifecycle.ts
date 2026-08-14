@@ -21,6 +21,11 @@
  * fail silently and leave the school looking at a lie. Reading the clock cannot
  * fail to run. See ADR-0008.
  *
+ * **The clock only reads a cheque (#220).** The grace period is about an
+ * envelope in the post; an online row has no envelope, so it never crosses into
+ * `overdue` however long it waits. A screen that called it overdue would send
+ * the office chasing a family for something that was never coming.
+ *
  * **Three states are unreachable today, and deliberately.** Nothing persists a
  * `draft` — the family's form is one page that either submits or does not — so
  * `abandoned` is a state no row can currently be in, and `refused` is carried
@@ -31,11 +36,13 @@
  * day drafts are persisted the moves are already here rather than being
  * invented under pressure.
  *
- * **The payment slot lives here as one constant.** `PAYMENT_SLOT_MODE` is the
- * whole of what the Vanco stage flips, and flipping it changes exactly one
- * thing: the next submission reads `paid online` rather than `awaiting cheque`.
- * That was verified by driving the prototype, and it is what makes the slot a
- * seam rather than a hole (CONTEXT.md, "payment slot").
+ * **A stated mode is not a payment.** The mode on a row is what the family said
+ * they would do, and both modes open `awaiting`: the giving page tells the site
+ * nothing (ADR-0013), so a row that opened `paid online` because somebody chose
+ * online would be asserting money nobody has seen. `paid_online` is therefore
+ * written by the office, through `match`, and by nothing else — the payment
+ * slot that was once going to write it automatically does not exist and is not
+ * coming (CONTEXT.md, "payment slot").
  */
 
 /**
@@ -133,12 +140,15 @@ export const PAYMENT_MODES = ['cheque', 'online'] as const;
 export type PaymentMode = (typeof PAYMENT_MODES)[number];
 
 /**
- * How the school takes money today.
+ * What a submission records when it does not say how the family is paying.
  *
- * The one line the Vanco stage changes. Everything downstream reads it rather
- * than assuming cheques, so the flip is a constant and not a refactor.
+ * A fallback rather than a policy: the Apply page asks, and this is what a row
+ * written without an answer — an older submission, a caller that has not been
+ * given the question yet — holds. Cheque, because that is the mode whose moves
+ * and grace period were always there, so an unstated row behaves exactly as
+ * every row did before the question was asked.
  */
-export const PAYMENT_SLOT_MODE: PaymentMode = 'cheque';
+export const UNSTATED_PAYMENT_MODE: PaymentMode = 'cheque';
 
 /**
  * What a row may hold.
@@ -179,11 +189,18 @@ export const CHEQUE_GRACE_DAYS = 21;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** The payment axis as a submission opens it. */
-export function paymentOnSubmission(now: Date, mode: PaymentMode = PAYMENT_SLOT_MODE): Payment {
+/**
+ * The payment axis as a submission opens it.
+ *
+ * **Awaiting, both ways.** Whichever mode the family stated, nothing has yet
+ * said the money arrived: a cheque is in the post or it is not, and an online
+ * payment happened at a giving page that reports back to nobody. The mode says
+ * what the office should be watching for, and only that.
+ */
+export function paymentOnSubmission(now: Date, mode: PaymentMode = UNSTATED_PAYMENT_MODE): Payment {
   return {
     mode,
-    status: mode === 'online' ? 'paid_online' : 'awaiting',
+    status: 'awaiting',
     since: now,
   };
 }
@@ -191,17 +208,50 @@ export function paymentOnSubmission(now: Date, mode: PaymentMode = PAYMENT_SLOT_
 /**
  * What the school can do to the money side.
  *
- * `paid_online` is not reachable from here on purpose: it is what the payment
- * slot writes when a family pays, never what somebody ticks afterwards.
+ * `match` is how `paid_online` is reached, and the office is the only thing
+ * that can reach it (#220). It was reserved for a payment slot that would write
+ * it the moment a family paid; no such slot exists and none is coming, so the
+ * alternative to somebody ticking it is a status no row can ever hold.
  */
-export const PAYMENT_EVENTS = ['receive', 'expect', 'waive'] as const;
+export const PAYMENT_EVENTS = ['receive', 'match', 'expect', 'waive'] as const;
 export type PaymentEvent = (typeof PAYMENT_EVENTS)[number];
 
-const PAYMENT_MOVES: Record<PaymentEvent, RecordedPaymentStatus> = {
-  receive: 'received',
-  expect: 'awaiting',
-  waive: 'not_due',
+/**
+ * Every money move, as data — where it lands, and which modes it belongs to.
+ *
+ * The modes are the half that keeps the screen honest: "the check has arrived"
+ * and "wait (again) for a check" are meaningless on a row where no check was
+ * ever coming, and offering them there would be the office asking a family who
+ * paid online to post an envelope.
+ */
+const PAYMENT_MOVES: Record<
+  PaymentEvent,
+  { to: RecordedPaymentStatus; modes: readonly PaymentMode[] }
+> = {
+  receive: { to: 'received', modes: ['cheque'] },
+  match: { to: 'paid_online', modes: PAYMENT_MODES },
+  expect: { to: 'awaiting', modes: PAYMENT_MODES },
+  waive: { to: 'not_due', modes: PAYMENT_MODES },
 };
+
+/**
+ * Whether this move does anything to this row.
+ *
+ * Two reasons it does not: the mode has no such move, or the row already reads
+ * what the move would write. **Waiting again is the exception, and only for a
+ * cheque**: an overdue cheque is *recorded* as awaited, so a school refused
+ * "wait again" because the column already says so would have no way to give a
+ * family another three weeks. An online row has no grace period to restart, so
+ * on one already awaiting the same click would change nothing — it earns its
+ * place there only as the way back from a payment matched in error, which is
+ * the correction the office needs and would otherwise not have.
+ */
+function movesAnything(payment: Payment, event: PaymentEvent): boolean {
+  const move = PAYMENT_MOVES[event];
+  if (!move.modes.includes(payment.mode)) return false;
+  if (move.to !== payment.status) return true;
+  return event === 'expect' && payment.mode === 'cheque';
+}
 
 /**
  * Move the money side, and only the money side.
@@ -210,17 +260,27 @@ const PAYMENT_MOVES: Record<PaymentEvent, RecordedPaymentStatus> = {
  * get its own grace period rather than being overdue the instant it is asked
  * for again.
  *
- * Null when it is already there — a second click, not an error. **`expect` is
- * the exception**, and it is the one that matters: an overdue cheque is
- * *recorded* as awaited, so refusing "expecting a cheque" because the column
- * already says so would leave the school with no way to give a family another
- * three weeks. Expecting a cheque again restarts the wait, which is exactly
- * what the school means by clicking it.
+ * Null when the move does nothing — a second click, not an error — and null
+ * when it does not belong to this row's mode. `movesAnything` above is the
+ * whole of that rule, and the screen asks it the same question before it draws
+ * a button.
  */
 export function nextPayment(payment: Payment, event: PaymentEvent, now: Date): Payment | null {
-  const status = PAYMENT_MOVES[event];
-  if (status === payment.status && event !== 'expect') return null;
-  return { mode: payment.mode, status, since: now };
+  if (!movesAnything(payment, event)) return null;
+  return { mode: payment.mode, status: PAYMENT_MOVES[event].to, since: now };
+}
+
+/**
+ * The money moves actually available on this row, in the order the admin offers
+ * them.
+ *
+ * The screen asks rather than listing all four, because a button the store
+ * would refuse is a button that lies — and since #220 there are two reasons it
+ * would refuse, the row's mode as well as where it already is. Both readers ask
+ * `movesAnything`, so the screen and the store cannot drift apart.
+ */
+export function paymentEventsFrom(payment: Payment): PaymentEvent[] {
+  return PAYMENT_EVENTS.filter((event) => movesAnything(payment, event));
 }
 
 /**
@@ -230,9 +290,13 @@ export function nextPayment(payment: Payment, event: PaymentEvent, now: Date): P
  * happen for it to become so — no cron, no sweep, no button. Every other
  * status reads back exactly as recorded, so a cheque that arrived is never
  * retrospectively called late.
+ *
+ * **The mode is read first (#220).** Only a cheque can be late, because the
+ * grace period measures the post; an online row waits as long as it waits and
+ * reads `awaiting` throughout.
  */
 export function paymentStatusNow(payment: Payment, now: Date): PaymentStatus {
-  if (payment.status !== 'awaiting') return payment.status;
+  if (payment.mode !== 'cheque' || payment.status !== 'awaiting') return payment.status;
   return now.getTime() >= chequeDueBy(payment).getTime() ? 'overdue' : 'awaiting';
 }
 
@@ -262,6 +326,7 @@ export const APPLICATION_EVENT_LABELS: Record<ApplicationEvent, string> = {
   withdraw: 'Withdraw this application',
 };
 
+/** How the money reads on a row the family said they would post a check for. */
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   not_due: 'Nothing to pay',
   awaiting: 'Awaiting check',
@@ -270,8 +335,70 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   paid_online: 'Paid online',
 };
 
+/**
+ * The same statuses on a row the family said they would pay online.
+ *
+ * `overdue` is absent because an online row cannot be in it, and a label for a
+ * state nothing can reach is a sentence waiting to be shown by mistake.
+ */
+export const ONLINE_PAYMENT_STATUS_LABELS: Record<RecordedPaymentStatus, string> = {
+  not_due: 'Nothing to pay',
+  awaiting: 'Awaiting payment online',
+  received: 'Payment received',
+  paid_online: 'Paid online',
+};
+
+/**
+ * What this row's money says, in the terms of what it is waiting for.
+ *
+ * One function rather than one map, because "Awaiting check" against a family
+ * who paid at the giving page is the office being told to watch the post for an
+ * envelope nobody sent (#220 AC 6).
+ */
+export function paymentStatusLabel(mode: PaymentMode, status: PaymentStatus): string {
+  if (mode === 'cheque' || status === 'overdue') return PAYMENT_STATUS_LABELS[status];
+  return ONLINE_PAYMENT_STATUS_LABELS[status];
+}
+
+/** What the button says on a check row. A verb, in the school's own terms. */
 export const PAYMENT_EVENT_LABELS: Record<PaymentEvent, string> = {
   receive: 'Check has arrived',
+  match: 'Payment matched by hand',
   expect: 'Wait (again) for a check',
   waive: 'Nothing to pay',
 };
+
+/**
+ * The one button that has to say something else on an online row.
+ *
+ * On a check row "wait (again) for a check" restarts the grace period. On an
+ * online row it is the way back from a payment matched in error — the office
+ * writes `paid online` by hand now (#220), so the office needs to be able to
+ * unwrite it, and telling it to wait for a check would be asking a family who
+ * paid at the giving page to post an envelope.
+ */
+const ONLINE_PAYMENT_EVENT_LABELS: Partial<Record<PaymentEvent, string>> = {
+  expect: 'Still waiting for this payment',
+};
+
+/** What this row's button says, in the terms of what it is waiting for. */
+export function paymentEventLabel(mode: PaymentMode, event: PaymentEvent): string {
+  return (mode === 'online' && ONLINE_PAYMENT_EVENT_LABELS[event]) || PAYMENT_EVENT_LABELS[event];
+}
+
+/**
+ * The sentence a waited-for payment earns beside its status, as a kind.
+ *
+ * The *decision* is here and the *wording* is on the screen: which of the three
+ * an application has earned is a fact about the mode and the clock, and a
+ * template working that out is a template holding a rule (#220 AC 6). Null when
+ * the money is settled and there is nothing to add.
+ */
+export type PaymentAwaitedNote = 'cheque_due' | 'cheque_late' | 'online_unconfirmed' | null;
+
+export function paymentAwaitedNote(payment: Payment, now: Date): PaymentAwaitedNote {
+  const status = paymentStatusNow(payment, now);
+  if (status === 'overdue') return 'cheque_late';
+  if (status !== 'awaiting') return null;
+  return payment.mode === 'cheque' ? 'cheque_due' : 'online_unconfirmed';
+}
