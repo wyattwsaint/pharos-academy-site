@@ -38,6 +38,31 @@ const bypassToken =
 export default defineConfig({
   site: SITE_URL,
   output: 'server',
+  // `true`, not Astro 7's default of `'jsx'`, which ate the space in front of
+  // links (#184).
+  //
+  // The two are not the same compression. `'jsx'` applies JSX's whitespace
+  // rules, which *delete* the line break between a line of prose and the tag on
+  // the next line rather than collapsing it. "Pharos Academy meets at" followed
+  // by `<a>Enola First Church of God</a>` on the next line went to the live site
+  // as `meets at<a …>`, and a parent read "meets atEnola First Church of God".
+  // That shape — prose, a line break, a link — is how the whole site is written
+  // and how a formatter rewraps it, so it is a fault that comes back every time
+  // a paragraph is re-flowed; #148's audit could not end it, because the source
+  // was never wrong. `true` collapses each run of whitespace to one space and
+  // leaves the gap where it was, which is what HTML itself does.
+  //
+  // What it costs is the difference between the two, not the whole of the
+  // compression: 3.8 KB of markup across the entire server bundle, 1 KB of it
+  // after gzip. Turning compression off altogether would have cost 27 KB and
+  // 3.6 KB, and would have fixed nothing this does not.
+  //
+  // Named explicitly rather than left to the default, because the whole fault
+  // was that `true` and `'jsx'` look like the same setting. Set it back and
+  // `e2e/link-spacing.spec.ts` fails on /about — the dev server compresses the
+  // same way the build does, so that happens before a deployment exists to be
+  // wrong. See docs/adr/0014.
+  compressHTML: true,
   // The 301 map from the Wix site (#30). Declared from one module rather than
   // written out here, so the tests can hold every destination against the
   // enumerated route list — a redirect to a page that does not exist answers

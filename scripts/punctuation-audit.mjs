@@ -198,7 +198,9 @@ const CLASSES = [
       'A link is a word in its sentence: one space before it, one after, and nothing underlined ' +
       'that is not the link. Both classes here are mechanical, and unlike everything else in this ' +
       'report they are **already applied and kept applied** — `src/lib/punctuation.test.ts` fails ' +
-      'the build if one comes back (#171). A link flush against punctuation — `apply</a>.` — is ' +
+      'the build if one comes back (#171), and `e2e/link-spacing.spec.ts` reads every public page ' +
+      'as a browser receives it, which is where #184 lived: source that was right and a build ' +
+      'that deleted the space anyway. A link flush against punctuation — `apply</a>.` — is ' +
       'correct and not listed.',
   },
   {
