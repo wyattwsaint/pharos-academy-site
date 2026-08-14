@@ -2,7 +2,9 @@
 export const prerender = false;
 
 import AdminBanner from '../../../components/AdminBanner.astro';
+import AdminButton from '../../../components/AdminButton.astro';
 import AdminField from '../../../components/AdminField.astro';
+import AdminPublishing from '../../../components/AdminPublishing.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import type { Banner } from '../../../lib/admin/banner.js';
 import { courseFormView } from '../../../lib/admin/course-form.js';
@@ -67,6 +69,15 @@ import { listPeople } from '../../../lib/people/store.js';
  * #61) — `courseFormView` answers all three, and reading them from the store
  * was the same mistake three times over: nothing shown until a save had already
  * happened.
+ *
+ * The fields, buttons, banner and Publishing section this screen used to spell
+ * out for itself now come from the shared components (#195). It is the same
+ * form — same fields, same order, same words, same validation — and the three
+ * things above are untouched. What changes is that the `aria-describedby`
+ * wiring is written once: the two lists' complaints now hang off their
+ * fieldsets, where a screen reader announces them on entering the group, and
+ * the start/end pair's complaints are announced with the inputs they are about
+ * rather than sitting beside them unassociated (#190).
  */
 /** The one slug that is not a course: the add form's address. */
 const NEW = 'new';
@@ -155,8 +166,6 @@ if (Astro.request.method === 'POST') {
 const action = course ? `/admin/courses/${course.slug}` : '/admin/courses/new';
 const heading = course ? course.title : 'Add a Course';
 const stamp = course ? formatStamp(course.lastEditedBy, course.lastEditedAt) : null;
-const control =
-  'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
 
 /** The days on offer: the year's, never a hard-coded week. */
 const offeredDays = runningTracks(year);
@@ -187,6 +196,9 @@ const timeOptions = [
 const timeIsSlot = timeOptions.some((option) => option.value === values.time);
 const selectedTime = values.time && !timeIsSlot ? CUSTOM_TIME : values.time;
 
+/** The slots, and last of all the way out of them. */
+const timeChoices = [...timeOptions, { value: CUSTOM_TIME, label: 'Another time' }];
+
 /**
  * The clash warning, the block's start dates and its computed end, all read
  * from `values` — the form as it stands, whether that is a saved course, an add
@@ -213,7 +225,7 @@ const blockEnd = view.blockEnd ? fullDateLabel(view.blockEnd) : null;
  * the same refusal from the same function; the parser only gets to make it on a
  * POST, and a block the year has since stopped holding is found on a GET (#60).
  */
-const blockStartError = errors.blockStart ?? view.blockError;
+const blockStartError = errors.blockStart ?? view.blockError ?? undefined;
 
 /**
  * The fields that are one typed string.
@@ -226,60 +238,98 @@ type TextField = {
   [K in keyof CourseFields]: CourseFields[K] extends string ? K : never;
 }[keyof CourseFields];
 
-/** The plain fields, in the order they are asked for. */
+/**
+ * The plain fields, in the order they are asked for. Type decides the control;
+ * everything else that varies is written here rather than switched on at the
+ * call site.
+ *
+ * `optional` rather than `required`, because that is the shared field's word for
+ * it: most of this form must be filled, and the ones a class may leave empty are
+ * the ones that say so.
+ */
 const FIELDS: {
   name: TextField;
   type: 'text' | 'multiline' | 'number';
-  required?: boolean;
+  optional?: true;
   hint?: string;
+  rows?: number;
+  min?: number;
+  step?: number;
 }[] = [
-  { name: 'title', type: 'text', required: true, hint: 'As the school writes it, including any “(Grades 5-8)”.' },
+  { name: 'title', type: 'text', hint: 'As the school writes it, including any “(Grades 5-8)”.' },
   {
     name: 'description',
     type: 'multiline',
-    required: true,
+    rows: 8,
     hint: 'The full description, as it appears on the class’s own page.',
   },
   {
     name: 'ageLabel',
     type: 'text',
-    required: true,
     hint: 'In the school’s own words — “5-10 (approximately K-6th grades)”.',
   },
   {
     name: 'ageMin',
     type: 'number',
+    optional: true,
+    min: 1,
+    step: 1,
     hint: 'The numeric gate, when the school publishes one. Both ends or neither — a class with no numbers shows in every age band.',
   },
-  { name: 'ageMax', type: 'number' },
+  { name: 'ageMax', type: 'number', optional: true, min: 1, step: 1 },
   {
     name: 'credit',
     type: 'text',
+    optional: true,
     hint: 'Optional — “1 High School Algebra 1 credit with completed homework”.',
   },
-  { name: 'requiredText', type: 'multiline', hint: 'Optional. The books a family must have.' },
-  { name: 'optionalText', type: 'multiline', hint: 'Optional.' },
+  {
+    name: 'requiredText',
+    type: 'multiline',
+    optional: true,
+    rows: 4,
+    hint: 'Optional. The books a family must have.',
+  },
+  { name: 'optionalText', type: 'multiline', optional: true, rows: 4, hint: 'Optional.' },
   {
     name: 'materialsToBuy',
     type: 'multiline',
+    optional: true,
+    rows: 4,
     hint: 'Optional — what the family buys and brings, as distinct from a fee paid to the school.',
   },
   {
     name: 'materialsFee',
     type: 'number',
+    optional: true,
+    min: 1,
+    step: 1,
     hint: 'Whole dollars, paid to the school. Leave it empty when there is none — an empty box prints nothing, a $0 fee prints a free fee.',
   },
-  { name: 'materialsFeeNote', type: 'text', hint: 'Optional — “per year”. Only with a fee.' },
-  { name: 'assessmentFee', type: 'number', hint: 'Whole dollars. Same rule as above.' },
+  {
+    name: 'materialsFeeNote',
+    type: 'text',
+    optional: true,
+    hint: 'Optional — “per year”. Only with a fee.',
+  },
+  {
+    name: 'assessmentFee',
+    type: 'number',
+    optional: true,
+    min: 1,
+    step: 1,
+    hint: 'Whole dollars. Same rule as above.',
+  },
   {
     name: 'assessmentFeeNote',
     type: 'text',
+    optional: true,
     hint: 'Optional — “for test scoring”, “for feedback on writing”.',
   },
   {
     name: 'prerequisites',
     type: 'multiline',
-    required: true,
+    rows: 4,
     hint: 'The school writes “None” when there are none — so say something either way.',
   },
 ];
@@ -319,22 +369,7 @@ function warningLine(warning: ClashWarning): string {
     Saved here, this class appears by age, by day, in the full descriptions and on its own page.
   </p>
 
-  {
-    banner && (
-      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
-        {!banner.ok && (
-          <form method="post" action="/admin/republish" class="mt-3">
-            <button
-              type="submit"
-              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-navy-deep"
-            >
-              Retry
-            </button>
-          </form>
-        )}
-      </AdminBanner>
-    )
-  }
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner" retry />}
 
   {
     view.warnings.length > 0 && (
@@ -359,58 +394,20 @@ function warningLine(warning: ClashWarning): string {
 
   <form method="post" action={action} class="mt-8 flex flex-col gap-6">
     {
-      FIELDS.map((field) => {
-        const invalid = Boolean(errors[field.name]);
-        const describedBy =
-          [field.hint ? `${field.name}-hint` : null, invalid ? `${field.name}-error` : null]
-            .filter(Boolean)
-            .join(' ') || undefined;
-        const value = values[field.name];
-
-        return (
-          <div class="flex flex-col gap-2">
-            <label for={field.name} class="font-semibold">
-              {LABELS[field.name]}
-            </label>
-            {field.hint && (
-              <p id={`${field.name}-hint`} class="text-sm">
-                {field.hint}
-              </p>
-            )}
-            {field.type === 'multiline' ? (
-              <textarea
-                id={field.name}
-                name={field.name}
-                rows={field.name === 'description' ? 8 : 4}
-                required={field.required}
-                aria-invalid={invalid ? 'true' : undefined}
-                aria-describedby={describedBy}
-                class={control}
-              >
-                {value}
-              </textarea>
-            ) : (
-              <input
-                id={field.name}
-                name={field.name}
-                type={field.type === 'number' ? 'number' : 'text'}
-                min={field.type === 'number' ? 1 : undefined}
-                step={field.type === 'number' ? 1 : undefined}
-                value={value}
-                required={field.required}
-                aria-invalid={invalid ? 'true' : undefined}
-                aria-describedby={describedBy}
-                class={control}
-              />
-            )}
-            {invalid && (
-              <p id={`${field.name}-error`} class="font-semibold">
-                {errors[field.name]}
-              </p>
-            )}
-          </div>
-        );
-      })
+      FIELDS.map((field) => (
+        <AdminField
+          name={field.name}
+          type={field.type}
+          label={LABELS[field.name]}
+          value={values[field.name]}
+          hint={field.hint}
+          error={errors[field.name]}
+          optional={field.optional}
+          rows={field.rows}
+          min={field.min}
+          step={field.step}
+        />
+      ))
     }
 
     <AdminField
@@ -440,157 +437,103 @@ function warningLine(warning: ClashWarning): string {
     </AdminField>
 
     <div class="flex flex-col gap-2">
-      <label for="time" class="font-semibold">{LABELS.time}</label>
-      <p id="time-hint" class="text-sm">
-        The times the school already meets at. Pick “Another time” to type a slot the timetable does
-        not run yet.
-      </p>
-      <select
-        id="time"
+      <AdminField
         name="time"
-        aria-invalid={errors.time ? 'true' : undefined}
-        aria-describedby={errors.time ? 'time-hint time-error' : 'time-hint'}
-        class={control}
-      >
-        <option value="">Not picked yet</option>
-        {
-          timeOptions.map((option) => (
-            <option value={option.value} selected={selectedTime === option.value}>
-              {option.label}
-            </option>
-          ))
-        }
-        <option value={CUSTOM_TIME} selected={selectedTime === CUSTOM_TIME}>Another time</option>
-      </select>
-      {errors.time && <p id="time-error" class="font-semibold">{errors.time}</p>}
+        type="select"
+        label={LABELS.time}
+        hint="The times the school already meets at. Pick “Another time” to type a slot the timetable does not run yet."
+        placeholder="Not picked yet"
+        options={timeChoices}
+        value={selectedTime}
+        error={errors.time}
+        optional
+      />
 
+      {
+        /*
+          The two ends of a slot the timetable does not run yet. Optional in the
+          HTML sense whatever the form says, because whether they are required
+          depends on the select above — the parser is the one that knows, and a
+          browser-side `required` here would refuse the form before it could say
+          so.
+        */
+      }
       <div class="mt-2 flex flex-wrap gap-6">
-        <div class="flex flex-col gap-2">
-          <label for="start" class="font-semibold">{LABELS.start}</label>
-          <input
-            id="start"
-            name="start"
-            type="time"
-            value={values.start}
-            aria-invalid={errors.start ? 'true' : undefined}
-            class="rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
-          />
-          {errors.start && <p class="font-semibold">{errors.start}</p>}
-        </div>
-        <div class="flex flex-col gap-2">
-          <label for="end" class="font-semibold">{LABELS.end}</label>
-          <input
-            id="end"
-            name="end"
-            type="time"
-            value={values.end}
-            aria-invalid={errors.end ? 'true' : undefined}
-            class="rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold"
-          />
-          {errors.end && <p class="font-semibold">{errors.end}</p>}
-        </div>
+        <AdminField
+          name="start"
+          type="time"
+          label={LABELS.start}
+          value={values.start}
+          error={errors.start}
+          optional
+        />
+        <AdminField
+          name="end"
+          type="time"
+          label={LABELS.end}
+          value={values.end}
+          error={errors.end}
+          optional
+        />
       </div>
       <p class="text-sm">These two are read only when “Another time” is picked above.</p>
     </div>
 
-    <fieldset class="flex flex-col gap-2">
-      <legend class="font-semibold">{LABELS.enrolment}</legend>
-      <p class="text-sm">The shape of the course itself — how long it runs for.</p>
-      {
-        ENROLMENT_UNITS.map((unit) => (
-          <label class="flex items-center gap-2">
-            <input
-              type="radio"
-              name="enrolment"
-              value={unit}
-              id={`enrolment-${unit}`}
-              checked={values.enrolment === unit}
-            />
-            {UNIT_LABELS[unit]}
-          </label>
-        ))
-      }
-      {errors.enrolment && <p class="font-semibold">{errors.enrolment}</p>}
-    </fieldset>
+    <AdminField
+      name="enrolment"
+      type="radios"
+      label={LABELS.enrolment}
+      hint="The shape of the course itself — how long it runs for."
+      options={ENROLMENT_UNITS.map((unit) => ({ value: unit, label: UNIT_LABELS[unit] }))}
+      selected={[values.enrolment]}
+      error={errors.enrolment}
+    />
 
-    <fieldset class="flex flex-col gap-2">
-      <legend class="font-semibold">{LABELS.enrolmentUnits}</legend>
-      <p class="text-sm">
-        What a family may actually buy. This is exactly what the application offers them — never
-        worked out from the shape above, because a class can publish a semester price without
-        offering a semester.
-      </p>
-      {
-        ENROLMENT_UNITS.map((unit) => (
-          <label class="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="enrolmentUnits"
-              value={unit}
-              id={`enrolmentUnits-${unit}`}
-              checked={values.enrolmentUnits.includes(unit)}
-            />
-            {UNIT_LABELS[unit]}
-          </label>
-        ))
-      }
-      {errors.enrolmentUnits && <p class="font-semibold">{errors.enrolmentUnits}</p>}
-    </fieldset>
+    <AdminField
+      name="enrolmentUnits"
+      type="checkboxes"
+      label={LABELS.enrolmentUnits}
+      hint="What a family may actually buy. This is exactly what the application offers them — never worked out from the shape above, because a class can publish a semester price without offering a semester."
+      options={ENROLMENT_UNITS.map((unit) => ({ value: unit, label: UNIT_LABELS[unit] }))}
+      selected={values.enrolmentUnits}
+      error={errors.enrolmentUnits}
+    />
+
+    <AdminField
+      name="weeks"
+      type="number"
+      label={LABELS.weeks}
+      hint="Meeting weeks per day track. The price is worked out from this, the meeting length and the rate below."
+      value={values.weeks}
+      error={errors.weeks}
+      min={1}
+      step={1}
+    />
 
     <div class="flex flex-col gap-2">
-      <label for="weeks" class="font-semibold">{LABELS.weeks}</label>
-      <p id="weeks-hint" class="text-sm">
-        Meeting weeks per day track. The price is worked out from this, the meeting length and the
-        rate below.
-      </p>
-      <input
-        id="weeks"
-        name="weeks"
-        type="number"
-        min="1"
-        step="1"
-        value={values.weeks}
-        required
-        aria-invalid={errors.weeks ? 'true' : undefined}
-        aria-describedby={errors.weeks ? 'weeks-hint weeks-error' : 'weeks-hint'}
-        class={control}
-      />
-      {errors.weeks && <p id="weeks-error" class="font-semibold">{errors.weeks}</p>}
-    </div>
-
-    <div class="flex flex-col gap-2">
-      <label for="blockStart" class="font-semibold">{LABELS.blockStart}</label>
-      <p id="blockStart-hint" class="text-sm">
-        {
-          view.blockTrack
-            ? `The ${view.blockTrack} track’s own meeting dates — so a block cannot begin on a day the school does not meet. The end date is worked out from the weeks.`
-            : 'Blocks only, and empty until the form names exactly one day. Choose Block above and tick the one day it meets on — that track’s real meeting dates are the ones offered here.'
-        }
-      </p>
-      <select
-        id="blockStart"
+      {
+        /*
+          One track's dates and no others (#61). Every date outside the ticked
+          track is an option that cannot be right — `blockMeetingDates` refuses
+          it on submit, which is a correct message one save too late.
+        */
+      }
+      <AdminField
         name="blockStart"
-        aria-invalid={blockStartError ? 'true' : undefined}
-        aria-describedby={blockStartError ? 'blockStart-hint blockStart-error' : 'blockStart-hint'}
-        class={control}
-      >
-        <option value="">Not picked yet</option>
-        {
-          /*
-            One track's dates and no others (#61). Every date outside the ticked
-            track is an option that cannot be right — `blockMeetingDates` refuses
-            it on submit, which is a correct message one save too late.
-          */
-        }
-        {
-          view.blockMeetings.map((meeting) => (
-            <option value={meeting.date} selected={values.blockStart === meeting.date}>
-              {fullDateLabel(meeting.date)} — week {meeting.week}
-            </option>
-          ))
-        }
-      </select>
-      {blockStartError && <p id="blockStart-error" class="font-semibold">{blockStartError}</p>}
+        type="select"
+        label={LABELS.blockStart}
+        hint={view.blockTrack
+          ? `The ${view.blockTrack} track’s own meeting dates — so a block cannot begin on a day the school does not meet. The end date is worked out from the weeks.`
+          : 'Blocks only, and empty until the form names exactly one day. Choose Block above and tick the one day it meets on — that track’s real meeting dates are the ones offered here.'}
+        placeholder="Not picked yet"
+        options={view.blockMeetings.map((meeting) => ({
+          value: meeting.date,
+          label: `${fullDateLabel(meeting.date)} — week ${meeting.week}`,
+        }))}
+        value={values.blockStart}
+        error={blockStartError}
+        optional
+      />
       {
         blockEnd && (
           <p class="text-sm" data-testid="block-end">
@@ -600,60 +543,33 @@ function warningLine(warning: ClashWarning): string {
       }
     </div>
 
-    <div class="flex flex-col gap-2">
-      <label for="rateTier" class="font-semibold">{LABELS.rateTier}</label>
-      <p id="rateTier-hint" class="text-sm">Which hourly rate this class is charged at.</p>
-      <select
-        id="rateTier"
-        name="rateTier"
-        aria-invalid={errors.rateTier ? 'true' : undefined}
-        aria-describedby={errors.rateTier ? 'rateTier-hint rateTier-error' : 'rateTier-hint'}
-        class={control}
-      >
-        <option value="">Not picked yet</option>
-        {
-          RATE_TIERS.map((tier) => (
-            <option value={tier} selected={values.rateTier === tier}>
-              {RATE_LABELS[tier]}
-            </option>
-          ))
-        }
-      </select>
-      {errors.rateTier && <p id="rateTier-error" class="font-semibold">{errors.rateTier}</p>}
-    </div>
+    <AdminField
+      name="rateTier"
+      type="select"
+      label={LABELS.rateTier}
+      hint="Which hourly rate this class is charged at."
+      placeholder="Not picked yet"
+      options={RATE_TIERS.map((tier) => ({ value: tier, label: RATE_LABELS[tier] }))}
+      value={values.rateTier}
+      error={errors.rateTier}
+      optional
+    />
 
-    <div class="flex flex-col gap-2">
-      <label for="instructorSlug" class="font-semibold">{LABELS.instructorSlug}</label>
-      <p id="instructorSlug-hint" class="text-sm">
+    <AdminField
+      name="instructorSlug"
+      type="select"
+      label={LABELS.instructorSlug}
+      placeholder="Not picked yet"
+      options={people.map((person) => ({ value: person.slug, label: person.name }))}
+      value={values.instructorSlug}
+      error={errors.instructorSlug}
+      optional
+    >
+      <Fragment slot="hint">
         From the <a href="/admin/people" class="underline underline-offset-4">people list</a> — never
         a typed name, so correcting a name corrects it here too.
-      </p>
-      <select
-        id="instructorSlug"
-        name="instructorSlug"
-        aria-invalid={errors.instructorSlug ? 'true' : undefined}
-        aria-describedby={
-          errors.instructorSlug ? 'instructorSlug-hint instructorSlug-error' : 'instructorSlug-hint'
-        }
-        class={control}
-      >
-        <option value="">Not picked yet</option>
-        {
-          people.map((person) => (
-            <option value={person.slug} selected={values.instructorSlug === person.slug}>
-              {person.name}
-            </option>
-          ))
-        }
-      </select>
-      {
-        errors.instructorSlug && (
-          <p id="instructorSlug-error" class="font-semibold">
-            {errors.instructorSlug}
-          </p>
-        )
-      }
-    </div>
+      </Fragment>
+    </AdminField>
 
     {
       /*
@@ -683,33 +599,16 @@ function warningLine(warning: ClashWarning): string {
       </p>
     </div>
 
-    <button
-      type="submit"
-      class="self-start rounded bg-navy px-5 py-2.5 font-semibold text-cream hover:bg-navy-deep"
-    >
-      Save
-    </button>
+    <AdminButton class="self-start">Save</AdminButton>
   </form>
 
   {
     stamp && (
-      <section class="mt-10 border-t border-navy/15 pt-6">
-        <h2 class="text-xl font-semibold text-navy">Publishing</h2>
-        <p class="mt-2" data-testid="stamp">
-          {stamp}
-        </p>
+      <AdminPublishing stamp={stamp}>
         <p class="mt-2">
           Saving republishes the whole site, because a class is on four surfaces at once.
         </p>
-        <form method="post" action="/admin/republish" class="mt-4">
-          <button
-            type="submit"
-            class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
-          >
-            Republish
-          </button>
-        </form>
-      </section>
+      </AdminPublishing>
     )
   }
 </AdminLayout>
