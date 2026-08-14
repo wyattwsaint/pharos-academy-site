@@ -1,0 +1,106 @@
+---
+import type { CourseMeetings } from '../../lib/courses/meetings.js';
+
+/**
+ * When this class meets, on the page where the class is named (#233).
+ *
+ * The question is asked in August and the site's only public answer was the
+ * calendar page's semester sheets — a table of week rows and **day track**
+ * columns that never says the course's name. Here a parent reads the answer
+ * where they already are, and never has to learn which track the course is on.
+ *
+ * **The summary line is the answer**; the full list is for the family filling
+ * in a wall planner. So the line is printed and the list sits behind a native
+ * `<details>`: no JavaScript is loaded for it, the keyboard opens it for free,
+ * and a visitor with scripts off still reads the sentence that matters. The
+ * page's `disclosure-group` is deliberately not used — its hover-opens contract
+ * is for a grid of small triggers, and it would make the count and the dates
+ * both depend on a browser.
+ *
+ * Every date here comes from `courseMeetings`, which asks the same
+ * `meetingDatesOn` the clash check asks. Nothing on this page computes a date.
+ */
+interface Props {
+  /** The course's run, or null when no school year is set to compute one from. */
+  meetings: CourseMeetings | null;
+}
+
+const { meetings } = Astro.props;
+---
+
+<div class="coursedates mt-9" data-section="class-dates">
+  <h2>When it meets</h2>
+  {
+    /*
+     * Four states, and each says what it means (#197). "No dates yet" and "no
+     * dates at all" are different facts and a family reading the first as the
+     * second would think the class was cancelled.
+     */
+    !meetings ? (
+      <p class="mt-4">The school year has not been set yet, so there are no dates to show.</p>
+    ) : meetings.unknown ? (
+      <p class="mt-4">
+        This class runs as a block and its start date has not been picked yet. The dates appear
+        here as soon as it is set.
+      </p>
+    ) : !meetings.summary ? (
+      <p class="mt-4">
+        This class has no meeting dates in the school year the site is showing.
+      </p>
+    ) : (
+      <>
+        <p class="coursedates-summary mt-4">{meetings.summary}</p>
+        <details class="coursedates-all mt-4">
+          <summary>Every meeting date</summary>
+          <div class="coursedates-months mt-5">
+            {meetings.months.map((month) => (
+              <div class="coursedates-month">
+                <h3>{month.heading}</h3>
+                <ul>
+                  {month.dates.map((meeting) => (
+                    <li>
+                      <time datetime={meeting.date}>{meeting.label}</time>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </details>
+      </>
+    )
+  }
+</div>
+
+<style>
+  .coursedates-summary {
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+
+  .coursedates-all > summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .coursedates-months {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    gap: 1.5rem 2rem;
+  }
+
+  .coursedates-month > h3 {
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .coursedates-month > ul {
+    list-style: none;
+    margin-top: 0.5rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+</style>

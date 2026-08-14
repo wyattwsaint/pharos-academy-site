@@ -41,9 +41,18 @@ interface Props {
    * is a component that could publish last year's figure.
    */
   rates: RateCard;
+  /**
+   * Whether a block's dates belong in the list.
+   *
+   * True on the full-descriptions surface, which has nowhere else to say them.
+   * False on a class's own page, where the whole run — block or not — is said
+   * properly below (#233), and a comma-separated row of the same eight dates
+   * would be the second answer this component exists to prevent.
+   */
+  meetingDates?: boolean;
 }
 
-const { course, instructor, rates } = Astro.props;
+const { course, instructor, rates, meetingDates = true } = Astro.props;
 
 const dateFormat = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
@@ -76,7 +85,7 @@ const facts: Fact[] = [
   ...fee('Assessment fee', course.assessmentFee, course.assessmentFeeNote),
   ...optional(
     'Meeting dates',
-    course.dates.length > 0
+    meetingDates && course.dates.length > 0
       ? course.dates.map((date) => dateFormat.format(new Date(`${date}T00:00:00Z`))).join(', ')
       : null,
   ),

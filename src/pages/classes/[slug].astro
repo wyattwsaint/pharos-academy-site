@@ -1,8 +1,11 @@
 ---
+import CourseDates from '../../components/classes/CourseDates.astro';
 import CourseFacts from '../../components/classes/CourseFacts.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getSchoolDetails } from '../../lib/admin/school-details.js';
+import { getSchoolYear } from '../../lib/calendar/store.js';
 import { ageLine } from '../../lib/courses/ages.js';
+import { courseMeetings } from '../../lib/courses/meetings.js';
 import { priceSummary } from '../../lib/courses/pricing.js';
 import { coursesOnTrack, timeLabel } from '../../lib/courses/schedule.js';
 import { getCourse, listCourses } from '../../lib/courses/store.js';
@@ -51,6 +54,17 @@ const alongside = course.days
   .flatMap((day) => coursesOnTrack(everyCourse, day))
   .filter((other) => (seen.has(other.slug) ? false : seen.add(other.slug)));
 
+/*
+ * When it meets (#233).
+ *
+ * The dates are computed here from the saved school year, by the same function
+ * the editor's clash check uses, so this page and that warning cannot disagree.
+ * No school year saved means no dates to compute, which the section says in
+ * words rather than rendering an empty list.
+ */
+const schoolYear = await getSchoolYear(db);
+const meetings = schoolYear ? courseMeetings(schoolYear, course) : null;
+
 const description = `${course.title} at Pharos Academy — ${ageLine(course)}, ${course.days.join(
   ' and ',
 )} ${timeLabel(course.start, course.end)}, ${priceSummary(course, rates)}.`;
@@ -93,8 +107,15 @@ const jsonLd = [
           <p class="classdetail-lede">{course.description}</p>
           <a class="btn solid" href={INQUIRY_HREF}>Ask us about this class</a>
         </div>
-        <CourseFacts course={course} instructor={instructor} rates={rates} />
+        <CourseFacts
+          course={course}
+          instructor={instructor}
+          rates={rates}
+          meetingDates={false}
+        />
       </div>
+
+      <CourseDates meetings={meetings} />
 
       <h2 class="mt-9">Also on {course.days.join(' and ')}</h2>
       <ul class="alongside">

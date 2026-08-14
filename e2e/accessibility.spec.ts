@@ -48,6 +48,12 @@ async function openClassPanel(page: Page) {
   await expect(cell.locator('[data-disclosure-panel]')).toBeVisible();
 }
 
+/** Open a class's meeting dates, which is a native `details` and not a group. */
+async function openMeetingDates(page: Page) {
+  await page.locator('[data-section="class-dates"] > details > summary').click();
+  await expect(page.locator('[data-section="class-dates"] .coursedates-months')).toBeVisible();
+}
+
 /** Open the one instructor bio the school has published (#152). */
 async function openInstructorBio(page: Page) {
   const cell = page
@@ -129,6 +135,14 @@ const SURFACES = [
     open: noop,
   },
   { name: 'a class page', path: '/classes/algebra-1', state: 'closed', open: noop },
+  // #233. Fifty-six dates in a grid of months is the longest thing this page
+  // can hold, and the state a parent planning the year actually reads.
+  {
+    name: 'a class page',
+    path: '/classes/algebra-1',
+    state: 'with its meeting dates open',
+    open: openMeetingDates,
+  },
   // #26. Eight of the eleven people on it have no bio and no photograph, so
   // this is also where "an absent bio renders correctly" is measured at every
   // width rather than only asserted in one.

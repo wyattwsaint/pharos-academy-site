@@ -375,6 +375,25 @@ export function weekdayDateLabel(date: string): string {
 }
 
 /**
+ * "9 Sep" — the day and an abbreviated month, for a line that holds two dates.
+ *
+ * The course page's summary line (#233) says a course's first and last meeting
+ * in one breath — *"28 Wednesdays, 9 Sep to 20 May"* — and two full months in
+ * one sentence is the length that stops it being read at a glance. Here rather
+ * than in `courses/`, for the reason on {@link americanDateLabel}: a date format
+ * kept in the module that happens to want it is one the sweep does not find.
+ */
+export function shortDateLabel(date: string): string {
+  return SHORT_DATE_FORMAT.format(new Date(`${date}T00:00:00Z`));
+}
+
+const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+});
+
+/**
  * "August 31, 2026" — the same day in the order an American family reads it.
  *
  * The date half of the house style (#110). It sits beside {@link fullDateLabel}
