@@ -5,6 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { unzipSync } from 'fflate';
 
 import { LABELS } from '../src/lib/admin/policies.js';
+import { AXE_TAGS } from './axe.js';
 import { SUITE_ADMIN, signIn } from './suite-admin.js';
 import {
   APPLICATION_PATH,
@@ -30,7 +31,7 @@ import { POLICIES_PATH } from '../src/lib/policies/views.js';
  * needs a server pointed at an origin that is genuinely down.
  */
 
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+const TAGS = AXE_TAGS;
 
 /** The admin screens, and the widths #18 names. Same bar as the public site. */
 const ADMIN_WIDTHS = [390, 1440];

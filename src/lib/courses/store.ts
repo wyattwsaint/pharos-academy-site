@@ -95,12 +95,7 @@ export async function createCourse(
 ): Promise<Course> {
   const [row] = await db
     .insert(coursesTable)
-    .values({
-      slug,
-      ...toRow(edit),
-      lastEditedBy: editorName,
-      lastEditedAt: now,
-    })
+    .values({ slug, ...toRow(edit), lastEditedBy: editorName, lastEditedAt: now })
     .returning();
 
   if (!row) throw new Error(`Could not add a course with the slug "${slug}".`);

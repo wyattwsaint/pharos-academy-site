@@ -153,10 +153,7 @@ function suiteAdmin(): { username: string; password: string } | undefined {
  * to build a decoy hash — is never loaded by a process that is not running the
  * suite.
  */
-async function seedSuiteAdmin(
-  db: Db,
-  admin: { username: string; password: string },
-): Promise<void> {
+async function seedSuiteAdmin(db: Db, admin: { username: string; password: string }): Promise<void> {
   const { createUser } = await import('../admin/users.js');
   await createUser(db, { ...admin, displayName: 'Suite Admin' });
 }
@@ -182,7 +179,12 @@ async function seedSuitePolicyFiles(db: Db): Promise<void> {
 
   const bytes = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
   for (const seed of SEEDED_POLICIES) {
-    await replacePolicyFile(db, seed.slug, { filename: `${seed.slug}.pdf`, bytes }, 'Suite Admin');
+    await replacePolicyFile(
+      db,
+      seed.slug,
+      { filename: `${seed.slug}.pdf`, bytes },
+      'Suite Admin',
+    );
   }
 }
 

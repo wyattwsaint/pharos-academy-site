@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { AXE_TAGS } from './axe.js';
 import { signIn } from './suite-admin.js';
 
 /**
@@ -9,27 +10,40 @@ import { signIn } from './suite-admin.js';
  * Runs from `playwright.empty-lists.config.ts` alone: its dev server sets
  * `E2E_EMPTY_LISTS`, which is the only way People, Classes, Announcements and
  * Policies can be empty — the migrations seed all four and no screen deletes.
- * The main suite's server is fully seeded, so this spec would fail there,
- * which is why the `admin` project's testMatch does not name it.
+ * The main suite's server is fully seeded, so this spec would fail there, which
+ * is why the `admin` project's testMatch does not name it.
  *
- * What is asserted is the shape of the promise, not the prose: each screen
- * answers its own empty list with a sentence instead of a blank, and still
- * offers its Add link — an empty database is the one place a first row could
- * be needed.
+ * Each screen is held to a phrase of its own rather than to a shared one. The
+ * point of the ticket is that an empty Policies screen does not read like an
+ * empty People screen, and one sentence asserted on all four would pass a
+ * change that made them identical again.
  */
 const SCREENS = [
-  { path: '/admin/people', testId: 'no-people', add: 'Add a person' },
-  { path: '/admin/courses', testId: 'no-courses', add: 'Add a course' },
+  {
+    path: '/admin/people',
+    testId: 'no-people',
+    add: 'Add a person',
+    says: 'The staff page and the name printed on every class are read from this list',
+  },
+  {
+    path: '/admin/courses',
+    testId: 'no-courses',
+    add: 'Add a course',
+    says: 'The first class added fills all of them at once.',
+  },
   {
     path: '/admin/announcements',
     testId: 'no-announcements',
     add: 'Post an announcement',
+    says: 'goes to the top of the news page the moment it is saved',
   },
-  { path: '/admin/policies', testId: 'no-policies', add: 'Add a policy' },
+  {
+    path: '/admin/policies',
+    testId: 'no-policies',
+    add: 'Add a policy',
+    says: 'the policies page has nothing for a family to read or sign',
+  },
 ] as const;
-
-/** The same bar the seeded admin screens are held to (`admin.spec.ts`). */
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
 for (const screen of SCREENS) {
   test(`${screen.path} says what an empty list means`, async ({ page }) => {
@@ -37,7 +51,7 @@ for (const screen of SCREENS) {
 
     const message = page.getByTestId(screen.testId);
     await expect(message).toBeVisible();
-    await expect(message).toContainText('has not been set up yet');
+    await expect(message).toContainText(screen.says);
 
     // No hollow list alongside the sentence, and still a way to add.
     await expect(page.getByRole('list')).toHaveCount(0);
@@ -47,7 +61,7 @@ for (const screen of SCREENS) {
   test(`${screen.path} has zero axe violations when it is empty`, async ({ page }) => {
     await signIn(page, screen.path);
 
-    const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
 
     expect(violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([]);
   });

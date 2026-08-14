@@ -41,9 +41,9 @@ const people = await listPeopleForAdmin(db);
   {
     people.length === 0 ? (
       <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-people">
-        Nobody is listed. People are put here when the site is installed and nothing on this screen
-        can be deleted, so an empty list means this database has not been set up yet — a job for
-        whoever installed the site, not a sign anyone has been removed.
+        Nobody is listed yet. The staff page and the name printed on every class are read from this
+        list, so both are waiting on it. Nobody has been removed — there is no delete here — so an
+        empty list means the school's people have not been entered.
       </p>
     ) : (
       <ul class="mt-8 flex flex-col gap-6">

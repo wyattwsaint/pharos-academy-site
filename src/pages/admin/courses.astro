@@ -48,9 +48,9 @@ const settings = await getMoneySettings(db);
   {
     courses.length === 0 ? (
       <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-courses">
-        No classes are listed. The catalog is put here when the site is installed and nothing on
-        this screen can be deleted, so an empty list means this database has not been set up yet —
-        and until it is, the public class pages have nothing to print either.
+        No classes yet. By age, by day, the full descriptions and each class's own page are all
+        drawn from this one list, so while it is empty a parent finds nothing on any of the four.
+        The first class added fills all of them at once.
       </p>
     ) : (
       <ul class="mt-8 flex flex-col gap-6">

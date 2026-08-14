@@ -56,9 +56,9 @@ const awaiting = policies.filter((policy) => policy.version === null).length;
   {
     policies.length === 0 ? (
       <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-policies">
-        No policies are listed. Policies are never deleted and their addresses never change, so an
-        empty list means this database has not been set up yet — no document a family was ever sent
-        a link to has gone anywhere.
+        No policies yet, so the policies page has nothing for a family to read or sign. This list
+        only ever grows: a policy keeps the web address it is created with, and nothing here is
+        deleted — so no link anybody was ever sent has stopped working.
       </p>
     ) : (
       <ul class="mt-8 flex flex-col gap-6">

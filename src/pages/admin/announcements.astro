@@ -46,9 +46,10 @@ const announcements = await listAnnouncements(db);
   {
     announcements.length === 0 ? (
       <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-announcements">
-        Nothing is listed. Announcements are never deleted — the news page keeps the record — so an
-        empty list means this database has not been set up yet, not that the school has gone quiet.
-        The first announcement posted here appears at the top of the news page.
+        Nothing has been announced yet. The first announcement posted here goes to the top of the
+        news page the moment it is saved, and stays there. Nothing has been taken down — an
+        announcement is never deleted — so an empty list is a school that has not said anything
+        here yet.
       </p>
     ) : (
       <ul class="mt-8 flex flex-col gap-6">
