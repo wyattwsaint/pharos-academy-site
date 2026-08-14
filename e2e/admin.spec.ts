@@ -11,6 +11,7 @@ import {
   FAITH_QUESTIONS,
   faithKey,
 } from '../src/lib/application/application.js';
+import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
 import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
@@ -1127,6 +1128,33 @@ test.describe('applications', () => {
     await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Enrolled');
     await expect(rowFor(page, family).getByTestId('application-payment')).toContainText(
       'Check received',
+    );
+  });
+
+  /**
+   * The match the office makes by hand (#218).
+   *
+   * Vanco sends the site nothing (ADR-0013), so a payment is joined to an
+   * application by somebody reading the code off a giving-page note and finding
+   * it here. That only works if the code the family was shown is the code on
+   * this screen — which is what this walks, family screen to admin row.
+   */
+  test('shows the office the same short code the family was given', async ({ page }) => {
+    const family = 'Suite Reference';
+    await apply(page, {
+      name: family,
+      email: 'suite-reference@example.com',
+      child: 'Reference Child',
+      offering: 'algebra-1:year',
+    });
+
+    const told = await page.locator('[data-outcome="received"]').innerText();
+    const reference = told.match(new RegExp(REFERENCE_SHAPE))?.[0];
+    expect(reference).toBeDefined();
+
+    await signIn(page, '/admin/applications');
+    await expect(rowFor(page, family).getByTestId('application-reference')).toContainText(
+      reference!,
     );
   });
 

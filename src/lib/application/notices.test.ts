@@ -12,6 +12,7 @@ import {
   refusedSubmissionNotice,
   type ApplicationSubmission,
 } from './notices.js';
+import { REFERENCE_PATTERN, applicationReference } from './reference.js';
 
 /**
  * What leaves the site when an application arrives (#32 AC 4, 5, 6).
@@ -25,6 +26,9 @@ import {
 const OFFERINGS = offeringsOf(CATALOGUE);
 const POST_TO = '9 Sherwood Drive\nEnola, PA 17025';
 const PAY_AT = 'https://secure.myvanco.com/YNA9/campaign/C-12345';
+/** A row, and what it calls itself — the emails carry the code, never the uuid (#218). */
+const ROW_ID = '0f8b3a41-6c2d-4f7e-9a10-b5c6d7e8f901';
+const REFERENCE = applicationReference(ROW_ID);
 
 function fields(over: Partial<ApplicationFields> = {}): ApplicationFields {
   return {
@@ -57,7 +61,7 @@ function submission(over: Partial<ApplicationSubmission> = {}): ApplicationSubmi
       OFFERINGS,
     ),
     flagged: false,
-    reference: 'ref-1',
+    reference: REFERENCE,
     ...over,
   };
 }
@@ -134,6 +138,31 @@ describe('the school’s copy', () => {
 
     expect(mail.text).toContain('THE CLASS TALLY');
     expect(mail.text).toContain('Algebra 1: 1');
+  });
+
+  /**
+   * The office matches a Vanco payment to an application by hand (ADR-0013), so
+   * the code in this email is the one the family typed into the giving page —
+   * which it can only be if it is also the code their own email carries (#218).
+   */
+  it('names the application by the code the family was given, not by its uuid', async () => {
+    const mailer = recorder();
+    await deliverApplication(submission(), {
+      sender: mailer.send,
+      to: ['jill@example.com'],
+      from: 'site@example.com',
+      postTo: POST_TO,
+      payOnlineAt: '',
+      schoolEmail: 'school@example.com',
+      site: 'https://pharosacademy.net',
+    });
+
+    const toSchool = mailer.sent.find((mail) => mail.to === 'jill@example.com')!;
+    const toFamily = mailer.sent.find((mail) => mail.to === 'okonkwo@example.com')!;
+    expect(REFERENCE).toMatch(REFERENCE_PATTERN);
+    expect(toSchool.text).toContain(`Reference:  ${REFERENCE}`);
+    expect(toFamily.text).toContain(`Your reference is ${REFERENCE}.`);
+    for (const mail of [toSchool, toFamily]) expect(mail.text).not.toContain(ROW_ID);
   });
 
   it('says loudly when the email is the only copy that exists', () => {

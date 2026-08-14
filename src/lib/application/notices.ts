@@ -47,7 +47,11 @@ export type ApplicationSubmission = {
   tally: readonly TallyEntry[];
   /** Whether anybody objected. Never a rejection — it starts a conversation. */
   flagged: boolean;
-  /** The row's id, or null when the write failed and this is a refusal. */
+  /**
+   * The row's reference — `applicationReference(id)`, never the raw uuid and
+   * never a format built here (#218). Null when the write failed and this is a
+   * refusal: there is no row, so there is nothing to call it by.
+   */
   reference: string | null;
 };
 
@@ -235,12 +239,14 @@ export function applicationConfirmation(
   options: { from: string; postTo: string; payOnlineAt: string },
 ): Mail {
   const { values, cost, reference } = submission;
-  const lines = [
-    `Thank you — we have your application, ${values.familyName}.`,
-    '',
-    'What you chose:',
-    ...chosen(cost),
-  ];
+  const lines = [`Thank you — we have your application, ${values.familyName}.`];
+
+  // Near the top rather than in a footer, because the instruction below asks
+  // the family to write it somewhere — an instruction that names a code they
+  // have not read yet sends them hunting for it (#218).
+  if (reference) lines.push('', `Your reference is ${reference}.`);
+
+  lines.push('', 'What you chose:', ...chosen(cost));
 
   const online = options.payOnlineAt !== '';
   // A family who has chosen no classes yet owes no deposits, and "post a check
@@ -281,7 +287,11 @@ export function applicationConfirmation(
     lines.push(
       '',
       'A payment through the giving page does not reach us attached to this application, so we ' +
-        'match the two up ourselves — there is nothing further for you to send us about it.',
+        'match the two up ourselves' +
+        (reference
+          ? ` — please put your reference, ${reference}, in the note when you pay, and there is ` +
+            'nothing further for you to send us about it.'
+          : ' — there is nothing further for you to send us about it.'),
     );
   } else {
     lines.push(
@@ -301,8 +311,6 @@ export function applicationConfirmation(
         'application up — we will be in touch about it.',
     );
   }
-
-  if (reference) lines.push('', `Your reference is ${reference}.`);
 
   return {
     to: values.email,

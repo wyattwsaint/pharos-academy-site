@@ -37,6 +37,7 @@ import {
   title as offeringTitle,
 } from '../../lib/application/offerings.js';
 import { deliverApplication } from '../../lib/application/notices.js';
+import { applicationReference } from '../../lib/application/reference.js';
 import {
   createApplication,
   listApplications,
@@ -195,6 +196,19 @@ const childRows = (posted: FormDataEntryValue | null, filled: number): number =>
 let values: ApplicationFields;
 let errors: ApplicationErrors = {};
 let sentId: string | null = null;
+/**
+ * The short code this application calls itself by, everywhere (#218).
+ *
+ * Derived once, here, and handed to every surface: the notice at the top of
+ * this page, the confirmation below it, and both emails. Not because deriving
+ * it twice would give a different answer — `applicationReference` is pure — but
+ * because a family reading their screen and the office reading their email are
+ * looking at one string, and there is one line that decides what it is.
+ *
+ * Null when the write failed. A refused submission has no row, so it has no
+ * reference, and no surface may invent one.
+ */
+let reference: string | null = null;
 let storeFailed = false;
 /**
  * Whether the family's own confirmation actually left (#136).
@@ -253,6 +267,8 @@ if (Astro.request.method === 'POST') {
       storeFailed = true;
     }
 
+    reference = sentId ? applicationReference(sentId) : null;
+
     /*
      * Telling the school (#32 AC 6), and telling the family.
      *
@@ -276,7 +292,7 @@ if (Astro.request.method === 'POST') {
       // never the raw number of rows.
       tally: classTally(await applicationsForTally(), offerings),
       flagged: parsed.flagged,
-      reference: sentId,
+      reference,
     };
 
     // Spelled out rather than handed the whole of `import.meta.env` — see `MailEnv`.
@@ -465,7 +481,7 @@ const description =
       {
         sentId && (
           <p class="notice mt-7" data-outcome="received" role="status">
-            Your application is with us. Reference {sentId}.
+            Your application is with us. Reference <strong>{reference}</strong>.
           </p>
         )
       }
@@ -553,6 +569,18 @@ const description =
                 <a class="btn" href={details.payOnlineUrl} rel="external" data-pay-online>
                   Pay online
                 </a>
+              </p>
+              {/*
+                What the reference is for (#218). A payment through the giving
+                page reaches the school detached from this application — Vanco
+                tells the site nothing (ADR-0013) — so the note is the only
+                place the two can be joined, and the family is the only one who
+                can write it there. The same sentence is in their email.
+              */}
+              <p class="mt-4" data-reference-note>
+                Please put your reference — <strong>{reference}</strong> — in the note when you
+                pay. A payment does not reach us attached to this application, so it is how we
+                match the two up.
               </p>
               {depositsDue && (
                 <Fragment>

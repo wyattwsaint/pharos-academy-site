@@ -20,6 +20,7 @@ import {
   paymentStatusNow,
 } from '../../lib/application/lifecycle.js';
 import { offeringsOf, title as offeringTitle } from '../../lib/application/offerings.js';
+import { applicationReference } from '../../lib/application/reference.js';
 import { listApplications, type ApplicationRecord } from '../../lib/application/store.js';
 import { classTally, tallyLines } from '../../lib/application/tally.js';
 import type { Banner } from '../../lib/admin/banner.js';
@@ -158,6 +159,19 @@ const resubmittedIds = new Set(
               <h2 class="text-xl font-semibold text-navy" data-testid="application-family">
                 {application.familyName}
               </h2>
+              {/*
+                What this application calls itself (#218). It is the line the
+                office reads a payment note against — Vanco tells the site
+                nothing (ADR-0013), so this code is the whole of what joins the
+                two — and it is the same code on the family's screen and in both
+                emails, because all four ask the same function for it.
+              */}
+              <p class="mt-1 text-sm" data-testid="application-reference">
+                Reference{' '}
+                <span class="font-semibold tracking-wide">
+                  {applicationReference(application.id)}
+                </span>
+              </p>
               <p class="mt-1">
                 <a
                   href={`mailto:${application.email}`}
