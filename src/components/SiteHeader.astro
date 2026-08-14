@@ -15,7 +15,7 @@ interface Props {
    */
   overHero?: boolean;
   /**
-   * The announcement bar to hang beneath the header row, or null for none.
+   * The announcement bar to cap the header above its row, or null for none.
    *
    * Only the home page passes one (#15). It is a prop rather than a read of the
    * school details row here for the same reason `BaseLayout` takes `details` as
@@ -30,6 +30,7 @@ const { overHero = false, banner = null } = Astro.props;
 ---
 
 <header class:list={['site-header', { stuck: !overHero }]} data-site-header>
+  {banner && <AnnouncementBar banner={banner} />}
   <div class="wide">
     <a class="site-brand" href="/" data-header-brand>
       <img src="/mark.svg" alt="" width="25" height="28" />
@@ -73,7 +74,6 @@ const { overHero = false, banner = null } = Astro.props;
       </div>
     </nav-menu>
   </div>
-  {banner && <AnnouncementBar banner={banner} />}
 </header>
 
 <script>
