@@ -15,11 +15,28 @@ import { INTERESTS } from '../src/lib/volunteer/volunteer.js';
  * failure that loses what somebody typed, and above all a form that prints a
  * thank-you it cannot back up.
  *
- * The suite runs with no mail credentials, so a valid submission here takes the
- * **no mailer** path. That is exactly the case worth asserting: the page must
- * say it did not send and hand back an address, and it must never say thank
- * you. A test environment that silently mails would be the worse setup.
+ * The local suite runs with no mail credentials, so a valid submission there
+ * takes the **no mailer** path. That is exactly the case worth asserting: the
+ * page must say it did not send and hand back an address, and it must never say
+ * thank you. A test environment that silently mails would be the worse setup.
  */
+
+/**
+ * Whether this run is allowed to submit anything — the rule
+ * `inquiry.spec.ts` and `application.spec.ts` already carry, and the one this
+ * file was missing.
+ *
+ * `PLAYWRIGHT_BASE_URL` points the suite at a real deployment, and
+ * `deployed-accessibility.yml` sets it for **production** as well as for
+ * previews. A deployment has a mailer, so a valid submission there is a real
+ * volunteer email to the school about somebody who does not exist — and the
+ * no-mailer sentence this file asserts is one the deployment cannot produce, so
+ * the test was failing every merge for saying the truth about the wrong server.
+ *
+ * A *refused* submission mails nothing and stores nothing, so it keeps running
+ * against the deployment, where it is worth far more.
+ */
+const MAY_SUBMIT = !process.env.PLAYWRIGHT_BASE_URL;
 
 test.describe('the support page', () => {
   test('answers 200 and carries the school’s Give link', async ({ page }) => {
@@ -54,6 +71,7 @@ test.describe('the support page', () => {
   });
 
   test('never says a submission was sent when no mailer is configured', async ({ page }) => {
+    test.skip(!MAY_SUBMIT, 'a real send emails the school about a volunteer who does not exist');
     await page.goto(SUPPORT_PATH);
 
     await page.fill('#volunteer-name', 'Ruth Marsh');
