@@ -46,9 +46,9 @@ export const SUBSCRIPTION_CAVEAT =
   'changes at short notice the school will still text you. What this calendar is for is the ' +
   'shape of the year.';
 
-/** "Fall semester" / "Spring semester", as the school's own sheets head them. */
+/** "Fall Semester" / "Spring Semester", as the school's own sheets head them. */
 export function semesterHeading(semester: 'fall' | 'spring'): string {
-  return semester === 'fall' ? 'Fall semester' : 'Spring semester';
+  return semester === 'fall' ? 'Fall Semester' : 'Spring Semester';
 }
 
 /**

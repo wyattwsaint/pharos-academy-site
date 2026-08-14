@@ -126,7 +126,7 @@ if (Astro.request.method === 'POST') {
 const action = announcement
   ? `/admin/announcements/${announcement.slug}`
   : '/admin/announcements/new';
-const heading = announcement ? announcement.headline : 'Post an announcement';
+const heading = announcement ? announcement.headline : 'Post an Announcement';
 const stamp = announcement ? formatStamp(announcement.lastEditedBy, announcement.lastEditedAt) : null;
 const attached = announcement?.attachmentFilename ?? null;
 const control =

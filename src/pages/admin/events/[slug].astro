@@ -104,7 +104,7 @@ if (Astro.request.method === 'POST') {
  * throwing it away in a redirect.
  */
 const action = event ? `/admin/events/${event.slug}` : '/admin/events/new';
-const heading = event ? event.title : 'Add an event';
+const heading = event ? event.title : 'Add an Event';
 
 const FIELDS: {
   name: keyof EventFields;

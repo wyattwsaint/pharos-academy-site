@@ -79,11 +79,11 @@ export const APPLICATION_PATH = '/admissions/apply';
  * CSS decision rather than a rebuild.
  */
 export const APPLICATION_STAGES = [
-  { id: 'faith', title: 'What we believe' },
-  { id: 'classes', title: 'Choosing classes' },
-  { id: 'agreements', title: 'What you agree to' },
-  { id: 'payment', title: 'What to post' },
-  { id: 'confirmation', title: 'Sending it' },
+  { id: 'faith', title: 'What We Believe' },
+  { id: 'classes', title: 'Choosing Classes' },
+  { id: 'agreements', title: 'What You Agree To' },
+  { id: 'payment', title: 'What to Post' },
+  { id: 'confirmation', title: 'Sending It' },
 ] as const;
 
 /*

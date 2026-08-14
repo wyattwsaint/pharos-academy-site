@@ -120,6 +120,12 @@ the public pages and in the admin alike, because one rule for both is the point.
 **What it does not:** form labels, buttons, nav links and table column headers.
 Those are UI chrome, and title case there looks dated.
 
+Where one string is both — the course form's `LABELS` in
+`src/lib/admin/courses.ts` names every field once and that name is the
+`<label>`, the `<legend>` and the text of the error — the **label** rule wins.
+"Meets on" and "Runs as" stay lowercase, because casing the legend would case
+the label and the error sentence with it.
+
 **Two headings are exempt**, and are deliberate:
 
 - "Mornings here. Afternoons yours." (`WeekSection.astro`) — the two-sentence

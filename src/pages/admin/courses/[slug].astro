@@ -142,7 +142,7 @@ if (Astro.request.method === 'POST') {
  * second Save updates the row just written rather than inserting it again.
  */
 const action = course ? `/admin/courses/${course.slug}` : '/admin/courses/new';
-const heading = course ? course.title : 'Add a course';
+const heading = course ? course.title : 'Add a Course';
 const stamp = course ? formatStamp(course.lastEditedBy, course.lastEditedAt) : null;
 const control =
   'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';

@@ -261,7 +261,6 @@ export function punctuationFindings(source: string, kind: 'astro' | 'ts' | 'text
   return findings.sort((a, b) => a.line - b.line || a.issue.localeCompare(b.issue));
 }
 
-
 /**
  * Links, spaced in a sentence the way any other word is (#171).
  *
