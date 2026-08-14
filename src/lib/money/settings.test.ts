@@ -54,9 +54,8 @@ describe('what a family is told it owes', () => {
     expect(owed.deposits).toBe(300);
     expect(owed.creditedAgainstTuition).toBe(300);
     // $1,260 tuition less $300 already posted.
-    expect(owed.dueToInstructors).toBe(960);
-    // The registration fee and the deposits, by cheque.
-    expect(owed.dueNow).toBe(325);
+    expect(owed.tuitionDue).toBe(960);
+    // Registration, deposits and the tuition that is left — all of it the school's.
     expect(owed.total).toBe(1285);
   });
 
@@ -68,7 +67,7 @@ describe('what a family is told it owes', () => {
     });
 
     expect(onTop.creditedAgainstTuition).toBe(0);
-    expect(onTop.dueToInstructors).toBe(1260);
+    expect(onTop.tuitionDue).toBe(1260);
     // The $300 the flag is worth, which is the whole reason it is a setting.
     expect(onTop.total - credited.total).toBe(300);
   });
@@ -77,7 +76,7 @@ describe('what a family is told it owes', () => {
     const block = CATALOGUE.find((course) => course.enrolment === 'block')!;
     const owed = amountOwed([{ course: block, unit: 'flat' }], settings());
 
-    expect(owed.dueToInstructors).toBe(0);
+    expect(owed.tuitionDue).toBe(0);
     expect(owed.creditedAgainstTuition).toBeLessThanOrEqual(owed.tuition);
   });
 

@@ -155,12 +155,18 @@ exactly one thing — the next submission read `paid online` instead of
 `awaiting cheque`. No other state, screen or flag moved. That is what makes it a
 slot rather than a hole.
 
-Since #111 the slot is **partly filled**, one amount of the three. The
-**registration fee** is paid online, through the church's Vanco page — held as
-`registration_url` on the school details row, beside the giving URL, so the
-office moves it without a deploy, and empty there means the Apply page offers no
-online payment at all. The **per-class deposit** is still a check to the school,
-**tuition** still a check to the instructor.
+Since #111 the slot is **partly filled**, and since #187 it is filled for two
+amounts of the three. The **registration fee** and the **tuition** are paid
+online together, in one payment, upfront, through the church's Vanco page — one
+campaign, held as `pay_online_url` on the school details row beside the giving
+URL, so the office moves it without a deploy, and empty there means the Apply
+page offers no online payment at all. The **per-class deposit** is the
+exception: still a check to the school.
+
+All three are the school's money. Tuition does **not** go to the instructors —
+see [ADR-0013](docs/adr/0013-the-school-holds-the-tuition.md), which reverses
+what this section said until #187 and explains why the field names had to move
+with the copy.
 
 What did *not* move is the application. Vanco sends no confirmation back, so a
 `paid online` flag set from a family clicking a link would be a claim nobody

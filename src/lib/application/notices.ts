@@ -68,7 +68,7 @@ export type ApplicationSubmission = {
  */
 export function applicationNotification(
   submission: ApplicationSubmission,
-  options: { to: string; from: string; payRegistrationAt: string },
+  options: { to: string; from: string; payOnlineAt: string },
 ): Mail {
   const { values, cost, settings, flagged, reference } = submission;
   const lines: string[] = [];
@@ -88,27 +88,27 @@ export function applicationNotification(
   lines.push('', 'WHO IS APPLYING, AND FOR WHAT', ...chosen(cost, settings));
 
   // The envelope line is the one the office acts on, so it names the amount an
-  // envelope will actually contain (#149). A registration paid online arrives
-  // through Vanco unattached to this application and the office matches the two
-  // up by hand — which it cannot do if this email calls the whole of `dueNow` a
-  // check. "Offered", not "paid": Vanco tells the site nothing, and a line
-  // claiming a payment nobody checked is worse than no line.
-  const online = options.payRegistrationAt !== '';
-  const posting = online ? cost.total.deposits : cost.total.dueNow;
+  // envelope will actually contain (#149). Money paid online arrives through
+  // Vanco unattached to this application and the office matches the two up by
+  // hand — which it cannot do if this email calls the whole of it a check.
+  // "Offered", not "paid": Vanco tells the site nothing, and a line claiming a
+  // payment nobody checked is worse than no line.
+  const online = options.payOnlineAt !== '';
+  const posting = online ? cost.total.deposits : cost.total.total;
   lines.push(
     '',
     'WHAT THEY OWE',
     `  Registration:           ${formatMoney(cost.total.registration)}`,
     `  Deposits:               ${formatMoney(cost.total.deposits)}`,
+    `  Tuition:                ${formatMoney(cost.total.tuitionDue)}`,
     // No envelope to wait for is a fact the office acts on too, and printing
     // "$0.00" beside "check they are posting" is a line that reads as one.
     !online
-      ? `  Check they are posting: ${formatMoney(posting)}`
+      ? `  Check they are posting: ${formatMoney(posting)} — all of it`
       : posting === 0
-        ? '  Check they are posting: nothing — the registration was offered online'
+        ? '  Check they are posting: nothing — the registration and tuition were offered online'
         : `  Check they are posting: ${formatMoney(posting)} — the deposits only, the registration ` +
-          'was offered online',
-    `  Tuition to instructors: ${formatMoney(cost.total.dueToInstructors)}`,
+          'and tuition were offered online',
     '',
     'THE STATEMENT OF FAITH',
     ...faithRecord(values),
@@ -207,9 +207,9 @@ function faithRecord(values: ApplicationFields): string[] {
  * pay and how, and that a place is held when the check arrives — because
  * the screen is closed within the minute and this is the copy they keep.
  *
- * That "how" is the page's own question asked once more (#149): the registration
- * fee has an online address or it has not, and the answer has to be the same one
- * the family was just shown. A page offering a link beside an email demanding a
+ * That "how" is the page's own question asked once more (#149): the school has
+ * an online address or it has not, and the answer has to be the same one the
+ * family was just shown. A page offering a link beside an email demanding a
  * check for the same money is the school contradicting itself in writing, and
  * the email is the half that outlives the screen.
  *
@@ -219,7 +219,7 @@ function faithRecord(values: ApplicationFields): string[] {
  */
 export function applicationConfirmation(
   submission: ApplicationSubmission,
-  options: { from: string; postTo: string; payRegistrationAt: string },
+  options: { from: string; postTo: string; payOnlineAt: string },
 ): Mail {
   const { values, cost, reference } = submission;
   const lines = [
@@ -229,13 +229,13 @@ export function applicationConfirmation(
     ...chosen(cost),
   ];
 
-  const online = options.payRegistrationAt !== '';
+  const online = options.payOnlineAt !== '';
   // A family who has chosen no classes yet owes no deposits, and "post a check
   // for $0.00" is an instruction to mail an empty envelope — so the address is
   // not printed at all rather than printed under a payment they do not owe.
-  // Reachable only where the registration is online: a check covers both, and
-  // there is always a registration fee to post one for.
-  const posting = online ? cost.total.deposits : cost.total.dueNow;
+  // Reachable only where the payment link is set: without one a check covers
+  // everything, and there is always a registration fee to post one for.
+  const posting = online ? cost.total.deposits : cost.total.total;
 
   /** What to post, and where — the one instruction, written once. */
   const check = (asking: string): string[] => [
@@ -250,10 +250,11 @@ export function applicationConfirmation(
   if (online) {
     lines.push(
       '',
-      `The registration fee — ${formatMoney(cost.total.registration)} — can be paid online, ` +
-        'through the church’s giving page:',
+      `The registration — ${formatMoney(cost.total.registration)} — and the tuition — ` +
+        `${formatMoney(cost.total.tuitionDue)} at today’s rates — are paid online, in one ` +
+        'payment, through the church’s giving page:',
       '',
-      `  ${options.payRegistrationAt}`,
+      `  ${options.payOnlineAt}`,
     );
 
     if (posting > 0) {
@@ -273,16 +274,12 @@ export function applicationConfirmation(
     lines.push(
       ...check(
         `Please post a check for ${formatMoney(posting)} — ${formatMoney(cost.total.registration)} ` +
-          `in registration and ${formatMoney(cost.total.deposits)} in deposits — made out to ${SCHOOL_NAME}, to:`,
+          `in registration, ${formatMoney(cost.total.deposits)} in deposits and ` +
+          `${formatMoney(cost.total.tuitionDue)} in tuition at today’s rates — made out to ` +
+          `${SCHOOL_NAME}, to:`,
       ),
     );
   }
-
-  lines.push(
-    '',
-    `Tuition is paid to your instructors rather than to the school: ${formatMoney(cost.total.dueToInstructors)} ` +
-      'across the year at today’s rates.',
-  );
 
   if (submission.flagged) {
     lines.push(
@@ -376,12 +373,13 @@ export async function deliverApplication(
     /** Where a check is posted — the school's own address, from its details. */
     postTo: string;
     /**
-     * Where the registration fee is paid online, or `''` when nowhere (#149).
+     * Where registration and tuition are paid online, or `''` when nowhere
+     * (#149, #187).
      *
      * The school's own setting, the same row the apply page reads, so the two
      * cannot drift and the school can move the link without a deploy.
      */
-    payRegistrationAt: string;
+    payOnlineAt: string;
     /** The address a family is given when nothing worked. */
     schoolEmail: string;
     /** The absolute origin an emailed link is built against. */
@@ -394,7 +392,7 @@ export async function deliverApplication(
       applicationNotification(submission, {
         to: address,
         from: options.from,
-        payRegistrationAt: options.payRegistrationAt,
+        payOnlineAt: options.payOnlineAt,
       }),
     ),
   );
@@ -409,7 +407,7 @@ export async function deliverApplication(
     : applicationConfirmation(submission, {
         from: options.from,
         postTo: options.postTo,
-        payRegistrationAt: options.payRegistrationAt,
+        payOnlineAt: options.payOnlineAt,
       });
 
   const family = await sendAll(options.sender, [toFamily]);

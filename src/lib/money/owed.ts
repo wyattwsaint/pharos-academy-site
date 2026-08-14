@@ -3,7 +3,7 @@
  *
  * The deposit-credited flag lives here rather than in a template because it is
  * arithmetic, not phrasing: on a three-class application it is the difference
- * between telling a family they owe their instructors $1,300 and $900, and a
+ * between telling a family they owe $1,300 in tuition and $900, and a
  * difference of $400 is not a wording choice.
  *
  * Everything is computed from a `MoneySettings` handed in. There is no default
@@ -31,26 +31,25 @@ export type AmountOwed = {
   registration: number;
   /** The deposits — one per class, posted by cheque, holding the seats. */
   deposits: number;
-  /** What the instructors are owed before any deposit is taken off. */
+  /** What the classes cost before any deposit is taken off. */
   tuition: number;
   /** What the deposits take off the tuition. Zero when they are not credited. */
   creditedAgainstTuition: number;
-  /** Registration plus deposits: the cheque the family posts now. */
-  dueNow: number;
-  /** Tuition less any credit: what the family still owes its instructors. */
-  dueToInstructors: number;
+  /** Tuition less any credit: the tuition the family actually owes. */
+  tuitionDue: number;
   /** Everything the family pays across the year, counted once. */
   total: number;
 };
 
 /**
- * The whole of what an application costs, in the four figures a family asks for.
+ * The whole of what an application costs, in the figures a family asks for.
  *
- * `dueNow` and `dueToInstructors` are kept apart because they are paid to
- * different people — the school takes the registration and the deposits by
- * cheque, and tuition stays instructor-to-parent as the handbook specifies
- * (#18 §12). `total` is the sum of those two and never double-counts a credited
- * deposit, which is the arithmetic the flag actually changes.
+ * All of it is owed to the school (ADR-0013) — the three amounts differ in
+ * *how* they are paid, not in who holds them: registration and tuition through
+ * Vanco in one payment, the deposits by cheque. There is deliberately no
+ * "pay this now" figure spanning the two channels; a surface shows each amount
+ * beside the way it is paid. `total` never double-counts a credited deposit,
+ * which is the arithmetic the flag actually changes.
  */
 export function amountOwed(
   selections: readonly Selection[],
@@ -60,23 +59,21 @@ export function amountOwed(
   const deposits = settings.classDeposit * selections.length;
 
   // Never more than the tuition. A family selecting a $90 block does not end up
-  // owing its instructor minus ten dollars.
+  // owing minus ten dollars in tuition.
   const creditedAgainstTuition = settings.depositCreditedAgainstTuition
     ? Math.min(deposits, tuition)
     : 0;
 
   const registration = selections.length > 0 ? settings.registrationFee : 0;
-  const dueNow = registration + deposits;
-  const dueToInstructors = tuition - creditedAgainstTuition;
+  const tuitionDue = tuition - creditedAgainstTuition;
 
   return {
     registration,
     deposits,
     tuition,
     creditedAgainstTuition,
-    dueNow,
-    dueToInstructors,
-    total: dueNow + dueToInstructors,
+    tuitionDue,
+    total: registration + deposits + tuitionDue,
   };
 }
 

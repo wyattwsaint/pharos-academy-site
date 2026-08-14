@@ -3,6 +3,14 @@
 Captured **2026-07-28** with a headless Chrome pass (Playwright), which the Wix rendering
 requires; plain HTTP fetching returns partial content. Resolves [#4](https://github.com/wyattwsaint/pharos-academy-site/issues/4).
 
+This is a **record of what the old site and the school's handbooks said** on the
+capture date, not a statement of what is true now. Where the two disagree, the
+site is the current answer. One known disagreement: the policy handbook
+instructs families to pay tuition directly to their instructors, and since #187
+tuition is paid to the school — see
+[ADR-0013](../adr/0013-the-school-holds-the-tuition.md). Nothing here is edited
+to match; do not re-derive the old model from it.
+
 ## What is here
 
 | Path | Contents |

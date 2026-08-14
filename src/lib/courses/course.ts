@@ -115,7 +115,7 @@ export type Course = {
   optionalText: string | null;
   /** What the parent buys and brings, as distinct from a fee paid to the school. */
   materialsToBuy: string | null;
-  /** Dollars, paid to the instructor. */
+  /** Dollars, paid to the school (ADR-0013). */
   materialsFee: number | null;
   /** "per year", when the school qualifies the fee. */
   materialsFeeNote: string | null;

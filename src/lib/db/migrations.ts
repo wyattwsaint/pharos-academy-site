@@ -808,6 +808,46 @@ export const MIGRATIONS: readonly Migration[] = [
     id: '0021-google-supersedes-the-seeded-fundraiser',
     statements: [deleteUneditedSeededEvent(SEEDED_EVENTS, '2026-08-19-chick-fil-a-dine-to-donate')],
   },
+  {
+    /*
+     * The online payment link covers tuition too (#187, ADR-0013).
+     *
+     * A rename, not a new column: the address in it is already the right
+     * address — the church's Vanco page — and only what it is understood to
+     * cover has changed. Adding `pay_online_url` beside `registration_url`
+     * would leave the office with two boxes for one link and the site with a
+     * choice about which to believe.
+     *
+     * Renamed rather than left alone because the column name is the claim.
+     * `registration_url` says the link is the registration fee's and nothing
+     * else's, which is exactly the sentence #187 exists to stop the site
+     * repeating; a name that asserts the old flow puts it back on the page the
+     * next time somebody reads the schema for the truth.
+     *
+     * Guarded on both sides so a re-run is a no-op and a fresh database — which
+     * reaches this having just created `registration_url` in 0017 — takes the
+     * same route the live one does.
+     */
+    id: '0022-one-online-payment-covers-tuition',
+    statements: [
+      `do $$
+       begin
+         if exists (
+              select 1 from information_schema.columns
+              where table_name = 'school_details' and column_name = 'registration_url'
+            ) and not exists (
+              select 1 from information_schema.columns
+              where table_name = 'school_details' and column_name = 'pay_online_url'
+            )
+         then
+           alter table school_details rename column registration_url to pay_online_url;
+         end if;
+       end $$`,
+      // Belt and braces, for a database that somehow has neither column: the
+      // page reads this row on every render and a missing column is a 500.
+      `alter table school_details add column if not exists pay_online_url text not null default ''`,
+    ],
+  },
 ];
 
 /**
