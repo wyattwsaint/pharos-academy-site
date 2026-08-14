@@ -95,12 +95,16 @@ test.describe('the School Year screen', () => {
 
 test.describe('the Events screen', () => {
   /*
-   * A date this suite computes rather than types, because the calendar page now
-   * drops an event once its day has passed (#146): a literal 17 October 2026 in
-   * here is a test that stops proving anything on 18 October and reports it as a
-   * regression. A hundred days out is always ahead, and the instant its 6.30pm
-   * falls on is asked of the same function the feed uses, so the assertion holds
-   * either side of a daylight-saving changeover.
+   * A date this suite computes rather than types, because what a one-off is
+   * still ahead *of* moves: a literal 17 October 2026 in here is a test that
+   * stops proving anything on 18 October and reports it as a regression. A
+   * hundred days out is always ahead, and the instant its 6.30pm falls on is
+   * asked of the same function the feed uses, so the assertion holds either side
+   * of a daylight-saving changeover.
+   *
+   * The page no longer filters — the grid draws the year, past one-offs included
+   * (#186) — but the structured data and the "still ahead" boundary do, so this
+   * stays ahead and the test below is the one that has already happened.
    */
   const heldOn = addDays(schoolToday(new Date()), 100);
 
@@ -115,9 +119,29 @@ test.describe('the Events screen', () => {
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
 
     await page.goto(CALENDAR_PATH);
-    await expect(page.locator('[data-section="calendar-events"]')).toContainText(
-      'Suite open house',
-    );
+    const cell = page.locator(`[data-section="calendar-months"] td:has(time[datetime="${heldOn}"])`);
+    await expect(cell).toContainText('Suite open house');
+
+    /*
+     * And its detail opens from a keyboard (#186 AC 4).
+     *
+     * Here rather than in `calendar.spec.ts` because this is the suite that can
+     * make a one-off: which of them the site holds is no longer knowable from
+     * the repository, and a test that skips itself on an empty calendar proves
+     * nothing on the day it matters.
+     */
+    const trigger = cell.getByRole('button', { name: 'Suite open house' });
+    const panel = page.locator(`#${await trigger.getAttribute('aria-controls')}`);
+    await expect(panel).toBeHidden();
+
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    // Revealed, not merely announced: the time and the place are what the cell
+    // itself has no room for, and an off-screen detail is not a disclosure.
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText('6.30pm');
+    await expect(panel).toContainText('The hall');
 
     // And in the feed, as a timed event rather than a whole day.
     const feed = await (await request.get(CALENDAR_FEED_PATH)).text();
@@ -128,5 +152,33 @@ test.describe('the Events screen', () => {
     await page.getByRole('button', { name: 'Take this off the calendar' }).click();
     await expect(page).toHaveURL(/\/admin\/events$/);
     await expect(page.locator('body')).not.toContainText('Suite open house');
+  });
+
+  /*
+   * The one-off that has been and gone, still on the grid (#186).
+   *
+   * This reverses #146 for the page and only for the page: in a list a finished
+   * fundraiser led, and in a grid the cell's own position says the date has
+   * passed. The structured data still drops it, which is asserted where the
+   * markup is read.
+   *
+   * Only this suite can prove it, because only this suite can make a one-off.
+   */
+  test('leaves a one-off that has been and gone on the grid', async ({ page }) => {
+    const gone = addDays(schoolToday(new Date()), -100);
+
+    await page.goto('/admin/events/new');
+    await page.getByLabel('Date').fill(gone);
+    await page.getByLabel('What it is').fill('Suite spring concert');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+
+    await page.goto(CALENDAR_PATH);
+    const cell = page.locator(`[data-section="calendar-months"] td:has(time[datetime="${gone}"])`);
+    await expect(cell).toContainText('Suite spring concert');
+
+    await page.goto(`/admin/events/${eventSlug(gone, 'Suite spring concert')}`);
+    await page.getByRole('button', { name: 'Take this off the calendar' }).click();
+    await expect(page).toHaveURL(/\/admin\/events$/);
   });
 });

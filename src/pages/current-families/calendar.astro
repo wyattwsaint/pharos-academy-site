@@ -10,7 +10,8 @@ import {
   semesterHeading,
   SUBSCRIPTION_CAVEAT,
 } from '../../lib/calendar/views.js';
-import { previewRows, SEMESTERS, type SchoolYear } from '../../lib/calendar/year.js';
+import { monthGrid, WEEKDAY_COLUMNS } from '../../lib/calendar/months.js';
+import { previewRows, schoolToday, SEMESTERS, type SchoolYear } from '../../lib/calendar/year.js';
 import { DAY_TRACKS } from '../../lib/courses/schedule.js';
 import { getDb } from '../../lib/db/client.js';
 import { SITE_URL } from '../../lib/site.js';
@@ -37,23 +38,20 @@ const db = await getDb();
 const details = await getSchoolDetails(db);
 const year = (await getSchoolYear(db)) as SchoolYear | undefined;
 /*
- * What is still ahead, not everything the school has ever held (#146).
- *
- * The feed below is unfiltered on purpose — a subscribed calendar is the record
- * of the year, and its client drops what is past on its own. This page is what
- * is *on*, and a fundraiser that has been and gone belongs on neither.
- *
- * The page is revalidated rather than rendered per request, so an event leaves
- * within the revalidation window rather than on the stroke of midnight. That is
- * the same trade every dated thing on this site makes, and the boundary
- * (`upcomingEvents`) is generous by a day at the end that matters.
- *
- * Both sources, one list (#153): what the school typed on the Events screen and
- * what it keeps in its own Google calendar, interleaved by date. A visitor is
- * not told which is which, because it is not a fact about the school's year —
+ * Both sources, one calendar (#153): what the school typed on the Events screen
+ * and what it keeps in its own Google calendar, interleaved by date. A visitor
+ * is not told which is which, because it is not a fact about the school's year —
  * it is a fact about where the school happens to keep its diary.
+ *
+ * **The grid draws all of them and the markup draws the ones still ahead.** The
+ * filter that used to run over the whole page (#146) was written for a list,
+ * where a fundraiser that has been and gone leads; in a grid the cell's position
+ * says the date has passed and a hole where October was says nothing at all.
+ * What is still ahead is a claim about the present, and that is what the
+ * structured data below and the search result it feeds are for.
  */
-const events = upcomingEvents(await listPublishedEvents(db), new Date());
+const published = await listPublishedEvents(db);
+const events = upcomingEvents(published, new Date());
 
 const description =
   'Every class date for the Pharos Academy school year, by day track, with the days the school ' +
@@ -69,9 +67,33 @@ const semesters = year
   : [];
 
 /*
- * The events, in structured data (#151) — the same rows the Events section
- * below prints, so the page and the markup cannot disagree about when something
+ * The same year again, as a calendar (#186).
+ *
+ * The sheet answers "every date my track meets", which is the question a family
+ * asks in August. This answers "what is happening in October", which is the one
+ * they ask in October — and it does it from the same eight numbers, so the two
+ * halves of this page cannot disagree about whether the school is open.
+ */
+const months = year ? monthGrid(year, published) : [];
+/*
+ * The month it is in Enola, so the page opens on it.
+ *
+ * Read at render rather than in the browser: this page is revalidated, so the
+ * value is at worst an hour late on the one night a year a month turns over,
+ * and a browser's own clock would be a second definition of "now" on a page
+ * whose other dated decision (what is still ahead) is already made here.
+ */
+const currentMonth = schoolToday(new Date()).slice(0, 7);
+
+/*
+ * The events, in structured data (#151) — the upcoming subset of what the grid
+ * above draws, so the page and the markup cannot disagree about when something
  * is on.
+ *
+ * A subset rather than the whole of it, and deliberately: the grid draws the
+ * year, past one-offs included, because a cell says its own date. A crawler has
+ * no such cell, and last spring's concert offered to a search result as though
+ * it were on is a wrong claim about today.
  *
  * The 112 meeting dates are deliberately *not* here. They are one school day
  * repeated, not 112 events a family would want in a search result, and a page
@@ -179,29 +201,122 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     ))
   }
 
-  <section class="band band-quiet" id="events" data-section="calendar-events">
+  {/*
+    Still `id="events"`, because this is still where the school's events are
+    published: the structured data above points a search result at this
+    fragment, and a family who bookmarked it should land on the calendar rather
+    than at the top of the page.
+  */}
+  <section class="band band-quiet" id="events" data-section="calendar-months">
     <div class="wide">
-      <h2>Events</h2>
+      <h2>Month by month</h2>
+      <p class="sub mt-5">
+        The same year, drawn as a calendar. Open houses, concerts and picture days sit on their
+        dates — from the school’s own calendar and from the office, without distinction — and a
+        weekday in term time with no classes on it says so.
+      </p>
+
       {
-        events.length === 0 ? (
-          <p class="mt-5">
-            Nothing else is on the calendar at the moment. Open houses, concerts and picture days
-            appear here, and in the file above, as the school schedules them.
+        months.length === 0 ? (
+          <p class="mt-6">
+            There is no calendar to draw yet. The months appear here as soon as the school year is
+            set.
           </p>
         ) : (
-          <ul class="events mt-6">
-            {events.map((event) => (
-              <li>
-                <p class="when">
-                  <time datetime={event.heldOn}>{eventDateLabel(event.heldOn)}</time>
-                  {event.startTime && <span> · {eventTimeLabel(event.startTime)}</span>}
-                </p>
-                <h3>{event.title}</h3>
-                {event.place && <p class="where">{event.place}</p>}
-                {event.note && <p class="mt-2">{event.note}</p>}
-              </li>
+          /*
+            One group across every month, not one per month: `disclosure-group`
+            keeps a single panel open at a time, and two panels open in two
+            months is the same overlap the rule exists to prevent.
+          */
+          <disclosure-group class="months mt-7" data-disclosure-group="calendar-months">
+            {months.map((month) => (
+              <div
+                class="month"
+                data-month={month.id}
+                data-current-month={month.id === currentMonth ? '' : undefined}
+              >
+                <table class="month-grid">
+                  <caption>{month.heading}</caption>
+                  <thead>
+                    <tr>
+                      {WEEKDAY_COLUMNS.map((weekday) => (
+                        <th scope="col">
+                          <span class="sr-only">{weekday.long}</span>
+                          <span aria-hidden="true">{weekday.short}</span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {month.weeks.map((week) => (
+                      <tr>
+                        {week.map((cell) =>
+                          cell === null ? (
+                            <td class="blank" />
+                          ) : (
+                            <td
+                              class:list={[
+                                'date',
+                                {
+                                  shut: cell.noSchool,
+                                  /*
+                                    A cell carrying neither a one-off nor a mark
+                                    is the phone list's blank: it is a date and
+                                    nothing else, and a phone shows only the
+                                    dates something is true of.
+                                  */
+                                  quiet: !cell.noSchool && cell.events.length === 0,
+                                },
+                              ]}
+                            >
+                              <time class="num" datetime={cell.date}>
+                                <span class="short">{cell.day}</span>
+                                <span class="long">{cell.label}</span>
+                              </time>
+                              {cell.noSchool && (
+                                <span class="mark">
+                                  No school{cell.closure ? ` — ${cell.closure}` : ''}
+                                </span>
+                              )}
+                              {cell.events.map((event) => (
+                                <div class="one-off" data-disclosure-cell>
+                                  <button
+                                    class="one-off-title"
+                                    type="button"
+                                    data-disclosure-trigger
+                                    aria-expanded="false"
+                                    aria-controls={`one-off-${event.slug}`}
+                                  >
+                                    {event.title}
+                                  </button>
+                                  <div
+                                    class="one-off-panel"
+                                    id={`one-off-${event.slug}`}
+                                    data-disclosure-panel
+                                  >
+                                    <p class="when">
+                                      <time datetime={event.heldOn}>
+                                        {eventDateLabel(event.heldOn)}
+                                      </time>
+                                      {event.startTime && (
+                                        <span> · {eventTimeLabel(event.startTime)}</span>
+                                      )}
+                                    </p>
+                                    {event.place && <p class="where">{event.place}</p>}
+                                    {event.note && <p class="mt-2">{event.note}</p>}
+                                  </div>
+                                </div>
+                              ))}
+                            </td>
+                          ),
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ))}
-          </ul>
+          </disclosure-group>
         )
       }
     </div>
@@ -209,6 +324,8 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
 </BaseLayout>
 
 <script>
+  import '../../components/disclosure-group.js';
+
   /*
    * The print button, which is the one thing on this page that needs a browser.
    * Rendered as a `button` and wired here rather than shipped as an `onclick`,
@@ -217,6 +334,20 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
    */
   const button = document.querySelector('[data-print-calendar]');
   button?.addEventListener('click', () => window.print());
+
+  /*
+   * The page opens on the month it is (#186 AC 2).
+   *
+   * Every month is rendered, so a visitor with no JavaScript loses the position
+   * and none of the calendar. Two things are left alone on purpose: a URL that
+   * already names a fragment, because the visitor asked for somewhere, and a
+   * page the browser has already scrolled, because that is a back-button
+   * returning someone to where they were.
+   */
+  const current = document.querySelector('[data-current-month]');
+  if (current && !window.location.hash && window.scrollY === 0) {
+    current.scrollIntoView({ block: 'start' });
+  }
 </script>
 
 <style>
@@ -276,29 +407,213 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     background: color-mix(in srgb, var(--color-gold-orn) 12%, transparent);
   }
 
-  .events {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  /*
+    The months, side by side while there is room for them.
+
+    Nine of them stacked is a very long page for a year a family reads a month
+    of; two or three abreast is the shape a wall calendar has, and the browser
+    picks how many fit rather than a breakpoint guessing.
+  */
+  .months {
     display: grid;
-    gap: 2rem;
-    max-width: 46rem;
+    gap: 2.5rem 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
   }
 
-  .events li {
-    border-left: 2px solid var(--color-gold-orn);
-    padding-left: 1.25rem;
+  .month-grid {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
   }
 
-  .events .when {
+  .month-grid caption {
+    text-align: left;
+    padding-bottom: 0.4rem;
     font-variant-caps: all-small-caps;
     letter-spacing: 0.06em;
+    border-bottom: 2px solid color-mix(in srgb, var(--color-navy) 20%, transparent);
+  }
+
+  .month-grid th {
+    padding: 0.4rem 0.35rem;
+    text-align: left;
+    font-weight: 500;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.04em;
+  }
+
+  .month-grid td {
+    height: 3.4rem;
+    vertical-align: top;
+    padding: 0.3rem 0.35rem 0.5rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-navy) 12%, transparent);
+  }
+
+  /* A date belonging to the month either side is a hole, not a cell. */
+  .month-grid td.blank {
+    border-top-color: transparent;
+  }
+
+  /*
+    Full-strength ink rather than the muted grey the sheet's dates take, because
+    this band is the quiet one and a closed cell tints it further: grey on grey
+    on gold is where the contrast goes, and the date is the primary thing in the
+    cell anyway. What makes the mark below quieter than the date is its size and
+    its small caps, not a colour that has to survive two backgrounds.
+  */
+  .num .short {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85rem;
+  }
+
+  /*
+    The wide grid has a column heading and a caption to say which Wednesday this
+    is; the phone list has neither, so it prints the date in full instead. One
+    date, two lengths, and never both at once.
+  */
+  .num .long {
+    display: none;
+  }
+
+  /*
+    A day off is a property of the cell — a tint and a line, in the same register
+    as the sheet's closed rows above, and deliberately not the register a
+    one-off is in. Nothing here is a control, because there is nothing to open:
+    the whole of what the school has said is the name.
+  */
+  .month-grid td.shut {
+    background: color-mix(in srgb, var(--color-gold-orn) 12%, transparent);
+  }
+
+  .mark {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.03em;
+  }
+
+  /* A one-off is the one thing on the grid that opens, so it is a real button. */
+  .one-off {
+    position: relative;
+    margin-top: 0.25rem;
+  }
+
+  .one-off-title {
+    display: block;
+    width: 100%;
+    padding: 0.2rem 0.3rem;
+    border: 0;
+    border-left: 2px solid var(--color-gold-orn);
+    background: color-mix(in srgb, var(--color-gold-orn) 18%, transparent);
+    font: inherit;
+    font-size: 0.8rem;
+    line-height: 1.25;
+    text-align: left;
+    color: var(--color-navy);
+    cursor: pointer;
+  }
+
+  .one-off-title:hover,
+  .one-off[data-open] .one-off-title {
+    background: color-mix(in srgb, var(--color-gold-orn) 32%, transparent);
+    color: var(--color-gold-ink);
+  }
+
+  /*
+    The detail floats over the grid rather than expanding inside its cell: a cell
+    that grew would push a whole week of dates down the page under the pointer
+    that opened it.
+  */
+  .one-off-panel {
+    display: none;
+    position: absolute;
+    z-index: 2;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    width: max-content;
+    max-width: 15rem;
+    padding: 0.7rem 0.85rem;
+    background: var(--color-cream);
+    border: 1px solid var(--color-rule);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--color-navy) 18%, transparent);
+    font-size: 0.85rem;
+    line-height: 1.5;
     color: var(--color-ink-2);
   }
 
-  .events .where {
+  .one-off[data-open] .one-off-panel {
+    display: block;
+  }
+
+  .one-off-panel .when {
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.06em;
+  }
+
+  .one-off-panel .where {
     margin-top: 0.25rem;
-    color: var(--color-ink-2);
+  }
+
+  /*
+    On a phone a month is a dated list, not a grid (#186).
+
+    Seven columns in 390px is four characters a cell, and a grid that scrolls
+    sideways hides half the year behind a gesture. So the same cells stay in the
+    same order and the ones with nothing to say step out: what is left is the
+    dates something is true of, each printing its own date in full.
+  */
+  @media (max-width: 620px) {
+    .months {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    .month-grid,
+    .month-grid tbody,
+    .month-grid tr,
+    .month-grid td {
+      display: block;
+    }
+
+    .month-grid thead {
+      display: none;
+    }
+
+    .month-grid td.blank,
+    .month-grid td.quiet {
+      display: none;
+    }
+
+    .month-grid td {
+      height: auto;
+      padding: 0.6rem 0;
+      border-top: 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--color-navy) 12%, transparent);
+    }
+
+    .num .short {
+      display: none;
+    }
+
+    .num .long {
+      display: inline;
+      font-variant-caps: all-small-caps;
+      letter-spacing: 0.05em;
+    }
+
+    .one-off-title {
+      font-size: 0.95rem;
+    }
+
+    /* Nothing to float over: the panel opens inside the row, in the list. */
+    .one-off-panel {
+      position: static;
+      max-width: none;
+      margin-top: 0.35rem;
+      box-shadow: none;
+    }
   }
 
   /*
@@ -312,7 +627,14 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
   */
   @media print {
     .actions,
-    .caveat {
+    .caveat,
+    /*
+      The grid comes off with the buttons. A school office prints this page to
+      pin the year up, and what it pins up is the sheet; the grid is the same
+      year again, and a second copy of it in nine sheets of paper is not what
+      anybody walked to the printer for.
+    */
+    .months {
       display: none;
     }
 
@@ -336,8 +658,7 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       font-style: italic;
     }
 
-    .sheet tr,
-    .events li {
+    .sheet tr {
       break-inside: avoid;
     }
   }

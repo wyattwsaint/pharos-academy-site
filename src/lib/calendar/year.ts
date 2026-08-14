@@ -333,6 +333,48 @@ export function fullDateLabel(date: string): string {
 }
 
 /**
+ * "November 2026" and "Wednesday 25 November" — the two labels the month grid
+ * prints (#186).
+ *
+ * Here, beside the other three, rather than in `months.ts` where they are used.
+ * The reason is the note on {@link americanDateLabel}: the calendar's dates are
+ * being moved to American order a flow at a time, and a date format kept in the
+ * module that happens to want it is one the sweep does not find.
+ *
+ * Their formatters are built once and the others' are not, which is the one
+ * difference. A grid of nine months asks for a label seven hundred times where
+ * the sheet asks for one a hundred and twelve times, and `Intl` construction is
+ * the expensive half of the call.
+ */
+const MONTH_FORMAT = new Intl.DateTimeFormat('en-GB', {
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+const WEEKDAY_DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'UTC',
+});
+
+/** "November 2026" — a month, from a `YYYY-MM`. */
+export function monthLabel(month: string): string {
+  return MONTH_FORMAT.format(new Date(`${month}-01T00:00:00Z`));
+}
+
+/**
+ * "Wednesday 25 November" — the weekday and the day, without the year.
+ *
+ * What a phone prints where a grid prints a bare number: the column heading and
+ * the month heading are what say the rest, and a list has neither.
+ */
+export function weekdayDateLabel(date: string): string {
+  return WEEKDAY_DATE_FORMAT.format(new Date(`${date}T00:00:00Z`));
+}
+
+/**
  * "August 31, 2026" — the same day in the order an American family reads it.
  *
  * The date half of the house style (#110). It sits beside {@link fullDateLabel}
