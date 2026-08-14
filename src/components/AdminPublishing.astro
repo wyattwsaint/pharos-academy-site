@@ -13,6 +13,11 @@ import AdminButton from './AdminButton.astro';
  * The stamp keeps `data-testid="stamp"`, which several browser specs already
  * find it by; the attribution is what flat permissions lean on (#18 §4), so it
  * is asserted rather than assumed.
+ *
+ * The Republish form carries the screen it is on, so the outcome is reported
+ * here rather than on School details (#198). The component knows the path
+ * without being told it — a screen that had to pass its own address in is a
+ * screen that can pass the wrong one.
  */
 interface Props {
   /** Already formatted, by `formatStamp`. */
@@ -27,6 +32,7 @@ const { stamp } = Astro.props;
   <p class="mt-2" data-testid="stamp">{stamp}</p>
   <slot />
   <form method="post" action="/admin/republish" class="mt-4">
+    <input type="hidden" name="next" value={`${Astro.url.pathname}${Astro.url.search}`} />
     <AdminButton variant="secondary" testId="republish">Republish</AdminButton>
   </form>
 </section>

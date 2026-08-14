@@ -16,6 +16,7 @@ import {
   revalidationOrigin,
 } from '../../../lib/admin/revalidate.js';
 import { formatStamp } from '../../../lib/admin/formatting.js';
+import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
 import { getDb } from '../../../lib/db/client.js';
 import { slugify, type Person } from '../../../lib/people/person.js';
 import { createPerson, getPerson, savePerson } from '../../../lib/people/store.js';
@@ -78,7 +79,7 @@ if (!adding && !person) {
 
 let values: PersonFields = person ? fieldsOf(person) : EMPTY;
 let errors: PersonErrors = {};
-let banner: Banner | null = null;
+let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republished'));
 
 if (Astro.request.method === 'POST') {
   const parsed = parsePerson(await Astro.request.formData());

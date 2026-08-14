@@ -60,3 +60,42 @@ test.describe('when the live site cannot be reached', () => {
     await expect(page.getByTestId('save-banner')).toContainText("didn't reach the live site");
   });
 });
+
+/**
+ * #198: the answer arrives where the question was asked.
+ *
+ * Republish and Retry used to land the admin on School details no matter which
+ * screen they had pressed the button on — an outcome about a screen they were
+ * no longer looking at, and their place lost. The same forced failure proves
+ * the return path, because a failure is the outcome worth staying for.
+ *
+ * Three screens rather than one: a return path that only works from the screen
+ * it falls back to is not a return path. One of them is an editor under a
+ * dynamic route, where the screen's own address is the part that varies.
+ */
+test.describe('republishing answers on the screen it was asked from', () => {
+  for (const screen of [
+    { name: 'School year', path: '/admin/school-year' },
+    { name: 'Money', path: '/admin/money' },
+    { name: 'A class', path: '/admin/courses/algebra-1' },
+  ]) {
+    const back = `${screen.path}?republished=stale`;
+
+    test(`${screen.name} keeps its own outcome, and Retry stays there`, async ({ page }) => {
+      await signIn(page, screen.path);
+
+      await page.getByTestId('republish').click();
+      await expect(page).toHaveURL(back);
+
+      const banner = page.getByTestId('save-banner');
+      await expect(banner).toHaveAttribute('data-ok', 'false');
+      await expect(banner).toContainText("didn't reach the live site");
+
+      // Retry is the same question again, so it comes back to the same place —
+      // and says it once, rather than once per press.
+      await banner.getByRole('button', { name: 'Retry' }).click();
+      await expect(page).toHaveURL(back);
+      await expect(page.getByTestId('save-banner')).toContainText("didn't reach the live site");
+    });
+  }
+});

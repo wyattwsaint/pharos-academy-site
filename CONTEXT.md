@@ -771,6 +771,20 @@ button does with no edit attached.
 Whole-site on purpose: a per-path invalidation map is a second source of truth
 about which edit touches which page, and it drifts silently.
 
+Answered where it was asked: the button carries a **return path** and the
+outcome is reported back there, not on School details (#198).
+
+### return path
+
+The screen a form comes back to when the work happens somewhere else — the page
+sign-in was bounced away from, or the screen **Republish** was pressed on. It
+travels as a hidden field, so it is always a value somebody else could have
+written: only a path on this site is honoured, and anything else falls back to
+School details.
+
+Not: a URL. A return path that could name another host is an open redirect
+wearing the school's own domain.
+
 Not: "deploy" — republishing changes no code and produces no deployment.
 
 ### export

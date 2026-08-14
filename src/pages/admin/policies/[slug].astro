@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import AdminBanner from '../../../components/AdminBanner.astro';
+import AdminPublishing from '../../../components/AdminPublishing.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import type { Banner } from '../../../lib/admin/banner.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
@@ -20,6 +21,7 @@ import {
   revalidationOrigin,
 } from '../../../lib/admin/revalidate.js';
 import { formatStamp } from '../../../lib/admin/formatting.js';
+import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
 import { getDb } from '../../../lib/db/client.js';
 import { policySlug, type Policy, type PolicyVersion } from '../../../lib/policies/policy.js';
 import {
@@ -89,7 +91,7 @@ const EMPTY: PolicyFields = {
 
 let values: PolicyFields = policy ? fieldsOf(policy) : EMPTY;
 let errors: PolicyErrors = {};
-let banner: Banner | null = null;
+let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republished'));
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
@@ -220,22 +222,7 @@ function detailOf(error: unknown): string {
     )
   }
 
-  {
-    banner && (
-      <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner">
-        {!banner.ok && (
-          <form method="post" action="/admin/republish" class="mt-3">
-            <button
-              type="submit"
-              class="rounded bg-navy px-4 py-2 font-semibold text-cream hover:bg-navy-deep"
-            >
-              Retry
-            </button>
-          </form>
-        )}
-      </AdminBanner>
-    )
-  }
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner" retry />}
 
   <form method="post" action={action} enctype="multipart/form-data" class="mt-8 flex flex-col gap-6">
     <div class="flex flex-col gap-2">
@@ -427,25 +414,13 @@ function detailOf(error: unknown): string {
 
   {
     stamp && (
-      <section class="mt-10 border-t border-navy/15 pt-6">
-        <h2 class="text-xl font-semibold text-navy">Publishing</h2>
-        <p class="mt-2" data-testid="stamp">
-          {stamp}
-        </p>
+      <AdminPublishing stamp={stamp}>
         <p class="mt-2" data-testid="updated-on">
           {policy!.updatedAt
             ? `Parents are told this was updated ${updatedOnLabel(policy!.updatedAt)} — the day the current document was uploaded.`
             : 'Parents are told nothing yet: there is no document, so this policy is not on the policies page.'}
         </p>
-        <form method="post" action="/admin/republish" class="mt-4">
-          <button
-            type="submit"
-            class="rounded border-2 border-navy px-5 py-2.5 font-semibold text-navy hover:bg-parchment"
-          >
-            Republish
-          </button>
-        </form>
-      </section>
+      </AdminPublishing>
     )
   }
 </AdminLayout>

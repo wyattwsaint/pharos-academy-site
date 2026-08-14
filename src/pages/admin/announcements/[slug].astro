@@ -21,6 +21,7 @@ import {
   revalidationOrigin,
 } from '../../../lib/admin/revalidate.js';
 import { formatStamp } from '../../../lib/admin/formatting.js';
+import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
 import { announcementSlug, type Announcement } from '../../../lib/announcements/announcement.js';
 import {
   createAnnouncement,
@@ -97,7 +98,7 @@ const EMPTY: AnnouncementFields = {
 
 let values: AnnouncementFields = announcement ? fieldsOf(announcement) : EMPTY;
 let errors: AnnouncementErrors = {};
-let banner: Banner | null = null;
+let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republished'));
 
 if (Astro.request.method === 'POST') {
   const parsed = await parseAnnouncement(await Astro.request.formData());

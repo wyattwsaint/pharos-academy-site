@@ -16,6 +16,9 @@ import AdminButton from './AdminButton.astro';
  * out seven times is a Retry that can be spelled seven ways. The slot stays for
  * whatever else a particular failure offers next; nothing is rendered around it
  * when it is empty.
+ *
+ * Retry carries the screen it was pressed on, so the second answer arrives
+ * where the first one did (#198).
  */
 interface Props {
   ok: boolean;
@@ -49,6 +52,7 @@ const offerRetry = retry && !ok;
   {
     offerRetry && (
       <form method="post" action="/admin/republish" class="mt-3">
+        <input type="hidden" name="next" value={`${Astro.url.pathname}${Astro.url.search}`} />
         <AdminButton small testId={`${testId}-retry`}>
           Retry
         </AdminButton>
