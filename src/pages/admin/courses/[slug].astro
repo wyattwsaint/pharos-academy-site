@@ -196,8 +196,17 @@ const timeOptions = [
 const timeIsSlot = timeOptions.some((option) => option.value === values.time);
 const selectedTime = values.time && !timeIsSlot ? CUSTOM_TIME : values.time;
 
-/** The slots, and last of all the way out of them. */
+/** The slots the school meets at, and last of all the way out of the list. */
 const timeChoices = [...timeOptions, { value: CUSTOM_TIME, label: 'Another time' }];
+
+/**
+ * The four enrolment units as a picker's options.
+ *
+ * Built once and offered twice, because the two lists below are the same four
+ * things asked about differently — what the course *is*, and what a family may
+ * *buy* — which is exactly why `UNIT_LABELS` is one table rather than two.
+ */
+const unitOptions = ENROLMENT_UNITS.map((unit) => ({ value: unit, label: UNIT_LABELS[unit] }));
 
 /**
  * The clash warning, the block's start dates and its computed end, all read
@@ -451,11 +460,14 @@ function warningLine(warning: ClashWarning): string {
 
       {
         /*
-          The two ends of a slot the timetable does not run yet. Optional in the
-          HTML sense whatever the form says, because whether they are required
-          depends on the select above — the parser is the one that knows, and a
-          browser-side `required` here would refuse the form before it could say
-          so.
+          The two ends of a slot the timetable does not run yet.
+
+          `optional` here — and on every select on this screen — is the HTML
+          sense of the word rather than the school's: the parser refuses a blank
+          time, rate or instructor as firmly as it refuses a blank title. What it
+          says is that the *browser* must not stop the form, because whether
+          these two are wanted depends on the answer above them, and a form
+          refused before it is posted is a form the parser never gets to explain.
         */
       }
       <div class="mt-2 flex flex-wrap gap-6">
@@ -484,7 +496,7 @@ function warningLine(warning: ClashWarning): string {
       type="radios"
       label={LABELS.enrolment}
       hint="The shape of the course itself — how long it runs for."
-      options={ENROLMENT_UNITS.map((unit) => ({ value: unit, label: UNIT_LABELS[unit] }))}
+      options={unitOptions}
       selected={[values.enrolment]}
       error={errors.enrolment}
     />
@@ -494,7 +506,7 @@ function warningLine(warning: ClashWarning): string {
       type="checkboxes"
       label={LABELS.enrolmentUnits}
       hint="What a family may actually buy. This is exactly what the application offers them — never worked out from the shape above, because a class can publish a semester price without offering a semester."
-      options={ENROLMENT_UNITS.map((unit) => ({ value: unit, label: UNIT_LABELS[unit] }))}
+      options={unitOptions}
       selected={values.enrolmentUnits}
       error={errors.enrolmentUnits}
     />
