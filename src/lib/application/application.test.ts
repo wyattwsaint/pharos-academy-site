@@ -393,10 +393,11 @@ describe('what the family owes (#31 AC 8)', () => {
 
     expect(cost.total.registration).toBe(SEEDED_MONEY_SETTINGS.registrationFee);
     expect(cost.total.deposits).toBe(SEEDED_MONEY_SETTINGS.classDeposit);
-    expect(cost.total.dueNow).toBe(
-      SEEDED_MONEY_SETTINGS.registrationFee + SEEDED_MONEY_SETTINGS.classDeposit,
+    expect(cost.total.total).toBe(
+      SEEDED_MONEY_SETTINGS.registrationFee +
+        SEEDED_MONEY_SETTINGS.classDeposit +
+        cost.total.tuitionDue,
     );
-    expect(cost.total.total).toBe(cost.total.dueNow + cost.total.dueToInstructors);
   });
 
   it('changes when a setting changes — every figure, not just one', () => {

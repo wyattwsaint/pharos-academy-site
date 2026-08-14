@@ -205,7 +205,7 @@ test.describe('saving school details', () => {
   };
 
   /*
-   * Paying the registration fee online, both ways round (#111).
+   * Paying online, both ways round (#111, #187).
    *
    * Driven from the admin for the same reason the banner is: the ticket's claim
    * is that the office moves the Vanco page without a developer, and a seeded
@@ -216,48 +216,55 @@ test.describe('saving school details', () => {
    */
   const VANCO = 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION';
 
-  async function setRegistrationUrl(page: Page, url: string): Promise<void> {
+  async function setPayOnlineUrl(page: Page, url: string): Promise<void> {
     await page.goto('/admin/school-details');
-    await page.getByLabel('Registration payment link').fill(url);
+    await page.getByLabel('Online payment link').fill(url);
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
   }
 
-  test('offers the registration fee online, and stops offering it when the link goes', async ({
+  test('offers the online payment, and stops offering it when the link goes', async ({
     page,
   }) => {
     await signIn(page);
-    await setRegistrationUrl(page, VANCO);
+    await setPayOnlineUrl(page, VANCO);
 
     await page.goto('/admissions/apply');
     const payment = page.locator('[data-section="apply-payment"]');
     await expect(payment.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
-    // The other two amounts are still checks, and the page says whose — with no
-    // classes chosen there are no deposit figures, and this line is what
-    // carries it.
-    await expect(payment).toContainText('Deposits are paid by check to Pharos Academy');
-    await expect(payment).toContainText('tuition by check to your instructor');
+    // Every amount is the school's, and the page says which way each is paid —
+    // with no classes chosen there are no deposit figures, and this line is
+    // what carries it (#187). The middle of the sentence is the half that
+    // moves with the link, so it is asserted whole rather than in pieces that
+    // read the same in both states.
+    await expect(payment).toContainText(
+      'the registration and the tuition online, in one payment, the deposits by check',
+    );
 
-    await setRegistrationUrl(page, '');
+    await setPayOnlineUrl(page, '');
 
     // Empty is no link at all, never a button to nowhere.
     await page.goto('/admissions/apply');
     await expect(payment.locator('[data-pay-online]')).toHaveCount(0);
     await expect(payment).toContainText('no online payment set up at the moment');
+    // And the same sentence now says every amount is a check.
+    await expect(payment).toContainText(
+      'the registration, the tuition and the deposits, all by check',
+    );
   });
 
-  test('refuses a registration payment link that is not a web address', async ({ page }) => {
+  test('refuses an online payment link that is not a web address', async ({ page }) => {
     await signIn(page, '/admin/school-details');
 
     // `type="url"` lets the browser catch most of this; what reaches the server
     // is what it does not, and the field is optional, so "empty is fine but
     // `javascript:` is not" is the rule worth driving.
-    await page.getByLabel('Registration payment link').fill('javascript:alert(1)');
+    await page.getByLabel('Online payment link').fill('javascript:alert(1)');
     await page.getByRole('button', { name: 'Save' }).click();
 
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
-    await expect(page.locator('#registrationUrl')).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.locator('#registrationUrl-error')).toContainText('full web address');
+    await expect(page.locator('#payOnlineUrl')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#payOnlineUrl-error')).toContainText('full web address');
   });
 
   test('puts the banner on the home page, and takes it off again', async ({ page }) => {

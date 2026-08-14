@@ -15,7 +15,7 @@ function details(overrides: Partial<SchoolDetails> = {}): SchoolDetails {
     mission: 'Partnering with parents.',
     vision: 'Preparing students.',
     giveUrl: 'https://secure.myvanco.com/YH8R/home',
-    registrationUrl: '',
+    payOnlineUrl: '',
     bannerEnabled: false,
     bannerMessage: '',
     bannerDate: null,

@@ -413,8 +413,7 @@ function sumOwed(parts: readonly AmountOwed[]): AmountOwed {
     deposits: add((owed) => owed.deposits),
     tuition: add((owed) => owed.tuition),
     creditedAgainstTuition: add((owed) => owed.creditedAgainstTuition),
-    dueNow: add((owed) => owed.dueNow),
-    dueToInstructors: add((owed) => owed.dueToInstructors),
+    tuitionDue: add((owed) => owed.tuitionDue),
     total: add((owed) => owed.total),
   };
 }

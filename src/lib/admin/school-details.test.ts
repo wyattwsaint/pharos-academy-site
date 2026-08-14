@@ -80,26 +80,26 @@ describe('parsing a school-details submission', () => {
   // failures as the Give URL matter — but empty is a real answer here: it is
   // what makes the Apply page offer no online payment at all, rather than a
   // button that goes nowhere.
-  it('reads the registration payment link, and lets it be empty', () => {
+  it('reads the online payment link, and lets it be empty', () => {
     expect(
-      parseSchoolDetails(form({ registrationUrl: '  https://secure.myvanco.com/YH8R/campaign  ' }))
-        .values.registrationUrl,
+      parseSchoolDetails(form({ payOnlineUrl: '  https://secure.myvanco.com/YH8R/campaign  ' }))
+        .values.payOnlineUrl,
     ).toBe('https://secure.myvanco.com/YH8R/campaign');
 
     const absent = parseSchoolDetails(form());
-    expect(absent.values.registrationUrl).toBe('');
+    expect(absent.values.payOnlineUrl).toBe('');
     expect(absent.errors).toEqual({});
   });
 
-  it('rejects a registration payment link that is not an absolute http(s) address', () => {
-    expect(parseSchoolDetails(form({ registrationUrl: 'myvanco.com/YH8R' })).errors.registrationUrl)
+  it('rejects an online payment link that is not an absolute http(s) address', () => {
+    expect(parseSchoolDetails(form({ payOnlineUrl: 'myvanco.com/YH8R' })).errors.payOnlineUrl)
       .toBeTruthy();
-    expect(parseSchoolDetails(form({ registrationUrl: 'javascript:alert(1)' })).errors
-      .registrationUrl).toBeTruthy();
-    expect(parseSchoolDetails(form({ registrationUrl: '/pay' })).errors.registrationUrl)
+    expect(parseSchoolDetails(form({ payOnlineUrl: 'javascript:alert(1)' })).errors
+      .payOnlineUrl).toBeTruthy();
+    expect(parseSchoolDetails(form({ payOnlineUrl: '/pay' })).errors.payOnlineUrl)
       .toBeTruthy();
-    expect(parseSchoolDetails(form({ registrationUrl: 'https://secure.myvanco.com/YH8R/home' }))
-      .errors.registrationUrl).toBeUndefined();
+    expect(parseSchoolDetails(form({ payOnlineUrl: 'https://secure.myvanco.com/YH8R/home' }))
+      .errors.payOnlineUrl).toBeUndefined();
   });
 
   it('keeps what was typed when it rejects it, so nothing has to be retyped', () => {

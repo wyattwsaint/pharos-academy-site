@@ -249,10 +249,10 @@ const resubmittedIds = new Set(
               </ul>
 
               <p class="mt-4" data-testid="application-owed">
-                Check of <span class="font-semibold">{formatMoney(owed.cost.total.dueNow)}</span> —{' '}
-                {formatMoney(owed.cost.total.registration)} registration and{' '}
-                {formatMoney(owed.cost.total.deposits)} in deposits. Tuition to instructors:{' '}
-                {formatMoney(owed.cost.total.dueToInstructors)}.
+                <span class="font-semibold">{formatMoney(owed.cost.total.total)}</span> to the
+                school — {formatMoney(owed.cost.total.registration)} registration,{' '}
+                {formatMoney(owed.cost.total.deposits)} in deposits and{' '}
+                {formatMoney(owed.cost.total.tuitionDue)} in tuition.
                 {owed.frozen ? (
                   <span> These are the fees this family agreed to when they applied.</span>
                 ) : (

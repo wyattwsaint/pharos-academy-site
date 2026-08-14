@@ -78,7 +78,7 @@ describe('the school’s copy', () => {
     const mail = applicationNotification(submission(), {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payRegistrationAt: '',
+      payOnlineAt: '',
     });
 
     expect(mail.to).toBe('jill@example.com');
@@ -87,15 +87,17 @@ describe('the school’s copy', () => {
     // seeded settings — the figure the family was shown, not one this module
     // knows.
     expect(mail.text).toContain('$840');
-    expect(mail.text).toContain('$125'); // registration plus one deposit
-    expect(mail.text).toContain('Check they are posting: $125');
+    // $840 less the credited deposit — the tuition the school is owed.
+    expect(mail.text).toContain('Tuition:                $740');
+    // With no online link, one check covers the lot: $25 + $100 + $740.
+    expect(mail.text).toContain('Check they are posting: $865 — all of it');
   });
 
   it('carries the Statement of Faith record, answered cells only', () => {
     const mail = applicationNotification(submission(), {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payRegistrationAt: '',
+      payOnlineAt: '',
     });
 
     expect(mail.text).toContain('Father: read — yes');
@@ -113,7 +115,7 @@ describe('the school’s copy', () => {
     const mail = applicationNotification(flagged, {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payRegistrationAt: '',
+      payOnlineAt: '',
     });
 
     expect(mail.subject).toContain('conversation flag');
@@ -127,7 +129,7 @@ describe('the school’s copy', () => {
     const mail = applicationNotification(submission(), {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payRegistrationAt: '',
+      payOnlineAt: '',
     });
 
     expect(mail.text).toContain('THE CLASS TALLY');
@@ -138,7 +140,7 @@ describe('the school’s copy', () => {
     const lost = applicationNotification(submission({ reference: null }), {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payRegistrationAt: '',
+      payOnlineAt: '',
     });
 
     expect(lost.text).toContain('could NOT be saved');
@@ -153,7 +155,7 @@ describe('what the family is told', () => {
       to: ['jill@example.com', 'george@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payRegistrationAt: '',
+      payOnlineAt: '',
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
@@ -171,7 +173,7 @@ describe('what the family is told', () => {
       to: ['jill@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payRegistrationAt: '',
+      payOnlineAt: '',
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
@@ -197,21 +199,21 @@ describe('what the family is told', () => {
   });
 
   /**
-   * The email and the page agree about how the registration fee is paid (#149).
+   * The email and the page agree about what is paid online (#149, #187).
    *
    * The confirmation is the copy the family keeps after the screen is closed, so
    * an email that says "post a check for the lot" beside a page that offered a
    * link is not a wording slip — it is the school being told two different
    * things by the same submission.
    */
-  it('gives the family the online link when the school has one, for the registration only', async () => {
+  it('gives the family the online link when the school has one, for the registration and the tuition', async () => {
     const mailer = recorder();
     await deliverApplication(submission(), {
       sender: mailer.send,
       to: ['jill@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payRegistrationAt: PAY_AT,
+      payOnlineAt: PAY_AT,
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
@@ -219,12 +221,13 @@ describe('what the family is told', () => {
     const toFamily = mailer.sent.find((mail) => mail.to === 'okonkwo@example.com')!;
     expect(toFamily.text).toContain(PAY_AT);
     expect(toFamily.text).toContain('$25'); // the registration, online
-    // The deposits are still the school's, and still a check to the address.
+    expect(toFamily.text).toContain('$740'); // and the tuition, in the same payment
+    // The deposits are the exception, and still a check to the address.
     expect(toFamily.text).toContain('$100');
     expect(toFamily.text).toContain('9 Sherwood Drive');
     expect(toFamily.text).toContain('A place is held');
-    // And it no longer asks for a check covering the registration as well.
-    expect(toFamily.text).not.toContain('Please post a check for $125');
+    // And it no longer asks for a check covering what was paid online.
+    expect(toFamily.text).not.toContain('Please post a check for $865');
     expect(toFamily.text).not.toMatch(/cheque/i);
     expect(toFamily.text).not.toMatch(/\b(within|in) \d+ (hours|days|working days)\b/);
   });
@@ -237,7 +240,7 @@ describe('what the family is told', () => {
       to: ['jill@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payRegistrationAt: PAY_AT,
+      payOnlineAt: PAY_AT,
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
@@ -254,21 +257,21 @@ describe('what the family is told', () => {
     const online = applicationNotification(submission(), {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payRegistrationAt: PAY_AT,
+      payOnlineAt: PAY_AT,
     });
 
     // The school reconciles Vanco against this email by hand, so the line it
     // reads has to be the amount an envelope will actually contain — and it
     // says "offered", not "paid", because Vanco tells the site nothing.
     expect(online.text).toContain('Check they are posting: $100');
-    expect(online.text).toContain('registration was offered online');
-    expect(online.text).not.toContain('Check they are posting: $125');
+    expect(online.text).toContain('registration and tuition were offered online');
+    expect(online.text).not.toContain('Check they are posting: $865');
 
     // And an office told to expect an envelope containing nothing is told the
     // same wrong thing the family is spared.
     const noDeposits = applicationNotification(
       submission({ values: fields({ children: [{ name: 'Ada', age: '13', offeringKeys: [] }] }) }),
-      { to: 'jill@example.com', from: 'site@example.com', payRegistrationAt: PAY_AT },
+      { to: 'jill@example.com', from: 'site@example.com', payOnlineAt: PAY_AT },
     );
     expect(noDeposits.text).toContain('Check they are posting: nothing');
     expect(noDeposits.text).not.toMatch(/Check they are posting: \$0/);
@@ -281,7 +284,7 @@ describe('what the family is told', () => {
       to: ['jill@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payRegistrationAt: '',
+      payOnlineAt: '',
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
@@ -302,7 +305,7 @@ describe('what the family is told', () => {
       to: ['jill@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payRegistrationAt: '',
+      payOnlineAt: '',
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
@@ -322,7 +325,7 @@ describe('what the family is told', () => {
       to: ['jill@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payRegistrationAt: '',
+      payOnlineAt: '',
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
