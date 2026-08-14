@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
@@ -34,33 +34,51 @@ describe('the brand gold', () => {
 });
 
 /**
- * The admin's primary button, at rest and under the pointer.
+ * The two navies a cream label is allowed to sit on.
  *
- * The 2026-08 audit caught the hover ground at 3.0:1 (#190): `deep-blue` is a
- * pigment, and the cream label all but disappeared on it — worst at the moment
- * before the click. It is now the deepest navy, and this is the assertion that
- * keeps it there. axe cannot reach a hover state, so nothing else would notice
- * the next time somebody reaches for a lighter blue.
+ * The 2026-08 audit caught the admin's button hover at 3.0:1 (#190): `deep-blue`
+ * is a pigment rather than a ground, and the cream label all but disappeared on
+ * it — worst at the moment before the click. The hover is now the deepest navy.
+ *
+ * Two assertions, because either alone is half an answer. The first is about
+ * the palette and would still pass if every button went back to `deep-blue`;
+ * the second is the one that notices, and it is a grep rather than a rendered
+ * check because axe cannot reach a hover state at all.
  */
-const ADMIN_BUTTON = readFileSync('src/components/AdminButton.astro', 'utf8');
+describe('a cream label on a navy ground', () => {
+  it('is readable on both grounds the admin paints one on', () => {
+    const cream = token('color-cream');
+    expect(contrast(token('color-navy'), cream)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(token('color-navy-deep'), cream)).toBeGreaterThanOrEqual(4.5);
+  });
 
-describe("the admin's primary button", () => {
-  it('keeps its label readable on both of its grounds', () => {
-    // The one line in the component that paints a cream label.
-    const skin = /'(bg-[^']*text-cream[^']*)'/.exec(ADMIN_BUTTON)?.[1];
-    expect(skin).toBeDefined();
+  it('is never painted on the ground that fails', () => {
+    // Stated, so that the next line is a measurement rather than a superstition.
+    expect(contrast(token('color-deep-blue'), token('color-cream'))).toBeLessThan(4.5);
 
-    const rest = /(?:^|\s)bg-([a-z-]+)/.exec(skin!)?.[1];
-    const hover = /hover:bg-([a-z-]+)/.exec(skin!)?.[1];
-    expect(rest).toBeDefined();
-    expect(hover).toBeDefined();
-
-    const label = token('color-cream');
-    for (const ground of [rest, hover]) {
-      expect(contrast(token(`color-${ground}`), label)).toBeGreaterThanOrEqual(4.5);
-    }
+    const sources = adminSources();
+    // Asserted rather than assumed: a walk that found nothing would otherwise
+    // make the next line the most reassuring test in the repo.
+    expect(sources.length).toBeGreaterThan(20);
+    expect(sources.filter((path) => readFileSync(path, 'utf8').includes('bg-deep-blue'))).toEqual(
+      [],
+    );
   });
 });
+
+/** Every admin screen and every shared admin component. */
+function adminSources(): string[] {
+  const roots = ['src/pages/admin', 'src/components'];
+  const found: string[] = [];
+  for (const root of roots) {
+    for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+      if (entry.isFile() && entry.name.endsWith('.astro')) {
+        found.push(`${entry.parentPath}/${entry.name}`);
+      }
+    }
+  }
+  return found.filter((path) => path.includes('admin') || path.includes('Admin'));
+}
 
 /** WCAG's ratio between two `#rrggbb` values. Undefined is a failed lookup. */
 function contrast(a: string | undefined, b: string | undefined): number {

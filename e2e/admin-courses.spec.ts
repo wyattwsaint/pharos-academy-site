@@ -284,7 +284,6 @@ test.describe('saving a class', () => {
     await page.getByRole('button', { name: 'Save' }).click();
 
     const group = page.getByRole('group', { name: 'Meets on' });
-    await expect(group).toHaveAttribute('aria-invalid', 'true');
     const description = await group.evaluate((node) =>
       (node.getAttribute('aria-describedby') ?? '')
         .split(' ')

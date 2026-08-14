@@ -24,6 +24,11 @@
  * than to any one box — "pick at least one day" is not a complaint about
  * Tuesday — so the fieldset carries the `aria-describedby`, which is what makes
  * a screen reader announce it on entering the group.
+ *
+ * The fieldset carries `aria-describedby` and nothing else. `aria-invalid` is
+ * not global in ARIA 1.2 and `group` is not one of the roles that takes it, so
+ * putting it there would be an `aria-allowed-attr` failure — a real one, found
+ * by the suite this ticket exists to stop failing.
  */
 export type AdminFieldOption = {
   value: string;
@@ -116,11 +121,7 @@ const chosen = new Set(selected);
 
 {
   grouped ? (
-    <fieldset
-      aria-invalid={invalid ? 'true' : undefined}
-      aria-describedby={describedBy}
-      class="flex flex-col gap-2"
-    >
+    <fieldset aria-describedby={describedBy} class="flex flex-col gap-2">
       <legend class="font-semibold">{label}</legend>
       {described && (
         <p id={`${name}-hint`} class="text-sm">

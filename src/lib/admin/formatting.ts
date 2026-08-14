@@ -11,7 +11,15 @@
 /** Enola, Pennsylvania. */
 export const SCHOOL_TIME_ZONE = 'America/New_York';
 
-/** "Last edited by Jill Kilker on 5 August 2026", or that nothing has been. */
+/**
+ * "Last edited by Jill Kilker on 5 August 2026", or that nothing has been.
+ *
+ * The one formatter here that reads UTC rather than the school's clock, which
+ * is how it has always behaved and is left alone rather than quietly corrected:
+ * a save made after 8pm in Enola is stamped with the following day, and moving
+ * it would change a date the office may already have quoted. Worth fixing, but
+ * as its own decision — not as a side effect of giving the formatters a home.
+ */
 export function formatStamp(editorName: string | null, editedAt: Date | null): string {
   if (!editorName || !editedAt) return 'Not edited yet';
   const day = new Intl.DateTimeFormat('en-GB', {

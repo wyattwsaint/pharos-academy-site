@@ -234,7 +234,6 @@ export function copyrightYear(now = new Date()): number {
   );
 }
 
-
 /**
  * The school's phone as a `tel:` target.
  *
