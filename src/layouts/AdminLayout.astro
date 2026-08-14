@@ -111,7 +111,9 @@ const warning = actor
               <p>
                 Signed in as <span class="font-semibold">{actor.name}</span>
               </p>
-              <button type="submit" class="underline underline-offset-4">Sign out</button>
+              <button type="submit" data-pending-label="Signing out…" class="underline underline-offset-4">
+                Sign out
+              </button>
             </form>
           </div>
         </header>
@@ -132,5 +134,13 @@ const warning = actor
     <main id="main" class="mx-auto max-w-3xl px-6 py-10">
       <slot />
     </main>
+
+    <script>
+      // Every admin form's pending button and leave-warning, delegated from
+      // here (#199). In the layout rather than on the screens because it is one
+      // behaviour for the whole admin, and a per-screen copy is a copy to
+      // forget on the next screen.
+      import '../components/admin-forms.js';
+    </script>
   </body>
 </html>

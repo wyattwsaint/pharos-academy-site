@@ -91,6 +91,7 @@ export default defineConfig({
               '**/admin.spec.ts',
               '**/admin-calendar.spec.ts',
               '**/admin-courses.spec.ts',
+              '**/admin-forms.spec.ts',
             ],
             use: { ...devices['Desktop Chrome'], baseURL: LOCAL_URL },
           },
