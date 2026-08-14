@@ -26,6 +26,48 @@ no courses is complete, not incomplete**. The Tuesday track is routinely empty.
 
 Not: "cohort", "stream", "class day".
 
+### meeting
+
+One occurrence of an [offering](#offering) on one date of its [day
+track](#day-track) — *Art on 4 Nov*. An offering sold for the year has roughly
+twenty-eight of them; one sold for a Block has one per week of its run, and a
+closure inside that run pushes the last one later rather than dropping it.
+
+**A meeting is computed, never stored.** The dates fall out of the eight numbers
+on the School Year screen and the [closures](#closure), so a meeting cannot
+disagree with the year it belongs to and there is still exactly one place to
+correct a date. It follows that a meeting exists only
+inside its offering's term: a Fall-only offering simply has no meetings in
+February, which is not a rule anything enforces but a consequence of the dates
+being derived.
+
+A meeting is not itself a thing a family enrols in or the school edits — the
+[offering](#offering) is. It has no title, no place and no note of its own; it
+carries the offering's.
+
+Not: "class" (which names the offering people enrol in, not one of its dates),
+"session", "one-off" (which belongs to no track and happens once).
+
+### closure
+
+A **single day** the school is shut on a day it would otherwise have taught,
+carrying the school's own name for why — *Thanksgiving Break*. It belongs to the
+year, not to a [day track](#day-track) — but only the track that meets that
+weekday loses a [meeting](#meeting) to it, which is exactly why the four tracks
+stop aligning: a closed Monday costs the Monday track a week and costs the
+Wednesday track nothing.
+
+**A closure is one day, and a run of them is not a record.** Thanksgiving is six
+closures that happen to sit next to each other and share a name, not a span with
+a start and an end. Somewhere that wants to write *"25–30 No School,
+Thanksgiving Break"* derives it — adjacent dates, same name — because the name
+is the only thing that says two shut days are one thing. The month grid needs
+the opposite, a shut day at a time, and a stored span would only be expanded
+back out.
+
+Not: "holiday" (which does not cover a snow day or a work day), "no-school day",
+"[one-off](#one-off)" (which is something happening, not the school being shut).
+
 ### age band
 
 One of the four ranges the catalogue's default view groups by — **4–6, 7–9, 10–13,
@@ -489,7 +531,7 @@ start time, a place and a note that are each **optional and whose absence is a
 real state**: "Field day, May 12" is a complete one-off, not an unfinished one.
 It is stored as a row an admin edits, never typed into a page.
 
-It is deliberately not a [meeting date](#day-track): a meeting is one of 112
+It is deliberately not a [meeting](#meeting): a meeting is one of 112
 computed from eight numbers and belongs to a track; a one-off happens once and
 belongs to nothing. Forcing the two into one model gives every meeting a place
 it never has and every one-off a week number that means nothing.
