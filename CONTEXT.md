@@ -159,18 +159,24 @@ Since #220 the flip carries less. What a stated `online` submission changes is
 the **mode** and not the status: the row still opens `awaiting`, because nothing
 about the family's answer says money arrived.
 
-Since #111 the slot is **partly filled**, and since #187 it is filled for two
-amounts of the three. The **registration fee** and the **tuition** are paid
-online together, in one payment, upfront, through the church's Vanco page — one
-campaign, held as `pay_online_url` on the school details row beside the giving
-URL, so the office moves it without a deploy, and empty there means the Apply
-page offers no online payment at all. The **per-class deposit** is the
-exception: still a check to the school.
+Since #111 the slot is **partly filled**, and it is filled for **all three
+amounts through one channel**. The **registration fee**, the **per-class
+deposits** and the **tuition** are one lump sum, paid upfront through the
+church's Vanco giving page — one campaign, held as `pay_online_url` on the school
+details row, so the office moves it without a deploy, and empty there means the
+Apply page offers no online payment at all. A **check** to the school is the
+fallback, for the whole total and never the deposits alone.
+
+The surfaces are catching up one ticket at a time: both emails word it that way
+(#221), and until #219 lands the **Apply page still shows the old split** —
+registration and tuition online, deposits by check.
 
 All three are the school's money. Tuition does **not** go to the instructors —
 see [ADR-0013](docs/adr/0013-the-school-holds-the-tuition.md), which reverses
 what this section said until #187 and explains why the field names had to move
-with the copy.
+with the copy; [ADR-0017](docs/adr/0017-one-lump-sum-through-the-giving-page.md)
+supersedes the part of it that kept the deposits on a check, and names what
+survives.
 
 What did *not* move is the application. Vanco sends no confirmation back, so a
 `paid online` flag set from a family clicking a link would be a claim nobody
