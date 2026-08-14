@@ -461,6 +461,44 @@ test.describe('the H.O.P.E. letters on a phone', () => {
   }
 });
 
+/**
+ * #183. The semester joins the ages and the price on a cell, so the cell's meta
+ * line grew a segment — and the grid is the narrowest thing on the page.
+ *
+ * The assertion is that the line stays *inside* its cell, not that it stays on
+ * one line: `.class .meta` wraps, and a wrapped line is legible where a clipped
+ * one is not. The two viewports are the phone and a step below the narrowest
+ * width the axe suite audits.
+ */
+test.describe('the week grid on a phone', () => {
+  for (const viewport of [PHONE, NARROWEST]) {
+    test(`no class's ages, semester or price is clipped at ${viewport.width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const clipped = await page.evaluate(() =>
+        [...document.querySelectorAll('[data-section="week"] .class .meta')]
+          .filter((el) => el.scrollWidth > el.clientWidth + 1)
+          .map((el) => el.textContent),
+      );
+
+      expect(clipped).toEqual([]);
+    });
+
+    test(`a one-semester class names its semester at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+
+      const botany = page
+        .locator('[data-section="week"] .class')
+        .filter({ hasText: 'Backyard Botany' });
+      await expect(botany.locator('.meta')).toContainText('fall');
+    });
+  }
+});
+
 test.describe('the page', () => {
   test('runs the sections in the order #9 fixed', async ({ page }) => {
     await page.goto('/');

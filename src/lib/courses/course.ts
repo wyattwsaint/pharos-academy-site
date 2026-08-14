@@ -14,6 +14,7 @@
  * nine artefacts drifted apart in the first place.
  */
 
+import type { Semester } from '../calendar/year.js';
 import type { DayTrack } from './schedule.js';
 
 /**
@@ -137,6 +138,41 @@ export type Course = {
   lastEditedBy: string | null;
   lastEditedAt: Date | null;
 };
+
+/**
+ * The semester a course runs in, where running in one is the exception (#183).
+ *
+ * The school year's own `Semester` (`calendar/year.ts`) rather than a second
+ * spelling of the same two words: a course's *shape* is `year | fall | spring |
+ * block` and a term of the year is `fall | spring`, and where the two meet they
+ * have to be the same fall.
+ *
+ * Null for everything else — a year course is not marked "year". The whole year
+ * is the default, and marking the default would make the exception harder to
+ * see rather than easier, which is the only reason the marker exists: a parent
+ * read the week grid, not the course description, and nothing there told her
+ * the class ran one semester.
+ *
+ * Null for a `block` too. A block is shorter than a semester and names no
+ * semester at all; it publishes its length instead ("6 weeks"), which is the
+ * fact a parent is missing there.
+ *
+ * An exhaustive `switch` rather than the shorter test for two values, because
+ * every other reading of `enrolment` is one — `durationLabel` just below,
+ * `coursePrice`, the offerings, the application — and a fifth shape must fail
+ * the type check here the way it fails in all of them, rather than falling
+ * quietly to null.
+ */
+export function semesterLabel(course: Course): Semester | null {
+  switch (course.enrolment) {
+    case 'fall':
+    case 'spring':
+      return course.enrolment;
+    case 'year':
+    case 'block':
+      return null;
+  }
+}
 
 /** The duration line the school publishes, rebuilt from the fields above. */
 export function durationLabel(course: Course): string {
