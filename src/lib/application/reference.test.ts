@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { REFERENCE_ALPHABET, applicationReference } from './reference.js';
+import { REFERENCE_ALPHABET, REFERENCE_PATTERN, applicationReference } from './reference.js';
 
 /**
  * The short code a family reads off a screen and types into a giving page
@@ -46,8 +46,22 @@ describe('an application’s reference', () => {
   });
 
   it('is short, prefixed and grouped, so it can be read aloud', () => {
-    const shape = /^PA-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
-    for (const id of ids(200)) expect(applicationReference(id)).toMatch(shape);
+    for (const id of ids(200)) expect(applicationReference(id)).toMatch(REFERENCE_PATTERN);
+  });
+
+  /**
+   * The catalogue above is 20,000 unrelated ids, which any hash worth the name
+   * separates. Ids that differ by one digit are where a weak one folds two rows
+   * onto one code — and two rows on one code is the office reading a payment
+   * note and finding two families.
+   */
+  it('separates rows whose ids differ by a single character', () => {
+    const stem = '0f8b3a41-6c2d-4f7e-9a10-b5c6d7e8f9';
+    const digits = '0123456789abcdef';
+    const near = [...digits].flatMap((left) =>
+      [...digits].map((right) => `${stem}${left}${right}`),
+    );
+    expect(new Set(near.map(applicationReference)).size).toBe(near.length);
   });
 
   it('spells codes with characters nobody mistakes for each other', () => {

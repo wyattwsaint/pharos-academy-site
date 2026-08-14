@@ -235,9 +235,11 @@ retypes correctly.
 
 **It is derived from the row id, never stored** — one pure function
 (`applicationReference`), no column, no second identity to keep in step, the
-same code for the same row forever. Computing rather than storing, as in
-ADR-0003. A refused submission wrote no row, so it has no reference, and no
-surface invents one.
+same code for the same row for as long as the row exists (ADR-0016; computing
+rather than storing, as in ADR-0003). Nothing looks an application up by it, and
+two rows could in principle share one — the ADR says why that is accepted. A
+refused submission wrote no row, so it has no reference, and no surface invents
+one.
 
 Not: "application id" (that is the uuid, and no family sees it), "confirmation
 number", "receipt".

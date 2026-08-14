@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { APPLICATION_PATH, FAITH_QUESTIONS, faithKey } from '../src/lib/application/application.js';
+import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
 
 /**
  * The application, over real HTTP (#31, #85).
@@ -692,7 +693,7 @@ test.describe('the application page', () => {
     // code derived from its id — never the uuid, which nobody retypes (#218).
     const outcome = page.locator('[data-outcome="received"]');
     await expect(outcome).toBeVisible();
-    await expect(outcome).toContainText(/Reference PA-[A-Z0-9]{4}-[A-Z0-9]{4}\./);
+    await expect(outcome).toContainText(new RegExp(`Reference ${REFERENCE_SHAPE}\\.`));
 
     // The confirmation replays the choice and the check, and promises no clock.
     const confirmation = page.locator('[data-section="apply-confirmation"]');

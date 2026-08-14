@@ -11,6 +11,7 @@ import {
   FAITH_QUESTIONS,
   faithKey,
 } from '../src/lib/application/application.js';
+import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
 import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
@@ -1148,7 +1149,7 @@ test.describe('applications', () => {
     });
 
     const told = await page.locator('[data-outcome="received"]').innerText();
-    const reference = told.match(/PA-[A-Z0-9]{4}-[A-Z0-9]{4}/)?.[0];
+    const reference = told.match(new RegExp(REFERENCE_SHAPE))?.[0];
     expect(reference).toBeDefined();
 
     await signIn(page, '/admin/applications');

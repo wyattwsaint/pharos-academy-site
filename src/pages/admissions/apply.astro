@@ -570,6 +570,18 @@ const description =
                   Pay online
                 </a>
               </p>
+              {/*
+                What the reference is for (#218). A payment through the giving
+                page reaches the school detached from this application — Vanco
+                tells the site nothing (ADR-0013) — so the note is the only
+                place the two can be joined, and the family is the only one who
+                can write it there. The same sentence is in their email.
+              */}
+              <p class="mt-4" data-reference-note>
+                Please put your reference — <strong>{reference}</strong> — in the note when you
+                pay. A payment does not reach us attached to this application, so it is how we
+                match the two up.
+              </p>
               {depositsDue && (
                 <Fragment>
                   <p class="mt-6">

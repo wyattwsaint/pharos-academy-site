@@ -28,6 +28,17 @@ export const REFERENCE_ALPHABET = '23456789ACDEFHJKMNPQRTVWXY';
 /** Eight characters: 26⁸ codes, which is far more rows than this school will ever hold. */
 const LENGTH = 8;
 
+/**
+ * The shape of a reference, so nothing has to write the format out a second
+ * time to recognise one. Built from the alphabet above rather than beside it: a
+ * pattern that said `[A-Z0-9]` would happily accept `PA-0OIL-1SBZ`, which is
+ * every character this alphabet exists to keep out.
+ */
+export const REFERENCE_SHAPE = `PA-[${REFERENCE_ALPHABET}]{4}-[${REFERENCE_ALPHABET}]{4}`;
+
+/** The same shape, anchored — "is this string a reference?" rather than "does it contain one?". */
+export const REFERENCE_PATTERN = new RegExp(`^${REFERENCE_SHAPE}$`);
+
 /** FNV-1a, 64-bit — small, pure, and the same answer in every runtime. */
 const FNV_OFFSET = 0xcbf29ce484222325n;
 const FNV_PRIME = 0x100000001b3n;

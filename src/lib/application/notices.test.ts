@@ -12,7 +12,7 @@ import {
   refusedSubmissionNotice,
   type ApplicationSubmission,
 } from './notices.js';
-import { applicationReference } from './reference.js';
+import { REFERENCE_PATTERN, applicationReference } from './reference.js';
 
 /**
  * What leaves the site when an application arrives (#32 AC 4, 5, 6).
@@ -159,7 +159,7 @@ describe('the school’s copy', () => {
 
     const toSchool = mailer.sent.find((mail) => mail.to === 'jill@example.com')!;
     const toFamily = mailer.sent.find((mail) => mail.to === 'okonkwo@example.com')!;
-    expect(REFERENCE).toMatch(/^PA-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    expect(REFERENCE).toMatch(REFERENCE_PATTERN);
     expect(toSchool.text).toContain(`Reference:  ${REFERENCE}`);
     expect(toFamily.text).toContain(`Your reference is ${REFERENCE}.`);
     for (const mail of [toSchool, toFamily]) expect(mail.text).not.toContain(ROW_ID);
