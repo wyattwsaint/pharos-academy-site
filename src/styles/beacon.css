@@ -403,29 +403,34 @@ h3 {
   opacity: 0.55;
 }
 
-/* The announcement bar (#15) — the office's one urgent line, hung beneath the
-   header row.
+/* The announcement bar (#15) — the office's one urgent line, capping the header
+   above its row.
 
    Gold rather than navy because it has to read as a distinct band on both sides
    of the stick: navy on the stuck header would be one continuous block, and
    nothing over the hero would say where the header ends. Navy ink on gold is
    6.5:1, so it passes at every size the bar ever uses.
 
-   The negative bottom margin cancels the header's own padding so the band ends
+   The negative top margin cancels the header's own padding so the band starts
    where the header does. It follows `--header-pad` rather than restating 24px,
    which is what keeps it flush once the header shrinks on scroll. */
 .site-banner {
   background: var(--color-gold);
   color: var(--color-navy);
-  margin: var(--header-pad) 0 calc(-1 * var(--header-pad));
+  margin: calc(-1 * var(--header-pad)) 0 var(--header-pad);
   box-shadow: 0 6px 18px rgb(6 16 30 / 0.18);
 }
 
+/* Centred by laying the message across the full width and lifting the dismiss
+   out of the flow, rather than by centring the flex row: as a flex sibling the
+   button's width counts, and the message would sit half a button left of true
+   centre. `right` matches `.wide`'s own 26px so the × lines up with the
+   header's right edge below it. */
 .site-banner .wide {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: center;
   padding-top: 10px;
   padding-bottom: 10px;
 }
@@ -434,6 +439,10 @@ h3 {
   font: 400 15px/1.4 var(--font-sans);
   color: inherit;
   margin: 0;
+  text-align: center;
+  /* Clears the × on both sides, so a long message stays centred on the bar
+     rather than centred on the space left over beside the button. */
+  padding: 0 24px;
 }
 
 .site-banner-message b {
@@ -453,7 +462,10 @@ a.site-banner-message:hover {
    is decorative and the name is the visually hidden span beside it, so a screen
    reader hears "Dismiss this announcement" rather than "times". */
 .site-banner-dismiss {
-  flex: none;
+  position: absolute;
+  top: 50%;
+  right: 26px;
+  transform: translateY(-50%);
   display: grid;
   place-items: center;
   width: 28px;
@@ -471,10 +483,6 @@ a.site-banner-message:hover {
 }
 
 @media (max-width: 640px) {
-  .site-banner .wide {
-    align-items: flex-start;
-  }
-
   .site-banner-message {
     font-size: 14px;
   }

@@ -278,10 +278,16 @@ test.describe('saving school details', () => {
     await expect(bar).toContainText('Register now! Classes begin August 31');
     await expect(bar.getByRole('link')).toHaveAttribute('href', REGISTER.link);
 
-    // Beneath the header's row, not floating over it.
+    // Above the header's row, not floating over it.
     const row = await page.locator('[data-site-header] > .wide').boundingBox();
     const box = await bar.boundingBox();
-    expect(box!.y).toBeGreaterThanOrEqual(row!.y + row!.height - 1);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(row!.y + 1);
+
+    // Centred, and centred on the bar rather than on the space left beside the
+    // dismiss button: the message's own midpoint has to land on the bar's.
+    const message = await bar.locator('.site-banner-message').boundingBox();
+    const drift = Math.abs(message!.x + message!.width / 2 - (box!.x + box!.width / 2));
+    expect(drift).toBeLessThanOrEqual(1);
 
     await setBanner(page, null);
 
