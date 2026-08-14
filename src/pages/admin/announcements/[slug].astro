@@ -156,6 +156,7 @@ const FIELDS: {
   type: 'text' | 'multiline' | 'date' | 'url';
   optional?: true;
   hint?: string;
+  rows?: number;
 }[] = [
   {
     name: 'headline',
@@ -165,6 +166,7 @@ const FIELDS: {
   {
     name: 'body',
     type: 'multiline',
+    rows: 8,
     hint: 'A short paragraph. What it is, when it is, and what to do about it.',
   },
   {
@@ -218,52 +220,54 @@ function fieldsOf(row: Announcement): AnnouncementFields {
           hint={field.hint}
           error={errors[field.name]}
           optional={field.optional}
-          rows={8}
+          rows={field.rows}
         />
       ))
     }
 
-    <AdminField
-      name="attachment"
-      type="file"
-      label={LABELS.attachment}
-      accept="application/pdf"
-      error={errors.attachment}
-      optional
-    >
-      <Fragment slot="hint">
-        Optional, and a PDF — the board update, a flyer. Choosing one here replaces whatever is
-        attached now.
-        {
-          attached && (
-            <>
-              {' '}
-              Attached now:{' '}
-              <a
-                href={attachmentPath(announcement!.slug)}
-                class="underline underline-offset-4"
-                data-testid="current-attachment"
-              >
-                {attached}
-              </a>
-            </>
-          )
-        }
-      </Fragment>
-    </AdminField>
+    <div class="flex flex-col gap-2">
+      <AdminField
+        name="attachment"
+        type="file"
+        label={LABELS.attachment}
+        accept="application/pdf"
+        error={errors.attachment}
+        optional
+      >
+        <Fragment slot="hint">
+          Optional, and a PDF — the board update, a flyer. Choosing one here replaces whatever is
+          attached now.
+          {
+            attached && (
+              <>
+                {' '}
+                Right now that is{' '}
+                <a
+                  href={attachmentPath(announcement!.slug)}
+                  class="underline underline-offset-4"
+                  data-testid="current-attachment"
+                >{attached}</a>.
+              </>
+            )
+          }
+        </Fragment>
+      </AdminField>
 
-    {
-      /*
-        Only offered when there is something to remove. A checkbox that took
-        down a file that was not there would be a control with no effect,
-        which is the kind of thing somebody ticks to find out what it does.
-      */
-    }
-    {
-      attached && (
-        <AdminField name="removeAttachment" type="checkbox" label="Remove the attached PDF" />
-      )
-    }
+      {
+        /*
+          Only offered when there is something to remove, and kept in the
+          upload's own group so it reads as an option on the PDF rather than as
+          a field of its own. A checkbox that took down a file that was not
+          there would be a control with no effect, which is the kind of thing
+          somebody ticks to find out what it does.
+        */
+      }
+      {
+        attached && (
+          <AdminField name="removeAttachment" type="checkbox" label="Remove the attached PDF" />
+        )
+      }
+    </div>
 
     <AdminButton class="self-start">Save</AdminButton>
   </form>

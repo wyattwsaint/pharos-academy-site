@@ -127,6 +127,9 @@ const FIELDS: {
   type: 'text' | 'multiline' | 'number';
   optional?: true;
   hint?: string;
+  rows?: number;
+  min?: number;
+  step?: number;
 }[] = [
   { name: 'name', type: 'text', hint: 'As the school writes it, honorific and all.' },
   {
@@ -138,6 +141,7 @@ const FIELDS: {
     name: 'bio',
     type: 'multiline',
     optional: true,
+    rows: 8,
     hint: 'Optional. Leave it empty until the school has written one — the staff page looks right without it.',
   },
   {
@@ -150,6 +154,8 @@ const FIELDS: {
     name: 'leadershipRank',
     type: 'number',
     optional: true,
+    min: 1,
+    step: 1,
     hint: 'Their place in the Leadership section, 1 first. Leave it empty for everybody else.',
   },
 ];
@@ -201,13 +207,13 @@ function slugFor(name: string): string {
           name={field.name}
           type={field.type}
           label={LABELS[field.name]}
-          value={values[field.name] === null ? '' : String(values[field.name])}
+          value={String(values[field.name] ?? '')}
           hint={field.hint}
           error={errors[field.name]}
           optional={field.optional}
-          rows={8}
-          min={field.type === 'number' ? 1 : undefined}
-          step={field.type === 'number' ? 1 : undefined}
+          rows={field.rows}
+          min={field.min}
+          step={field.step}
         />
       ))
     }
