@@ -21,7 +21,7 @@ test.describe('the admissions page', () => {
   test('answers a family’s questions in the order they ask them', async ({ page }) => {
     await page.goto('/admissions');
 
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('How Applying Works');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your Path to Enrollment');
 
     // Five bands since #107 retired "What applying involves", plus the header
     // and the closing one.
