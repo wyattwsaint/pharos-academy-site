@@ -286,6 +286,7 @@ describe('coverage of the editable set', () => {
         faith: { 'faith-Mother-agree': 'yes' },
         objections: '',
         agreements: { handbook: { answer: 'parent', version: 1 } },
+        paymentMethod: 'check',
       },
       { statementVersion: 'sof-00000000' },
     );

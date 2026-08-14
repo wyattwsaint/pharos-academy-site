@@ -29,13 +29,15 @@
  * anyway because #32 AC 4 is about the *difference* between them: the two ends
  * are named, only one of them writes to the family (`tellsTheFamily`), and the
  * day drafts are persisted the moves are already here rather than being
- * invented under pressure.
+ * invented under pressure. `paid_online` on the money axis is the fourth, for
+ * its own reason — see `RECORDED_PAYMENT_STATUSES`.
  *
- * **The payment slot lives here as one constant.** `PAYMENT_SLOT_MODE` is the
- * whole of what the Vanco stage flips, and flipping it changes exactly one
- * thing: the next submission reads `paid online` rather than `awaiting cheque`.
- * That was verified by driving the prototype, and it is what makes the slot a
- * seam rather than a hole (CONTEXT.md, "payment slot").
+ * **The mode is the family's answer, not the site's setting** (#219,
+ * ADR-0017). It was `PAYMENT_SLOT_MODE`, one constant a deployment flipped;
+ * since the Apply page asks a family how they intend to pay, it is
+ * `paymentModeOf` over what they said. What it does *not* do is move the
+ * status: a stated method is not an observed payment, and both modes open
+ * `awaiting`.
  */
 
 /**
@@ -133,18 +135,33 @@ export const PAYMENT_MODES = ['cheque', 'online'] as const;
 export type PaymentMode = (typeof PAYMENT_MODES)[number];
 
 /**
- * How the school takes money today.
+ * The mode a family's stated method records as (#219, ADR-0017).
  *
- * The one line the Vanco stage changes. Everything downstream reads it rather
- * than assuming cheques, so the flip is a constant and not a refactor.
+ * The form says `check` because prose is American and the column says `cheque`
+ * because renaming a schema for a spelling costs a migration and buys nothing
+ * (CONTEXT.md, "enrolment unit"). This is the one line where the two meet, so
+ * neither vocabulary leaks into the other's half of the codebase.
+ *
+ * It replaced `PAYMENT_SLOT_MODE`, a deployment-wide constant, and the
+ * replacement is the decision: how an application is paid is a fact about *that
+ * family*, stated by them on the form, and no longer a fact about the site.
  */
-export const PAYMENT_SLOT_MODE: PaymentMode = 'cheque';
+export function paymentModeOf(method: 'online' | 'check'): PaymentMode {
+  return method === 'online' ? 'online' : 'cheque';
+}
 
 /**
  * What a row may hold.
  *
  * `overdue` is conspicuously absent, and its absence is the design: see the
  * note at the top of this file and `paymentStatusNow` below.
+ *
+ * `paid_online` is absent from everything that *writes*, and is the fourth
+ * deliberately unreachable state on this file's list. A family stating they
+ * will pay online is not a payment: Vanco tells the site nothing, so the only
+ * honest recorded status at submission is that the money is awaited (ADR-0013,
+ * ADR-0017). It is kept named for the day Vanco reports back, and until then
+ * the office records `received` by hand in either channel.
  */
 export const RECORDED_PAYMENT_STATUSES = [
   'not_due',
@@ -179,13 +196,18 @@ export const CHEQUE_GRACE_DAYS = 21;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** The payment axis as a submission opens it. */
-export function paymentOnSubmission(now: Date, mode: PaymentMode = PAYMENT_SLOT_MODE): Payment {
-  return {
-    mode,
-    status: mode === 'online' ? 'paid_online' : 'awaiting',
-    since: now,
-  };
+/**
+ * The payment axis as a submission opens it.
+ *
+ * `mode` is what the family said they would do, and the status is `awaiting`
+ * whichever they said. The two are deliberately not correlated: the site
+ * observes no payment in either channel, so a submission that recorded
+ * `paid_online` because a family ticked "online" would be a claim nobody
+ * checked — the same claim ADR-0013 refused to store and ADR-0017 goes on
+ * refusing. What the mode buys the office is knowing *what to watch for*.
+ */
+export function paymentOnSubmission(now: Date, mode: PaymentMode): Payment {
+  return { mode, status: 'awaiting', since: now };
 }
 
 /**
@@ -262,16 +284,50 @@ export const APPLICATION_EVENT_LABELS: Record<ApplicationEvent, string> = {
   withdraw: 'Withdraw this application',
 };
 
-export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  not_due: 'Nothing to pay',
-  awaiting: 'Awaiting check',
-  received: 'Check received',
-  overdue: 'Check overdue',
-  paid_online: 'Paid online',
+/**
+ * How the money side reads, in the words of the channel this family chose (#219).
+ *
+ * Keyed by mode because "Awaiting check" over a family who said they would pay
+ * online sends the office to the post tray for an envelope that is never
+ * coming. The mode is the whole of what a stated method buys them, and a label
+ * that ignores it spends it.
+ */
+export const PAYMENT_STATUS_LABELS: Record<PaymentMode, Record<PaymentStatus, string>> = {
+  cheque: {
+    not_due: 'Nothing to pay',
+    awaiting: 'Awaiting check',
+    received: 'Check received',
+    overdue: 'Check overdue',
+    paid_online: 'Paid online',
+  },
+  online: {
+    not_due: 'Nothing to pay',
+    awaiting: 'Awaiting payment online',
+    received: 'Payment received',
+    overdue: 'Online payment overdue',
+    paid_online: 'Paid online',
+  },
 };
 
-export const PAYMENT_EVENT_LABELS: Record<PaymentEvent, string> = {
-  receive: 'Check has arrived',
-  expect: 'Wait (again) for a check',
-  waive: 'Nothing to pay',
+/** What the money side reads now, for one application. */
+export function paymentStatusLabel(status: PaymentStatus, mode: PaymentMode): string {
+  return PAYMENT_STATUS_LABELS[mode][status];
+}
+
+export const PAYMENT_EVENT_LABELS: Record<PaymentMode, Record<PaymentEvent, string>> = {
+  cheque: {
+    receive: 'Check has arrived',
+    expect: 'Wait (again) for a check',
+    waive: 'Nothing to pay',
+  },
+  online: {
+    receive: 'The payment has arrived',
+    expect: 'Wait (again) for the payment',
+    waive: 'Nothing to pay',
+  },
 };
+
+/** What the button says, for one application. */
+export function paymentEventLabel(event: PaymentEvent, mode: PaymentMode): string {
+  return PAYMENT_EVENT_LABELS[mode][event];
+}

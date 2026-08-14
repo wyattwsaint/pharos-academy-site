@@ -10,7 +10,9 @@ import {
   eventsFrom,
   nextApplicationState,
   nextPayment,
+  paymentEventLabel,
   paymentOnSubmission,
+  paymentStatusLabel,
   paymentStatusNow,
   tellsTheFamily,
   type Payment,
@@ -82,17 +84,19 @@ describe('the application axis', () => {
 });
 
 describe('the payment axis', () => {
-  it('starts a cheque application awaiting, and an online one paid', () => {
+  it('records what the family said, and never that they paid (#219)', () => {
     expect(paymentOnSubmission(AT, 'cheque')).toEqual({
       mode: 'cheque',
       status: 'awaiting',
       since: AT,
     });
-    // The whole of what the Vanco stage changes: the next submission reads
-    // "paid online" rather than "awaiting cheque".
+    // The mode moves and the status does not. A family ticking "online" has
+    // told us what they intend to do, and the site sees no money in either
+    // channel — a submission opening `paid_online` off a radio button would be
+    // the claim ADR-0013 refused to store and ADR-0017 goes on refusing.
     expect(paymentOnSubmission(AT, 'online')).toEqual({
       mode: 'online',
-      status: 'paid_online',
+      status: 'awaiting',
       since: AT,
     });
   });
@@ -151,14 +155,22 @@ describe('the words on the buttons', () => {
     // a column value and never moves, and every label above it is what Jill and
     // the family read.
     const labels = [
-      ...Object.values(PAYMENT_STATUS_LABELS),
-      ...Object.values(PAYMENT_EVENT_LABELS),
+      ...Object.values(PAYMENT_STATUS_LABELS).flatMap((byStatus) => Object.values(byStatus)),
+      ...Object.values(PAYMENT_EVENT_LABELS).flatMap((byEvent) => Object.values(byEvent)),
       ...Object.values(APPLICATION_EVENT_LABELS),
     ];
 
     expect(labels.filter((label) => /cheque|enrol\b/i.test(label))).toEqual([]);
-    expect(PAYMENT_STATUS_LABELS.awaiting).toBe('Awaiting check');
-    expect(PAYMENT_EVENT_LABELS.receive).toBe('Check has arrived');
+    expect(paymentStatusLabel('awaiting', 'cheque')).toBe('Awaiting check');
+    expect(paymentEventLabel('receive', 'cheque')).toBe('Check has arrived');
     expect(APPLICATION_EVENT_LABELS.enrol).toBe('Enroll this family');
+  });
+
+  it('never sends the office to the post tray for a family paying online (#219)', () => {
+    // The whole of what a stated method buys the office is knowing what to
+    // watch for, and a label that ignores the mode spends it.
+    expect(paymentStatusLabel('awaiting', 'online')).toBe('Awaiting payment online');
+    expect(paymentStatusLabel('overdue', 'online')).toBe('Online payment overdue');
+    expect(paymentEventLabel('receive', 'online')).toBe('The payment has arrived');
   });
 });

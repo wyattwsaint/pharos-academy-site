@@ -1,5 +1,13 @@
 # The school holds the tuition
 
+> **Partly superseded by
+> [ADR-0017](0017-one-payment-and-the-check-is-the-fallback.md) (#219).** Who
+> holds the money is still this ADR's answer and has not moved. The channel
+> split below — registration and tuition online, the per-class deposit by check
+> — is reversed: all three are one payment through Vanco, and a check is the
+> fallback for the whole of it. Read this for the rename and the reasoning; read
+> ADR-0017 for how a family pays today.
+
 Tuition is paid to Pharos Academy, in one payment, upfront, through the same
 Vanco page the registration fee goes through. It is not paid to the instructors
 (#187).

@@ -57,7 +57,8 @@ function column(
  *
  * One full column since #85: an application nobody answered the Statement of
  * Faith questions on is no longer a sendable one, so a fixture without a column
- * would be testing a form the school does not accept.
+ * would be testing a form the school does not accept. A stated payment method
+ * since #219, for the same reason.
  */
 function goodForm(over: Record<string, string | string[]> = {}): FormData {
   return form({
@@ -66,6 +67,7 @@ function goodForm(over: Record<string, string | string[]> = {}): FormData {
     'child-0-name': 'Ada',
     'child-0-age': '13',
     'child-0-classes': ['algebra-1:year'],
+    'payment-method': 'online',
     ...column('Father'),
     ...over,
   });
@@ -273,6 +275,28 @@ describe('what an application must carry before it can be sent (#85)', () => {
 
     it('still refuses when one of the two is left alone', () => {
       expect(errorsOf({ 'agreement-handbook': 'parent' }, ASKABLE).agreements).toBeTruthy();
+    });
+  });
+
+  describe('how the family says they are paying (#219)', () => {
+    it('asks for an answer, and takes either one', () => {
+      expect(errorsOf({ 'payment-method': '' }).paymentMethod).toBeTruthy();
+      // Answered, never approved of. Choosing the check must not cost a family
+      // so much as a round trip: it sends exactly as "online" does.
+      expect(errorsOf({ 'payment-method': 'online' })).toEqual({});
+      expect(errorsOf({ 'payment-method': 'check' })).toEqual({});
+    });
+
+    it('reads a word it does not know as no answer at all', () => {
+      // A hand-typed POST, or a value from a form a republish has since moved
+      // on from. It is unanswered rather than recorded, for `faith`'s reason.
+      const { values, errors } = parseApplication(
+        goodForm({ 'payment-method': 'venmo' }),
+        OFFERINGS,
+      );
+
+      expect(values.paymentMethod).toBe('');
+      expect(errors.paymentMethod).toBeTruthy();
     });
   });
 
@@ -541,7 +565,9 @@ describe('the children’s sensitive data does not enter the site (#31 AC 9)', (
     // deliberately rather than edited around: an agreement to the Code of
     // Conduct or the Handbook is a position the *family* takes about two
     // published documents, not a fact about a child's person. ADR-0007 excludes
-    // the second and has nothing to say about the first.
+    // the second and has nothing to say about the first. `paymentMethod` (#219)
+    // is the same kind of fact one step further out: it is how the family says
+    // they will pay the school, and it says nothing about any child at all.
     const { values } = parseApplication(goodForm(), OFFERINGS);
     expect(Object.keys(values).sort()).toEqual([
       'agreements',
@@ -550,6 +576,7 @@ describe('the children’s sensitive data does not enter the site (#31 AC 9)', (
       'familyName',
       'faith',
       'objections',
+      'paymentMethod',
     ].sort());
   });
 

@@ -32,11 +32,20 @@ describe('the validation rules keep their address', () => {
             faith: {},
             objections: '',
             agreements: {},
+            paymentMethod: '',
           },
           [{ slug: 'code-of-conduct' }],
         ),
       ).sort(),
-    ).toEqual(['agreements', 'children', 'classes', 'email', 'faith', 'familyName']);
+    ).toEqual([
+      'agreements',
+      'children',
+      'classes',
+      'email',
+      'faith',
+      'familyName',
+      'paymentMethod',
+    ]);
   });
 });
 

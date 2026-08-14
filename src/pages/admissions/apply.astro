@@ -22,6 +22,7 @@ import {
   type ApplicationErrors,
   type ApplicationFields,
   type ErrorField,
+  type PaymentMethod,
 } from '../../lib/application/application.js';
 import {
   AGREEMENT_CHOICES,
@@ -62,7 +63,7 @@ import { listPolicies } from '../../lib/policies/store.js';
  * The family's application (#31).
  *
  * Stages on one long document — the Statement of Faith, the classes, the two
- * agreements a family signs (#71), what to post, and sending it — with the
+ * agreements a family signs (#71), what to pay, and sending it — with the
  * `APPLICATION_STAGES` ids as anchors. One
  * page rather than a stepped flow because the entry point is warm: a family
  * reaches this from a conversation and from a link Jill pasted into an email,
@@ -344,6 +345,36 @@ if (Astro.request.method === 'POST') {
   rows = childRows(null, values.children.length);
 }
 
+/**
+ * Whether there is anything to choose between (#111, #187, #219).
+ *
+ * The school has an online address or it has not — one row, one question — and
+ * the payment stage, the method question and the confirmation all word
+ * themselves around the answer. Asked three times it was three decisions that
+ * could disagree; asked here it is one.
+ *
+ * With no address there is one way to pay, so the page **states** the answer
+ * rather than asking it, here, before the gate reads it: a still-needed line
+ * about a question the page never asks is a family stuck at a greyed button
+ * with nothing on screen that could ungrey it. The hidden field in the stage
+ * below posts the same word back, so a form with scripting off round-trips it
+ * exactly as a radio would.
+ */
+const payOnline = details.payOnlineUrl !== '';
+if (!payOnline) values.paymentMethod = 'check';
+
+/**
+ * The two answers, in the order the stage below offers them.
+ *
+ * Online first, because it is the school's own preference and the primary
+ * action on the page — a question whose first option contradicts the button
+ * above it is the page arguing with itself.
+ */
+const PAYMENT_METHOD_CHOICES: { value: PaymentMethod; label: string }[] = [
+  { value: 'online', label: 'Pay online, through the giving page' },
+  { value: 'check', label: 'Post a check' },
+];
+
 const rejected = Object.keys(errors).length > 0;
 
 /**
@@ -429,24 +460,16 @@ const NEEDED: { field: ErrorField; href: string; label: string }[] = [
   },
   { field: 'classes', href: '#apply-classes', label: 'At least one class, for one child' },
   { field: 'agreements', href: '#apply-agreements', label: 'Who agrees to each of the documents' },
+  /*
+   * Last, because the question is last on the page (#219 AC 8). It appears in
+   * the list from the first paint like every other line — the list is what a
+   * family reads *before* they start — and the sentence beside the radios is
+   * the one that waits until they have been there.
+   */
+  { field: 'paymentMethod', href: '#apply-payment-method', label: 'How you are planning to pay' },
 ];
 
 const cost = applicationCost(values, offerings, settings);
-
-/**
- * How the money can be paid (#111, #187), decided once for the whole document.
- *
- * The school has an online address or it has not — one row, one question — and
- * three places on this page word themselves around the answer: the totals list,
- * the payment stage and the confirmation. Asked three times it was three
- * decisions that could disagree; asked here it is one.
- *
- * The deposits are a separate condition rather than the same one: a family can
- * reach this stage having chosen no classes yet, and "$0.00 by check, posted
- * to" is an instruction to mail an empty envelope.
- */
-const payOnline = details.payOnlineUrl !== '';
-const depositsDue = cost.total.deposits > 0;
 
 const clashing = familyClashes(values, offerings, year);
 const clashCount = clashing.reduce((sum, one) => sum + one.clashes.length, 0);
@@ -464,7 +487,7 @@ const stage = (id: string): string =>
   APPLICATION_STAGES.find((one) => one.id === id)?.title ?? '';
 
 const description =
-  'Apply to Pharos Academy — what we believe, the classes your children would take, and what to post.';
+  'Apply to Pharos Academy — what we believe, the classes your children would take, and what to pay.';
 ---
 
 <BaseLayout details={details} title="Apply to Pharos" description={description}>
@@ -474,7 +497,7 @@ const description =
       <h1 class="mt-4">Your Application</h1>
       <p class="sub mt-5">
         All of it on one page: what we believe, the classes you are choosing, the documents families
-        sign, what to post, and sending it. Nothing here is a test — the questions about what we
+        sign, what to pay, and sending it. Nothing here is a test — the questions about what we
         believe exist so we can talk, not so we can turn anyone away.
       </p>
 
@@ -523,7 +546,7 @@ const description =
           <h2>{stage('confirmation')}</h2>
           <p class="sub mt-4">
             We have your application for {values.familyName}, and we will be in touch. A place is
-            held for each class as soon as its deposit reaches us.
+            held for each class as soon as your payment reaches us.
           </p>
 
           {/*
@@ -557,18 +580,29 @@ const description =
               ))}
           </ul>
 
+          {/*
+            Worded from the answer the family gave, not from what the page can
+            offer (#219 AC 6). They have just told us which way they are
+            paying; repeating the other one back at them would be the screen
+            disagreeing with the question two sections above it — and with the
+            email, which says the same thing in the same words.
+          */}
           <h3 class="mt-8">What to Pay</h3>
-          {payOnline ? (
-            <Fragment>
+          {payOnline && values.paymentMethod === 'online' ? (
+            <div data-paying="online">
               <p class="mt-4">
-                The registration — <strong>{formatMoney(cost.total.registration)}</strong> — and the
-                tuition — <strong>{formatMoney(cost.total.tuitionDue)}</strong> at today’s rates —
-                online, in one payment, through the church’s giving page:
+                All of it — <strong>{formatMoney(cost.total.total)}</strong> at today’s rates — in
+                one payment, online, through the church’s giving page:
               </p>
-              <p class="mt-4">
-                <a class="btn" href={details.payOnlineUrl} rel="external" data-pay-online>
+              <p class="pay mt-5">
+                <a class="btn solid" href={details.payOnlineUrl} rel="external" data-pay-online>
                   Pay online
                 </a>
+                <strong class="pay-total" data-pay-total>{formatMoney(cost.total.total)}</strong>
+              </p>
+              <p class="mt-5">
+                The giving page does not know what you owe, so please enter{' '}
+                <strong>{formatMoney(cost.total.total)}</strong> yourself.
               </p>
               {/*
                 What the reference is for (#218). A payment through the giving
@@ -582,18 +616,9 @@ const description =
                 pay. A payment does not reach us attached to this application, so it is how we
                 match the two up.
               </p>
-              {depositsDue && (
-                <Fragment>
-                  <p class="mt-6">
-                    The deposits — <strong>{formatMoney(cost.total.deposits)}</strong> — by check,
-                    made out to Pharos Academy, to:
-                  </p>
-                  <p class="address mt-4">{details.address}</p>
-                </Fragment>
-              )}
-            </Fragment>
+            </div>
           ) : (
-            <Fragment>
+            <div data-paying="check">
               <p class="mt-4">
                 A check for <strong>{formatMoney(cost.total.total)}</strong> — that is{' '}
                 {formatMoney(cost.total.registration)} in registration,{' '}
@@ -602,7 +627,7 @@ const description =
                 Pharos Academy, to:
               </p>
               <p class="address mt-4">{details.address}</p>
-            </Fragment>
+            </div>
           )}
 
           <p class="mt-8">
@@ -998,22 +1023,23 @@ const description =
               </li>
               <li class="due">
                 <span class="amount">{formatMoney(cost.total.total)}</span>
-                <span>
-                  {payOnline
-                    ? 'All of it, at today’s rates — the registration and tuition online, the deposits by check'
-                    : 'All of it, at today’s rates — the check you post with this application'}
-                </span>
+                <span>All of it, at today’s rates — one payment</span>
               </li>
             </ul>
 
             {/*
-              The payment slot, filled for two of the three amounts (#111, #187).
+              One lump sum, online first (#219, ADR-0017).
 
-              All three are the school’s money (ADR-0013); what differs is the
-              channel. The church takes payments through Vanco, and registration
-              and tuition go through it as **one** payment — one campaign, not
-              two. The per-class deposit is the exception and is still a check,
-              and saying which is which here is the whole point.
+              All three amounts are the school’s money and all three now go the
+              same way: one payment through the church’s Vanco page, upfront.
+              The split this page used to draw — registration and tuition
+              online, the deposits by check — is reversed, and a check is only
+              ever the fallback.
+
+              The giving page is a plain link and carries no amount with it, so
+              the copy has to name the number the family types in, and the total
+              has to be impossible to miss beside the button. That is what the
+              figure next to “Pay online” is for.
 
               Nothing about the application changes. Vanco sends us no
               confirmation, so a "paid online" flag on the row would be a claim
@@ -1023,50 +1049,100 @@ const description =
             {payOnline ? (
               <Fragment>
                 <p class="mt-7">
-                  The registration — <strong>{formatMoney(cost.total.registration)}</strong> — and
-                  the tuition — <strong>{formatMoney(cost.total.tuitionDue)}</strong> — are paid
-                  online through the church’s giving page, in one payment, upfront.
+                  All of it is paid to Pharos Academy in one payment, online, through the church’s
+                  giving page — the registration, the deposits and the tuition together.
                 </p>
-                <p class="mt-5">
-                  <a class="btn" href={details.payOnlineUrl} rel="external" data-pay-online>
+                <p class="pay mt-6">
+                  <a class="btn solid" href={details.payOnlineUrl} rel="external" data-pay-online>
                     Pay online
                   </a>
+                  <strong class="pay-total" data-pay-total>{formatMoney(cost.total.total)}</strong>
                 </p>
-                {depositsDue && (
-                  <Fragment>
-                    <p class="mt-6">
-                      The deposits — <strong>{formatMoney(cost.total.deposits)}</strong> — are paid
-                      by check, made out to Pharos Academy and posted to:
-                    </p>
-                    <p class="address mt-4">{details.address}</p>
-                  </Fragment>
-                )}
+                <p class="mt-5">
+                  The giving page does not know what you owe, so please enter{' '}
+                  <strong>{formatMoney(cost.total.total)}</strong> yourself. A payment through it
+                  does not reach us attached to this application, so the office matches the two up
+                  by hand.
+                </p>
+
+                {/*
+                  Subordinate on purpose, and a disclosure rather than a second
+                  button: a check beside "Pay online" at equal weight is two
+                  primary actions, and the school has said which one it wants.
+                  It asks for the *whole* total — never the deposits alone —
+                  because there is no longer a second channel for the rest of it
+                  to go down.
+                */}
+                <details class="alternative mt-7" data-pay-by-check>
+                  <summary>Prefer to pay by check?</summary>
+                  <p class="mt-4">
+                    Post a check for <strong>{formatMoney(cost.total.total)}</strong> — all of it —
+                    made out to Pharos Academy, to:
+                  </p>
+                  <p class="address mt-4">{details.address}</p>
+                </details>
               </Fragment>
             ) : (
               <Fragment>
                 <p class="mt-7">
-                  Registration, tuition and deposits are all paid by check, made out to Pharos
-                  Academy and posted to:
+                  All of it is paid to Pharos Academy by check —{' '}
+                  <strong>{formatMoney(cost.total.total)}</strong>, the registration, the deposits
+                  and the tuition together — made out to Pharos Academy and posted to:
                 </p>
                 <p class="address mt-4">{details.address}</p>
+                <p class="mt-6 text-ink-2">
+                  There is no online payment set up at the moment; when there is, it will appear
+                  here, and posting a check will still work.
+                </p>
               </Fragment>
             )}
 
             {/*
-              Who is owed what, in every state — including the one where no
-              classes have been chosen yet and the deposits above are $0 and
-              rightly unwritten. A family reading only this line still knows
-              that every one of the three amounts is the school’s, which is the
-              half of the ticket that is about wording rather than about a link.
+              What the family says they will do (#219 AC 4).
+
+              A statement of intent and never a receipt: the site sees no money
+              in either channel, so what this records is what the family told us
+              — which is exactly what lets the office know whether to watch for
+              an envelope. Choosing check delays nothing; the application is
+              sent and recorded either way, which is why the sentence beside the
+              question says so before anybody has to wonder.
+
+              With no giving page there is nothing to choose between, so the
+              answer is stated rather than asked. The hidden field posts the
+              same word a radio would have, so the rule sees one form and not
+              two.
             */}
-            <p class="mt-6 text-ink-2">
-              {payOnline
-                ? 'All of it is paid to Pharos Academy — the registration and the tuition online, in one payment, the deposits by check.'
-                : 'All of it is paid to Pharos Academy — the registration, the tuition and the deposits, all by check.'}
-              {payOnline
-                ? ' A payment through Vanco does not reach us attached to this application, so the office matches the two up by hand.'
-                : ' There is no online payment set up at the moment; when there is, it will appear here, and posting a check will still work.'}
-            </p>
+            {payOnline ? (
+              <fieldset class="question method" id="apply-payment-method" data-payment-method>
+                <legend>Which of those are you planning to do?</legend>
+                <p class="hint">
+                  Telling us saves the office watching the post for an envelope that is not coming.
+                  Either answer sends your application straight away — nothing waits on the money.
+                </p>
+                <div class="mt-4">
+                  {PAYMENT_METHOD_CHOICES.map((choice, at) => (
+                    <label class="check">
+                      <input
+                        type="radio"
+                        name="payment-method"
+                        value={choice.value}
+                        checked={values.paymentMethod === choice.value}
+                        aria-describedby={
+                          errors.paymentMethod ? 'apply-payment-method-error' : undefined
+                        }
+                        autofocus={focus === 'paymentMethod' && at === 0}
+                      />
+                      <span>{choice.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p class="error mt-5" id="apply-payment-method-error" hidden={!errors.paymentMethod}>
+                  {errors.paymentMethod}
+                </p>
+              </fieldset>
+            ) : (
+              <input type="hidden" name="payment-method" value="check" />
+            )}
           </div>
         </section>
 
@@ -1158,6 +1234,7 @@ const description =
     FAITH_RESPONDENTS,
     faithKey,
     firstError,
+    paymentMethodOf,
     validateApplication,
     type ApplicationChild,
     type ApplicationErrors,
@@ -1246,6 +1323,10 @@ const description =
         describes: `${enabledRow} input[name$="-classes"]`,
       },
       agreements: { error: 'apply-agreements-error', describes: '[data-agreements] input' },
+      paymentMethod: {
+        error: 'apply-payment-method-error',
+        describes: '[data-payment-method] input',
+      },
     };
 
     /** The control a refused send should land on, per field. */
@@ -1270,6 +1351,9 @@ const description =
         }
         return null;
       },
+      // Null on a page with no giving page: there is no question there, the
+      // hidden field has already answered it, and this rule cannot fire.
+      paymentMethod: () => form.querySelector('[data-payment-method] input'),
     };
 
     const visibleRows = (): HTMLFieldSetElement[] => rows.filter((row) => !row.disabled);
@@ -1335,6 +1419,17 @@ const description =
         if (answer !== '') agreements[slug] = { answer: answer as AgreementAnswer, version: null };
       }
 
+      /*
+        The stated method (#219). One selector over both shapes the page can
+        take: a checked radio where there is a choice, and the hidden field
+        that states `check` where there is not. Reading them together is what
+        keeps the browser's rule and the server's looking at one form.
+      */
+      const method =
+        form.querySelector<HTMLInputElement>(
+          'input[name="payment-method"]:checked, input[name="payment-method"][type="hidden"]',
+        )?.value ?? '';
+
       return {
         familyName: valueOf('#apply-family-name'),
         email: valueOf('#apply-email'),
@@ -1342,6 +1437,7 @@ const description =
         faith,
         objections: valueOf('#apply-objections'),
         agreements,
+        paymentMethod: paymentMethodOf(method),
       };
     }
 
@@ -1415,6 +1511,7 @@ const description =
       if (name.startsWith('agreement-')) return 'agreements';
       if (name === 'familyName') return 'familyName';
       if (name === 'email') return 'email';
+      if (name === 'payment-method') return 'paymentMethod';
       if (name.endsWith('-classes')) return 'classes';
       if (/^child-\d+-(name|age)$/.test(name)) return 'children';
       return null;
@@ -1579,6 +1676,15 @@ const description =
     min-width: 0;
   }
 
+  /*
+    The `fieldset` reset above beats a `mt-*` utility, so the question that
+    closes the payment stage asks for its own air rather than being set flush
+    against the check disclosure it follows.
+  */
+  .method {
+    margin-top: 2.5rem;
+  }
+
   .child {
     border-top: 1px solid var(--color-gold-orn);
     padding-top: 1.5rem;
@@ -1721,6 +1827,45 @@ const description =
 
   .totals > li.due .amount {
     font-weight: 600;
+  }
+
+  /*
+    The primary action and the number to type into it (#219).
+
+    The giving page carries no amount, so the family reads the total off this
+    page and enters it themselves. It sits *beside* the button at the size of
+    the totals list's own figures, because a number a family has to copy and
+    cannot see is the whole way this goes wrong.
+  */
+  .pay {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+  }
+
+  .pay-total {
+    font-family: var(--font-serif);
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--color-navy);
+  }
+
+  /*
+    The check, subordinate.
+
+    A disclosure and not a second button: two calls to action of equal weight
+    is a page with no preference, and the school has one. Closed, it is one
+    quiet line; open, it says everything an envelope needs.
+  */
+  .alternative {
+    max-width: 46rem;
+  }
+
+  .alternative > summary {
+    cursor: pointer;
+    font-family: var(--font-sans);
+    color: var(--color-ink-2);
   }
 
   .picked {

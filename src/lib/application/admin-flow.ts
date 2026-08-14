@@ -18,7 +18,7 @@ import {
   APPLICATION_EVENTS,
   APPLICATION_STATE_LABELS,
   PAYMENT_EVENTS,
-  PAYMENT_STATUS_LABELS,
+  paymentStatusLabel,
   type ApplicationEvent,
   type PaymentEvent,
 } from './lifecycle.js';
@@ -76,7 +76,10 @@ export async function applyApplicationAction(
 
   const payment = await moveApplicationPayment(db, action.id, action.event, now);
   return payment
-    ? { ok: true, message: `The money side now reads ${PAYMENT_STATUS_LABELS[payment.status].toLowerCase()}.` }
+    ? {
+        ok: true,
+        message: `The money side now reads ${paymentStatusLabel(payment.status, payment.mode).toLowerCase()}.`,
+      }
     : {
         ok: false,
         message: 'Nothing changed — the money side already reads that. It may already have moved.',

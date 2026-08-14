@@ -124,10 +124,36 @@ export type ApplicationFields = {
    * sent; a question the school never asked carries no requirement at all.
    */
   agreements: Agreements;
+  /**
+   * How the family says they will pay (#219).
+   *
+   * A statement of intent and never a payment: the site sees no money in
+   * either channel, and what this buys the office is knowing whether to watch
+   * for an envelope (ADR-0017). Empty means unanswered.
+   *
+   * American in the form and `cheque` in the column — `paymentModeOf` in
+   * `lifecycle.ts` is the one place the two spellings meet.
+   */
+  paymentMethod: PaymentMethod | '';
 };
 
 /**
- * The six things that can be missing, in the order they appear on the page.
+ * The two ways a family can say they are paying.
+ *
+ * Named here rather than imported from `lifecycle.ts` because this file is a
+ * leaf the browser downloads (see the note at the top), and because the form's
+ * vocabulary is prose: a family reads "check".
+ */
+export const PAYMENT_METHODS = ['online', 'check'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+/** Whatever was posted or picked, as an answer or as none. */
+export function paymentMethodOf(value: string): PaymentMethod | '' {
+  return PAYMENT_METHODS.includes(value as PaymentMethod) ? (value as PaymentMethod) : '';
+}
+
+/**
+ * The seven things that can be missing, in the order they appear on the page.
  *
  * The order is the reading order of the document, because it is what "the first
  * thing that needs attention" means to a family scrolling down: focus goes to
@@ -146,6 +172,7 @@ export const ERROR_FIELDS = [
   'children',
   'classes',
   'agreements',
+  'paymentMethod',
 ] as const;
 export type ErrorField = (typeof ERROR_FIELDS)[number];
 
@@ -163,12 +190,13 @@ export type AskedAgreement = { slug: AgreementSlug };
 /**
  * Everything wrong with an application, in one pass (#85).
  *
- * Six things can be missing and none of them is an opinion: who is applying, how
- * to reach them, who the children are, whether any class was chosen, whether
- * anybody answered the Statement of Faith questions, and whether each published
- * document was answered. **What was answered is never wrong.** A "No", a
- * "Neither agrees" and a page of objections all pass, because the school asked
- * to be told, not to be agreed with.
+ * Seven things can be missing and none of them is an opinion: who is applying,
+ * how to reach them, who the children are, whether any class was chosen,
+ * whether anybody answered the Statement of Faith questions, whether each
+ * published document was answered, and how the family says they will pay.
+ * **What was answered is never wrong.** A "No", a "Neither agrees", a page of
+ * objections and "by check" all pass, because the school asked to be told, not
+ * to be agreed with.
  *
  * `asked` is what the page put on screen. A policy the school has not published
  * produces no question and therefore no requirement — the gate matches the form
@@ -211,6 +239,20 @@ export function validateApplication(
     errors.agreements =
       'Tell us who agrees to each of these. “Neither agrees” is a real answer — ' +
       'we only need to know.';
+  }
+
+  /*
+   * The stated method (#219). Like every rule above it, it asks whether the
+   * question was answered and never which answer it was: choosing to post a
+   * check must not hold an application up by so much as a round trip, and it
+   * does not — the answer is recorded and the application sends either way.
+   *
+   * A deployment with no giving page asks nothing, because there is nothing to
+   * choose between; the page states `check` for the family and this rule reads
+   * the same answer it would have got from a radio.
+   */
+  if (values.paymentMethod === '') {
+    errors.paymentMethod = 'Tell us how you are planning to pay. Either answer sends this.';
   }
 
   return errors;

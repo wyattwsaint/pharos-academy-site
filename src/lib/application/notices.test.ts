@@ -38,6 +38,7 @@ function fields(over: Partial<ApplicationFields> = {}): ApplicationFields {
     faith: { [faithKey('Father', 'read')]: 'yes', [faithKey('Mother', 'agree')]: 'no' },
     objections: '',
     agreements: {},
+    paymentMethod: 'online',
     ...over,
   };
 }
@@ -92,9 +93,11 @@ describe('the school’s copy', () => {
     // knows.
     expect(mail.text).toContain('$840');
     // $840 less the credited deposit — the tuition the school is owed.
-    expect(mail.text).toContain('Tuition:                $740');
-    // With no online link, one check covers the lot: $25 + $100 + $740.
-    expect(mail.text).toContain('Check they are posting: $865 — all of it');
+    expect(mail.text).toContain('Tuition:       $740');
+    // One lump sum, itemised above it: $25 + $100 + $740 (#219).
+    expect(mail.text).toContain('All of it:     $865');
+    // With no online link there is one way to pay, whatever the form said.
+    expect(mail.text).toContain('They say they are posting a check for $865');
   });
 
   it('carries the Statement of Faith record, answered cells only', () => {
@@ -235,7 +238,7 @@ describe('what the family is told', () => {
    * link is not a wording slip — it is the school being told two different
    * things by the same submission.
    */
-  it('gives the family the online link when the school has one, for the registration and the tuition', async () => {
+  it('gives the family the online link, and the whole total to enter at it (#219)', async () => {
     const mailer = recorder();
     await deliverApplication(submission(), {
       sender: mailer.send,
@@ -249,16 +252,43 @@ describe('what the family is told', () => {
 
     const toFamily = mailer.sent.find((mail) => mail.to === 'okonkwo@example.com')!;
     expect(toFamily.text).toContain(PAY_AT);
-    expect(toFamily.text).toContain('$25'); // the registration, online
-    expect(toFamily.text).toContain('$740'); // and the tuition, in the same payment
-    // The deposits are the exception, and still a check to the address.
-    expect(toFamily.text).toContain('$100');
-    expect(toFamily.text).toContain('9 Sherwood Drive');
+    // One payment covering all three amounts, and the itemisation beside it.
+    expect(toFamily.text).toContain('$865');
+    expect(toFamily.text).toContain('$25 in registration');
+    expect(toFamily.text).toContain('$100 in deposits');
+    expect(toFamily.text).toContain('$740 in tuition');
+    // The giving page carries no amount, so the email names the one to enter.
+    expect(toFamily.text).toContain('please enter $865');
     expect(toFamily.text).toContain('A place is held');
-    // And it no longer asks for a check covering what was paid online.
-    expect(toFamily.text).not.toContain('Please post a check for $865');
+    // A family paying online is not also sent to the post box.
+    expect(toFamily.text).not.toContain('Please post a check');
+    expect(toFamily.text).not.toContain('9 Sherwood Drive');
     expect(toFamily.text).not.toMatch(/cheque/i);
     expect(toFamily.text).not.toMatch(/\b(within|in) \d+ (hours|days|working days)\b/);
+  });
+
+  it('asks a family who chose the check for the whole total, never the deposits (#219)', async () => {
+    const mailer = recorder();
+    await deliverApplication(submission({ values: fields({ paymentMethod: 'check' }) }), {
+      sender: mailer.send,
+      to: ['jill@example.com'],
+      from: 'site@example.com',
+      postTo: POST_TO,
+      payOnlineAt: PAY_AT,
+      schoolEmail: 'school@example.com',
+      site: 'https://pharosacademy.net',
+    });
+
+    const toFamily = mailer.sent.find((mail) => mail.to === 'okonkwo@example.com')!;
+    // The whole of it in one envelope. The old split — the deposits by check,
+    // the rest online — is what ADR-0017 reversed, and $100 alone is the number
+    // this must never ask for.
+    expect(toFamily.text).toContain('Please post a check for $865');
+    expect(toFamily.text).toContain('9 Sherwood Drive');
+    expect(toFamily.text).not.toContain('post a check for $100');
+    // And the giving page is not offered beside it — they said what they were
+    // doing, and the email answers the one they chose.
+    expect(toFamily.text).not.toContain(PAY_AT);
   });
 
   it('does not send a family with no deposits to the postal address at all (#149)', async () => {
@@ -282,28 +312,26 @@ describe('what the family is told', () => {
     expect(toFamily.text).not.toMatch(/check for \$0/);
   });
 
-  it('tells the school which part of the money is coming by check (#149)', () => {
+  it('tells the school whether to watch the post, from what the family said (#219)', () => {
     const online = applicationNotification(submission(), {
       to: 'jill@example.com',
       from: 'site@example.com',
       payOnlineAt: PAY_AT,
     });
 
-    // The school reconciles Vanco against this email by hand, so the line it
-    // reads has to be the amount an envelope will actually contain — and it
-    // says "offered", not "paid", because Vanco tells the site nothing.
-    expect(online.text).toContain('Check they are posting: $100');
-    expect(online.text).toContain('registration and tuition were offered online');
-    expect(online.text).not.toContain('Check they are posting: $865');
+    // "Say", not "have": Vanco tells the site nothing, so the office is told
+    // what the family stated and matches the money up by hand.
+    expect(online.text).toContain('They say they are paying the $865 online');
+    expect(online.text).toContain('Nothing to watch for in the post');
+    expect(online.text).not.toMatch(/posting a check/);
 
-    // And an office told to expect an envelope containing nothing is told the
-    // same wrong thing the family is spared.
-    const noDeposits = applicationNotification(
-      submission({ values: fields({ children: [{ name: 'Ada', age: '13', offeringKeys: [] }] }) }),
+    const byCheck = applicationNotification(
+      submission({ values: fields({ paymentMethod: 'check' }) }),
       { to: 'jill@example.com', from: 'site@example.com', payOnlineAt: PAY_AT },
     );
-    expect(noDeposits.text).toContain('Check they are posting: nothing');
-    expect(noDeposits.text).not.toMatch(/Check they are posting: \$0/);
+    // The whole total in one envelope, which is the figure the office weighs
+    // the check against — never the deposits alone.
+    expect(byCheck.text).toContain('They say they are posting a check for $865 — watch for it.');
   });
 
   it('tells the family when the submission was refused, rather than letting it age out (AC 4)', async () => {

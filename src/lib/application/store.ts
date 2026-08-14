@@ -10,6 +10,7 @@ import {
   PAYMENT_MODES,
   nextApplicationState,
   nextPayment,
+  paymentModeOf,
   paymentOnSubmission,
   type ApplicationEvent,
   type ApplicationState,
@@ -103,13 +104,19 @@ export async function createApplication(
       agreements: encodeAgreements(values.agreements),
       agreedTermsId: facts.agreedTermsId ?? null,
       /*
-       * Submitted, and awaiting whatever the payment slot takes today (#32).
-       * The mode is read from `paymentOnSubmission` rather than typed here, so
-       * the Vanco stage flips one constant and this row starts `paid online`
-       * with nothing else in the codebase moving.
+       * Submitted, and awaiting the money whichever way the family said they
+       * would send it (#32, #219). The mode is what they stated on the form —
+       * it is what tells the office whether to watch for an envelope — and the
+       * status is `awaiting` in both channels, because the site sees no
+       * payment in either (ADR-0017).
+       *
+       * An unstated method cannot reach here through the form, which gates on
+       * it — and if one ever did, `check` is the safe reading: an office
+       * watching for an envelope that never comes chases a family, where one
+       * not watching lets a real envelope sit unopened.
        */
       status: 'submitted' satisfies ApplicationState,
-      ...paymentColumns(paymentOnSubmission(now)),
+      ...paymentColumns(paymentOnSubmission(now, paymentModeOf(values.paymentMethod || 'check'))),
     })
     .returning();
 

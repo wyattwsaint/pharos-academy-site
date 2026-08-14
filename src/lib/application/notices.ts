@@ -8,7 +8,7 @@
  *   hard-coded one, because the list is the school's to change and a second
  *   list in code is the one that goes stale.
  * - **A stored application confirms to the family**, listing what they chose
- *   and what to post.
+ *   and what to pay.
  * - **A refused submission tells the family it was refused** — the half of the
  *   `stale` split that used to age out with nobody told (#32 AC 4). An
  *   *abandoned* draft sends nothing, and there is nothing here that could send
@@ -91,28 +91,22 @@ export function applicationNotification(
 
   lines.push('', 'WHO IS APPLYING, AND FOR WHAT', ...chosen(cost, settings));
 
-  // The envelope line is the one the office acts on, so it names the amount an
-  // envelope will actually contain (#149). Money paid online arrives through
-  // Vanco unattached to this application and the office matches the two up by
-  // hand — which it cannot do if this email calls the whole of it a check.
-  // "Offered", not "paid": Vanco tells the site nothing, and a line claiming a
-  // payment nobody checked is worse than no line.
-  const online = options.payOnlineAt !== '';
-  const posting = postedByCheck(cost, online);
+  // The last line is the one the office acts on: whether to watch the post
+  // tray (#219). It is the *whole* total either way now — one lump sum, one
+  // channel (ADR-0017) — so what changes is which channel, and never the
+  // figure. "Say", not "have": the site sees no money in either channel, and a
+  // line claiming a payment nobody checked is worse than no line.
   lines.push(
     '',
     'WHAT THEY OWE',
-    `  Registration:           ${formatMoney(cost.total.registration)}`,
-    `  Deposits:               ${formatMoney(cost.total.deposits)}`,
-    `  Tuition:                ${formatMoney(cost.total.tuitionDue)}`,
-    // No envelope to wait for is a fact the office acts on too, and printing
-    // "$0.00" beside "check they are posting" is a line that reads as one.
-    !online
-      ? `  Check they are posting: ${formatMoney(posting)} — all of it`
-      : posting === 0
-        ? '  Check they are posting: nothing — the registration and tuition were offered online'
-        : `  Check they are posting: ${formatMoney(posting)} — the deposits only, the registration ` +
-          'and tuition were offered online',
+    `  Registration:  ${formatMoney(cost.total.registration)}`,
+    `  Deposits:      ${formatMoney(cost.total.deposits)}`,
+    `  Tuition:       ${formatMoney(cost.total.tuitionDue)}`,
+    `  All of it:     ${formatMoney(cost.total.total)}`,
+    payingByCheck(values, options.payOnlineAt)
+      ? `  They say they are posting a check for ${formatMoney(cost.total.total)} — watch for it.`
+      : `  They say they are paying the ${formatMoney(cost.total.total)} online. Nothing to ` +
+        'watch for in the post.',
     '',
     'THE STATEMENT OF FAITH',
     ...faithRecord(values),
@@ -146,16 +140,21 @@ export function applicationNotification(
 }
 
 /**
- * What an envelope will actually contain (#149, #187).
+ * Whether this family said they would post a check (#219).
  *
- * Written once because the school's copy and the family's copy have to name the
- * same figure: an office told to expect $865 and a family told to post $100 is
- * the same submission saying two things. It is not a field on `AmountOwed`,
- * because what a cheque covers is a fact about *this deployment* — whether the
- * office has pasted a Vanco page in — and not about what a family owes.
+ * Written once because the school's copy and the family's copy have to say the
+ * same thing: an office told to watch for an envelope and a family told to pay
+ * online is the same submission saying two things.
+ *
+ * What a check covers is no longer a question — it is the whole total, in one
+ * payment, whichever channel carries it (ADR-0017). All that is left to ask is
+ * which channel the family chose — plus the one thing that is still a fact
+ * about this deployment. A school with no giving page pasted in can only be
+ * posted to, whatever a form somewhere said, and both messages answer that the
+ * same way rather than each deciding for itself.
  */
-function postedByCheck(cost: ApplicationCost, online: boolean): number {
-  return online ? cost.total.deposits : cost.total.total;
+function payingByCheck(values: ApplicationFields, payOnlineAt: string): boolean {
+  return payOnlineAt === '' || values.paymentMethod !== 'online';
 }
 
 /**
@@ -221,14 +220,16 @@ function faithRecord(values: ApplicationFields): string[] {
  * The message the family receives when it worked (#18 §13, send 4).
  *
  * The same three things the confirmation screen says — what they chose, what to
- * pay and how, and that a place is held when the check arrives — because
+ * pay and how, and that a place is held when the money arrives — because
  * the screen is closed within the minute and this is the copy they keep.
  *
- * That "how" is the page's own question asked once more (#149): the school has
- * an online address or it has not, and the answer has to be the same one the
- * family was just shown. A page offering a link beside an email demanding a
+ * That "how" is no longer the page's question but the **family's own answer**
+ * (#219): they said on the form which way they were paying, and this writes
+ * back the one they picked. A page that took "online" and an email demanding a
  * check for the same money is the school contradicting itself in writing, and
- * the email is the half that outlives the screen.
+ * the email is the half that outlives the screen. A deployment with no giving
+ * page can only be posted to, and the check paragraph covers that too — which
+ * is why the condition asks both questions and not one.
  *
  * **No response-time promise**, consistent with the inquiry's confirmation and
  * with #9: who answers an application and how fast is the school's own
@@ -248,43 +249,24 @@ export function applicationConfirmation(
 
   lines.push('', 'What you chose:', ...chosen(cost));
 
-  const online = options.payOnlineAt !== '';
-  // A family who has chosen no classes yet owes no deposits, and "post a check
-  // for $0.00" is an instruction to mail an empty envelope — so the address is
-  // not printed at all rather than printed under a payment they do not owe.
-  // Reachable only where the payment link is set: without one a check covers
-  // everything, and there is always a registration fee to post one for.
-  const posting = postedByCheck(cost, online);
+  // One figure, one payment, and the family already chose the channel on the
+  // page they have just left (#219). The itemisation stays beside it, because a
+  // total with nothing under it is a number a parent has to take on trust.
+  const itemised =
+    `${formatMoney(cost.total.registration)} in registration, ` +
+    `${formatMoney(cost.total.deposits)} in deposits and ` +
+    `${formatMoney(cost.total.tuitionDue)} in tuition at today’s rates`;
 
-  /** What to post, and where — the one instruction, written once. */
-  const check = (asking: string): string[] => [
-    '',
-    asking,
-    '',
-    options.postTo,
-    '',
-    'A place is held for each class as soon as your check reaches us.',
-  ];
-
-  if (online) {
+  if (!payingByCheck(values, options.payOnlineAt)) {
     lines.push(
       '',
-      `The registration — ${formatMoney(cost.total.registration)} — and the tuition — ` +
-        `${formatMoney(cost.total.tuitionDue)} at today’s rates — are paid online, in one ` +
-        'payment, through the church’s giving page:',
+      `The whole of it — ${formatMoney(cost.total.total)}, which is ${itemised} — is paid ` +
+        'online, in one payment, through the church’s giving page:',
       '',
       `  ${options.payOnlineAt}`,
-    );
-
-    if (posting > 0) {
-      lines.push(
-        ...check(
-          `The deposits — ${formatMoney(posting)} — are paid by check, made out to ${SCHOOL_NAME}, to:`,
-        ),
-      );
-    }
-
-    lines.push(
+      '',
+      `The page does not know what you owe, so please enter ${formatMoney(cost.total.total)} ` +
+        'yourself.',
       '',
       'A payment through the giving page does not reach us attached to this application, so we ' +
         'match the two up ourselves' +
@@ -292,15 +274,18 @@ export function applicationConfirmation(
           ? ` — please put your reference, ${reference}, in the note when you pay, and there is ` +
             'nothing further for you to send us about it.'
           : ' — there is nothing further for you to send us about it.'),
+      '',
+      'A place is held for each class as soon as your payment reaches us.',
     );
   } else {
     lines.push(
-      ...check(
-        `Please post a check for ${formatMoney(posting)} — ${formatMoney(cost.total.registration)} ` +
-          `in registration, ${formatMoney(cost.total.deposits)} in deposits and ` +
-          `${formatMoney(cost.total.tuitionDue)} in tuition at today’s rates — made out to ` +
-          `${SCHOOL_NAME}, to:`,
-      ),
+      '',
+      `Please post a check for ${formatMoney(cost.total.total)} — that is ${itemised} — made ` +
+        `out to ${SCHOOL_NAME}, to:`,
+      '',
+      options.postTo,
+      '',
+      'A place is held for each class as soon as your check reaches us.',
     );
   }
 

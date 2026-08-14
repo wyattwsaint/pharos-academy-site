@@ -53,6 +53,7 @@ const SENDABLE: Record<string, string> = {
   'child-0-name': 'Obi',
   'child-0-age': '9',
   'child-0-classes': 'algebra-1:year',
+  'payment-method': 'online',
   ...Object.fromEntries(FAITH_QUESTIONS.map((question) => [faithKey('Father', question.id), 'yes'])),
 };
 

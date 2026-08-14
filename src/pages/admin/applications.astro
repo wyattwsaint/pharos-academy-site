@@ -13,10 +13,10 @@ import {
   APPLICATION_EVENT_LABELS,
   APPLICATION_STATE_LABELS,
   PAYMENT_EVENTS,
-  PAYMENT_EVENT_LABELS,
-  PAYMENT_STATUS_LABELS,
   chequeDueBy,
   eventsFrom,
+  paymentEventLabel,
+  paymentStatusLabel,
   paymentStatusNow,
 } from '../../lib/application/lifecycle.js';
 import { offeringsOf, title as offeringTitle } from '../../lib/application/offerings.js';
@@ -93,7 +93,10 @@ const owedOn = (application: ApplicationRecord) => {
       // The faith answers, the objection and the two agreements are not priced;
       // the cost is over the children and their classes, which is all this
       // shape is for.
-      { ...application, faith: {}, objections: '', agreements: {} },
+      // The money side is on `application.payment`, not on these fields: what
+      // this shape is for is the cost, and the cost is over the children and
+      // their classes.
+      { ...application, faith: {}, objections: '', agreements: {}, paymentMethod: '' },
       offerings,
       agreed ?? settings,
     ),
@@ -291,7 +294,7 @@ const resubmittedIds = new Set(
 
                 <div data-testid="application-payment">
                   <p>
-                    The money: <span class="font-semibold">{PAYMENT_STATUS_LABELS[paid]}</span>
+                    The money: <span class="font-semibold">{paymentStatusLabel(paid, application.payment.mode)}</span>
                     {paid === 'awaiting' && (
                       <span> — due by {formatDay(chequeDueBy(application.payment))}</span>
                     )}
@@ -308,7 +311,7 @@ const resubmittedIds = new Set(
                           type="submit"
                           class="rounded border border-navy px-3 py-1 underline-offset-4 hover:underline"
                         >
-                          {PAYMENT_EVENT_LABELS[event]}
+                          {paymentEventLabel(event, application.payment.mode)}
                         </button>
                       </form>
                     ))}

@@ -47,6 +47,7 @@ function fields(overrides: Partial<ApplicationFields> = {}): ApplicationFields {
     },
     objections: '',
     agreements: {},
+    paymentMethod: 'check',
     ...overrides,
   };
 }
@@ -180,6 +181,25 @@ describe('applied and paid', () => {
 
     expect(row!.state).toBe('submitted');
     expect(row!.payment.mode).toBe('cheque');
+    expect(row!.payment.status).toBe('awaiting');
+  });
+
+  it('records the method the family stated, and never that they paid (#219)', async () => {
+    // The mode is the family's own answer since the Apply page asks for it —
+    // it used to be a deployment-wide constant, and what it buys the office is
+    // knowing whether to watch the post tray.
+    const id = await createApplication(
+      db,
+      fields({ paymentMethod: 'online' }),
+      { statementVersion: statementVersion() },
+      new Date('2026-08-01T10:00:00Z'),
+    );
+    const row = await getApplication(db, id);
+
+    expect(row!.payment.mode).toBe('online');
+    // And the status does not move with it. Vanco tells the site nothing, so a
+    // row reading `paid_online` off a radio button would be a claim nobody
+    // checked (ADR-0017) — the money is awaited in both channels.
     expect(row!.payment.status).toBe('awaiting');
   });
 
