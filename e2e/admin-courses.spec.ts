@@ -265,4 +265,32 @@ test.describe('saving a class', () => {
     // And what was typed is still there — a rejected form does not empty itself.
     await expect(page.locator('#title')).toHaveValue('A class the suite never saves');
   });
+
+  test('says the days complaint to the group, not to one box', async ({ page }) => {
+    /*
+     * #193 AC 3, and the umbrella's story 21. "Tick the day track this class
+     * meets on" is not a complaint about Tuesday, so it hangs off the fieldset:
+     * a screen reader announces it on entering the group, which is the only
+     * moment it is any use. Read through `aria-describedby` rather than by
+     * looking for the sentence on the page, because the sentence being *there*
+     * is what the test above already proves — this one is about the wiring.
+     */
+    await page.goto('/admin/courses/new');
+    await page.locator('#title').fill('A class the suite never saves');
+    await page.locator('#description').fill('Typed, so the browser lets the form through.');
+    await page.locator('#ageLabel').fill('Any age');
+    await page.locator('#prerequisites').fill('None');
+    await page.locator('#weeks').fill('14');
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    const group = page.getByRole('group', { name: 'Meets on' });
+    await expect(group).toHaveAttribute('aria-invalid', 'true');
+    const description = await group.evaluate((node) =>
+      (node.getAttribute('aria-describedby') ?? '')
+        .split(' ')
+        .map((id) => node.ownerDocument.getElementById(id)?.textContent ?? '')
+        .join(' '),
+    );
+    expect(description).toContain('Tick the day track this class meets on.');
+  });
 });

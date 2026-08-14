@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import AdminBanner from '../../../components/AdminBanner.astro';
+import AdminField from '../../../components/AdminField.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import type { Banner } from '../../../lib/admin/banner.js';
 import { courseFormView } from '../../../lib/admin/course-form.js';
@@ -18,12 +19,13 @@ import {
   type CourseFormFields,
 } from '../../../lib/admin/courses.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
+import { saveErrorMessage } from '../../../lib/admin/save-errors.js';
 import {
   describeRevalidation,
   revalidateAll,
   revalidationOrigin,
 } from '../../../lib/admin/revalidate.js';
-import { formatStamp } from '../../../lib/admin/school-details.js';
+import { formatStamp } from '../../../lib/admin/formatting.js';
 import { fullDateLabel, type SchoolYear } from '../../../lib/calendar/year.js';
 import { getSchoolYear } from '../../../lib/calendar/store.js';
 import { ENROLMENT_UNITS, RATE_TIERS, STAGES } from '../../../lib/courses/course.js';
@@ -68,6 +70,15 @@ import { listPeople } from '../../../lib/people/store.js';
  */
 /** The one slug that is not a course: the add form's address. */
 const NEW = 'new';
+
+/**
+ * The one refusal that actually happens here is a duplicate slug: two classes
+ * whose titles slugify the same, which is a real thing in a catalogue with two
+ * Latins.
+ */
+const SAVE_ERROR = {
+  duplicate: 'there is already a class with that title. Edit that one instead.',
+} as const;
 
 const db = await getDb();
 const actor = Astro.locals.actor!;
@@ -132,7 +143,7 @@ if (Astro.request.method === 'POST') {
       });
       banner = { ok: result.ok, message: describeRevalidation(result) };
     } catch (error) {
-      banner = { ok: false, message: humanErrorMessage(error) };
+      banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
     }
   }
 }
@@ -291,20 +302,6 @@ function slugFor(title: string): string {
   return slug;
 }
 
-/**
- * A failed write, said in words Jill can act on.
- *
- * The one that actually happens is a duplicate slug: two classes whose titles
- * slugify the same, which is a real thing in a catalogue with two Latins.
- */
-function humanErrorMessage(error: unknown): string {
-  const detail = error instanceof Error ? error.message : String(error);
-  if (/duplicate key|unique/i.test(detail)) {
-    return 'Nothing was saved — there is already a class with that title. Edit that one instead.';
-  }
-  return `Nothing was saved — ${detail}`;
-}
-
 /** Which day a warning is about, said the way the timetable says it. */
 function warningLine(warning: ClashWarning): string {
   const when =
@@ -416,50 +413,31 @@ function warningLine(warning: ClashWarning): string {
       })
     }
 
-    <fieldset class="flex flex-col gap-2">
-      <legend class="font-semibold">{LABELS.stages}</legend>
-      <p class="text-sm">Which classical stages this class is filed under. A class may sit in two.</p>
-      {
-        STAGES.map((stage, index) => (
-          <label class="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="stages"
-              value={stage}
-              id={`stages-${index}`}
-              checked={values.stages.includes(stage)}
-            />
-            {stage}
-          </label>
-        ))
-      }
-      {errors.stages && <p class="font-semibold">{errors.stages}</p>}
-    </fieldset>
+    <AdminField
+      name="stages"
+      type="checkboxes"
+      label={LABELS.stages}
+      hint="Which classical stages this class is filed under. A class may sit in two."
+      options={STAGES.map((stage) => ({ value: stage, label: stage }))}
+      selected={values.stages}
+      error={errors.stages}
+    />
 
-    <fieldset class="flex flex-col gap-2">
-      <legend class="font-semibold">{LABELS.days}</legend>
-      <p class="text-sm">
+    <AdminField
+      name="days"
+      type="checkboxes"
+      label={LABELS.days}
+      options={offeredDays.map((track: DayTrack) => ({ value: track, label: track }))}
+      selected={values.days}
+      error={errors.days}
+    >
+      <Fragment slot="hint">
         The days the school meets this year, from the <a
           href="/admin/school-year"
           class="underline underline-offset-4">School year</a
         > screen. A day missing from this list is a day the school gives no term.
-      </p>
-      {
-        offeredDays.map((track: DayTrack) => (
-          <label class="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="days"
-              value={track}
-              id={`days-${track}`}
-              checked={values.days.includes(track)}
-            />
-            {track}
-          </label>
-        ))
-      }
-      {errors.days && <p class="font-semibold">{errors.days}</p>}
-    </fieldset>
+      </Fragment>
+    </AdminField>
 
     <div class="flex flex-col gap-2">
       <label for="time" class="font-semibold">{LABELS.time}</label>

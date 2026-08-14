@@ -1,4 +1,6 @@
 ---
+import AdminButton from './AdminButton.astro';
+
 /**
  * What an admin screen says out loud after an action.
  *
@@ -9,25 +11,49 @@
  * "saved, but the live site hasn't updated yet" is a thing to retry, not a
  * thing to panic about.
  *
- * The slot is for whatever a particular failure offers next, e.g. a Retry
- * button. Nothing is rendered around it when it is empty.
+ * Retry is a prop rather than something each screen hangs in the slot (#193).
+ * Seven screens had hand-copied that little form, and a Retry that is spelled
+ * out seven times is a Retry that can be spelled seven ways. The slot stays for
+ * whatever else a particular failure offers next; nothing is rendered around it
+ * when it is empty.
  */
 interface Props {
   ok: boolean;
   message: string;
   /** What the browser suite finds this banner by. */
   testId: string;
+  /**
+   * Offer a Retry that republishes. Only meaningful on a failure, so it is
+   * ignored on a banner that reports success.
+   */
+  retry?: boolean;
+  /**
+   * `alert` for a banner that answers the submission the reader just made and
+   * has to interrupt them — the sign-in refusal. Everything else is `status`:
+   * an outcome to be heard in turn, without stealing the reading position.
+   */
+  role?: 'status' | 'alert';
 }
 
-const { ok, message, testId } = Astro.props;
+const { ok, message, testId, retry = false, role = 'status' } = Astro.props;
+const offerRetry = retry && !ok;
 ---
 
 <div
-  role="status"
+  role={role}
   data-testid={testId}
   data-ok={String(ok)}
   class:list={['mt-6 border-l-4 bg-parchment px-4 py-3', ok ? 'border-deep-blue' : 'border-gold']}
 >
   <p>{message}</p>
+  {
+    offerRetry && (
+      <form method="post" action="/admin/republish" class="mt-3">
+        <AdminButton small testId={`${testId}-retry`}>
+          Retry
+        </AdminButton>
+      </form>
+    )
+  }
   <slot />
 </div>

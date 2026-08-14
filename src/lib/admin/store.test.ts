@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
+import { formatStamp } from './formatting.js';
 import { attemptLogin } from './login.js';
 import { matchesBreakGlass } from './passwords.js';
 import {
-  formatStamp,
   getSchoolDetails,
   parseSchoolDetails,
   saveSchoolDetails,

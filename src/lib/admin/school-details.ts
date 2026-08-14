@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { isEmailAddress, textField as text } from '../forms.js';
 import { schoolDetails, type SchoolDetails } from '../db/schema.js';
+import { SCHOOL_TIME_ZONE } from './formatting.js';
 
 /**
  * The school's own details: address, phone, email, school-year start, mission,
@@ -233,8 +234,6 @@ export function copyrightYear(now = new Date()): number {
   );
 }
 
-/** Enola, Pennsylvania. */
-export const SCHOOL_TIME_ZONE = 'America/New_York';
 
 /**
  * The school's phone as a `tel:` target.
@@ -247,20 +246,6 @@ export const SCHOOL_TIME_ZONE = 'America/New_York';
 export function telHref(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, '')}`;
 }
-
-/** "Last edited by Jill Kilker on 5 August 2026", or that nothing has been. */
-export function formatStamp(editorName: string | null, editedAt: Date | null): string {
-  if (!editorName || !editedAt) return 'Not edited yet';
-  const day = new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(editedAt);
-  return `Last edited by ${editorName} on ${day}`;
-}
-
-
 
 /** `YYYY-MM-DD`, and a day that exists — 31 February is a typo, not a date. */
 function isCalendarDate(value: string): boolean {

@@ -1,0 +1,32 @@
+---
+import AdminButton from './AdminButton.astro';
+
+/**
+ * The Publishing section at the foot of an editing screen.
+ *
+ * Three things, always in the same order and always in the same place: who last
+ * edited this and when, one sentence about what republishing means *here*, and
+ * the Republish button. Every screen that had one wrote all three out (#188),
+ * and only the middle one ever differed — so that one is the slot and the rest
+ * is the component.
+ *
+ * The stamp keeps `data-testid="stamp"`, which several browser specs already
+ * find it by; the attribution is what flat permissions lean on (#18 §4), so it
+ * is asserted rather than assumed.
+ */
+interface Props {
+  /** Already formatted, by `formatStamp`. */
+  stamp: string;
+}
+
+const { stamp } = Astro.props;
+---
+
+<section class="mt-10 border-t border-navy/15 pt-6">
+  <h2 class="text-xl font-semibold text-navy">Publishing</h2>
+  <p class="mt-2" data-testid="stamp">{stamp}</p>
+  <slot />
+  <form method="post" action="/admin/republish" class="mt-4">
+    <AdminButton variant="secondary" testId="republish">Republish</AdminButton>
+  </form>
+</section>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { copyrightYear, formatStamp, parseSchoolDetails } from './school-details.js';
+import { copyrightYear, parseSchoolDetails } from './school-details.js';
 
 /** A complete, valid submission. Individual tests break one field at a time. */
 function form(overrides: Record<string, string> = {}): FormData {
@@ -193,18 +193,5 @@ describe('the copyright year', () => {
   // Enola must not print next year's date on the school's own footer.
   it('turns over in Enola, not in the region that happened to render', () => {
     expect(copyrightYear(new Date('2031-01-01T02:00:00Z'))).toBe(2030);
-  });
-});
-
-describe('the attribution stamp', () => {
-  it('names the person and the day', () => {
-    expect(formatStamp('Jill Kilker', new Date('2026-08-05T14:30:00Z'))).toBe(
-      'Last edited by Jill Kilker on 5 August 2026',
-    );
-  });
-
-  it('says so plainly when nothing has been edited yet', () => {
-    expect(formatStamp(null, null)).toBe('Not edited yet');
-    expect(formatStamp('Jill Kilker', null)).toBe('Not edited yet');
   });
 });

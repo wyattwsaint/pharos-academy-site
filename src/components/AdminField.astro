@@ -6,59 +6,251 @@
  * a second group of fields (#15): the wiring between a label, its hint, its
  * error and the `aria-describedby` that ties them together is the part that
  * silently rots when it is copied, and a screen reader is the only thing that
- * notices.
+ * notices. The 2026-08 audit found exactly that rot on most of the screens that
+ * hand-copied a control instead of using this (#190), so #193 grows it to cover
+ * every variant those copies invented rather than leaving them a reason to.
+ *
+ * Every kind of control the admin has is here, and the wiring is written once
+ * for all of them:
+ *
+ *   text, tel, email, date, url, number, time   an `<input type>`
+ *   multiline                                   a textarea
+ *   select                                      a `<select>` over `options`
+ *   file                                        an upload
+ *   checkbox                                    one box, its label beside it
+ *   checkboxes, radios                          a group, in its own fieldset
+ *
+ * The last two are the grouped variant. Their error belongs to the group rather
+ * than to any one box — "pick at least one day" is not a complaint about
+ * Tuesday — so the fieldset carries the `aria-describedby`, which is what makes
+ * a screen reader announce it on entering the group.
  */
-interface Props {
-  name: string;
-  /** `multiline` is a textarea; everything else is an `<input type>`. */
-  type: 'text' | 'tel' | 'email' | 'date' | 'url' | 'multiline';
-  label: string;
+export type AdminFieldOption = {
   value: string;
+  label: string;
+};
+
+interface Props {
+  /** The form field name, and the id the label points at. */
+  name: string;
+  type:
+    | 'text'
+    | 'tel'
+    | 'email'
+    | 'date'
+    | 'url'
+    | 'number'
+    | 'time'
+    | 'multiline'
+    | 'select'
+    | 'file'
+    | 'checkbox'
+    | 'checkboxes'
+    | 'radios';
+  label: string;
+  /** The single-control value. Ignored by `checkbox`, `checkboxes`, `radios`. */
+  value?: string;
+  /** Ticked, for `checkbox`. */
+  checked?: boolean;
+  /** The choices, for `select`, `checkboxes` and `radios`. */
+  options?: AdminFieldOption[];
+  /** Which of `options` are chosen, for `checkboxes` and `radios`. */
+  selected?: string[];
+  /**
+   * The line under the label. A `hint` slot says the same thing when the hint
+   * has to carry a link — the wiring is identical either way, because what
+   * `aria-describedby` points at is the paragraph, not the string.
+   */
   hint?: string;
   /** The server's complaint about this field, if it made one. */
   error?: string;
   /** True for a field that may be left blank. Most may not. */
   optional?: boolean;
   rows?: number;
+  /** `number` only. */
+  min?: number | string;
+  max?: number | string;
+  step?: number | string;
+  /** `file` only — what the picker offers, e.g. `application/pdf`. */
+  accept?: string;
+  /** `select` only: the empty first entry, for "none chosen yet". */
+  placeholder?: string;
 }
 
-const { name, type, label, value, hint, error, optional = false, rows = 5 } = Astro.props;
+const {
+  name,
+  type,
+  label,
+  value = '',
+  checked = false,
+  options = [],
+  selected = [],
+  hint,
+  error,
+  optional = false,
+  rows = 5,
+  min,
+  max,
+  step,
+  accept,
+  placeholder,
+} = Astro.props;
 
 const invalid = Boolean(error);
+const described = hint !== undefined || Astro.slots.has('hint');
 const describedBy =
-  [hint ? `${name}-hint` : null, invalid ? `${name}-error` : null].filter(Boolean).join(' ') ||
+  [described ? `${name}-hint` : null, invalid ? `${name}-error` : null].filter(Boolean).join(' ') ||
   undefined;
 const control = 'w-full rounded border border-navy/40 bg-white px-3 py-2 aria-[invalid=true]:border-gold';
+
+/** The grouped variant: several controls under one label, in a fieldset. */
+const grouped = type === 'checkboxes' || type === 'radios';
+/**
+ * A checkbox is required only in the sense of "must be ticked", which is not
+ * what any box on this admin means, so `required` is never put on one. The
+ * grouped variant says the same thing at group level through its own error.
+ */
+const requiredControl = !optional && type !== 'checkbox' && !grouped;
+const chosen = new Set(selected);
 ---
 
-<div class="flex flex-col gap-2">
-  <label for={name} class="font-semibold">{label}</label>
-  {hint && <p id={`${name}-hint`} class="text-sm">{hint}</p>}
-  {
-    type === 'multiline' ? (
-      <textarea
-        id={name}
-        name={name}
-        rows={rows}
-        required={!optional}
-        aria-invalid={invalid ? 'true' : undefined}
-        aria-describedby={describedBy}
-        class={control}
-      >
-        {value}
-      </textarea>
-    ) : (
-      <input
-        id={name}
-        name={name}
-        type={type}
-        value={value}
-        required={!optional}
-        aria-invalid={invalid ? 'true' : undefined}
-        aria-describedby={describedBy}
-        class={control}
-      />
-    )
-  }
-  {invalid && <p id={`${name}-error`} class="font-semibold">{error}</p>}
-</div>
+{
+  grouped ? (
+    <fieldset
+      aria-invalid={invalid ? 'true' : undefined}
+      aria-describedby={describedBy}
+      class="flex flex-col gap-2"
+    >
+      <legend class="font-semibold">{label}</legend>
+      {described && (
+        <p id={`${name}-hint`} class="text-sm">
+          {hint}
+          <slot name="hint" />
+        </p>
+      )}
+      <div class="flex flex-col gap-2">
+        {options.map((option) => (
+          <div class="flex items-start gap-3">
+            <input
+              id={`${name}-${option.value}`}
+              name={name}
+              type={type === 'radios' ? 'radio' : 'checkbox'}
+              value={option.value}
+              checked={chosen.has(option.value)}
+              class="mt-1 size-5"
+            />
+            <label for={`${name}-${option.value}`}>{option.label}</label>
+          </div>
+        ))}
+      </div>
+      {invalid && (
+        <p id={`${name}-error`} class="font-semibold">
+          {error}
+        </p>
+      )}
+    </fieldset>
+  ) : type === 'checkbox' ? (
+    <div class="flex flex-col gap-2">
+      <div class="flex items-start gap-3">
+        <input
+          id={name}
+          name={name}
+          type="checkbox"
+          checked={checked}
+          aria-invalid={invalid ? 'true' : undefined}
+          aria-describedby={describedBy}
+          class="mt-1 size-5"
+        />
+        <label for={name} class="font-semibold">
+          {label}
+        </label>
+      </div>
+      {described && (
+        <p id={`${name}-hint`} class="text-sm">
+          {hint}
+          <slot name="hint" />
+        </p>
+      )}
+      {invalid && (
+        <p id={`${name}-error`} class="font-semibold">
+          {error}
+        </p>
+      )}
+    </div>
+  ) : (
+    <div class="flex flex-col gap-2">
+      <label for={name} class="font-semibold">
+        {label}
+      </label>
+      {described && (
+        <p id={`${name}-hint`} class="text-sm">
+          {hint}
+          <slot name="hint" />
+        </p>
+      )}
+      {type === 'multiline' ? (
+        <textarea
+          id={name}
+          name={name}
+          rows={rows}
+          required={requiredControl}
+          aria-invalid={invalid ? 'true' : undefined}
+          aria-describedby={describedBy}
+          class={control}
+        >
+          {value}
+        </textarea>
+      ) : type === 'select' ? (
+        <select
+          id={name}
+          name={name}
+          required={requiredControl}
+          aria-invalid={invalid ? 'true' : undefined}
+          aria-describedby={describedBy}
+          class={control}
+        >
+          {placeholder !== undefined && (
+            <option value="" selected={value === ''}>
+              {placeholder}
+            </option>
+          )}
+          {options.map((option) => (
+            <option value={option.value} selected={option.value === value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      ) : type === 'file' ? (
+        <input
+          id={name}
+          name={name}
+          type="file"
+          accept={accept}
+          required={requiredControl}
+          aria-invalid={invalid ? 'true' : undefined}
+          aria-describedby={describedBy}
+          class={control}
+        />
+      ) : (
+        <input
+          id={name}
+          name={name}
+          type={type}
+          value={value}
+          required={requiredControl}
+          min={min}
+          max={max}
+          step={step}
+          aria-invalid={invalid ? 'true' : undefined}
+          aria-describedby={describedBy}
+          class={control}
+        />
+      )}
+      {invalid && (
+        <p id={`${name}-error`} class="font-semibold">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
