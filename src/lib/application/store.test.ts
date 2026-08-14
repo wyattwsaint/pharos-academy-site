@@ -183,6 +183,41 @@ describe('applied and paid', () => {
     expect(row!.payment.status).toBe('awaiting');
   });
 
+  it('opens a stated-online submission awaiting too, never paid (#220 AC 1)', async () => {
+    const id = await createApplication(
+      db,
+      fields(),
+      { statementVersion: statementVersion(), paymentMode: 'online' },
+      new Date('2026-08-01T10:00:00Z'),
+    );
+    const row = await getApplication(db, id);
+
+    expect(row!.payment.mode).toBe('online');
+    // What the family said, not a payment: the giving page told the site
+    // nothing, and the office has matched nothing yet.
+    expect(row!.payment.status).toBe('awaiting');
+    // And the clock never turns it into a chase for an envelope (AC 2).
+    expect(
+      paymentStatusNow(row!.payment, days(new Date('2026-08-01T10:00:00Z'), CHEQUE_GRACE_DAYS + 1)),
+    ).toBe('awaiting');
+  });
+
+  it('records the office matching a payment by hand (#220 AC 3)', async () => {
+    const id = await createApplication(
+      db,
+      fields(),
+      { statementVersion: statementVersion(), paymentMode: 'online' },
+      new Date('2026-08-01T10:00:00Z'),
+    );
+
+    await moveApplicationPayment(db, id, 'match', new Date('2026-08-04T10:00:00Z'));
+
+    const row = await getApplication(db, id);
+    expect(row!.payment.status).toBe('paid_online');
+    // The other axis, untouched, as every money move leaves it (AC 7).
+    expect(row!.state).toBe('submitted');
+  });
+
   it('changing the payment never changes the application state (AC 2)', async () => {
     const id = await submitted();
 

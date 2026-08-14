@@ -12,11 +12,12 @@ import { applicationCost } from '../../lib/application/application.js';
 import {
   APPLICATION_EVENT_LABELS,
   APPLICATION_STATE_LABELS,
-  PAYMENT_EVENTS,
-  PAYMENT_EVENT_LABELS,
-  PAYMENT_STATUS_LABELS,
   chequeDueBy,
   eventsFrom,
+  paymentAwaitedNote,
+  paymentEventLabel,
+  paymentEventsFrom,
+  paymentStatusLabel,
   paymentStatusNow,
 } from '../../lib/application/lifecycle.js';
 import { offeringsOf, title as offeringTitle } from '../../lib/application/offerings.js';
@@ -152,6 +153,7 @@ const resubmittedIds = new Set(
         {applications.map((application) => {
           const owed = owedOn(application);
           const paid = paymentStatusNow(application.payment, now);
+          const note = paymentAwaitedNote(application.payment, now);
           const delivery = applicationDeliveryNote(application);
 
           return (
@@ -289,18 +291,36 @@ const resubmittedIds = new Set(
                   )}
                 </div>
 
+                {/*
+                  What is being waited for, and from whom (#220). Every word
+                  here comes from the row's mode: which sentence it has earned
+                  is `paymentAwaitedNote`'s decision, and which moves exist is
+                  `paymentEventsFrom`'s, so an online family is never told a
+                  check is due and no button is drawn that the store would
+                  refuse. This file supplies the wording and the dates and
+                  decides neither.
+                */}
                 <div data-testid="application-payment">
                   <p>
-                    The money: <span class="font-semibold">{PAYMENT_STATUS_LABELS[paid]}</span>
-                    {paid === 'awaiting' && (
+                    The money:{' '}
+                    <span class="font-semibold">
+                      {paymentStatusLabel(application.payment.mode, paid)}
+                    </span>
+                    {note === 'cheque_due' && (
                       <span> — due by {formatDay(chequeDueBy(application.payment))}</span>
                     )}
-                    {paid === 'overdue' && (
+                    {note === 'cheque_late' && (
                       <span> — expected by {formatDay(chequeDueBy(application.payment))}, and it has not arrived</span>
+                    )}
+                    {note === 'online_unconfirmed' && (
+                      <span>
+                        {' '}— this family said they would pay at the giving page. Nothing tells
+                        the site whether they did; match it by hand against the reference above.
+                      </span>
                     )}
                   </p>
                   <div class="mt-2 flex flex-wrap gap-2">
-                    {PAYMENT_EVENTS.map((event) => (
+                    {paymentEventsFrom(application.payment).map((event) => (
                       <form method="post">
                         <input type="hidden" name="id" value={application.id} />
                         <input type="hidden" name="event" value={event} />
@@ -308,7 +328,7 @@ const resubmittedIds = new Set(
                           type="submit"
                           class="rounded border border-navy px-3 py-1 underline-offset-4 hover:underline"
                         >
-                          {PAYMENT_EVENT_LABELS[event]}
+                          {paymentEventLabel(application.payment.mode, event)}
                         </button>
                       </form>
                     ))}
@@ -343,7 +363,8 @@ const resubmittedIds = new Set(
 
   <p class="mt-10 border-t border-navy/15 pt-6">
     There is nothing to edit and nothing to delete. What a family sent is the record of what they
-    asked for; the two rows of buttons say where the application and the check have got to, and
-    nothing else on this screen writes.
+    asked for; the two rows of buttons say where the application and the money have got to, and
+    nothing else on this screen writes. A payment made at the giving page is matched here by
+    hand — nothing tells the site about it.
   </p>
 </AdminLayout>

@@ -155,6 +155,10 @@ exactly one thing — the next submission read `paid online` instead of
 `awaiting cheque`. No other state, screen or flag moved. That is what makes it a
 slot rather than a hole.
 
+Since #220 the flip carries less. What a stated `online` submission changes is
+the **mode** and not the status: the row still opens `awaiting`, because nothing
+about the family's answer says money arrived.
+
 Since #111 the slot is **partly filled**, and since #187 it is filled for two
 amounts of the three. The **registration fee** and the **tuition** are paid
 online together, in one payment, upfront, through the church's Vanco page — one
@@ -177,10 +181,33 @@ the office matches a Vanco payment to an application by hand.
 `submitted` while its payment is `awaiting cheque`, then `overdue`, then
 `received`; none of those changes the application's own state.
 
+The row also holds a **payment mode** — the payment axis's spelling of the
+family's stated *payment method*, `cheque` or `online` (the column keeps the
+British spelling; every label above it reads American). It is what the office
+should be watching for and never evidence of anything, so **both modes open
+`awaiting`** (#220): a row that opened `paid online` because somebody chose
+online would assert money nobody has seen.
+
 The word `overdue` is **never stored**. What the row holds is that a cheque was
 awaited, and from when; a payment past its three-week grace period is overdue
 because the clock says so, which is how it happens "with no human action" and no
-nightly job that can quietly stop running (ADR-0008).
+nightly job that can quietly stop running (ADR-0008). **Only a cheque row can
+be overdue** — the grace period measures the post, and an online row has no
+envelope to be late.
+
+`paid online` is written by the **office**, through one admin action that
+records a payment matched by hand against the reference, and by nothing else
+(#220). It was reserved for a payment slot that would write it the moment a
+family paid; no such slot exists and none is coming, so the alternative to
+somebody ticking it is a status no row could ever hold. It is offered on either
+mode — a family who said cheque and then paid at the giving page is an ordinary
+thing, and the office is still the only witness — and the way back from a match
+made in error is the same move that restarts a cheque's grace period, worded for
+the mode.
+
+What is offered on **cheque rows only** is the pair that names an envelope: the
+cheque has arrived, and wait again for one. An online row is never asked to
+expect a cheque from a family who said they were not sending one.
 
 ### class tally
 
