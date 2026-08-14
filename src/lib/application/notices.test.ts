@@ -313,6 +313,27 @@ describe('what the family is told', () => {
   });
 
   /**
+   * A column wide enough for $865 is not a column, it is a coincidence. Four
+   * children with a full year each runs the total into five figures, and a
+   * table with one row hanging off the end of it is not a table.
+   */
+  it('keeps the column when the figures are large', async () => {
+    const big = fields({
+      children: [1, 2, 3, 4].map((n) => ({
+        name: `Child ${n}`,
+        age: '13',
+        offeringKeys: ['algebra-1:year'],
+      })),
+    });
+    const { toFamily } = await delivered('check', { payOnlineAt: '', over: { values: big } });
+
+    const ends = amountColumns(toFamily.text);
+    expect(ends.length).toBeGreaterThanOrEqual(5);
+    expect(new Set(ends).size).toBe(1);
+    expect(toFamily.text).toMatch(/^ {2}TOTAL {2,}\$3460$/m);
+  });
+
+  /**
    * One instruction, matching what the family chose (#221, #219).
    *
    * The email is the copy that outlives the confirmation screen, so a family
@@ -332,7 +353,9 @@ describe('what the family is told', () => {
 
     // And the school is told the same thing, from the same writer.
     expect(toSchool.text).toMatch(/^ {2}TOTAL {2,}\$865$/m);
-    expect(toSchool.text).toContain('Due in full — you told us you are paying online.');
+    // The same figures and the same method, in the pronoun the office belongs
+    // in: the school is not the "you" who told anybody anything.
+    expect(toSchool.text).toContain('Due in full — they told us they are paying online.');
     expect(toSchool.text).toContain(
       'Envelope to expect: nothing — the family said they are paying online.',
     );

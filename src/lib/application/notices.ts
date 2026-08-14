@@ -83,36 +83,52 @@ export type ApplicationSubmission = {
 function invoice(
   cost: ApplicationCost,
   method: PaymentMethod,
-  reference: string | null,
+  /**
+   * The reference, on the copy that has not already printed one. The school's
+   * email names the application at the top, where the office reads it; the
+   * family's carries it here, under the total it belongs to.
+   */
+  options: { reference?: string | null; audience?: 'family' | 'school' } = {},
 ): string[] {
   const { total } = cost;
   const classes = cost.perChild.reduce((count, one) => count + one.offerings.length, 0);
 
-  const lines = [
-    row('Registration', total.registration),
-    row(`Deposits (${classes} ${classes === 1 ? 'class' : 'classes'})`, total.deposits),
-    row('Tuition', total.tuition),
+  const items: [string, number][] = [
+    ['Registration', total.registration],
+    [`Deposits (${classes} ${classes === 1 ? 'class' : 'classes'})`, total.deposits],
+    ['Tuition', total.tuition],
   ];
   if (total.creditedAgainstTuition > 0) {
-    lines.push(row('Deposit credit against tuition', -total.creditedAgainstTuition));
+    items.push(['Deposit credit against tuition', -total.creditedAgainstTuition]);
   }
+  items.push(['TOTAL', total.total]);
 
-  // A blank line and nothing else separates the total from the items: a rule of
-  // hyphens would be rewritten into an em dash by the house style's own scan
-  // (#148), and the capitals carry the emphasis a plain-text email has.
-  lines.push('', row('TOTAL', total.total), '', `  ${status(total.total, method)}`);
-  if (reference) lines.push(`  Reference: ${reference}`);
+  // Measured, not assumed: a fixed column is a column a large enough family
+  // pushes a row out of, and a table with one row hanging off the end of it is
+  // not the thing this email exists to be.
+  const rows = rowsOf(items);
+  const lines = [
+    ...rows.slice(0, -1),
+    // A blank line and nothing else separates the total from the items: a rule
+    // of hyphens would be rewritten into an em dash by the house style's own
+    // scan (#148), and the capitals carry the emphasis a plain-text email has.
+    '',
+    rows[rows.length - 1]!,
+    '',
+    `  ${status(total.total, method, options.audience ?? 'family')}`,
+  ];
+  if (options.reference) lines.push(`  Reference: ${options.reference}`);
   return lines;
 }
 
-/** How wide the label column is before the amounts start. */
+/** The narrowest label column the block is set in, however short its labels. */
 const LABEL_WIDTH = 32;
-/** And how wide the amount column is, so every amount ends at one place. */
-const AMOUNT_WIDTH = 8;
 
-/** One itemized line: a label, and an amount right-aligned under the last. */
-function row(label: string, amount: number): string {
-  return `  ${label.padEnd(LABEL_WIDTH)}${signed(amount).padStart(AMOUNT_WIDTH)}`;
+/** The itemized lines, every amount right-aligned under the last. */
+function rowsOf(items: readonly [string, number][]): string[] {
+  const labels = Math.max(LABEL_WIDTH, ...items.map(([label]) => label.length + 2));
+  const amounts = Math.max(...items.map(([, amount]) => signed(amount).length));
+  return items.map(([label, amount]) => `  ${label.padEnd(labels)}${signed(amount).padStart(amounts)}`);
 }
 
 /** `formatMoney`, with the minus outside the dollar sign as an invoice sets it. */
@@ -126,10 +142,16 @@ function signed(amount: number): string {
  * It says what the family *told us*, never that money arrived: Vanco sends the
  * site no confirmation (ADR-0013), and a line claiming a payment nobody checked
  * is worse than no line.
+ *
+ * The same figures and the same method, in the pronoun each reader belongs in:
+ * the school is not the "you" who told anybody anything.
  */
-function status(total: number, method: PaymentMethod): string {
+function status(total: number, method: PaymentMethod, audience: 'family' | 'school'): string {
   if (total === 0) return 'Nothing is due yet — no classes have been chosen.';
-  return `Due in full — you told us you are paying ${method === 'online' ? 'online' : 'by check'}.`;
+  const paying = method === 'online' ? 'online' : 'by check';
+  return audience === 'school'
+    ? `Due in full — they told us they are paying ${paying}.`
+    : `Due in full — you told us you are paying ${paying}.`;
 }
 
 /**
@@ -191,7 +213,7 @@ export function applicationNotification(
   lines.push(
     '',
     'WHAT THEY OWE',
-    ...invoice(cost, method, null),
+    ...invoice(cost, method, { audience: 'school' }),
     `  ${envelope(cost, method)}`,
     '',
     'THE STATEMENT OF FAITH',
@@ -344,7 +366,7 @@ export function applicationConfirmation(
     // the instruction below asks the family to type it into the giving page —
     // and an instruction naming a code they have not read yet sends them
     // hunting for it (#218).
-    ...invoice(cost, method, reference),
+    ...invoice(cost, method, { reference }),
   ];
 
   if (total === 0) {

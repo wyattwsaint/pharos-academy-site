@@ -1,5 +1,17 @@
 # The school holds the tuition
 
+> **Partly superseded (#219, #221).** "What did not change" below says the
+> per-class deposit is still a check while the registration and tuition go
+> online. That split is being reversed: the family pays **one lump sum** by
+> **one method they state** — everything online, or everything by check — and an
+> envelope contains the whole total or nothing. #221 has moved both application
+> emails onto that model (`PaymentMethod`, and the shared `invoice` writer in
+> `src/lib/application/notices.ts`); #219 moves the Apply page and records the
+> answer on the row, and the ADR that supersedes this one belongs with it. Until
+> #219 lands, the page still shows the old split. What this ADR says about *who
+> holds the money* — all of it is the school's, none of it the instructors' —
+> is unchanged, as is "the application still learns nothing from a payment".
+
 Tuition is paid to Pharos Academy, in one payment, upfront, through the same
 Vanco page the registration fee goes through. It is not paid to the instructors
 (#187).
