@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { APPLICATION_PATH, FAITH_QUESTIONS, faithKey } from '../src/lib/application/application.js';
 import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
@@ -289,6 +289,43 @@ test.describe('the application page', () => {
     await expect(page.locator('#apply-email-error')).toBeVisible();
     await expect(page.locator('#apply-email')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#apply-email')).toBeFocused();
+  });
+
+  test('says what is still needed in the colour it says everything else in', async ({ page }) => {
+    // #254. The list is the page telling a family something is outstanding, and
+    // every other outstanding thing on the page is red — so the intro, the
+    // items and the rule down their left are read off the field error sentence
+    // rather than off a colour written down here, which would pass while the
+    // two drifted apart.
+    await open(page);
+
+    await fillSendable(page, 'email');
+    await clickSend(page);
+
+    const colourOf = (locator: Locator) =>
+      locator.evaluate((element) => getComputedStyle(element).color);
+
+    // Stated, so that everything below is a comparison rather than two things
+    // agreeing on the colour they both inherited. The ratio this red holds on
+    // the grounds it is painted on is measured in `src/styles/tokens.test.ts`.
+    const red = await colourOf(page.locator('#apply-email-error'));
+    expect(red).toBe('rgb(140, 43, 25)');
+
+    expect(await colourOf(page.locator('[data-missing-intro]'))).toBe(red);
+
+    const item = stillNeeded(page, 'email');
+    await expect(item).toBeVisible();
+    expect(await colourOf(item)).toBe(red);
+    expect(await colourOf(item.locator('a'))).toBe(red);
+
+    const rule = await item.evaluate((element) => getComputedStyle(element).borderLeftColor);
+    expect(rule).toBe(red);
+
+    // The quiet sentence that replaces the list is not an error, and does not
+    // borrow the colour of one.
+    await fillSendable(page);
+    await expect(page.locator('[data-missing-intro]')).toBeHidden();
+    expect(await colourOf(page.locator('[data-missing-done]'))).not.toBe(red);
   });
 
   test('checks a field when the family leaves it, and clears it as they fix it', async ({
