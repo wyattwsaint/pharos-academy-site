@@ -27,7 +27,7 @@ import { formatStamp } from '../../../lib/admin/formatting.js';
 import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
 import { getDb } from '../../../lib/db/client.js';
 import { listCoursesForAdmin } from '../../../lib/courses/store.js';
-import { slugify, type Person } from '../../../lib/people/person.js';
+import { instructorsAmong, slugify, type Person } from '../../../lib/people/person.js';
 import { createPerson, deletePerson, getPerson, savePerson } from '../../../lib/people/store.js';
 
 /**
@@ -160,21 +160,26 @@ const stamp = person ? formatStamp(person.lastEditedBy, person.lastEditedAt) : n
  *
  * The catalogue is a second query and this screen otherwise makes none, so it
  * is asked for on the one request that needs it — the first press of Delete —
- * rather than on every edit. Which classes they teach is derived from the
- * courses that name them (ADR-0004), never from a column on the person, so this
- * is the same question the staff page asks and cannot drift from it.
+ * rather than on every edit.
+ *
+ * Which classes they teach comes from `instructorsAmong`, which is where
+ * ADR-0004 puts that derivation and what the staff page reads. A `filter` on
+ * `instructorSlug` here would be the same line written twice, and "cannot
+ * drift" is only true of a question asked in one place. It answers for a list
+ * of people, so it is handed the one; nobody to name comes back as no entry.
  *
  * `listCoursesForAdmin` rather than `listCourses`: an empty catalogue is a
  * broken deployment on a public page and simply nothing to name here, and a
  * confirmation that threw would leave the school unable to delete anybody on a
  * site with no classes yet.
  */
-const deletion = confirmingDeletion && person
+const deleting = confirmingDeletion ? person : undefined;
+const deletion = deleting
   ? personDeletion(
-      person.name,
-      (await listCoursesForAdmin(db))
-        .filter((course) => course.instructorSlug === person!.slug)
-        .map((course) => course.title),
+      deleting.name,
+      (instructorsAmong([deleting], await listCoursesForAdmin(db))[0]?.courses ?? []).map(
+        (course) => course.title,
+      ),
     )
   : null;
 

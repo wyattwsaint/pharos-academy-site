@@ -123,7 +123,7 @@ describe('the confirmation before a person is deleted', () => {
     expect(classes).toMatch(/^Latin I will have no instructor\./);
     // Its own screen is where an instructor is given back, and the sentence
     // says so — the delete deliberately does not offer to reassign.
-    expect(classes).toContain("class's own screen");
+    expect(classes).toContain('class’s own screen');
   });
 
   it('names two classes with "and", the way the school writes them', () => {

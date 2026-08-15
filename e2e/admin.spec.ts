@@ -514,7 +514,17 @@ test.describe('editing a person', () => {
     await page.getByLabel('Role').fill('Instructor');
     await page.getByRole('button', { name: 'Save' }).click();
 
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    /*
+     * That it saved, not that the republish reached the live site.
+     *
+     * The republish claim belongs to `saves, republishes the site, and stamps
+     * who did it` above, which owns AC 5 and asserts "Saved and live." This
+     * test is about a person with two absences being a complete person, and a
+     * dev server answering the suite's workers sometimes reports "Saved, but
+     * the live site hasn't updated yet" — a true statement about a
+     * revalidation, and nothing at all about the row this test is checking.
+     */
+    await expect(page.getByTestId('save-banner')).toContainText('Saved');
     await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
 
     await page.goto('/admin/people');

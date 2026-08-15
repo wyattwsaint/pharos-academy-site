@@ -149,7 +149,7 @@ function classesSentence(titles: readonly string[]): string {
     return 'They teach no classes, so nothing else on the site changes.';
   }
   if (titles.length === 1) {
-    return `${titles[0]} will have no instructor. Nothing else about it changes, and you can give it one from the class's own screen.`;
+    return `${titles[0]} will have no instructor. Nothing else about it changes, and you can give it one from the class’s own screen.`;
   }
   return `${listSentence(titles)} will have no instructor. Nothing else about them changes, and you can give each one an instructor from its own screen.`;
 }
