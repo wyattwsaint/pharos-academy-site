@@ -17,18 +17,20 @@ import {
 } from './year.js';
 
 /**
- * The year as a month grid — the second half of the calendar page (#186).
+ * The year as a month grid — the whole of the calendar page's screen (#186,
+ * #237).
  *
- * The sheet above it answers "every date my track meets", which is the question
- * a family asks in August. This answers "what is happening in October", which is
- * the one they ask in October, and no arrangement of four columns of dates has
- * ever answered it.
+ * It answers "what is happening in October", which is the question a family
+ * asks in October, and no arrangement of four columns of dates has ever
+ * answered it. It used to share the page with two such arrangements; they are
+ * deleted (ADR-0018), and "every date my course meets" is answered on the
+ * course page, where the course has a name.
  *
  * **The four tracks do not share a cell, because they never meet in one.** A day
  * track *is* a weekday and a column of this grid *is* a weekday, so the thing
  * that makes the tracks hard — their own week numbering — has nowhere to land
- * here and does not try to. Week numbers stay on the sheet, which is why the
- * sheet stays.
+ * here and does not try to. With the sheet deleted the week number has no
+ * public surface at all, and it is deliberately not given one here.
  *
  * **A cell prints what is exceptional and reveals what is routine** (#235,
  * ADR-0018). A one-off and a closure happen once and are printed; a **meeting**
@@ -39,8 +41,8 @@ import {
  * of them can disagree about what meets on a Wednesday.
  *
  * Nothing here is stored. The months, the school days and the closed days are
- * all computed from the same eight numbers and the same closure list the sheet
- * is computed from, so the two halves of one page cannot disagree about whether
+ * all computed from the same eight numbers and the same closure list the
+ * meeting dates are, so a cell and a course page cannot disagree about whether
  * the school is open — and there is still exactly one place to correct a date.
  * The meeting dates are not computed here either: they come from
  * `meetingDatesOn`, the one the clash check and the course page already use.
@@ -271,9 +273,9 @@ function slotsOf(courses: readonly Course[]): CellSlot[] {
  *
  * Condition 3 is about **meeting dates and not courses**, deliberately. The
  * Tuesday track meets fourteen times in the seeded year and carries no courses
- * at all; those Tuesdays are school days here because the sheet on the same page
- * already prints them, and two sections of one page must not disagree about
- * whether the school is open. A track that genuinely runs nothing is a fact to
+ * at all; those Tuesdays are school days here because the year says the school
+ * is open on them, and the feed a family subscribed to says so too. A track
+ * that genuinely runs nothing is a fact to
  * correct on the School Year screen, not a fact for this grid to guess at.
  */
 function isNoSchool(date: string, meets: Set<string>, terms: Span[]): boolean {

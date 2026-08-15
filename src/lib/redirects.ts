@@ -154,8 +154,8 @@ export const REDIRECTS: readonly Redirect[] = [
     to: CALENDAR_PATH,
     because:
       'The same page. That was six PDFs — a full sheet, one per day track, and the daily course ' +
-      'offerings — and the calendar page replaces all of them with one generated file and a ' +
-      'sheet that prints.',
+      'offerings — and the calendar page replaces them with one generated file and a year that ' +
+      'prints as a dated list. The dates a course meets on are on the course’s own page (#237).',
     origin: 'wix',
   },
   {

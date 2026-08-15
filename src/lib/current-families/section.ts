@@ -44,8 +44,8 @@ export const CURRENT_FAMILIES_LINKS: readonly CurrentFamiliesLink[] = [
     path: CALENDAR_PATH,
     label: 'The calendar',
     blurb:
-      'Every class date for the year, by day track, with the days the school is closed and the ' +
-      'year’s events. Subscribe to it, or print the sheet.',
+      'The school year month by month, with the days the school is closed and the year’s ' +
+      'events on their dates. Subscribe to it, or print it.',
   },
   {
     path: NEWS_PATH,

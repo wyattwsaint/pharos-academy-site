@@ -1,26 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
 import { CATALOGUE } from '../courses/catalogue.js';
-import { DAY_TRACKS } from '../courses/schedule.js';
 import type { CalendarEvent } from './event.js';
 import { monthGrid, printedYear, type MonthCell } from './months.js';
-import {
-  addDays,
-  previewRows,
-  SEEDED_SCHOOL_YEAR,
-  SEMESTERS,
-  trackColumn,
-  trackOfDate,
-  type SchoolYear,
-} from './year.js';
+import { SEEDED_SCHOOL_YEAR, trackColumn, type SchoolYear } from './year.js';
 
 /**
  * The month grid, against the year the school has already published (#186).
  *
- * The load-bearing assertion is the last one: the grid and the sheet are two
- * drawings of one year on one page, and the failure that matters is not a
- * misplaced cell but the two of them disagreeing about whether the school is
- * open. That is asserted date by date rather than spot-checked.
+ * It used to end by holding the grid against the four-column sheet on the same
+ * page, date for date. The sheet is deleted (#237, ADR-0018) and the check went
+ * with it: the grid is now the only drawing of the school's open days there is,
+ * and holding it against the meeting dates it is derived from would restate the
+ * derivation rather than test it. What each cell says is asserted directly
+ * below instead.
  */
 
 /** Every cell of every month, by date — the blanks dropped. */
@@ -147,7 +140,7 @@ describe('the days the school is shut', () => {
 
   it('leaves a Tuesday the Tuesday track meets alone, courses or no courses', () => {
     // The Tuesday track carries no courses in the seeded year and meets all the
-    // same; the sheet prints 10 November, so the grid cannot call it a day off.
+    // same; the year holds 10 November, so the grid cannot call it a day off.
     expect(cells.get('2026-11-10')?.noSchool).toBe(false);
   });
 
@@ -162,47 +155,6 @@ describe('the days the school is shut', () => {
     // The summer either side, the Christmas break, and Easter Monday's Friday.
     for (const date of ['2026-08-24', '2026-12-21', '2026-12-28', '2027-04-19', '2027-03-26']) {
       expect(cells.get(date)?.noSchool, date).toBe(false);
-    }
-  });
-
-  /**
-   * The one that would be caught in public: one page, two drawings, one year.
-   *
-   * The sheet is the source a family already trusts — it is the PDF they were
-   * handed — so the grid is held to it rather than the other way round, and for
-   * every date of the year rather than for a handful.
-   *
-   * Both directions, because only one of them is the interesting one. That the
-   * grid never contradicts a date the sheet holds is the easy half; that it
-   * marks **every** teaching weekday the sheet leaves out is the half a grid
-   * that simply drew nothing would also pass.
-   */
-  it('agrees with the sheet, date for date', () => {
-    const semesters = SEMESTERS.map((semester) => {
-      const dates = previewRows(SEEDED_SCHOOL_YEAR, semester)
-        .flatMap((row) => (row.kind === 'week' ? DAY_TRACKS.map((track) => row.cells[track]) : []))
-        .filter((date): date is string => date !== null)
-        .sort();
-      return { held: new Set(dates), from: dates[0]!, to: dates[dates.length - 1]! };
-    });
-
-    let checked = 0;
-    for (const term of semesters) {
-      for (let date = term.from; date <= term.to; date = addDays(date, 1)) {
-        const cell = cells.get(date);
-        expect(cell, date).toBeDefined();
-        // Marked exactly when the school teaches that weekday and no column of
-        // the sheet holds the date.
-        expect(cell!.noSchool, date).toBe(trackOfDate(date) !== null && !term.held.has(date));
-        checked += 1;
-      }
-    }
-    expect(checked).toBeGreaterThan(200);
-
-    // And nothing between the semesters or outside them is marked at all.
-    for (const [date, cell] of cells) {
-      if (semesters.some((term) => date >= term.from && date <= term.to)) continue;
-      expect(cell.noSchool, date).toBe(false);
     }
   });
 });
