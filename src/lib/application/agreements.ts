@@ -77,21 +77,33 @@ export const AGREEMENT_CHOICES = [
 ] as const;
 
 /**
- * The answers the record still holds from before ADR-0020, and how it reads
- * them back.
+ * The answers the record still holds from before ADR-0020.
  *
  * Read-only: nothing writes these, and nothing rewrites the rows that have
- * them. `student` and `parent` both said the document was agreed to and neither
- * said by whom in a way the school acted on, so both read back as "Agreed".
+ * them.
  */
-const LEGACY_ANSWERS = [
-  { value: 'student', label: 'Agreed' },
-  { value: 'parent', label: 'Agreed' },
-  { value: 'neither', label: 'Did not agree' },
-] as const;
+const LEGACY_ANSWERS = ['student', 'parent', 'neither'] as const;
 
 /** One answer. Empty is ordinary and is never read as a "no". */
-export type AgreementAnswer = 'yes' | 'no' | 'student' | 'parent' | 'neither' | '';
+export type AgreementAnswer = 'yes' | 'no' | (typeof LEGACY_ANSWERS)[number] | '';
+
+/**
+ * Every answer the record can hold, as the office reads it back.
+ *
+ * A second vocabulary to {@link AGREEMENT_CHOICES}, deliberately: the radios
+ * say **Yes** and **No** under a question that supplies the rest, and the admin
+ * list and the notification email have no such question beside them. `student`
+ * and `parent` both said the document was agreed to, and neither said by whom
+ * in a way the school ever acted on, so both read back as "Agreed" — which is
+ * what they said, without claiming the family said "family".
+ */
+const RECORD_LABELS: Record<Exclude<AgreementAnswer, ''>, string> = {
+  yes: 'Family agrees',
+  no: 'Family does not agree',
+  student: 'Agreed',
+  parent: 'Agreed',
+  neither: 'Did not agree',
+};
 
 /** What was answered, and against which version of the document. */
 export type Agreement = {
@@ -167,16 +179,11 @@ export function agreementAnswer(agreements: Agreements, slug: AgreementSlug): Ag
 /**
  * The answer as the office reads it back — a sentence, never a bare "No".
  *
- * The radios say **Yes** and **No** under a question that supplies the rest;
- * the admin list and the notification email have no such question beside them,
- * and "Handbook: No" in a scanned column says nothing about which way it points.
- * Rows from before ADR-0020 read back as "Agreed" and "Did not agree", which is
- * what they said without claiming they said "family".
+ * "Handbook: No" in a scanned column says nothing about which way it points,
+ * which is why {@link RECORD_LABELS} exists rather than the radios' own words.
  */
 export function agreementLabel(answer: AgreementAnswer): string {
-  if (answer === 'yes') return 'Family agrees';
-  if (answer === 'no') return 'Family does not agree';
-  return LEGACY_ANSWERS.find((legacy) => legacy.value === answer)?.label ?? 'Not answered';
+  return answer === '' ? 'Not answered' : RECORD_LABELS[answer];
 }
 
 /**
@@ -241,5 +248,5 @@ function isWritableAnswer(value: string): value is 'yes' | 'no' {
 
 /** One of the five the record may hold — the two written and the three kept. */
 function isStorableAnswer(value: string): value is Exclude<AgreementAnswer, ''> {
-  return isWritableAnswer(value) || LEGACY_ANSWERS.some((legacy) => legacy.value === value);
+  return isWritableAnswer(value) || LEGACY_ANSWERS.some((legacy) => legacy === value);
 }

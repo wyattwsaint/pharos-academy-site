@@ -89,7 +89,8 @@ import { listPolicies } from '../../lib/policies/store.js';
  * to, a child with a name and an age, a class, one full column of the Statement
  * of Faith grid by any one respondent, and an answer to each document the
  * school has actually published. What was answered is never the gate's business
- * — "No" passes, "Neither agrees" passes, an objection passes and still routes
+ * — "No" passes, to an article and to a document alike, and an objection
+ * passes and still routes
  * the application to a conversation rather than to a refusal. The ADR holds the
  * reasoning, and holds what would count as reversing it.
  *
@@ -457,6 +458,12 @@ const focus: ErrorField | null = rejected ? firstError(errors, childNeeds.index)
  * Which document a refused send should land on — the first one nobody has
  * answered, matching `FOCUS.agreements`. Since #255 there is no radio that
  * un-answers one, so this can only ever be a question nobody has touched.
+ *
+ * Focus lands on the group's first radio, which is now **Yes**. Focus is not a
+ * choice — an unselected radio group takes focus without selecting anything,
+ * and nothing is posted until a family presses one — so this puts them at the
+ * question rather than on an answer, exactly as it did when the first radio
+ * read "Student agrees".
  */
 const agreementNeeds = Math.max(
   askable.findIndex((document) => !agreementAnswer(values.agreements, document.slug)),

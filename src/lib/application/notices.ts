@@ -22,10 +22,10 @@
  */
 
 import { sendAll, type Mail, type Sender } from '../backup/monthly.js';
-import { AGREEMENT_DOCUMENTS, agreementLabel } from './agreements.js';
 import { formatMoney, type MoneySettings } from '../money/settings.js';
 import { unitPrice } from '../money/owed.js';
 import { SCHOOL_NAME } from '../site.js';
+import { AGREEMENT_DOCUMENTS, agreementLabel } from './agreements.js';
 import {
   APPLICATION_PATH,
   FAITH_QUESTIONS,

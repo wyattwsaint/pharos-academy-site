@@ -7,7 +7,8 @@
 conversation on 2026-08-15, tickets to follow
 **Supersedes:** the answer vocabulary of
 [ADR-0009](0009-the-application-gates-on-answers-not-agreement.md)'s agreement
-questions — not its gate
+questions, and its consequence that "`isFlagged` … still does not consult the
+agreements" — not its gate
 
 ## Context
 

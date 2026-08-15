@@ -15,8 +15,9 @@
  * a leaf itself.
  *
  * **Answered, never agreed.** Every rule below gates on a question having been
- * answered. None of them gates on the answer. "No" passes, "Neither agrees"
- * passes, an objection typed into the box passes — an objection is the reason
+ * answered. None of them gates on the answer. "No" passes — to a faith question
+ * and to an agreement alike — and an objection typed into the box passes: an
+ * objection is the reason
  * the school wants to talk to this family, and `isFlagged` next door is what
  * routes it to that conversation. A future request to refuse an application from
  * a family who answered "No" is a different decision with a different cost and
@@ -198,9 +199,9 @@ export type AskedAgreement = { slug: AgreementSlug };
  * how to reach them, who the children are, whether any class was chosen,
  * whether anybody answered the Statement of Faith questions, whether each
  * published document was answered, and how the family says they will pay.
- * **What was answered is never wrong.** A "No", a "Neither agrees", a page of
- * objections and "by check" all pass, because the school asked to be told, not
- * to be agreed with.
+ * **What was answered is never wrong.** A "No" to an article, a "No" to a
+ * document, a page of objections and "by check" all pass, because the school
+ * asked to be told, not to be agreed with.
  *
  * `asked` is what the page put on screen. A policy the school has not published
  * produces no question and therefore no requirement — the gate matches the form

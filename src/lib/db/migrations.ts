@@ -538,7 +538,7 @@ export const MIGRATIONS: readonly Migration[] = [
      *
      * One column, and an array like `faith` rather than four columns, because
      * an unanswered question has to be able to be absent: a null column would
-     * read as "Neither agrees", which is an answer the family did not give.
+     * read as a "no", which is an answer the family did not give.
      * Each cell carries the policy version it was answered against, so the
      * question "what did the family who enrolled in August sign?" survives the
      * next upload.

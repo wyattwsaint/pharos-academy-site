@@ -309,8 +309,13 @@ Not: "enrolment numbers" (a seat in the tally is not an enrolment), "roll",
 ### conversation flag
 
 The mark an application carries when somebody answered "no" to one of the three
-Statement of Faith questions, or wrote something in the objections field. It
-routes the application to a conversation.
+Statement of Faith questions, answered **No** to one of the two
+[agreements](#agreement) (ADR-0020), or wrote something in the objections field.
+It routes the application to a conversation.
+
+**It is decided at submission and never recomputed.** A row written before an
+answer changed what the flag reads keeps the flag it was given — the three
+answers ADR-0020 retired are not reread as refusals.
 
 **It is not a rejection, and nothing in the codebase may make it one.** The flag
 is recorded at submission, printed above the family's name in the school's
