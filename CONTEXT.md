@@ -625,6 +625,39 @@ Not: "imported event" (nothing is imported — the copy is refreshed, and Google
 stays the original), "Google event" (which names Google's record, not ours),
 "external event".
 
+### printed year
+
+The school year on paper — what **Print this page** puts out of the calendar
+page, and the fourth surface the year has after the month grid, the subscribed
+feed and the structured data. It is a **dated list, month by month, two columns
+on one sheet**: the artefact a school office pins up, and the one the school
+already maintains by hand.
+
+It carries three kinds of line and no others — a **closure**, a
+[one-off](#one-off), and a **term boundary** (the first and last teaching day of
+each semester, and the day classes resume). All three are derived from the same
+eight numbers and the same closure list the grid is, so paper cannot say
+something the screen does not.
+
+**What it leaves off is as decided as what it carries.** No
+[offerings](#offering) and no week numbers — the reference the school keeps has
+neither, and paper is where space is scarcest. No one-off's note, because prose
+in a two-column list is what breaks the page. And **no revision date**: the site
+holds no such fact, the [stamp](#stamp) is attribution for the year record
+rather than a calendar revision, and today's date says nothing about when the
+calendar changed.
+
+It is **the school's own voice on the page and the reference's format
+underneath**: the site's faces, its navy and its way of writing a time and a
+date range, arranged as the sheet a school calendar is arranged as. A second
+spelling of a time or a year on the same artefact is the drift this rule exists
+to prevent — a family reading paper and a family reading the screen are reading
+one calendar.
+
+Not: "the calendar PDF" (nothing is generated — the browser prints the page),
+"the print view", "the semester sheet" (four columns of dates, deleted by
+ADR-0018).
+
 ### registration call to action
 
 The gold "Register now!" button on the **home page**, standing beside the

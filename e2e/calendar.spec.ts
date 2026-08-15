@@ -91,11 +91,82 @@ test.describe('the calendar page', () => {
     // And the list is there, month by month, in the two columns it is read in.
     const printed = page.locator('[data-section="calendar-print"]');
     await expect(printed).toBeVisible();
-    const months = printedYear(monthGrid(SEEDED_SCHOOL_YEAR, [], [])).map((month) => month.id);
+    const months = printedYear(monthGrid(SEEDED_SCHOOL_YEAR, [], []), SEEDED_SCHOOL_YEAR).map(
+      (month) => month.id,
+    );
     for (const month of months) {
       await expect(printed.locator(`[data-print-month="${month}"]`), month).toBeVisible();
     }
     await expect(printed.locator('.printed-columns')).toHaveCSS('column-count', '2');
+  });
+
+  /**
+   * The sheet is headed the way a pinned-up school calendar is headed (#271).
+   *
+   * The masthead replaces the page's own heading band rather than joining it,
+   * and the two bands that describe the screen go with it. Only a browser can
+   * say whether that swap actually happened, which is why it is asserted here
+   * and not against the view model.
+   */
+  test('heads the sheet with a masthead and prints none of the page around it', async ({
+    page,
+  }) => {
+    await page.goto(CALENDAR_PATH);
+    await page.emulateMedia({ media: 'print' });
+
+    const masthead = page.locator('[data-print-masthead]');
+    await expect(masthead).toBeVisible();
+    await expect(masthead.locator('.printed-wordmark')).toHaveText('Pharos Academy');
+    // The title the `<h1>` and the page title already use, in the same notation.
+    await expect(masthead.locator('.printed-title')).toHaveText(
+      `The ${SEEDED_SCHOOL_YEAR.label} Calendar`,
+    );
+    await expect(masthead.locator('.printed-mark')).toHaveAttribute('src', '/mark.svg');
+
+    // The page's own heading band, its standfirst and the subscribe block are
+    // not on the paper: the masthead is what names the year now.
+    await expect(page.locator('[data-section="calendar-header"]')).toBeHidden();
+    await expect(page.locator('[data-section="calendar-subscribe"]')).toBeHidden();
+    await expect(page.locator('[data-section="calendar-months"]')).toBeHidden();
+
+    /*
+     * And no revision date anywhere on the sheet. The reference carries one and
+     * this site holds no honest source for it, so the whole of what is asserted
+     * is that nothing invented one.
+     *
+     * Read off the whole page rather than the printed section, because the
+     * criterion is about the paper and the paper is whatever print media leaves
+     * visible. `useInnerText` is what makes that distinction: it reads what is
+     * rendered, so the bands hidden above do not answer for the sheet.
+     */
+    const paper = page.locator('body');
+    await expect(paper).not.toContainText('updated', { ignoreCase: true, useInnerText: true });
+    await expect(paper).not.toContainText('revised', { ignoreCase: true, useInnerText: true });
+  });
+
+  /**
+   * The four days the year turns on, on the paper (#271).
+   *
+   * Which dates they are is arithmetic and proved in the unit tests; that they
+   * reach the sheet, in the weight the reference sets its own first day of
+   * school in, is only true in a browser.
+   */
+  test('prints the term boundaries in the heavier weight', async ({ page }) => {
+    await page.goto(CALENDAR_PATH);
+    await page.emulateMedia({ media: 'print' });
+
+    const opening = page
+      .locator('[data-print-month="2026-08"] .printed-term')
+      .filter({ hasText: 'First day of classes' });
+    await expect(opening).toBeVisible();
+    await expect(opening.locator('.printed-days')).toHaveText('31');
+    await expect(opening.locator('.printed-what')).toHaveCSS('font-weight', '600');
+
+    // And the resumption after the winter gap, which is the spring's own first
+    // teaching day worded for the family reading it in January.
+    await expect(
+      page.locator('[data-print-month="2027-01"] .printed-term', { hasText: 'Classes resume' }),
+    ).toBeVisible();
   });
 
   /**

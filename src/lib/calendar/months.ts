@@ -301,14 +301,25 @@ function semesterSpans(year: SchoolYear, meetings: readonly Meeting[]): Span[] {
       .filter((term) => term.semester === semester)
       .map((term) => term.firstClassDate)
       .sort();
-    const ends = meetings
-      .filter((meeting) => meeting.semester === semester)
-      .map((meeting) => meeting.date)
-      .sort();
+    const ends = taughtIn(meetings, semester);
     if (starts.length === 0 || ends.length === 0) return [];
 
     return [{ from: starts[0]!, to: ends[ends.length - 1]! }];
   });
+}
+
+/**
+ * The dates one semester is actually taught on, all four tracks, in order.
+ *
+ * Both the shading above and the boundaries below ask this, and they must get
+ * the same answer: a semester that ended on one date for the tint and another
+ * for the line would be one sheet disagreeing with itself.
+ */
+function taughtIn(meetings: readonly Meeting[], semester: Semester): string[] {
+  return meetings
+    .filter((meeting) => meeting.semester === semester)
+    .map((meeting) => meeting.date)
+    .sort();
 }
 
 /** `2026-08` through `2027-04` — every month the two dates touch, inclusive. */
@@ -368,6 +379,11 @@ function columnOf(date: string): number {
  * exception is a one-off's note: prose in a two-column list is what breaks the
  * page, and it is the only thing paper keeps behind a press it does not have.
  *
+ * It carries one thing the screen does not: the **term boundaries** (#271). The
+ * grid says when the year opens by shading everything either side of it, which
+ * is geometry a list has none of, so paper names the four days instead. They are
+ * computed from the same meetings the grid is shaded from.
+ *
  * The **offerings are not here at all**, which is not an omission. The reference
  * the school keeps has none on it, a calendar prints what is exceptional and
  * reveals what is routine, and paper is where space is scarcest.
@@ -376,8 +392,20 @@ function columnOf(date: string): number {
  * rather than asserted through a stylesheet.
  */
 
-/** What one printed line is about: the school being shut, or a one-off. */
+/**
+ * What one printed line is about: a term boundary, the school being shut, or a
+ * one-off.
+ */
 export type PrintedEntry =
+  | {
+      kind: 'term';
+      /**
+       * The school's own wording for the boundary — "First day of classes",
+       * "Classes resume", "Last day of the fall semester", "Last day of
+       * classes".
+       */
+      label: string;
+    }
   | {
       kind: 'closure';
       /** What the school calls it, where it has named it. */
@@ -418,14 +446,21 @@ export type PrintedMonth = { id: string; heading: string; lines: PrintedLine[] }
  * A month is dropped when it holds nothing. The grid draws an empty October so
  * that November is not read as October; a list has no such geometry to keep, and
  * a heading with nothing under it is a line of paper spent saying nothing.
+ *
+ * **The year comes in beside the grid, for the term boundaries alone** (#271).
+ * A boundary is a fact about a *semester* — which day it opened on and which day
+ * it closed — and a cell carries no semester, so the grid genuinely cannot
+ * answer it. Nothing else is read from the year here: the closures and the
+ * one-offs still come off the cells, so paper still cannot say something the
+ * screen does not.
  */
-export function printedYear(months: readonly MonthBlock[]): PrintedMonth[] {
+export function printedYear(months: readonly MonthBlock[], year: SchoolYear): PrintedMonth[] {
   const cells = months.flatMap((month) =>
     month.weeks.flat().filter((cell): cell is MonthCell => cell !== null),
   );
 
-  const lines = [...closureLines(cells), ...oneOffLines(cells)]
-    .sort((a, b) => a.date.localeCompare(b.date) || shutFirst(a.entry) - shutFirst(b.entry))
+  const lines = [...termLines(year), ...closureLines(cells), ...oneOffLines(cells)]
+    .sort((a, b) => a.date.localeCompare(b.date) || rankOf(a.entry) - rankOf(b.entry))
     // The dates are written once, here, so a folded run and a single day cannot
     // come out in two formats.
     .map((line) => ({ ...line, days: daysLabel(line.date, line.through) }));
@@ -439,13 +474,80 @@ export function printedYear(months: readonly MonthBlock[]): PrintedMonth[] {
     .filter((month) => month.lines.length > 0);
 }
 
-/** A closure prints above the one-offs of its date: the school being shut first. */
-function shutFirst(entry: PrintedEntry): number {
-  return entry.kind === 'closure' ? 0 : 1;
+/**
+ * The stated order of the three kinds where they share a date: **term boundary,
+ * then closure, then one-off**.
+ *
+ * It runs from what the date *is* to what merely happens on it. A boundary names
+ * the day itself — the year opened, or it closed — and a family scanning the
+ * line for "31: First day of classes" should not read past a bake sale to find
+ * it. A closure is the next such fact, because whether the school is open
+ * governs everything else the date carries; a one-off is last, and there may be
+ * several of them, in the order the date holds them.
+ *
+ * A term line and a closure cannot in fact meet: a boundary is a day the school
+ * taught on and a closure is a day it did not. The rank still states which wins,
+ * because "it cannot happen" is not something a sort should rely on.
+ */
+function rankOf(entry: PrintedEntry): number {
+  if (entry.kind === 'term') return 0;
+  return entry.kind === 'closure' ? 1 : 2;
 }
 
 /** A line before its dates are written out: what the two builders below return. */
 type UnwrittenLine = Omit<PrintedLine, 'days'>;
+
+/**
+ * The four days the year turns on: each semester's first and last teaching day
+ * (#271).
+ *
+ * The reference sheet the school supplied sets its own first day of school in
+ * the heavier weight, and it is the one thing on a pinned-up calendar that is
+ * neither a day off nor an event — a family reading down a column of closures
+ * has nowhere else to learn when the year opens or when it lets out.
+ *
+ * **Derived from the meetings, like everything else.** The first teaching day is
+ * the earliest date any track meets in that semester and the last is the latest,
+ * across all four — not the `firstClassDate` the school typed, which is the
+ * Monday track's own and is a day earlier than the Wednesday track's. It is also
+ * not the *span* `semesterSpans` computes above: that one deliberately opens on
+ * the typed date so a term opening on a closed day still marks it, which is the
+ * right answer for shading a cell and the wrong one for a line reading "First
+ * day of classes".
+ *
+ * **The wording is positional, not per-semester.** The first semester the year
+ * actually has opens the year; a later one resumes it, which is the reference's
+ * own distinction and the one a family reads for in January. Likewise the last
+ * semester present closes the year and an earlier one closes only itself. A year
+ * with one semester therefore says "First day of classes" and "Last day of
+ * classes" and never invents a gap to resume from.
+ */
+function termLines(year: SchoolYear): UnwrittenLine[] {
+  const meetings = meetingsOf(year);
+
+  const spans = SEMESTERS.flatMap((semester: Semester) => {
+    const dates = taughtIn(meetings, semester);
+    if (dates.length === 0) return [];
+
+    return [{ semester, first: dates[0]!, last: dates[dates.length - 1]! }];
+  });
+
+  const boundary = (date: string, label: string): UnwrittenLine => ({
+    date,
+    through: date,
+    entry: { kind: 'term', label },
+  });
+
+  return spans.flatMap((span, index) => [
+    boundary(span.first, index === 0 ? 'First day of classes' : 'Classes resume'),
+    boundary(
+      span.last,
+      index === spans.length - 1
+        ? 'Last day of classes'
+        : `Last day of the ${span.semester} semester`,
+    ),
+  ]);
+}
 
 /**
  * The days off, with the runs folded.

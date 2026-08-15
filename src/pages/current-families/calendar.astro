@@ -93,7 +93,7 @@ const months = year ? monthGrid(year, published, courses) : [];
 const currentMonth = schoolToday(new Date()).slice(0, 7);
 
 /*
- * The same year a third time, as the sheet a school office pins up (#236).
+ * The same year a third time, as the sheet a school office pins up (#236, #271).
  *
  * Rendered always and shown only to a printer. It is folded from the grid above
  * rather than computed again, so paper cannot say something the screen does not:
@@ -102,11 +102,15 @@ const currentMonth = schoolToday(new Date()).slice(0, 7);
  * with the runs of shut days folded into ranges and a one-off's note left off,
  * because prose in a two-column list is what breaks the page.
  *
+ * The year comes in beside the grid for the **term boundaries** alone: which day
+ * each semester opened and closed on is a fact about a semester, and a cell
+ * carries none. Everything else on the sheet is still the grid's.
+ *
  * What is *not* on it is the offerings and the week numbers. The reference the
  * school already maintains by hand has neither, and paper is where space is
  * scarcest.
  */
-const printedMonths = printedYear(months);
+const printedMonths = year ? printedYear(months, year) : [];
 
 /*
  * The events, in structured data (#151) — the upcoming subset of what the grid
@@ -352,21 +356,48 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
   <section class="printed" data-section="calendar-print">
     <div class="wide">
       {/*
-        No title of its own: the page's own heading band prints above this and
-        already names the year. What that band says about the grid does not
-        survive to paper, and is hidden below with the grid it describes.
+        The masthead the sheet is headed by (#271).
+
+        Its own, and not the page's `<h1>` band, which is hidden in print below.
+        A left-aligned label band over a website's heading is what a *page*
+        looks like; a mark, the school's name and a centred title is what the
+        sheet an office pins up looks like, and matching that shape is the whole
+        of what the school asked for.
+
+        **No revision date, here or anywhere on the sheet.** The reference
+        carries one and this site holds no such fact: the stamp on the year
+        record is attribution for an edit, and today's date says nothing at all
+        about when the calendar last changed.
       */}
+      {
+        /*
+          Headed only where there is a year to head it with. A school that has
+          not set one yet gets a blank sheet rather than one titled "The
+          Calendar" over nothing — the same answer the screen gives, where the
+          months say the calendar appears as soon as the year is set.
+        */
+        year && (
+          <header class="printed-masthead" data-print-masthead>
+            <img class="printed-mark" src="/mark.svg" alt="" width="268" height="302" />
+            <p class="printed-wordmark">Pharos Academy</p>
+            <h2 class="printed-title">The {year.label} Calendar</h2>
+          </header>
+        )
+      }
+
       <div class="printed-columns">
         {
           printedMonths.map((month) => (
             <div class="printed-month" data-print-month={month.id}>
-              <h2>{month.heading}</h2>
+              <h3>{month.heading}</h3>
               <ul>
                 {month.lines.map((line) => (
-                  <li>
+                  <li class:list={['printed-line', { 'printed-term': line.entry.kind === 'term' }]}>
                     <span class="printed-days">{line.days}</span>
                     <span class="printed-what">
-                      {line.entry.kind === 'closure' ? (
+                      {line.entry.kind === 'term' ? (
+                        line.entry.label
+                      ) : line.entry.kind === 'closure' ? (
                         <Fragment>
                           No school{line.entry.label ? ` — ${line.entry.label}` : ''}
                         </Fragment>
@@ -754,27 +785,36 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
   }
 
   /*
-    Printed, this is the year as a dated list and nothing else (#236).
+    Printed, this is the year as a dated list and nothing else (#236, #271).
 
     A school office prints this page to pin the year up, and what it wants
-    pinned up is the artefact it already maintains by hand: every date carrying
-    something, month by month, two columns down the sheet. So the header, the
-    footer and the buttons come off, and so does the month grid, which is nine
-    sheets of mostly empty boxes. The two semester sheets used to come off here
-    too; they are deleted (#237).
+    pinned up is the artefact it already maintains by hand: a masthead, then
+    every date carrying something, month by month, two columns down the sheet.
+    So the header, the footer and the buttons come off, and so do the page's
+    own three bands — the heading band, which the masthead replaces; the
+    subscribe block, which offers a printed sheet a link it cannot follow; and
+    the month grid, which is nine sheets of mostly empty boxes. The two semester
+    sheets used to come off here too; they are deleted (#237).
+
+    **The format is the reference's and the typography is this site's** (#271).
+    The underlined month headings and the two columns come from the sheet the
+    school supplied; the faces, the navy, the en dash between two dates and the
+    way a time is written do not, because a family reading paper and a family
+    reading the screen are reading one calendar.
 
     Everything here is print-only: nothing in this block can change what the
     page looks like on a screen.
   */
   @media print {
-    .actions,
-    .caveat,
-    .months,
     /*
-      The page's standfirst goes with them: it describes a month grid and what
-      can be opened on it, and on paper there is neither.
+      Three whole bands, not the parts of them that looked like chrome. Each
+      band's heading and standfirst describe a thing paper does not have — a
+      grid with panels to open, an address to subscribe to — and a heading left
+      behind over nothing is worse than the band it came from.
     */
-    [data-section='calendar-header'] .sub {
+    [data-section='calendar-header'],
+    [data-section='calendar-subscribe'],
+    [data-section='calendar-months'] {
       display: none;
     }
 
@@ -783,16 +823,69 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     }
 
     /*
+      The masthead: the mark, the school's name, and the year the sheet is of.
+
+      Centred, which is the one place this sheet is centred — the reference's
+      shape, and the shape of every school calendar pinned up beside it. The
+      rule under it separates the sheet's identity from its dates.
+    */
+    .printed-masthead {
+      text-align: center;
+      margin-bottom: 0.8rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1.5pt solid var(--color-navy);
+      color: var(--color-navy);
+    }
+
+    /*
+      0.86in, measured off the prototype the look was settled in. Small enough
+      that the year still fits on one sheet, large enough that the trace reads
+      across a hallway.
+    */
+    .printed-mark {
+      width: 0.86in;
+      height: auto;
+      /* The site's reset makes an image a block, so the masthead's
+         `text-align` reaches the two lines of type and not the mark. */
+      margin-inline: auto;
+    }
+
+    .printed-wordmark {
+      font-family: var(--font-sans);
+      font-size: 9pt;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      /* The tracking is applied to the right of each letter, including the
+         last; the negative margin gives the line back its optical centre. */
+      margin: 0.35rem 0 0 0.22em;
+    }
+
+    .printed-title {
+      font-family: var(--font-serif);
+      font-size: 17pt;
+      font-weight: 400;
+      line-height: 1.15;
+      margin-top: 0.15rem;
+    }
+
+    /*
       Two columns, and the browser keeps a month whole where it can. A month
       broken across the fold of a column is the one thing a pinned-up sheet is
       read wrong from — the eye finds the heading and reads the wrong dates
       under it.
+
+      One sheet is what this arrangement is *for* and not what it promises: no
+      rule here forces it, because the only ways to force it are a font size
+      nobody reads and dropping dates the school actually has.
     */
     .printed-columns {
       columns: 2;
       column-gap: 2rem;
-      font-size: 10pt;
+      font-family: var(--font-sans);
+      font-size: 10.5pt;
       line-height: 1.35;
+      color: var(--color-ink);
     }
 
     .printed-month {
@@ -800,11 +893,19 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       margin-bottom: 0.9rem;
     }
 
-    .printed-month h2 {
-      font-size: 11pt;
-      font-variant-caps: all-small-caps;
-      letter-spacing: 0.06em;
-      border-bottom: 1px solid #000;
+    /*
+      Underlined month headings, which is the reference's own device and the one
+      typographic convention on it this sheet does copy. Set in the site's serif
+      and its navy rather than the reference's faces: the format is what was
+      asked for, and a second set of faces on a school's own artefact is how
+      paper starts looking like somebody else's school.
+    */
+    .printed-month h3 {
+      font-family: var(--font-serif);
+      font-size: 12pt;
+      font-weight: 400;
+      color: var(--color-navy);
+      border-bottom: 0.75pt solid var(--color-navy);
       padding-bottom: 0.1rem;
       margin-bottom: 0.25rem;
     }
@@ -822,11 +923,26 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       calendar does. The width is a floor and not a cap: a bare "3" still lines
       up under a "25–26", and a run that crossed a month and reads "30
       November–1 December" takes the room it needs rather than wrapping.
+
+      Quieter than what it dates, because on this sheet the day number is the
+      index and the thing that happens is the entry.
     */
     .printed-days {
       flex: 0 0 auto;
       min-width: 2.2rem;
       font-variant-numeric: tabular-nums;
+      color: var(--color-ink-2);
+    }
+
+    /*
+      A term boundary in the heavier weight, as the reference sets its own first
+      day of school. It is the one line on the sheet that says what the *year*
+      does rather than what one date carries, and a family scanning for when
+      classes start finds it without reading the closures.
+    */
+    .printed-term .printed-what {
+      font-weight: 600;
+      color: var(--color-navy);
     }
   }
 </style>
