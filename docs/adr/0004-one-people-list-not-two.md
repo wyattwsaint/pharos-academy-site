@@ -54,6 +54,15 @@ mean different things in the same column.
   refuses to delete somebody nineteen courses point at — which is why the admin offers no
   delete.
 
+  **Narrowed again by [#262](https://github.com/wyattwsaint/pharos-academy-site/issues/262)
+  (2026-08-15).** The admin now offers a delete, and it is unconditional. The foreign key is
+  unchanged and still refuses a bare `delete from people` — what changed is that, since the
+  column became nullable, `deletePerson` can clear the references first. So the sentence
+  "the database refuses to delete somebody nineteen courses point at" is still true of the
+  raw statement, and no longer describes the admin: the classes are left running and
+  unstaffed, and the confirmation names them. The reasoning is ADR-0021's — a person is the
+  school's own content, and nothing a family sent points at one.
+
   **Narrowed by [#257](https://github.com/wyattwsaint/pharos-academy-site/issues/257)
   (2026-08-15).** This bullet used to read "a course with no real instructor impossible",
   and `instructor_slug` was `not null`. It is now nullable: the school puts a class on the

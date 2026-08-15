@@ -16,6 +16,7 @@ import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
 import { announcementSlug } from '../src/lib/announcements/announcement.js';
 import { attachmentPath, NEWS_PATH } from '../src/lib/announcements/views.js';
 import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
+import { slugify } from '../src/lib/people/person.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
 import { POLICIES_PATH } from '../src/lib/policies/views.js';
 
@@ -518,6 +519,155 @@ test.describe('editing a person', () => {
 
     await page.goto('/admin/people');
     await expect(page.getByRole('link', { name: 'Mrs. Suite Newcomer' })).toBeVisible();
+  });
+});
+
+/**
+ * Deleting a person (#262, ADR-0021).
+ *
+ * The store proves what the delete does to the rows and
+ * `src/lib/admin/people.test.ts` proves the three sentences. What needs a
+ * browser is the round trip: that the confirmation is a **screen** reached by a
+ * POST rather than a `confirm()` dialog, that backing out writes nothing, and
+ * that confirming lands on the list with the outcome in the URL and really has
+ * taken the name off the public pages.
+ *
+ * Everything here is the suite's own — its own person, its own class — for the
+ * reason nothing else in this file deletes a seeded row: one throwaway database
+ * serves the whole run, and removing one of the school's ten people would empty
+ * a staff page the public specs are reading at that moment. The class is left
+ * behind afterwards, unstaffed, because a course still has no delete; the
+ * public specs assert membership rather than totals, so an extra one is not a
+ * failure.
+ */
+test.describe('deleting a person', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  const DEPARTING = 'Mr. Suite Departing';
+  const ORPHANED = 'A Class the Suite Will Orphan';
+  const ORPHANED_SLUG = 'a-class-the-suite-will-orphan';
+
+  /** Somebody to delete, and one class naming them, both made through the admin. */
+  test('sets up somebody who teaches, the way Jill would', async ({ page }) => {
+    await signIn(page, '/admin/people/new');
+    await page.getByLabel('Name').fill(DEPARTING);
+    await page.getByLabel('Role').fill('Instructor');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('save-banner')).toContainText('Saved');
+
+    await page.goto('/admin/courses/new');
+    await page.locator('#title').fill(ORPHANED);
+    await page
+      .locator('#description')
+      .fill('Added by the suite, to be left without an instructor when its teacher is deleted.');
+    await page.locator('input[name="stages"][value="Elementary (Grammar Stage)"]').check();
+    await page.locator('input[name="days"][value="Thursday"]').check();
+    // A slot the school already meets at, picked rather than typed, so this
+    // adds no new time to the editor's list.
+    await page.locator('#time').selectOption('11:20-12:20');
+    await page.locator('input[name="enrolment"][value="year"]').check();
+    await page.locator('input[name="enrolmentUnits"][value="year"]').check();
+    await page.locator('#weeks').fill('10');
+    await page.locator('#ageLabel').fill('Ages 6-10');
+    await page.locator('#rateTier').selectOption('standard');
+    await page.locator('#prerequisites').fill('None');
+    await page.locator('#instructorSlug').selectOption({ label: DEPARTING });
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('save-banner')).toContainText('Saved');
+
+    // The class names them, on the public page, which is the state the delete
+    // is about to change.
+    await page.goto(`/classes/${ORPHANED_SLUG}`);
+    await expect(page.locator('.coursefacts')).toContainText(DEPARTING);
+  });
+
+  test('asks before deleting, names the class that loses its teacher, and takes no for an answer', async ({
+    page,
+  }) => {
+    await signIn(page, `/admin/people/${slugify(DEPARTING)}`);
+    await page.getByRole('button', { name: 'Delete this person' }).click();
+
+    // A screen, not a dialog: it is in the page, and it says all three things.
+    const confirm = page.getByTestId('confirm');
+    await expect(confirm).toContainText(`Delete ${DEPARTING}?`);
+    await expect(page.getByTestId('deletion-goes')).toContainText('staff page');
+    // The surprise, named in the school's own words rather than as a slug.
+    await expect(page.getByTestId('deletion-classes')).toContainText(
+      `${ORPHANED} will have no instructor.`,
+    );
+    await expect(page.getByTestId('deletion-undo')).toContainText('no undo');
+
+    // Backing out is a GET and writes nothing — they are still there, still
+    // teaching, and the editor is back.
+    await page.getByRole('link', { name: 'Go back without deleting' }).click();
+    await expect(page.getByTestId('confirm')).toHaveCount(0);
+    await expect(page.getByLabel('Name')).toHaveValue(DEPARTING);
+
+    await page.goto(`/classes/${ORPHANED_SLUG}`);
+    await expect(page.locator('.coursefacts')).toContainText(DEPARTING);
+  });
+
+  test('deletes them, leaves the class running without an instructor, and reports it', async ({
+    page,
+  }) => {
+    await signIn(page, `/admin/people/${slugify(DEPARTING)}`);
+    await page.getByRole('button', { name: 'Delete this person' }).click();
+    await page.getByRole('button', { name: `Yes, delete ${DEPARTING}` }).click();
+
+    // Lands back on the list, with the outcome in the query string so a
+    // refresh repeats nothing.
+    await expect(page).toHaveURL(/\/admin\/people\?/);
+    const banner = page.getByTestId('people-banner');
+    await expect(banner).toContainText(`${DEPARTING} is deleted.`);
+    await expect(banner).toContainText('waiting for an instructor');
+    await expect(page.getByRole('link', { name: DEPARTING })).toHaveCount(0);
+
+    // Their editor is gone with them.
+    const gone = await page.goto(`/admin/people/${slugify(DEPARTING)}`);
+    expect(gone?.status()).toBe(404);
+
+    // The staff page no longer lists them.
+    await page.goto(STAFF_PATH);
+    await expect(page.locator('body')).not.toContainText(DEPARTING);
+
+    // And the class is still there, still fully described, naming nobody —
+    // which is the whole promise: the delete clears, it does not cascade.
+    await page.goto(`/classes/${ORPHANED_SLUG}`);
+    const facts = page.locator('.coursefacts');
+    await expect(page.locator('h1')).toHaveText(ORPHANED);
+    await expect(facts).not.toContainText(DEPARTING);
+    await expect(facts.locator('dt', { hasText: /^Instructor$/ })).toHaveCount(0);
+    await expect(facts).toContainText('Meets');
+
+    // The admin's Classes list is where the want is visible.
+    await page.goto('/admin/courses');
+    await expect(page.getByTestId(`no-instructor-${ORPHANED_SLUG}`)).toBeVisible();
+  });
+
+  test('says plainly that somebody who teaches nothing takes nothing with them', async ({
+    page,
+  }) => {
+    // The case the delete is mostly for — a duplicate, or somebody who never
+    // started. Mrs. Suite Newcomer is added by `editing a person` above; this
+    // creates its own so the two describes do not depend on each other's order.
+    const NEVER_STARTED = 'Mrs. Suite Never Started';
+    await signIn(page, '/admin/people/new');
+    await page.getByLabel('Name').fill(NEVER_STARTED);
+    await page.getByLabel('Role').fill('Instructor');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('save-banner')).toContainText('Saved');
+
+    await page.goto(`/admin/people/${slugify(NEVER_STARTED)}`);
+    await page.getByRole('button', { name: 'Delete this person' }).click();
+
+    // Not an empty list, and not "0 classes": a sentence about them.
+    await expect(page.getByTestId('deletion-classes')).toContainText(
+      'They teach no classes, so nothing else on the site changes.',
+    );
+
+    await page.getByRole('button', { name: `Yes, delete ${NEVER_STARTED}` }).click();
+    await expect(page.getByTestId('people-banner')).toContainText(`${NEVER_STARTED} is deleted.`);
+    await expect(page.getByRole('link', { name: NEVER_STARTED })).toHaveCount(0);
   });
 });
 

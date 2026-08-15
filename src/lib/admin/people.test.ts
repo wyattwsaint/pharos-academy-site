@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parsePerson } from './people.js';
+import { parsePerson, personDeletion } from './people.js';
 
 /**
  * The one form Jill uses to keep the school's people right (#26).
@@ -87,5 +87,62 @@ describe('parsing a person submission', () => {
   it('refuses a protocol-relative URL, and a path that climbs out of the site', () => {
     expect(parsePerson(form({ photo: '//example.org/face.jpg' })).errors.photo).toBeTruthy();
     expect(parsePerson(form({ photo: '/../secrets/face.png' })).errors.photo).toBeTruthy();
+  });
+});
+
+/**
+ * The last thing somebody reads before an irreversible press (#262).
+ *
+ * Proved here rather than through a browser because the browser can only ever
+ * show one of these three cases at a time, and the case that matters most is
+ * the one the suite is least likely to arrange: a person who teaches several
+ * classes, where the sentence has to read as English rather than as a list.
+ */
+describe('the confirmation before a person is deleted', () => {
+  it('names the person in the heading and on the button', () => {
+    // On the button as well as in the heading, because the button is what the
+    // hand is on — "Yes, delete" beside the wrong heading is how the wrong
+    // person goes.
+    const deletion = personDeletion('Mrs. Angela Fecteau', []);
+    expect(deletion.heading).toBe('Delete Mrs. Angela Fecteau?');
+    expect(deletion.confirmLabel).toBe('Yes, delete Mrs. Angela Fecteau');
+    expect(deletion.goes).toContain('Mrs. Angela Fecteau');
+  });
+
+  it('says plainly that somebody who teaches nothing affects nothing', () => {
+    // Not "0 classes will have no instructor", and not an empty list: the
+    // duplicate and the never-started are most of what this delete is for, and
+    // what the school needs to read is that pressing it is uneventful.
+    const { classes } = personDeletion('Mrs. Suite Newcomer', []);
+    expect(classes).toBe('They teach no classes, so nothing else on the site changes.');
+    expect(classes).not.toMatch(/\b0\b|\[|\]/);
+  });
+
+  it('names the one class, in the singular', () => {
+    const { classes } = personDeletion('Mrs. Angela Fecteau', ['Latin I']);
+    expect(classes).toMatch(/^Latin I will have no instructor\./);
+    // Its own screen is where an instructor is given back, and the sentence
+    // says so — the delete deliberately does not offer to reassign.
+    expect(classes).toContain("class's own screen");
+  });
+
+  it('names two classes with "and", the way the school writes them', () => {
+    // The ticket's own example sentence.
+    const { classes } = personDeletion('Mrs. Angela Fecteau', ['Latin I', 'Art']);
+    expect(classes).toMatch(/^Latin I and Art will have no instructor\./);
+  });
+
+  it('names several with commas and a final "and", and no Oxford comma', () => {
+    const { classes } = personDeletion('Dr. Mandy Saint', ['Latin I', 'Art', 'Kingdom Math']);
+    expect(classes).toMatch(/^Latin I, Art and Kingdom Math will have no instructor\./);
+    expect(classes).not.toContain('Art, and');
+  });
+
+  it('says there is no undo, whoever it is and whatever they teach', () => {
+    // The one sentence that is the same every time, because the fact it states
+    // is the same every time (ADR-0021: no undo, no soft delete, no trash).
+    for (const titles of [[], ['Latin I'], ['Latin I', 'Art']]) {
+      expect(personDeletion('Somebody', titles).undo).toMatch(/no undo/i);
+    }
   });
 });

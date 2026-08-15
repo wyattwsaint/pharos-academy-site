@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 
 import type { Db } from '../db/client.js';
-import { people as peopleTable, type PersonRow } from '../db/schema.js';
+import { courses as coursesTable, people as peopleTable, type PersonRow } from '../db/schema.js';
 import type { Person } from './person.js';
 
 /**
@@ -105,6 +105,51 @@ export async function createPerson(
 
   if (!row) throw new Error(`Could not add a person with the slug "${slug}".`);
   return toPerson(row);
+}
+
+/**
+ * Delete somebody, and leave the classes they taught standing (#262).
+ *
+ * **Unconditional, by decision rather than by omission** (ADR-0021). Nothing
+ * outside the school's own content points at a person — the application flow
+ * does not reference people at all — so there is no record of what a family
+ * sent for this to damage. The only thing naming a person is a course, and a
+ * course is the school's own copy. A staff list in flux is exactly the thing
+ * the office must be able to correct the day it changes, so a duplicate, a
+ * never-started and a departure all go without asking a developer.
+ *
+ * The courses are cleared **first**, and the order is the whole of the safety
+ * here. `courses.instructor_slug` is a foreign key with no `on delete` action,
+ * so Postgres refuses to remove a row nineteen courses point at; nulling the
+ * references is what turns a refusal into a delete. Doing it the other way
+ * round is not a different order, it is an error.
+ *
+ * Not in a transaction, because the production driver is neon-http and there is
+ * no interactive one to open — the same constraint `saveSchoolYear` writes down.
+ * What that leaves is a delete that dies between the two statements, and the
+ * state it leaves is honest and self-healing: some classes are unstaffed, which
+ * is a state the site renders correctly (#257), and the person is still on the
+ * list, still deletable, and pressing again finishes the job. There is no
+ * partial state here that needs hands on the database.
+ *
+ * Only the courses this person taught are touched, and only their instructor.
+ * Every other field of those courses — the title, the morning, the texts, the
+ * fees — is left exactly as it was, because a departure is not a reason to
+ * change what a class *is*. Reassigning is an ordinary course edit afterwards,
+ * deliberately not folded in here: forcing a replacement at delete time would
+ * stop the school acting on a departure the day it happens, and would make it
+ * name somebody who does not teach the class.
+ *
+ * Silent on a slug that is not there, like the other stores' deletes: the row
+ * is gone either way, and the screen that called this already has the person.
+ */
+export async function deletePerson(db: Db, slug: string): Promise<void> {
+  await db
+    .update(coursesTable)
+    .set({ instructorSlug: null })
+    .where(eq(coursesTable.instructorSlug, slug));
+
+  await db.delete(peopleTable).where(eq(peopleTable.slug, slug));
 }
 
 /**

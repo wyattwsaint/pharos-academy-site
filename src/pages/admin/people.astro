@@ -1,9 +1,11 @@
 ---
 export const prerender = false;
 
+import AdminBanner from '../../components/AdminBanner.astro';
 import AdminButton from '../../components/AdminButton.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { formatStamp } from '../../lib/admin/formatting.js';
+import { personDeletionOutcome } from '../../lib/admin/republish-outcome.js';
 import { getDb } from '../../lib/db/client.js';
 import { listPeopleForAdmin } from '../../lib/people/store.js';
 
@@ -15,16 +17,28 @@ import { listPeopleForAdmin } from '../../lib/people/store.js';
  * is the store's, which is the staff page's, so what Jill sees here is what a
  * parent sees there.
  *
- * There is no delete **here yet**. ADR-0021 reverses the stance that there
- * never would be, and #257 has already cleared the obstacle by making
- * `instructor_slug` nullable — so what is left is the screen, on its own
- * ticket. What this one no longer does is *promise* there will never be one:
- * that sentence was withdrawn with the decision behind it (#258).
+ * The delete is on the person's own screen, and it is unconditional (#262,
+ * ADR-0021). #258 withdrew the promise that there would never be one; this is
+ * the screen that promise was withdrawn for. It used to be impossible: the
+ * foreign key refused to remove anybody a course named, so the only honest
+ * thing this list could do was offer no button. Since a course may name nobody
+ * (#257) the delete clears those references instead of being refused by them —
+ * so a duplicate, somebody who never started and somebody who has left are all
+ * the office's to remove, on the day it happens, without asking whoever
+ * installed the site.
+ *
+ * What lands back here is the outcome, in the query string, so a refresh
+ * repeats nothing.
  */
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
 const people = await listPeopleForAdmin(db);
+
+const banner = personDeletionOutcome(
+  Astro.url.searchParams.get('deleted'),
+  Astro.url.searchParams.get('republished'),
+);
 ---
 
 <AdminLayout title="People" actor={actor}>
@@ -34,6 +48,8 @@ const people = await listPeopleForAdmin(db);
     name printed on that class and in the timetable.
   </p>
 
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="people-banner" retry />}
+
   <p class="mt-8">
     <AdminButton href="/admin/people/new">Add a person</AdminButton>
   </p>
@@ -42,8 +58,9 @@ const people = await listPeopleForAdmin(db);
     people.length === 0 ? (
       <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-people">
         Nobody is listed yet. The staff page and the name printed on every class are read from this
-        list, so both are waiting on it — an empty list means the school's people have not been
-        entered.
+        list, so both are waiting on it. An empty list is a real state — the school may have
+        entered nobody, or deleted everybody — and any class still running is waiting for an
+        instructor.
       </p>
     ) : (
       <ul class="mt-8 flex flex-col gap-6">

@@ -297,9 +297,9 @@ test.describe('the login screen', () => {
  * Each is a whole screen rather than a dialog, reached by a POST and rendered
  * in place of what asked for it — so none of them is measured by the screen
  * list above, and each is the last thing a person reads before an irreversible
- * click. Money's, the account delete, the policy delete and the announcement
- * delete are here; the event removal needs a saved event and is measured with
- * it below.
+ * click. Money's, the account delete, the policy delete, the announcement
+ * delete and the person delete are here; the event removal needs a saved event
+ * and is measured with it below.
  */
 test.describe('a confirmation screen', () => {
   for (const width of ADMIN_WIDTHS) {
@@ -360,6 +360,27 @@ test.describe('a confirmation screen', () => {
 
       await page.getByRole('button', { name: 'Delete this announcement' }).click();
       await expect(page.getByTestId('confirm')).toContainText('There is no undo.');
+
+      await expectNoViolations(page);
+    });
+
+    /*
+     * #262. Reached from inside a Publishing section like the policy's, and
+     * the same three-paragraph shape — but this is the one whose middle
+     * paragraph is a sentence assembled from a list, so it is the one where a
+     * heading and its paragraphs could most easily come apart.
+     *
+     * Jill Kilker, who is seeded, teaches nothing and is leadership: the
+     * "teaches no classes" branch, which is the shorter copy and therefore the
+     * one whose layout has least to hold it together. Asking is not deleting —
+     * nothing is confirmed here, so the person the rest of the suite reads is
+     * still there afterwards, at this width and the next.
+     */
+    test(`deleting a person has zero axe violations at ${width}px`, async ({ page }) => {
+      await openAt(page, '/admin/people/jill-kilker', width);
+
+      await page.getByRole('button', { name: 'Delete this person' }).click();
+      await expect(page.getByTestId('confirm')).toContainText('Delete Jill Kilker?');
 
       await expectNoViolations(page);
     });

@@ -83,6 +83,36 @@ export function policyDeletionOutcome(deleted: string | null, published: string 
   };
 }
 
+/**
+ * What `?deleted=` on the People list means (#262).
+ *
+ * The third of these, and a third sentence, because what the school has just
+ * done is a third thing. Removing a one-off takes the whole of it away; deleting
+ * a policy takes a row and keeps every document; deleting a person takes the
+ * row and leaves the classes standing without an instructor. The confirmation
+ * named those classes before the press, and this is the line that says the
+ * press did what it said — so it repeats the shape of the consequence without
+ * re-listing the titles, which by now are on the Classes screen saying so
+ * themselves.
+ *
+ * The republish answer rides along in the same query string, said in the same
+ * words every other screen says it in. A refresh re-fires neither half: the
+ * delete already happened and the URL only reports it.
+ */
+export function personDeletionOutcome(
+  deleted: string | null,
+  published: string | null,
+): Banner | null {
+  if (deleted === null) return null;
+  const republish = republishOutcome(published);
+  return {
+    ok: republish?.ok ?? true,
+    message: `${deleted} is deleted. Any class they taught is still running, and is now waiting for an instructor.${
+      republish ? ` ${republish.message}` : ''
+    }`,
+  };
+}
+
 export function republishOutcome(published: string | null): Banner | null {
   if (published === 'live') {
     return { ok: true, message: 'Republished — the live site is up to date.' };

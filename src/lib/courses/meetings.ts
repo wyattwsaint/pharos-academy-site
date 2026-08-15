@@ -27,6 +27,7 @@ import {
   weekdayDateLabel,
   type SchoolYear,
 } from '../calendar/year.js';
+import { listSentence } from '../prose.js';
 import type { Course } from './course.js';
 import { DAY_TRACKS, type DayTrack } from './schedule.js';
 import { meetingDatesOn } from './slots.js';
@@ -123,7 +124,7 @@ function countLabel(dates: readonly string[]): string {
 
   if (weekdays.length === 1) return `${dates.length} ${weekdays[0]}${plural}`;
   if (weekdays.length === 0) return `${dates.length} meeting${plural}`;
-  return `${dates.length} meeting${plural} on ${listLabel(weekdays.map((day) => `${day}s`))}`;
+  return `${dates.length} meeting${plural} on ${listSentence(weekdays.map((day) => `${day}s`))}`;
 }
 
 /**
@@ -137,12 +138,6 @@ function weekdaysOf(dates: readonly string[]): DayTrack[] {
   const tracks = dates.map(trackOfDate);
   if (tracks.some((track) => track === null)) return [];
   return DAY_TRACKS.filter((track) => tracks.includes(track));
-}
-
-/** "Mondays and Wednesdays" — the school writes two days out, never with a slash. */
-function listLabel(items: readonly string[]): string {
-  if (items.length < 3) return items.join(' and ');
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
 
 /**

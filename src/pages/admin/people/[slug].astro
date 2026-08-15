@@ -3,13 +3,21 @@ export const prerender = false;
 
 import AdminBanner from '../../../components/AdminBanner.astro';
 import AdminButton from '../../../components/AdminButton.astro';
+import AdminConfirm from '../../../components/AdminConfirm.astro';
 import AdminField from '../../../components/AdminField.astro';
 import AdminPublishing from '../../../components/AdminPublishing.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import type { Banner } from '../../../lib/admin/banner.js';
+import { isConfirmed } from '../../../lib/admin/confirmation.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
 import { saveErrorMessage } from '../../../lib/admin/save-errors.js';
-import { LABELS, parsePerson, type PersonErrors, type PersonFields } from '../../../lib/admin/people.js';
+import {
+  LABELS,
+  parsePerson,
+  personDeletion,
+  type PersonErrors,
+  type PersonFields,
+} from '../../../lib/admin/people.js';
 import {
   describeRevalidation,
   revalidateAll,
@@ -18,8 +26,9 @@ import {
 import { formatStamp } from '../../../lib/admin/formatting.js';
 import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
 import { getDb } from '../../../lib/db/client.js';
+import { listCoursesForAdmin } from '../../../lib/courses/store.js';
 import { slugify, type Person } from '../../../lib/people/person.js';
-import { createPerson, getPerson, savePerson } from '../../../lib/people/store.js';
+import { createPerson, deletePerson, getPerson, savePerson } from '../../../lib/people/store.js';
 
 /**
  * One person, edited or added (#26).
@@ -80,27 +89,57 @@ if (!adding && !person) {
 let values: PersonFields = person ? fieldsOf(person) : EMPTY;
 let errors: PersonErrors = {};
 let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republished'));
+let confirmingDeletion = false;
 
 if (Astro.request.method === 'POST') {
-  const parsed = parsePerson(await Astro.request.formData());
-  values = parsed.values;
-  errors = parsed.errors;
+  const form = await Astro.request.formData();
+  const deleting = form.get('delete') !== null && person !== undefined;
 
-  if (Object.keys(errors).length > 0) {
-    banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+  if (deleting && !isConfirmed(form)) {
+    /*
+     * The first press asks, and nothing is parsed on the way. The delete form
+     * carries no fields, so handing it to `parsePerson` would refuse a person
+     * for having an empty name the reader never touched.
+     */
+    confirmingDeletion = true;
+  } else if (deleting && person) {
+    const deleted = person.name;
+    await deletePerson(db, person.slug);
+    const result = await revalidateAll({
+      origin: revalidationOrigin(Astro.url),
+      bypassToken: isrBypassToken(),
+    });
+    /*
+     * The answer travels in the query string, the way a republish's does
+     * (#198): this screen is a 404 from here on, and the list is where the
+     * deletion is visible. In the URL rather than rendered there so a refresh
+     * of the list repeats nothing.
+     */
+    const back = new URL('/admin/people', Astro.url.origin);
+    back.searchParams.set('deleted', deleted);
+    back.searchParams.set('republished', result.ok ? 'live' : 'stale');
+    return Astro.redirect(`${back.pathname}${back.search}`, 303);
   } else {
-    try {
-      person = person
-        ? await savePerson(db, person.slug, values, actor.name)
-        : await createPerson(db, slugFor(values.name), values, actor.name);
-      values = fieldsOf(person);
-      const result = await revalidateAll({
-        origin: revalidationOrigin(Astro.url),
-        bypassToken: isrBypassToken(),
-      });
-      banner = { ok: result.ok, message: describeRevalidation(result) };
-    } catch (error) {
-      banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
+    const parsed = parsePerson(form);
+    values = parsed.values;
+    errors = parsed.errors;
+
+    if (Object.keys(errors).length > 0) {
+      banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+    } else {
+      try {
+        person = person
+          ? await savePerson(db, person.slug, values, actor.name)
+          : await createPerson(db, slugFor(values.name), values, actor.name);
+        values = fieldsOf(person);
+        const result = await revalidateAll({
+          origin: revalidationOrigin(Astro.url),
+          bypassToken: isrBypassToken(),
+        });
+        banner = { ok: result.ok, message: describeRevalidation(result) };
+      } catch (error) {
+        banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
+      }
     }
   }
 }
@@ -115,6 +154,29 @@ if (Astro.request.method === 'POST') {
 const action = person ? `/admin/people/${person.slug}` : '/admin/people/new';
 const heading = person ? person.name : 'Add a Person';
 const stamp = person ? formatStamp(person.lastEditedBy, person.lastEditedAt) : null;
+
+/*
+ * What the confirmation will say, read only when it is about to be said.
+ *
+ * The catalogue is a second query and this screen otherwise makes none, so it
+ * is asked for on the one request that needs it — the first press of Delete —
+ * rather than on every edit. Which classes they teach is derived from the
+ * courses that name them (ADR-0004), never from a column on the person, so this
+ * is the same question the staff page asks and cannot drift from it.
+ *
+ * `listCoursesForAdmin` rather than `listCourses`: an empty catalogue is a
+ * broken deployment on a public page and simply nothing to name here, and a
+ * confirmation that threw would leave the school unable to delete anybody on a
+ * site with no classes yet.
+ */
+const deletion = confirmingDeletion && person
+  ? personDeletion(
+      person.name,
+      (await listCoursesForAdmin(db))
+        .filter((course) => course.instructorSlug === person!.slug)
+        .map((course) => course.title),
+    )
+  : null;
 
 /**
  * The form's shape. Type decides the control; nothing else varies.
@@ -201,33 +263,69 @@ function slugFor(name: string): string {
 
   {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner" retry />}
 
-  <form method="post" action={action} class="mt-8 flex flex-col gap-6">
-    {
-      FIELDS.map((field) => (
-        <AdminField
-          name={field.name}
-          type={field.type}
-          label={LABELS[field.name]}
-          value={String(values[field.name] ?? '')}
-          hint={field.hint}
-          error={errors[field.name]}
-          optional={field.optional}
-          rows={field.rows}
-          min={field.min}
-          step={field.step}
-        />
-      ))
-    }
+  {
+    confirmingDeletion && person && deletion ? (
+      <AdminConfirm
+        heading={deletion.heading}
+        action={action}
+        confirmLabel={deletion.confirmLabel}
+        destructive
+        declineHref={action}
+        declineLabel={deletion.declineLabel}
+      >
+        <Fragment slot="fields">
+          <input type="hidden" name="delete" value="1" />
+        </Fragment>
 
-    <AdminButton class="self-start">Save</AdminButton>
-  </form>
+        <p class="mt-3" data-testid="deletion-goes">
+          {deletion.goes}
+        </p>
+        <p class="mt-3" data-testid="deletion-classes">
+          {deletion.classes}
+        </p>
+        <p class="mt-3" data-testid="deletion-undo">
+          {deletion.undo}
+        </p>
+      </AdminConfirm>
+    ) : (
+      <form method="post" action={action} class="mt-8 flex flex-col gap-6">
+        {FIELDS.map((field) => (
+          <AdminField
+            name={field.name}
+            type={field.type}
+            label={LABELS[field.name]}
+            value={String(values[field.name] ?? '')}
+            hint={field.hint}
+            error={errors[field.name]}
+            optional={field.optional}
+            rows={field.rows}
+            min={field.min}
+            step={field.step}
+          />
+        ))}
+
+        <AdminButton class="self-start">Save</AdminButton>
+      </form>
+    )
+  }
 
   {
-    stamp && (
+    stamp && !confirmingDeletion && (
       <AdminPublishing stamp={stamp}>
         <p class="mt-2">
           Saving republishes the whole site, because this name is printed in more than one place.
         </p>
+
+        <form method="post" action={action} class="mt-6">
+          <p class="text-sm">
+            Somebody typed in twice, or who has left? Delete them, and they come off the staff page
+            and out of this admin. Any class they teach keeps running and is left waiting for an
+            instructor — you will be told which ones, and asked to confirm, first.
+          </p>
+          <AdminButton variant="destructive" name="delete" value="1" class="mt-3">
+            Delete this person
+          </AdminButton>
+        </form>
       </AdminPublishing>
     )
   }

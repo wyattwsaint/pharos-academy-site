@@ -4,7 +4,14 @@ import { listCourses } from '../courses/store.js';
 import { createEphemeralDatabase, runMigrations, type Db } from '../db/client.js';
 import { courses as coursesTable, people as peopleTable } from '../db/schema.js';
 import { bySlug, instructorOf, leadershipAmong, PEOPLE } from './person.js';
-import { createPerson, getPerson, listPeople, savePerson } from './store.js';
+import {
+  createPerson,
+  deletePerson,
+  getPerson,
+  listPeople,
+  listPeopleForAdmin,
+  savePerson,
+} from './store.js';
 
 /**
  * The one list, against real Postgres.
@@ -58,12 +65,92 @@ describe('the seeded people', () => {
   });
 
   it('refuses an empty list rather than rendering a school with no staff', async () => {
-    // The courses go first: the foreign key will not let a person who teaches
-    // be deleted, which is itself the guarantee that no class page can lose
-    // its instructor.
+    // The courses go first only because it is the shortest way to an empty
+    // table here. Since #262 a person who teaches can be deleted properly —
+    // `deletePerson` clears the references first — so this is a statement
+    // about the public guard, not about the foreign key.
     await db.delete(coursesTable);
     await db.delete(peopleTable);
     await expect(listPeople(db)).rejects.toThrow(/db:migrate/);
+  });
+});
+
+describe('deleting a person', () => {
+  /** Dr. Mandy Saint teaches eight of the nineteen — the interesting case. */
+  const TEACHES_EIGHT = 'mandy-saint';
+
+  it('takes them off the one list every surface reads', async () => {
+    await deletePerson(db, TEACHES_EIGHT);
+
+    expect(await getPerson(db, TEACHES_EIGHT)).toBeUndefined();
+    expect((await listPeople(db)).map((person) => person.slug)).not.toContain(TEACHES_EIGHT);
+  });
+
+  it('leaves every class they taught standing, and instructorless', async () => {
+    /*
+     * #262's core promise, and the reason the delete is allowed to be
+     * unconditional: the classes are the school's own copy, they keep running,
+     * and the only thing that changes about them is that they name nobody.
+     * Compared field for field, so a delete that quietly dropped a fee or a
+     * text would fail here rather than on a class page.
+     */
+    const before = (await listCourses(db)).filter(
+      (course) => course.instructorSlug === TEACHES_EIGHT,
+    );
+    expect(before.length).toBe(8);
+
+    await deletePerson(db, TEACHES_EIGHT);
+
+    const after = await listCourses(db);
+    expect(after).toHaveLength(19);
+    for (const was of before) {
+      const now = after.find((course) => course.slug === was.slug);
+      expect(now, was.title).toBeDefined();
+      expect(now!.instructorSlug, was.title).toBeNull();
+      expect({ ...now!, instructorSlug: was.instructorSlug }, was.title).toEqual(was);
+    }
+  });
+
+  it('touches no class taught by anybody else', async () => {
+    // Only their references are cleared. A delete that nulled the column
+    // wholesale would unstaff the school in one press.
+    const others = (await listCourses(db)).filter(
+      (course) => course.instructorSlug !== TEACHES_EIGHT,
+    );
+
+    await deletePerson(db, TEACHES_EIGHT);
+
+    const after = await listCourses(db);
+    for (const was of others) {
+      expect(after.find((course) => course.slug === was.slug), was.title).toEqual(was);
+    }
+  });
+
+  it('is never refused, and empties the list entirely', async () => {
+    /*
+     * Two acceptance criteria that are one action, so they share one database:
+     * every one of the ten goes, whatever they teach — before #257 the foreign
+     * key refused eight of them — and there is no floor on the list (ADR-0021).
+     */
+    for (const person of await listPeople(db)) {
+      await expect(deletePerson(db, person.slug), person.name).resolves.toBeUndefined();
+    }
+
+    expect(await listPeopleForAdmin(db)).toEqual([]);
+    // The admin's own reader is what renders the empty state; the public guard
+    // still refuses an empty table, which #197 decided and this does not touch.
+    await expect(listPeople(db)).rejects.toThrow(/db:migrate/);
+
+    // And the catalogue is whole, with nobody teaching any of it.
+    const courses = await listCourses(db);
+    expect(courses).toHaveLength(19);
+    expect(courses.every((course) => course.instructorSlug === null)).toBe(true);
+  });
+
+  it('says nothing about a slug that is not there', async () => {
+    // Silent, like the other stores' deletes: the row is gone either way.
+    await expect(deletePerson(db, 'nobody-at-all')).resolves.toBeUndefined();
+    expect(await listPeopleForAdmin(db)).toHaveLength(PEOPLE.length);
   });
 });
 
