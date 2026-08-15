@@ -137,7 +137,9 @@ test.describe('the month grid', () => {
    */
   test('draws the same one-offs the subscribed feed carries', async ({ page, request }) => {
     await page.goto(CALENDAR_PATH);
-    const shown = page.locator('[data-section="calendar-months"] .one-off-title');
+    // The title alone, not the title and the time the cell now prints beside it
+    // (#234): what the feed carries as a `SUMMARY` is the name of the thing.
+    const shown = page.locator('[data-section="calendar-months"] .one-off-name');
     const count = await shown.count();
     test.skip(count === 0, 'Nothing is on the calendar today — see admin-calendar.spec.ts.');
 
