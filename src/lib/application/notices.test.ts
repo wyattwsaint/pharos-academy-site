@@ -10,6 +10,7 @@ import {
   type PaymentMethod,
 } from './application.js';
 import { offeringsOf } from './offerings.js';
+import { captureOfferingTitles, decodeOfferingTitles } from './chosen-classes.js';
 import { classTally } from './tally.js';
 import {
   applicationNotification,
@@ -62,7 +63,14 @@ function submission(over: Partial<ApplicationSubmission> = {}): ApplicationSubmi
           familyName: values.familyName,
           receivedAt: new Date('2026-09-01T10:00:00Z'),
           state: 'submitted',
-          children: values.children,
+          // As the row reads back: the classes are named out of what the
+          // submit captured, never out of today's catalogue (#259).
+          children: values.children.map((child) => ({
+            ...child,
+            offeringTitles: decodeOfferingTitles(
+              captureOfferingTitles(OFFERINGS, child.offeringKeys),
+            ),
+          })),
         },
       ],
       OFFERINGS,

@@ -23,9 +23,14 @@
  */
 
 import type { EnrolmentUnit } from '../courses/course.js';
-import type { Course } from '../courses/course.js';
+import {
+  catalogueCourses,
+  chosenClasses,
+  NO_LONGER_OFFERED,
+  type ChosenBy,
+} from './chosen-classes.js';
 import { countsInTally, type ApplicationState } from './lifecycle.js';
-import { findOffering, unitLabel, type Offering } from './offerings.js';
+import { unitLabel, type Offering } from './offerings.js';
 
 /**
  * What the tally needs of an application, and no more.
@@ -39,7 +44,7 @@ export type TalliedApplication = {
   familyName: string;
   receivedAt: Date;
   state: ApplicationState;
-  children: readonly { name: string; offeringKeys: readonly string[] }[];
+  children: readonly (ChosenBy & { name: string })[];
 };
 
 /** One child in one class, however many applications said so. */
@@ -57,7 +62,19 @@ export type TallySeat = {
 
 /** One class, and who is in it. */
 export type TallyEntry = {
-  course: Course;
+  courseSlug: string;
+  /**
+   * As the applications named it — the newest capture, or the slug for rows
+   * written before the capture existed (#259). Never today's catalogue: a
+   * rename must not change a number the school already decided on.
+   */
+  title: string;
+  /**
+   * Whether the catalogue still has the course. A fact about today, not about
+   * the row — and the same question the Applications screen asks of the same
+   * class, so the two surfaces cannot describe one class two ways.
+   */
+  offered: boolean;
   seats: TallySeat[];
 };
 
@@ -68,12 +85,21 @@ export type TallyEntry = {
  * latest word on it and later sightings only add the note. Courses come back in
  * catalogue order and only when somebody chose them: a tally listing the whole
  * catalogue, most of it empty, is a tally nobody reads to the bottom of.
+ *
+ * **A class the catalogue no longer has is still counted** (#259). It is named
+ * out of what the applications captured and marked as gone, and it sorts after
+ * the catalogue because it is no longer part of it. Dropping it was the old
+ * behaviour and it silently moved the number Jill decides on.
  */
 export function classTally(
   applications: readonly TalliedApplication[],
   offerings: readonly Offering[],
 ): TallyEntry[] {
   const seats = new Map<string, TallySeat & { courseSlug: string }>();
+  /** How each class was named, by the newest application that named it. */
+  const named = new Map<string, string>();
+  /** The one rule about what the catalogue still has — `chosenClasses`'s own. */
+  const catalogue = catalogueCourses(offerings);
 
   const newestFirst = [...applications]
     .filter((application) => countsInTally(application.state))
@@ -81,11 +107,10 @@ export function classTally(
 
   for (const application of newestFirst) {
     application.children.forEach((child, position) => {
-      for (const key of child.offeringKeys) {
-        const offering = findOffering(offerings, key);
-        if (!offering) continue;
+      for (const chosen of chosenClasses(child, catalogue)) {
+        if (!named.has(chosen.courseSlug)) named.set(chosen.courseSlug, chosen.title);
 
-        const id = seatKey(application.familyName, child.name, position, offering.course.slug);
+        const id = seatKey(application.familyName, child.name, position, chosen.courseSlug);
         const seen = seats.get(id);
         if (seen) {
           seen.applicationIds.push(application.id);
@@ -94,10 +119,10 @@ export function classTally(
         }
 
         seats.set(id, {
-          courseSlug: offering.course.slug,
+          courseSlug: chosen.courseSlug,
           familyName: application.familyName.trim(),
           childName: child.name.trim(),
-          unit: offering.unit,
+          unit: chosen.unit,
           applicationIds: [application.id],
           resubmitted: false,
         });
@@ -106,11 +131,24 @@ export function classTally(
   }
 
   const entries: TallyEntry[] = [];
-  for (const offering of offerings) {
-    if (entries.some((entry) => entry.course.slug === offering.course.slug)) continue;
-    const mine = [...seats.values()].filter((seat) => seat.courseSlug === offering.course.slug);
-    if (mine.length > 0) entries.push({ course: offering.course, seats: mine.map(strip) });
+  const entryFor = (slug: string) => {
+    const mine = [...seats.values()].filter((seat) => seat.courseSlug === slug);
+    if (mine.length === 0) return;
+    entries.push({
+      courseSlug: slug,
+      title: named.get(slug)!,
+      offered: catalogue.has(slug),
+      seats: mine.map(strip),
+    });
+  };
+
+  for (const slug of catalogue) entryFor(slug);
+  // Then whatever the catalogue has lost, in the order the newest applications
+  // named it, so the list is stable from one page load to the next.
+  for (const slug of named.keys()) {
+    if (!catalogue.has(slug)) entryFor(slug);
   }
+
   return entries;
 }
 
@@ -150,13 +188,18 @@ function strip(seat: TallySeat & { courseSlug: string }): TallySeat {
  * answered by the count, and "do we run it in the fall or all year?" by the
  * split. The second-submission note rides on the line rather than in a footnote,
  * because the note exists to explain a count that would otherwise look wrong.
+ *
+ * A class the catalogue has lost is marked beside its name rather than dropped
+ * (#259) — the count is what a decision was made on, and a line quietly missing
+ * from the list is the only thing worse than a line that needs explaining.
  */
 export function tallyLines(tally: readonly TallyEntry[]): string[] {
   return tally.map((entry) => {
     const units = countUnits(entry.seats);
     const resubmitted = entry.seats.filter((seat) => seat.resubmitted).length;
     const note = resubmitted > 0 ? ` — includes ${resubmitted} second submission${resubmitted === 1 ? '' : 's'}, counted once` : '';
-    return `${entry.course.title}: ${entry.seats.length} (${units})${note}`;
+    const name = entry.offered ? entry.title : `${entry.title} (${NO_LONGER_OFFERED})`;
+    return `${name}: ${entry.seats.length} (${units})${note}`;
   });
 }
 

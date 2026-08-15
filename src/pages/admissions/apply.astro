@@ -266,6 +266,10 @@ if (Astro.request.method === 'POST') {
         // does, the unstated fallback reads as a check and the office watches
         // the post, which is what it did before anybody was asked (#219).
         paymentMode: values.paymentMethod ? paymentModeOf(values.paymentMethod) : undefined,
+        // The catalogue this page drew the checkboxes from, so the titles
+        // frozen onto the row are the ones this family was actually shown
+        // (#259). Nothing updates them afterwards.
+        offerings,
       });
     } catch (cause) {
       // The operator's copy. The family is told plainly, and given the address
