@@ -302,28 +302,30 @@ test.describe('the application page', () => {
     await fillSendable(page, 'email');
     await clickSend(page);
 
-    const red = await page
-      .locator('#apply-email-error')
-      .evaluate((element) => getComputedStyle(element).color);
+    const colourOf = (locator: Locator) =>
+      locator.evaluate((element) => getComputedStyle(element).color);
 
-    const paint = (locator: Locator) =>
-      locator.evaluate((element) => {
-        const style = getComputedStyle(element);
-        return { color: style.color, border: style.borderLeftColor };
-      });
+    // Stated, so that everything below is a comparison rather than two things
+    // agreeing on the colour they both inherited. The ratio this red holds on
+    // the grounds it is painted on is measured in `src/styles/tokens.test.ts`.
+    const red = await colourOf(page.locator('#apply-email-error'));
+    expect(red).toBe('rgb(140, 43, 25)');
 
-    expect(await paint(page.locator('[data-missing-intro]'))).toMatchObject({ color: red });
+    expect(await colourOf(page.locator('[data-missing-intro]'))).toBe(red);
 
     const item = stillNeeded(page, 'email');
     await expect(item).toBeVisible();
-    expect(await paint(item)).toEqual({ color: red, border: red });
-    expect(await paint(item.locator('a'))).toMatchObject({ color: red });
+    expect(await colourOf(item)).toBe(red);
+    expect(await colourOf(item.locator('a'))).toBe(red);
+
+    const rule = await item.evaluate((element) => getComputedStyle(element).borderLeftColor);
+    expect(rule).toBe(red);
 
     // The quiet sentence that replaces the list is not an error, and does not
     // borrow the colour of one.
     await fillSendable(page);
     await expect(page.locator('[data-missing-intro]')).toBeHidden();
-    expect(await paint(page.locator('[data-missing-done]'))).not.toMatchObject({ color: red });
+    expect(await colourOf(page.locator('[data-missing-done]'))).not.toBe(red);
   });
 
   test('checks a field when the family leaves it, and clears it as they fix it', async ({
