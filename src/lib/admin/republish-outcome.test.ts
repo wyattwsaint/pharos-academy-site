@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { removalOutcome, republishOutcome } from './republish-outcome.js';
+import {
+  policyDeletionOutcome,
+  removalOutcome,
+  republishOutcome,
+} from './republish-outcome.js';
 
 describe('what ?republished= means', () => {
   it('reports a republish that reached the live site', () => {
@@ -54,5 +58,38 @@ describe('what ?removed= means (#200)', () => {
   it('says nothing at all when the list was merely opened', () => {
     expect(removalOutcome(null, null)).toBeNull();
     expect(removalOutcome(null, 'live')).toBeNull();
+  });
+});
+
+describe('what ?deleted= means (#260)', () => {
+  it('names the policy, says the documents are kept, and reports the republish', () => {
+    expect(policyDeletionOutcome('Handbook', 'live')).toEqual({
+      ok: true,
+      message:
+        'Handbook is deleted. Every document already uploaded to it is still readable at the address it was given. Republished — the live site is up to date.',
+    });
+  });
+
+  // The delete happened either way, so the banner still reports it — but it is
+  // not allowed to imply that a family reading the policies page has caught up.
+  it('does not claim the live site caught up when it did not', () => {
+    expect(policyDeletionOutcome('Handbook', 'stale')).toEqual({
+      ok: false,
+      message:
+        "Handbook is deleted. Every document already uploaded to it is still readable at the address it was given. Republishing didn't reach the live site — Retry.",
+    });
+  });
+
+  it('still reports the deletion when the URL says nothing about republishing', () => {
+    expect(policyDeletionOutcome('Handbook', null)).toEqual({
+      ok: true,
+      message:
+        'Handbook is deleted. Every document already uploaded to it is still readable at the address it was given.',
+    });
+  });
+
+  it('says nothing at all when the list was merely opened', () => {
+    expect(policyDeletionOutcome(null, null)).toBeNull();
+    expect(policyDeletionOutcome(null, 'live')).toBeNull();
   });
 });

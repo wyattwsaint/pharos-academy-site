@@ -14,7 +14,7 @@ import { SUITE_ADMIN, SUITE_KEPT, signIn } from './suite-admin.js';
  * structurally, by making every labeled control come from one component. This
  * suite is what stops it rotting again: every signed-in admin screen measured
  * by axe, each editor measured a second time **with its form refused**, and the
- * three confirmation screens measured as well.
+ * four confirmation screens measured as well.
  *
  * Refused states are here because that is where axe finds real violations. A
  * form at rest has no `aria-invalid`, no `aria-describedby` pointing at a
@@ -287,8 +287,8 @@ test.describe('the login screen', () => {
  * Each is a whole screen rather than a dialog, reached by a POST and rendered
  * in place of what asked for it — so none of them is measured by the screen
  * list above, and each is the last thing a person reads before an irreversible
- * click. Money's and the account delete are here; the event removal needs a
- * saved event and is measured with it below.
+ * click. Money's, the account delete and the policy delete are here; the event
+ * removal needs a saved event and is measured with it below.
  */
 test.describe('a confirmation screen', () => {
   for (const width of ADMIN_WIDTHS) {
@@ -319,6 +319,23 @@ test.describe('a confirmation screen', () => {
       await expectNoViolations(page);
     });
 
+    /*
+     * #260. The longest of the three — four paragraphs rather than one, because
+     * it has to name what survives as well as what goes — and the only one
+     * reached from inside a Publishing section, so its heading follows an `h2`
+     * the other two do not have.
+     *
+     * The seeded Handbook, and asking is not deleting: nothing is confirmed
+     * here, so the policy the rest of the suite reads is still there afterwards.
+     */
+    test(`deleting a policy has zero axe violations at ${width}px`, async ({ page }) => {
+      await openAt(page, '/admin/policies/handbook', width);
+
+      await page.getByRole('button', { name: 'Delete this policy' }).click();
+      await expect(page.getByTestId('confirm')).toContainText('Delete Handbook?');
+
+      await expectNoViolations(page);
+    });
   }
 });
 

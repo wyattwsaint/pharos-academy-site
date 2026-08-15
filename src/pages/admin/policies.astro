@@ -1,9 +1,11 @@
 ---
 export const prerender = false;
 
+import AdminBanner from '../../components/AdminBanner.astro';
 import AdminButton from '../../components/AdminButton.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { formatStamp } from '../../lib/admin/formatting.js';
+import { policyDeletionOutcome } from '../../lib/admin/republish-outcome.js';
 import { getDb } from '../../lib/db/client.js';
 import { listPolicies } from '../../lib/policies/store.js';
 import { updatedOnLabel } from '../../lib/policies/views.js';
@@ -19,15 +21,24 @@ import { POLICIES_PATH } from '../../lib/policies/views.js';
  * that sentence she would create one, not see it, and reasonably conclude the
  * admin was broken.
  *
- * There is no delete, for a stronger reason than usual. A policy's address is
- * on printed handbooks; deleting the row would break every link that ever
- * pointed at it, which is the exact failure this ticket exists to prevent.
+ * **The delete lands here** (#260). It happens on the policy's own screen,
+ * which stops existing the moment it succeeds, so the outcome travels in the
+ * query string and is said on this list — what went, and whether the live site
+ * caught up. This screen used to say a policy's address was on printed
+ * handbooks and so nothing here could ever be deleted; the addresses that are
+ * on paper are the versioned ones, every one of them survives the delete, and
+ * that sentence was protecting the wrong thing (ADR-0021).
  */
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
 const policies = await listPolicies(db);
 const awaiting = policies.filter((policy) => policy.version === null).length;
+/** What a delete that redirected here has to say for itself. */
+const banner = policyDeletionOutcome(
+  Astro.url.searchParams.get('deleted'),
+  Astro.url.searchParams.get('republished'),
+);
 ---
 
 <AdminLayout title="Policies" actor={actor}>
@@ -38,6 +49,8 @@ const awaiting = policies.filter((policy) => policy.version === null).length;
       class="underline underline-offset-4">policies page</a
     >, in the order below.
   </p>
+
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="policies-banner" retry />}
 
   {
     policies.length > 0 && (
@@ -56,9 +69,10 @@ const awaiting = policies.filter((policy) => policy.version === null).length;
   {
     policies.length === 0 ? (
       <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-policies">
-        No policies yet, so the policies page has nothing for a family to read or sign. This list
-        only ever grows: a policy keeps the web address it is created with, and nothing here is
-        deleted — so no link anybody was ever sent has stopped working.
+        No policies yet, so the policies page has nothing for a family to read or sign. That is a
+        real answer for a school between years — this list is allowed to be empty. Every document
+        ever uploaded here is still readable at the address it was given, so no link anybody was
+        sent has stopped working.
       </p>
     ) : (
       <ul class="mt-8 flex flex-col gap-6">
@@ -86,8 +100,9 @@ const awaiting = policies.filter((policy) => policy.version === null).length;
   }
 
   <p class="mt-10 border-t border-navy/15 pt-6">
-    Nothing is ever deleted here, and a policy's web address never changes. Uploading a replacement
-    puts the new document at the same address, so a link in an email or a printed handbook keeps
-    working — and the version it replaced is kept.
+    A policy’s web address never changes. Uploading a replacement puts the new document at the same
+    address, so a link in an email or a printed handbook keeps working — and the version it replaced
+    is kept. Deleting a policy, on its own screen, takes the policy off the site and keeps every
+    document it ever had, so what a family has already agreed to still opens.
   </p>
 </AdminLayout>

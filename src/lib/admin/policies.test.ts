@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parsePolicy, parsePolicyDraft } from './policies.js';
+import { parsePolicy, parsePolicyDraft, policyDeletion } from './policies.js';
 
 /**
  * The two policy forms (#28).
@@ -133,5 +133,75 @@ describe('the edit form', () => {
       form({ title: 'Handbook', description: 'A sentence.', position: '1', file: sneaky }),
     );
     expect(parsed.file!.filename).toBe('handbook.pdf');
+  });
+});
+
+/**
+ * The confirmation before a policy is deleted (#260).
+ *
+ * Asserted at this seam rather than through a browser because the wording *is*
+ * the safety net: there is no undo, no soft delete and no trash view, so the
+ * only thing between a stray press and a policy that has to be typed in again
+ * is what these sentences say. A browser can show that a screen appeared; only
+ * this can show that it said the thing that makes pressing safe.
+ */
+describe('what the screen says before deleting a policy', () => {
+  it('names the policy in the heading and on the button that does it', () => {
+    const deletion = policyDeletion('Handbook', 2);
+
+    expect(deletion.heading).toBe('Delete Handbook?');
+    expect(deletion.confirmLabel).toBe('Yes, delete Handbook');
+    expect(deletion.declineLabel).toBe('Go back without deleting');
+  });
+
+  it('says what goes: the policies page and the admin', () => {
+    const { goes } = policyDeletion('Handbook', 2);
+
+    expect(goes).toContain('Handbook');
+    expect(goes).toContain('policies page');
+    expect(goes).toContain('this admin');
+  });
+
+  /*
+   * The half that makes this confirmation different from every other delete on
+   * the site. "Delete" reads as though the documents go too, and an application
+   * records its agreement as `handbook=parent@3` with no foreign key — so the
+   * screen has to say the PDFs are kept, or the school will reasonably believe
+   * it is about to destroy what a family signed.
+   */
+  it('says what is kept, and that a family can still open what they agreed to', () => {
+    const { kept } = policyDeletion('Handbook', 3);
+
+    expect(kept).toContain('All 3 documents');
+    expect(kept).toContain('are kept');
+    expect(kept).toContain('permanent address');
+    expect(kept).toContain('already agreed');
+  });
+
+  it('counts one document as one, in words that read like a sentence', () => {
+    const { kept } = policyDeletion('Handbook', 1);
+
+    expect(kept).toContain('The one document');
+    expect(kept).toContain('is kept');
+    expect(kept).not.toContain('documents');
+  });
+
+  // The case this delete mostly exists for: a policy created with the wrong
+  // title before anybody uploaded anything. Promising that every document is
+  // kept would be a reassurance about nothing.
+  it('does not promise to keep documents when there are none', () => {
+    const { kept } = policyDeletion('Transport Policy', 0);
+
+    expect(kept).toContain('No document has ever been uploaded');
+    expect(kept).toContain('nothing else goes with it');
+    expect(kept).not.toContain('kept');
+  });
+
+  it('says the press is final', () => {
+    for (const versions of [0, 1, 5]) {
+      const { undo } = policyDeletion('Handbook', versions);
+      expect(undo).toContain('no undo');
+      expect(undo).toContain('typing it in again');
+    }
   });
 });
