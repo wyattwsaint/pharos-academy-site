@@ -72,14 +72,70 @@ export function removalOutcome(
  * words every other screen says it in. A refresh re-fires neither half: the
  * delete already happened and the URL only reports it.
  */
-export function policyDeletionOutcome(deleted: string | null, published: string | null): Banner | null {
+export function policyDeletionOutcome(
+  deleted: string | null,
+  published: string | null,
+): Banner | null {
+  return deletionOutcome(
+    deleted,
+    'Every document already uploaded to it is still readable at the address it was given.',
+    published,
+  );
+}
+
+/**
+ * What `?deleted=` on the People list means (#262).
+ *
+ * The third of these, and a third sentence, because what the school has just
+ * done is a third thing. Removing a one-off takes the whole of it away; deleting
+ * a policy takes a row and keeps every document; deleting a person takes the
+ * row and leaves the classes standing without an instructor. The confirmation
+ * named those classes before the press, and this is the line that says the
+ * press did what it said — so it repeats the shape of the consequence without
+ * re-listing the titles, which by now are on the Classes screen saying so
+ * themselves.
+ *
+ * The republish answer rides along in the same query string, said in the same
+ * words every other screen says it in. A refresh re-fires neither half: the
+ * delete already happened and the URL only reports it.
+ */
+export function personDeletionOutcome(
+  deleted: string | null,
+  published: string | null,
+): Banner | null {
+  return deletionOutcome(
+    deleted,
+    'Any class they taught is still running, and is now waiting for an instructor.',
+    published,
+  );
+}
+
+/**
+ * "&lt;what went&gt; is deleted. &lt;what that did.&gt; &lt;how the republish went.&gt;"
+ *
+ * The assembly, once, for the two deletes that report a consequence — the same
+ * move `removalOutcome` makes for the two that report a place (#258). What
+ * varies between a policy and a person is the middle sentence and nothing else,
+ * so the middle sentence is the parameter and the rest cannot drift: "deleted"
+ * means the same word on both screens, the republish line is the one every
+ * screen says, and the spacing is decided in one place rather than in two
+ * template literals that have to agree.
+ *
+ * `consequence` is a literal from a caller in this module, never a value from
+ * the URL. What the URL contributes is the one noun — the name of what went,
+ * which the store held a moment ago and which cannot be looked up afterwards
+ * because the row is gone (CONTEXT.md, "outcome code").
+ */
+function deletionOutcome(
+  deleted: string | null,
+  consequence: string,
+  published: string | null,
+): Banner | null {
   if (deleted === null) return null;
   const republish = republishOutcome(published);
   return {
     ok: republish?.ok ?? true,
-    message: `${deleted} is deleted. Every document already uploaded to it is still readable at the address it was given.${
-      republish ? ` ${republish.message}` : ''
-    }`,
+    message: `${deleted} is deleted. ${consequence}${republish ? ` ${republish.message}` : ''}`,
   };
 }
 

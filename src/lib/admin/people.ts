@@ -1,4 +1,5 @@
 import type { PersonEdit } from '../people/store.js';
+import { listSentence } from '../prose.js';
 
 /**
  * A person, as the admin form posts them (#26).
@@ -85,6 +86,72 @@ export function parsePerson(form: FormData): ParsedPerson {
 function isSitePhotograph(value: string): boolean {
   if (value.startsWith('//') || value.includes('..')) return false;
   return /^\/[\w./-]+\.(webp|jpg|jpeg|png|avif)$/i.test(value);
+}
+
+/**
+ * What the screen says before a person is deleted (#262, ADR-0021).
+ *
+ * The wording is here rather than in the page for the reason the policy
+ * deletion's is: there is no undo, no soft delete and no trash view, so these
+ * three sentences are the entire safety net, and a sentence that load-bearing
+ * is proved at a seam rather than through a browser.
+ *
+ * **It names the classes, because that is the surprise.** Deleting somebody
+ * reads like an act about one row, and it is not: every class they taught keeps
+ * running and stops naming anybody (#257). A school that pressed this without
+ * being told would find out from a parent. So the classes are named in the
+ * school's own words — "Latin I and Art will have no instructor" — rather than
+ * as a count, a list of slugs or a bare warning that courses are affected.
+ *
+ * The empty case is not a footnote — it is the case this delete is mostly for.
+ * The staff list is in flux and most of what comes out of it is a duplicate or
+ * somebody who never started, who teaches nothing; saying so plainly is what
+ * makes it obviously safe to press, and it is why this is three sentences
+ * rather than one template with a list that is sometimes empty.
+ */
+export type PersonDeletion = {
+  heading: string;
+  confirmLabel: string;
+  declineLabel: string;
+  /** What deleting them takes away. */
+  goes: string;
+  /** What happens to the classes they taught, or that there were none. */
+  classes: string;
+  /** That the press is final. */
+  undo: string;
+};
+
+export function personDeletion(name: string, classTitles: readonly string[]): PersonDeletion {
+  return {
+    heading: `Delete ${name}?`,
+    confirmLabel: `Yes, delete ${name}`,
+    declineLabel: 'Go back without deleting',
+    goes: `${name} comes off the staff page and out of this admin.`,
+    classes: classesSentence(classTitles),
+    undo: 'There is no undo. Putting them back means typing them in again.',
+  };
+}
+
+/**
+ * The three cases, written out rather than assembled.
+ *
+ * "will have no instructor" is the same clause whether it follows one title or
+ * three, so only the subject changes and `listSentence` is the one place that
+ * decides how titles are joined — the same rule the timetable's "Mondays and
+ * Wednesdays" follows.
+ *
+ * Teaching nothing is said as a fact about them rather than as an empty list.
+ * "No classes will be affected" invites the reader to wonder which ones were
+ * checked; "they teach no classes" is what the school actually knows.
+ */
+function classesSentence(titles: readonly string[]): string {
+  if (titles.length === 0) {
+    return 'They teach no classes, so nothing else on the site changes.';
+  }
+  if (titles.length === 1) {
+    return `${titles[0]} will have no instructor. Nothing else about it changes, and you can give it one from the class’s own screen.`;
+  }
+  return `${listSentence(titles)} will have no instructor. Nothing else about them changes, and you can give each one an instructor from its own screen.`;
 }
 
 function text(form: FormData, name: string): string {

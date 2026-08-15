@@ -23,9 +23,12 @@ import { signIn } from './suite-admin.js';
  * save. All three are the school's ordinary state (CONTEXT.md, "clash"), the
  * save succeeds regardless, and no spec reads Thursday's lanes.
  *
- * It is not put back afterwards, and cannot be: a course has no delete, for the
- * reason the admin has none (a row other rows point at). The suite's database
- * is thrown away with the server, so the class lives for one run.
+ * It is not put back afterwards, and cannot be: a course has no delete. Not
+ * because the admin has none — people and policies both do (#262, #260) — but
+ * because an application records the classes a child was enrolled in, so
+ * removing a course would edit a record that is not the school's to edit
+ * (ADR-0021). The suite's database is thrown away with the server, so the class
+ * lives for one run.
  *
  * Created once and reused. Two spec files want this course and Playwright runs
  * them in parallel, so the helper checks before it posts and tolerates losing

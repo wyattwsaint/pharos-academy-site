@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  personDeletionOutcome,
   policyDeletionOutcome,
   removalOutcome,
   republishOutcome,
@@ -114,5 +115,38 @@ describe('what ?deleted= means (#260)', () => {
   it('says nothing at all when the list was merely opened', () => {
     expect(policyDeletionOutcome(null, null)).toBeNull();
     expect(policyDeletionOutcome(null, 'live')).toBeNull();
+  });
+});
+
+describe('what ?deleted= means on People (#262)', () => {
+  it('names who went, says the classes are still running, and reports the republish', () => {
+    expect(personDeletionOutcome('Dr. Mandy Saint', 'live')).toEqual({
+      ok: true,
+      message:
+        'Dr. Mandy Saint is deleted. Any class they taught is still running, and is now waiting for an instructor. Republished — the live site is up to date.',
+    });
+  });
+
+  // The delete happened either way, so the banner still reports it — but it is
+  // not allowed to imply that a parent reading the staff page has caught up.
+  it('does not claim the live site caught up when it did not', () => {
+    expect(personDeletionOutcome('Dr. Mandy Saint', 'stale')).toEqual({
+      ok: false,
+      message:
+        "Dr. Mandy Saint is deleted. Any class they taught is still running, and is now waiting for an instructor. Republishing didn't reach the live site — Retry.",
+    });
+  });
+
+  it('still reports the deletion when the URL says nothing about republishing', () => {
+    expect(personDeletionOutcome('Dr. Mandy Saint', null)).toEqual({
+      ok: true,
+      message:
+        'Dr. Mandy Saint is deleted. Any class they taught is still running, and is now waiting for an instructor.',
+    });
+  });
+
+  it('says nothing at all when the list was merely opened', () => {
+    expect(personDeletionOutcome(null, null)).toBeNull();
+    expect(personDeletionOutcome(null, 'live')).toBeNull();
   });
 });

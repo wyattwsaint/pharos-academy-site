@@ -422,7 +422,8 @@ public templates and fails on a dollar figure written as a literal.
 Saving it asks for an **explicit confirmation naming the change and its effect
 on every family** — the only save on the site that confirms, though everything
 that takes something away now confirms the same way (deleting an account,
-removing a [one-off](#one-off), deleting a [policy](#policy)) — and an
+removing a [one-off](#one-off), deleting a [policy](#policy), deleting a
+[person](#person)) — and an
 identical save is refused rather than
 **stamped**, because the stamp is the only control on the money once
 permissions are flat.
@@ -495,6 +496,26 @@ catalogue: a person is an instructor exactly when some course names them, so
 assigning a course makes them one on the staff page, the class page and the
 timetable at once. **Leadership** *is* stored, as a rank, because it carries an
 order the staff page renders in that nothing else can derive.
+
+**A person can be deleted, and the delete is unconditional** (#262, ADR-0021).
+The staff list of a new school is in flux — somebody typed in twice, somebody
+who never started, somebody who has left — and the office removes them on the
+day it happens rather than asking whoever installed the site. Nothing outside
+the school's own content names a person: the application flow does not reference
+them at all, so there is no record of what a family sent for a removal to
+damage. The only thing naming them is a [course](#unstaffed-course), which is
+the school's own copy.
+
+So deleting somebody leaves every class they taught **running and unstaffed**,
+with every other field untouched, and the confirmation names those classes in
+the school's own words — "Latin I and Art will have no instructor" — because
+that consequence would otherwise be a surprise found out from a parent. Somebody
+who teaches nothing is told so plainly rather than shown an empty list.
+Reassigning is deliberately **not** part of the delete: it is an ordinary course
+edit afterwards, and forcing a replacement at delete time would both block the
+school from acting on a departure and make it name somebody who does not teach
+the class. There is **no floor** — the list may be emptied entirely — and no
+undo.
 
 A missing bio and a missing photograph are **null and valid** — the staff page
 renders such a person by showing their name and what they teach, and invents
@@ -1040,9 +1061,10 @@ already wrote and the screen decides the wording from it, refusing any part that
 is not in the closed lists (#201).
 
 **A deleted row is the one thing the code cannot name.** Removing a
-[one-off](#one-off) and deleting a [policy](#policy) or an
-[announcement](#announcement) each redirect to a list that can no longer look the
-row up, so its name travels beside the code as text. That is data and not a message: the list still chooses every word around
+[one-off](#one-off) and deleting a [policy](#policy), an
+[announcement](#announcement) or a [person](#person) each redirect to a list that
+can no longer look the row up, so its name travels beside the code as text. That
+is data and not a message: the list still chooses every word around
 it from its own closed lists, so a rewritten URL can put a wrong noun in the
 banner but never a claim the site did not make.
 
