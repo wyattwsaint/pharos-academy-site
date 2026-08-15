@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { listAnnouncements } from '../announcements/store.js';
 import { listEveryCourse } from '../courses/store.js';
-import { listPeopleForAdmin } from '../people/store.js';
+import { listEveryPerson } from '../people/store.js';
 import { listPolicies } from '../policies/store.js';
 import { createEphemeralDatabase, deleteSeededContent, type Db } from './client.js';
 
@@ -29,7 +29,7 @@ describe('deleteSeededContent', () => {
     await deleteSeededContent(db);
 
     expect(await listEveryCourse(db)).toEqual([]);
-    expect(await listPeopleForAdmin(db)).toEqual([]);
+    expect(await listEveryPerson(db)).toEqual([]);
     expect(await listAnnouncements(db)).toEqual([]);
     expect(await listPolicies(db)).toEqual([]);
   });

@@ -54,13 +54,35 @@ export type Person = {
   photo: string | null;
   /** Position on the staff page, low first. Null means not leadership. */
   leadershipRank: number | null;
+  /**
+   * When the school stopped listing this person, or null while it does (#266).
+   *
+   * The same column `Course.retiredAt` is, added by the same migration, and it
+   * answers the same question about a different record: the school is not
+   * listing this instructor now. A date rather than a flag, because "when did
+   * they leave?" is what the office asks of its own list.
+   *
+   * **Retiring is never refused, whatever they teach.** A departure is a fact
+   * the day it happens, and a button that made the school reassign four courses
+   * first would be a button nobody presses on the day it is needed. What the
+   * courses do about it is a *rendering* rule and lives in `instructorOf`: a
+   * live class names nobody rather than naming somebody who has gone, and a
+   * retired class goes on naming who taught it.
+   */
+  retiredAt: Date | null;
   /** The stamp (CONTEXT.md): overwritten by each save, never appended. */
   lastEditedBy: string | null;
   lastEditedAt: Date | null;
 };
 
-/** A person as the seed writes them — everything but the stamp, which is a save. */
-export type SeedPerson = Omit<Person, 'lastEditedBy' | 'lastEditedAt'>;
+/**
+ * A person as the seed writes them — everything but the stamp, which is a save.
+ *
+ * `retiredAt` is out for a second reason: a seeded person is somebody the
+ * school has, and a seed that could ship a retired row would be the migration
+ * making a staffing decision.
+ */
+export type SeedPerson = Omit<Person, 'retiredAt' | 'lastEditedBy' | 'lastEditedAt'>;
 
 /** What an instructor's role reads as when the school has given them no other. */
 export const INSTRUCTOR_ROLE = 'Instructor';
@@ -196,6 +218,30 @@ export function bySlug(people: readonly Person[]): ReadonlyMap<string, Person> {
  * course naming somebody who is not on the list, which still throws: the column
  * is a foreign key, so that can only mean the page was handed a partial list of
  * people, and a name silently dropped is worse than a loud failure.
+ *
+ * **A retired person is the third answer, and it depends on the course** (#266).
+ * Being an instructor is not a status anybody carries — a person is one exactly
+ * when a course names them — so a retired person left naming a class the school
+ * still runs would be printed on that class while being absent from the staff
+ * page it links to, which is the drift ADR-0004 merged the two lists to prevent.
+ * So:
+ *
+ * - a **live** course whose instructor is retired names **nobody**, because
+ *   printing a departed name there is a wrong claim about who a parent's child
+ *   gets — the same absence an unstaffed class already renders;
+ * - a **retired** course goes on naming them, because it is the record of a
+ *   class the school ran and who ran it, and a page about the past that
+ *   forgot the teacher would be a worse record than none.
+ *
+ * That the rule lives here is what makes it cheap: the class page, the full
+ * descriptions, the timetable and the structured data all read this one answer,
+ * so none of them can disagree, and retiring a person can never be refused for
+ * what they teach.
+ *
+ * The directory this is handed must therefore be the *whole* list of people,
+ * `listEveryPerson` — a retired course still has a name to print, and a
+ * directory with the retired ones filtered out would throw for exactly the
+ * course that needs one.
  */
 export function instructorOf(
   directory: ReadonlyMap<string, Person>,
@@ -204,6 +250,7 @@ export function instructorOf(
   if (course.instructorSlug === null) return null;
   const person = directory.get(course.instructorSlug);
   if (!person) throw new Error(`No person with the slug "${course.instructorSlug}".`);
+  if (person.retiredAt !== null && course.retiredAt === null) return null;
   return person;
 }
 

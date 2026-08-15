@@ -6,7 +6,7 @@ import { getSchoolYear, listEvents, listSyncedEvents } from '../calendar/store.j
 import { listEveryCourse } from '../courses/store.js';
 import { listInquiries } from '../inquiry/store.js';
 import { getMoneySettings, listAgreedTerms } from '../money/store.js';
-import { listPeople } from '../people/store.js';
+import { listEveryPerson } from '../people/store.js';
 import { getPolicyFile, listPolicies, listPolicyVersions } from '../policies/store.js';
 import { SCHOOL_NAME } from '../site.js';
 import { zip, type ZipEntry } from './zip.js';
@@ -149,7 +149,10 @@ export async function buildExport(db: Db, at = new Date()): Promise<BackupArchiv
   files.push(jsonEntry('content/courses.json', courses));
   tables.push({ table: 'courses', file: 'content/courses.json', rows: courses.length });
 
-  const people = await listPeople(db);
+  // Everybody, retired included, for the reason the courses are (#266): a
+  // person who has left is a row the classes they taught still point at, and an
+  // archive missing them cannot be restored into a working site.
+  const people = await listEveryPerson(db);
   files.push(jsonEntry('content/people.json', people));
   tables.push({ table: 'people', file: 'content/people.json', rows: people.length });
 

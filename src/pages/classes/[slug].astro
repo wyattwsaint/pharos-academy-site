@@ -17,7 +17,7 @@ import { SITE_URL } from '../../lib/site.js';
 
 import { INQUIRY_HREF } from '../../lib/home/sections.js';
 import { bySlug, instructorOf } from '../../lib/people/person.js';
-import { listPeople } from '../../lib/people/store.js';
+import { listEveryPerson } from '../../lib/people/store.js';
 
 /**
  * One class, at its own address (#22).
@@ -61,8 +61,13 @@ const { rates } = await getMoneySettings(db);
  * yet. Asked **once**, here: the facts list below and the structured data
  * further down both read this one answer, so the markup cannot claim a name the
  * page does not print.
+ *
+ * The **whole** list of people, retired ones included (#266). `instructorOf` is
+ * where a retired instructor is decided about, and it cannot decide about
+ * somebody it was not handed: a class the school still runs names nobody, and a
+ * retired class goes on saying who taught it — which is this page's other half.
  */
-const instructor = instructorOf(bySlug(await listPeople(db)), course);
+const instructor = instructorOf(bySlug(await listEveryPerson(db)), course);
 const seen = new Set<string>([course.slug]);
 const alongside = course.days
   .flatMap((day) => coursesOnTrack(running, day))

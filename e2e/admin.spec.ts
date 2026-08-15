@@ -6,7 +6,7 @@ import { unzipSync } from 'fflate';
 
 import { LABELS } from '../src/lib/admin/policies.js';
 import { AXE_TAGS } from './axe.js';
-import { SUITE_ADMIN, signIn } from './suite-admin.js';
+import { SUITE_ADMIN, SUITE_RETIRED_PERSON, signIn } from './suite-admin.js';
 import {
   APPLICATION_PATH,
   FAITH_QUESTIONS,
@@ -765,6 +765,70 @@ test.describe('deleting a person', () => {
     await page.getByRole('button', { name: `Yes, delete ${NEVER_STARTED}` }).click();
     await expect(page.getByTestId('people-banner')).toContainText(`${NEVER_STARTED} is deleted.`);
     await expect(page.getByRole('link', { name: NEVER_STARTED })).toHaveCount(0);
+  });
+});
+
+/**
+ * The retired section, read rather than written (#266).
+ *
+ * Nothing here presses either button, for the reason the Classes screen's
+ * equivalent presses neither: the press republishes the whole site, and the
+ * public suite runs against this same throwaway database at the same time. What
+ * retiring *does* — the two readers, the four-case rendering rule, the writes
+ * and the sentence the office is told — is proved without a browser
+ * (`src/lib/people/store.test.ts`, `src/lib/people/person.test.ts`,
+ * `src/lib/admin/retirement.test.ts`). What is only true in a browser is that
+ * the section is on the screen, unhidden, with the date and the way back on it,
+ * and that the staff page has lost them.
+ *
+ * The person it reads is the one the throwaway database retires for exactly
+ * this (`SUITE_RETIRED_PERSON`), who teaches nothing.
+ */
+test.describe('the retired people section', () => {
+  test('lists a retired person beneath the listed ones, dated, never hidden', async ({ page }) => {
+    await signIn(page, '/admin/people');
+
+    const retired = page.getByTestId('retired-people');
+    await expect(retired).toBeVisible();
+    await expect(retired.getByRole('heading', { name: SUITE_RETIRED_PERSON.name })).toBeVisible();
+    await expect(page.getByTestId(`retired-on-${SUITE_RETIRED_PERSON.slug}`)).toContainText(
+      'Retired ',
+    );
+    await expect(page.getByTestId(`unretire-${SUITE_RETIRED_PERSON.slug}`)).toBeVisible();
+  });
+
+  test('keeps them out of the listed people above', async ({ page }) => {
+    await signIn(page, '/admin/people');
+
+    const listed = page.getByTestId('listed-people');
+    await expect(listed).toBeVisible();
+    await expect(listed.getByText(SUITE_RETIRED_PERSON.name)).toHaveCount(0);
+  });
+
+  test('says they are retired on their own screen, and offers the one press back', async ({
+    page,
+  }) => {
+    await signIn(page, `/admin/people/${SUITE_RETIRED_PERSON.slug}`);
+
+    const section = page.getByTestId('retirement');
+    await expect(section.getByRole('heading', { name: 'Retired' })).toBeVisible();
+    await expect(section).toContainText('no longer print their name');
+    await expect(page.getByTestId('retire')).toHaveText('Bring them back');
+  });
+
+  test('offers Retire on somebody the school lists', async ({ page }) => {
+    await signIn(page, '/admin/people/jill-kilker');
+
+    const section = page.getByTestId('retirement');
+    await expect(section.getByRole('heading', { name: 'Listed' })).toBeVisible();
+    await expect(page.getByTestId('retire')).toHaveText('Retire');
+  });
+
+  test('takes them off the staff page', async ({ page }) => {
+    await page.goto(STAFF_PATH);
+    await expect(page.getByText(SUITE_RETIRED_PERSON.name)).toHaveCount(0);
+    // The screen is not simply empty: somebody the school does list is on it.
+    await expect(page.locator('#jill-kilker')).toBeVisible();
   });
 });
 

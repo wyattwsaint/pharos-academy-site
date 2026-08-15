@@ -2,20 +2,26 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import { getCourse } from '../courses/store.js';
+import { getPerson } from '../people/store.js';
 import {
   applyRetirement,
+  COURSE_RETIREMENT,
   parseRetirement,
-  retirementMessage,
+  PERSON_RETIREMENT,
   RETIRE_VALUES,
 } from './retirement.js';
 
 /**
- * The Retire button, read and applied (#263).
+ * The Retire button, read and applied (#263, #266).
  *
- * The reading is the half with a trap in it: the course editor posts its Save
- * to the same address, so "is this a retirement?" has to be answerable from the
- * body alone, and answering it wrongly would either swallow a save or retire a
- * class nobody asked to retire.
+ * The reading is the half with a trap in it: both editors post their Save to
+ * the same address the button does, so "is this a retirement?" has to be
+ * answerable from the body alone, and answering it wrongly would either swallow
+ * a save or retire something nobody asked to retire. It is one reader for both
+ * records, which is why the reading is proved once.
+ *
+ * What the two records do not share is the sentence afterwards, so each subject
+ * is applied and read back on its own.
  */
 
 function form(entries: Record<string, string>): FormData {
@@ -61,7 +67,7 @@ describe('reading the button', () => {
   });
 });
 
-describe('applying it', () => {
+describe('applying it to a class', () => {
   let db: Db;
 
   beforeEach(async () => {
@@ -71,30 +77,92 @@ describe('applying it', () => {
   it('retires the class and says so in the office’s own terms', async () => {
     const outcome = await applyRetirement(
       db,
+      COURSE_RETIREMENT,
       { slug: 'backyard-botany', retire: true },
       'Jill Kilker',
     );
 
     expect((await getCourse(db, 'backyard-botany'))?.retiredAt).toBeInstanceOf(Date);
-    expect(retirementMessage(outcome)).toContain('Backyard Botany is retired');
-    expect(retirementMessage(outcome)).toContain('still at its own address');
+    expect(COURSE_RETIREMENT.message(outcome)).toContain('Backyard Botany is retired');
+    expect(COURSE_RETIREMENT.message(outcome)).toContain('still at its own address');
   });
 
   it('brings it back, and says which lists it returns to', async () => {
-    await applyRetirement(db, { slug: 'backyard-botany', retire: true }, 'Jill Kilker');
+    await applyRetirement(db, COURSE_RETIREMENT, { slug: 'backyard-botany', retire: true }, 'Jill Kilker');
     const outcome = await applyRetirement(
       db,
+      COURSE_RETIREMENT,
       { slug: 'backyard-botany', retire: false },
       'Jill Kilker',
     );
 
     expect((await getCourse(db, 'backyard-botany'))?.retiredAt).toBeNull();
-    expect(retirementMessage(outcome)).toBe('Backyard Botany is running again, on every list it left.');
+    expect(COURSE_RETIREMENT.message(outcome)).toBe(
+      'Backyard Botany is running again, on every list it left.',
+    );
   });
 
   it('refuses a class that is not there rather than reporting a move it did not make', async () => {
     await expect(
-      applyRetirement(db, { slug: 'underwater-basket-weaving', retire: true }, 'Jill Kilker'),
+      applyRetirement(
+        db,
+        COURSE_RETIREMENT,
+        { slug: 'underwater-basket-weaving', retire: true },
+        'Jill Kilker',
+      ),
     ).rejects.toThrow(/underwater-basket-weaving/);
+  });
+});
+
+describe('applying it to a person', () => {
+  let db: Db;
+
+  beforeEach(async () => {
+    db = await createEphemeralDatabase();
+  });
+
+  it('retires them and says what became of what they teach', async () => {
+    // The sentence carries the classes on purpose: "what happens to Algebra 1
+    // now?" is the question retiring an instructor raises, and a screen that
+    // made the office go and look would be answering it badly.
+    const outcome = await applyRetirement(
+      db,
+      PERSON_RETIREMENT,
+      { slug: 'george-jensen', retire: true },
+      'Jill Kilker',
+    );
+
+    expect((await getPerson(db, 'george-jensen'))?.retiredAt).toBeInstanceOf(Date);
+    expect(PERSON_RETIREMENT.message(outcome)).toContain('is retired');
+    expect(PERSON_RETIREMENT.message(outcome)).toContain('off the staff page');
+    expect(PERSON_RETIREMENT.message(outcome)).toContain('no longer name them');
+  });
+
+  it('is never refused for somebody who teaches', async () => {
+    // George teaches Algebra 1, and the school must be able to act on a
+    // departure the day it happens rather than reassigning courses first.
+    await expect(
+      applyRetirement(db, PERSON_RETIREMENT, { slug: 'george-jensen', retire: true }, 'Jill Kilker'),
+    ).resolves.toBeTruthy();
+  });
+
+  it('brings them back, to the staff page and to their classes', async () => {
+    await applyRetirement(db, PERSON_RETIREMENT, { slug: 'george-jensen', retire: true }, 'Jill Kilker');
+    const outcome = await applyRetirement(
+      db,
+      PERSON_RETIREMENT,
+      { slug: 'george-jensen', retire: false },
+      'Jill Kilker',
+    );
+
+    expect((await getPerson(db, 'george-jensen'))?.retiredAt).toBeNull();
+    expect(PERSON_RETIREMENT.message(outcome)).toContain('back on the staff page');
+    expect(PERSON_RETIREMENT.message(outcome)).toContain('named again');
+  });
+
+  it('refuses somebody who is not there rather than reporting a move it did not make', async () => {
+    await expect(
+      applyRetirement(db, PERSON_RETIREMENT, { slug: 'nobody-at-all', retire: true }, 'Jill Kilker'),
+    ).rejects.toThrow(/nobody-at-all/);
   });
 });

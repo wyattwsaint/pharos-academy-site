@@ -18,12 +18,13 @@ import {
   type PersonErrors,
   type PersonFields,
 } from '../../../lib/admin/people.js';
+import { PERSON_RETIREMENT, pressRetirement, RETIRE_VALUES } from '../../../lib/admin/retirement.js';
 import {
   describeRevalidation,
   revalidateAll,
   revalidationOrigin,
 } from '../../../lib/admin/revalidate.js';
-import { formatStamp } from '../../../lib/admin/formatting.js';
+import { formatDay, formatStamp } from '../../../lib/admin/formatting.js';
 import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
 import { getDb } from '../../../lib/db/client.js';
 import { listEveryCourse } from '../../../lib/courses/store.js';
@@ -94,6 +95,27 @@ let confirmingDeletion = false;
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const deleting = form.get('delete') !== null && person !== undefined;
+  /*
+   * Three buttons post to this address, and they are read in order of how much
+   * they take: delete, then retire, then save (#262, #266).
+   *
+   * Each is its own field rather than a value of one shared `action`, so the
+   * Save form — which carries neither — falls through to the parser. Retiring is
+   * one column and a stamp where a save is the whole row, and folding them
+   * together would mean somebody could be put back on the staff page by a save
+   * that only fixed a typo in their bio.
+   */
+  const pressed =
+    !deleting && person
+      ? await pressRetirement({
+          db,
+          subject: PERSON_RETIREMENT,
+          form,
+          slug: person.slug,
+          actorName: actor.name,
+          url: Astro.url,
+        })
+      : null;
 
   if (deleting && !isConfirmed(form)) {
     /*
@@ -119,6 +141,14 @@ if (Astro.request.method === 'POST') {
     back.searchParams.set('deleted', deleted);
     back.searchParams.set('republished', result.ok ? 'live' : 'stale');
     return Astro.redirect(`${back.pathname}${back.search}`, 303);
+  } else if (pressed) {
+    banner = pressed.banner;
+    // Absent when the write was refused, which leaves the screen showing this
+    // person exactly as they were — which is what happened to them.
+    if (pressed.record) {
+      person = pressed.record;
+      values = fieldsOf(person);
+    }
   } else {
     const parsed = parsePerson(form);
     values = parsed.values;
@@ -315,6 +345,47 @@ function slugFor(name: string): string {
 
         <AdminButton class="self-start">Save</AdminButton>
       </form>
+    )
+  }
+
+  {
+    /*
+      Retire, outside the form above because a form cannot hold another one —
+      and the separation is honest anyway: this button writes one column and the
+      Save button writes the row.
+
+      One press, no confirmation, and never refused whatever they teach.
+      Nothing is lost, and the way back is the same button saying the opposite
+      (#266). That is the whole of why it sits above the delete rather than
+      beside it: this is the move the school reaches for first, and the one
+      below it is the one that cannot be undone.
+
+      Hidden while the delete is asking its question, like the Publishing
+      section below, so the screen puts one question at a time.
+    */
+    person && !confirmingDeletion && (
+      <section class="mt-10 border-t border-navy/15 pt-6" data-testid="retirement">
+        <h2 class="text-xl font-semibold text-navy">{person.retiredAt ? 'Retired' : 'Listed'}</h2>
+        <p class="mt-2">
+          {person.retiredAt
+            ? `Retired ${formatDay(person.retiredAt)}. They are off the staff page, and the classes the school still runs no longer print their name — a class cannot say a parent's child gets somebody who has left. A class that is itself retired goes on naming them, because that is the record of what the school ran. Bringing them back restores both, with nothing retyped.`
+            : 'The school lists this person, so they are on the staff page and named on every class they teach. Retiring takes them off both — the classes the school still runs name nobody rather than somebody who has gone, and the retired ones go on saying who taught them. Nothing is lost and it is one press back.'}
+        </p>
+        <form method="post" action={action} class="mt-3">
+          <input
+            type="hidden"
+            name="retire"
+            value={person.retiredAt ? RETIRE_VALUES.unretire : RETIRE_VALUES.retire}
+          />
+          <AdminButton
+            variant={person.retiredAt ? 'primary' : 'secondary'}
+            pendingLabel={person.retiredAt ? 'Bringing them back…' : 'Retiring…'}
+            testId="retire"
+          >
+            {person.retiredAt ? 'Bring them back' : 'Retire'}
+          </AdminButton>
+        </form>
+      </section>
     )
   }
 

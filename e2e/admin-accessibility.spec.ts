@@ -5,7 +5,13 @@ import { SEEDED_ANNOUNCEMENTS } from '../src/lib/announcements/announcement.js';
 import { eventSlug } from '../src/lib/calendar/event.js';
 import { addDays, schoolToday } from '../src/lib/calendar/year.js';
 import { AXE_TAGS, describeViolation } from './axe.js';
-import { SUITE_ADMIN, SUITE_KEPT, SUITE_RETIRED_COURSE, signIn } from './suite-admin.js';
+import {
+  SUITE_ADMIN,
+  SUITE_KEPT,
+  SUITE_RETIRED_COURSE,
+  SUITE_RETIRED_PERSON,
+  signIn,
+} from './suite-admin.js';
 
 /**
  * The lock (#202).
@@ -55,9 +61,20 @@ const SCREENS = [
   '/admin/money',
   '/admin/school-details',
   '/admin/users',
+  /*
+   * #266. The Classes screen's retired section, in the people list: a second
+   * list beneath the first, each row a heading, a date and a one-press form.
+   * Populated for the same reason and in the same way — the throwaway database
+   * retires somebody of its own (`SUITE_RETIRED_PERSON`), who teaches nothing,
+   * so the section is a measured surface rather than one that only appears on a
+   * day the office has retired somebody.
+   */
   '/admin/people',
   '/admin/people/jill-kilker',
   '/admin/people/new',
+  // #266. The same two states as the list, on the person's own screen: the
+  // Retire section reads "Listed" above and "Retired" here.
+  `/admin/people/${SUITE_RETIRED_PERSON.slug}`,
   '/admin/announcements',
   SEEDED_ANNOUNCEMENT,
   '/admin/announcements/new',

@@ -594,6 +594,18 @@ It goes on naming who taught it: a retired course is the record of a past class.
 A retired person comes off the staff page, and a course still running does not
 name them.
 
+That last pair is a **rendering** rule and not a stored one, and it has to be:
+being an instructor is not a status a person carries — a person is an instructor
+exactly when a course names them — so there is nothing to write down. It is
+decided in the one place a class's instructor is decided (`instructorOf`), which
+is why the class page, the full descriptions, the timetable and the structured
+data cannot disagree about it. Crossed both ways: a **live** course whose
+instructor is retired names **nobody**, because printing a departed name there is
+a wrong claim about who a parent's child gets; a **retired** course keeps naming
+them, because it is the record of the past. That rule is also what makes
+**retiring a person never refused, whatever they teach** — the school acts on a
+departure the day it happens rather than reassigning four courses first.
+
 **It is reversible in one press and asks no confirmation**, because nothing is
 lost. Retired courses and people sit in a section beneath the live ones in the
 admin rather than hidden, so that nobody re-creates something the school already

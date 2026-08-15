@@ -3,14 +3,16 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { listCourses, listEveryCourse, retireCourse } from '../courses/store.js';
 import { createEphemeralDatabase, runMigrations, type Db } from '../db/client.js';
 import { courses as coursesTable, people as peopleTable } from '../db/schema.js';
-import { bySlug, instructorOf, leadershipAmong, PEOPLE } from './person.js';
+import { bySlug, instructorOf, instructorsAmong, leadershipAmong, PEOPLE } from './person.js';
 import {
   createPerson,
   deletePerson,
   getPerson,
+  listEveryPerson,
   listPeople,
-  listPeopleForAdmin,
+  retirePerson,
   savePerson,
+  unretirePerson,
 } from './store.js';
 
 /**
@@ -136,7 +138,7 @@ describe('deleting a person', () => {
       await expect(deletePerson(db, person.slug), person.name).resolves.toBeUndefined();
     }
 
-    expect(await listPeopleForAdmin(db)).toEqual([]);
+    expect(await listEveryPerson(db)).toEqual([]);
     // The admin's own reader is what renders the empty state; the public guard
     // still refuses an empty table, which #197 decided and this does not touch.
     await expect(listPeople(db)).rejects.toThrow(/db:migrate/);
@@ -166,7 +168,7 @@ describe('deleting a person', () => {
   it('says nothing about a slug that is not there', async () => {
     // Silent, like the other stores' deletes: the row is gone either way.
     await expect(deletePerson(db, 'nobody-at-all')).resolves.toBeUndefined();
-    expect(await listPeopleForAdmin(db)).toHaveLength(PEOPLE.length);
+    expect(await listEveryPerson(db)).toHaveLength(PEOPLE.length);
   });
 });
 
@@ -270,5 +272,117 @@ describe('adding a person', () => {
     const ranked = leadershipAmong(await listPeople(db)).map((person) => person.slug);
     expect(ranked[0]).toBe('jill-kilker');
     expect(ranked.indexOf('new-deputy')).toBeLessThan(ranked.indexOf('kathy-liddick'));
+  });
+
+  it('adds them listed, not retired', async () => {
+    await createPerson(
+      db,
+      'new-hire',
+      { name: 'Mrs. New Hire', role: 'Instructor', bio: null, photo: null, leadershipRank: null },
+      'Jill Kilker',
+    );
+
+    expect((await getPerson(db, 'new-hire'))?.retiredAt).toBeNull();
+  });
+});
+
+/**
+ * Retiring somebody, against real Postgres (#266).
+ *
+ * The two readers are the whole of it: the staff page reads one and the admin
+ * reads the other, so "off the staff page, still in the office's own list" is a
+ * fact about the store rather than a filter each screen has to remember.
+ */
+describe('retiring a person', () => {
+  it('takes them off the staff page’s reader and leaves them in the admin’s', async () => {
+    await retirePerson(db, 'robyn-lach', 'Jill Kilker');
+
+    const published = (await listPeople(db)).map((person) => person.slug);
+    const everybody = (await listEveryPerson(db)).map((person) => person.slug);
+
+    expect(published).not.toContain('robyn-lach');
+    expect(everybody).toContain('robyn-lach');
+    expect(everybody).toHaveLength(PEOPLE.length);
+  });
+
+  it('records when it happened, and stamps who did it', async () => {
+    const at = new Date('2026-06-30T14:00:00Z');
+    const retired = await retirePerson(db, 'robyn-lach', 'Jill Kilker', at);
+
+    expect(retired.retiredAt).toEqual(at);
+    expect(retired.lastEditedBy).toBe('Jill Kilker');
+    expect(retired.lastEditedAt).toEqual(at);
+  });
+
+  it('is never refused, whatever they teach', async () => {
+    // Mandy teaches eight of the catalogue's classes. The school can act on a
+    // departure the day it happens; what the classes print is a rendering rule
+    // and needs no course reassigned first.
+    const hers = (await listCourses(db)).filter((course) => course.instructorSlug === 'mandy-saint');
+    expect(hers.length).toBeGreaterThan(0);
+
+    await expect(retirePerson(db, 'mandy-saint', 'Jill Kilker')).resolves.toBeTruthy();
+  });
+
+  it('unnames them on the live classes they taught, without touching a course row', async () => {
+    const before = await listCourses(db);
+    await retirePerson(db, 'mandy-saint', 'Jill Kilker');
+
+    const directory = bySlug(await listEveryPerson(db));
+    const after = await listCourses(db);
+    const hers = after.filter((course) => course.instructorSlug === 'mandy-saint');
+
+    expect(hers.length).toBeGreaterThan(0);
+    for (const course of hers) {
+      expect(instructorOf(directory, course), course.title).toBeNull();
+    }
+    // The catalogue is untouched: every course still points where it pointed.
+    expect(after.map((course) => course.instructorSlug)).toEqual(
+      before.map((course) => course.instructorSlug),
+    );
+  });
+
+  it('takes them off the staff page’s instructors as well as its leadership', async () => {
+    // `instructorsAmong` is derived from the catalogue, so the staff page loses
+    // them by being handed the published reader — not by a second rule.
+    await retirePerson(db, 'mandy-saint', 'Jill Kilker');
+
+    const teaching = instructorsAmong(await listPeople(db), await listCourses(db));
+    expect(teaching.map((entry) => entry.person.slug)).not.toContain('mandy-saint');
+  });
+
+  it('brings them back to both lists, with nothing retyped', async () => {
+    const before = await getPerson(db, 'mandy-saint');
+    await retirePerson(db, 'mandy-saint', 'Jill Kilker');
+    const back = await unretirePerson(db, 'mandy-saint', 'Jill Kilker');
+
+    expect(back.retiredAt).toBeNull();
+    expect(back.bio).toBe(before?.bio);
+    expect(back.photo).toBe(before?.photo);
+    expect((await listPeople(db)).map((person) => person.slug)).toContain('mandy-saint');
+
+    const directory = bySlug(await listEveryPerson(db));
+    const hers = (await listCourses(db)).filter((course) => course.instructorSlug === 'mandy-saint');
+    for (const course of hers) {
+      expect(instructorOf(directory, course)?.name, course.title).toBe('Mrs. Mandy Saint');
+    }
+  });
+
+  it('refuses somebody who is not there', async () => {
+    await expect(retirePerson(db, 'nobody-at-all', 'Jill Kilker')).rejects.toThrow(/nobody-at-all/);
+  });
+
+  it('still refuses an empty table, where everybody retired is a decision', async () => {
+    // The guard is about a database the migration never ran against, so it is
+    // applied before the filter: retiring the last person must not read as an
+    // outage.
+    for (const person of await listEveryPerson(db)) {
+      await retirePerson(db, person.slug, 'Jill Kilker');
+    }
+    expect(await listPeople(db)).toEqual([]);
+
+    await db.delete(coursesTable);
+    await db.delete(peopleTable);
+    await expect(listPeople(db)).rejects.toThrow(/db:migrate/);
   });
 });
