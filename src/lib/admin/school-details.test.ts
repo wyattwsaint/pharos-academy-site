@@ -102,6 +102,69 @@ describe('parsing a school-details submission', () => {
       .errors.payOnlineUrl).toBeUndefined();
   });
 
+  /*
+   * The giving-page link template (#265). The rules themselves are
+   * `money/giving-link.test.ts`; what is checked here is that the form applies
+   * them, against the payment link on the same submission rather than the one
+   * already saved, and that empty stays the shipping state.
+   */
+  describe('the giving-page link template', () => {
+    const PAY_ONLINE = 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION';
+
+    it('lets it be empty, whether or not there is a payment link', () => {
+      expect(parseSchoolDetails(form()).errors.givingLinkTemplate).toBeUndefined();
+      expect(
+        parseSchoolDetails(form({ payOnlineUrl: PAY_ONLINE })).errors.givingLinkTemplate,
+      ).toBeUndefined();
+    });
+
+    it('accepts the payment link with the two placeholders on it', () => {
+      const result = parseSchoolDetails(
+        form({
+          payOnlineUrl: PAY_ONLINE,
+          givingLinkTemplate: `  ${PAY_ONLINE}?amt={amount}  `,
+        }),
+      );
+      expect(result.errors).toEqual({});
+      expect(result.values.givingLinkTemplate).toBe(`${PAY_ONLINE}?amt={amount}`);
+    });
+
+    it('refuses one that does not start with the payment link, and says so', () => {
+      const errors = parseSchoolDetails(
+        form({
+          payOnlineUrl: PAY_ONLINE,
+          givingLinkTemplate: 'https://evil.example/pay?amt={amount}',
+        }),
+      ).errors;
+      expect(errors.givingLinkTemplate).toContain(PAY_ONLINE);
+    });
+
+    it('refuses a placeholder it does not know', () => {
+      expect(
+        parseSchoolDetails(
+          form({ payOnlineUrl: PAY_ONLINE, givingLinkTemplate: `${PAY_ONLINE}?amt={amt}` }),
+        ).errors.givingLinkTemplate,
+      ).toBeTruthy();
+    });
+
+    it('refuses one with no payment link to check it against', () => {
+      expect(
+        parseSchoolDetails(form({ givingLinkTemplate: `${PAY_ONLINE}?amt={amount}` })).errors
+          .givingLinkTemplate,
+      ).toBeTruthy();
+    });
+
+    // One complaint, about the field that has to be fixed first. Two would
+    // point the office at the template when the payment link is what is wrong.
+    it('says nothing about the template while the payment link is itself refused', () => {
+      const errors = parseSchoolDetails(
+        form({ payOnlineUrl: 'myvanco.com', givingLinkTemplate: `${PAY_ONLINE}?amt={amount}` }),
+      ).errors;
+      expect(errors.payOnlineUrl).toBeTruthy();
+      expect(errors.givingLinkTemplate).toBeUndefined();
+    });
+  });
+
   it('keeps what was typed when it rejects it, so nothing has to be retyped', () => {
     const result = parseSchoolDetails(form({ email: 'not-an-email', mission: 'Kept.' }));
     expect(result.values.email).toBe('not-an-email');

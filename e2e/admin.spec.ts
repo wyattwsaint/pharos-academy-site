@@ -347,6 +347,93 @@ test.describe('saving school details', () => {
     await expect(page.locator('#payOnlineUrl-error')).toContainText('full web address');
   });
 
+  /*
+   * The giving-page link carries the amount (#265).
+   *
+   * Driven from the admin, like the payment link above it and for the same
+   * reason: the claim is that the office turns this on without a deploy, and
+   * seeding the template would prove a substitution and nothing about the path
+   * that sets it. The refusals are driven here too, because the rule they
+   * enforce is "a paste error cannot redirect a family's payment" and a unit
+   * test cannot show a family being kept on the giving page.
+   */
+  test('carries the amount on the giving-page link, and refuses a template that would not', async ({
+    page,
+  }) => {
+    await signIn(page);
+    await setPayOnlineUrl(page, VANCO);
+
+    // Empty is how it ships, and empty is the plain giving page.
+    await page.goto('/admissions/apply');
+    const payment = page.locator('[data-section="apply-payment"]');
+    await expect(payment.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
+    await expect(payment).toContainText('please enter');
+
+    // Anything that is not the giving page is refused before it can be saved,
+    // and the message names the link it had to start with.
+    await page.goto('/admin/school-details');
+    const template = page.getByLabel('Giving-page link template');
+    await template.fill('https://secure.myvanco.com.example/YH8R/campaign/C-REGISTRATION?amt={amount}');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
+    await expect(page.locator('#givingLinkTemplate')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#givingLinkTemplate-error')).toContainText(VANCO);
+
+    // So is a placeholder nobody knows — a literal `{amt}` in a query string is
+    // a family sent to a page that cannot read it.
+    await template.fill(`${VANCO}?amt={amt}`);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
+    await expect(page.locator('#givingLinkTemplate-error')).toContainText('{amount}');
+
+    // The real one saves, and the button carries the total beside it.
+    await template.fill(`${VANCO}?amt={amount}`);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+
+    await page.goto('/admissions/apply');
+    const total = await payment.locator('.totals > li.due .amount').innerText();
+    await expect(payment.locator('[data-pay-online]')).toHaveAttribute(
+      'href',
+      `${VANCO}?amt=${total.replace('$', '')}`,
+    );
+    // And the copy stops telling them to type a figure that is already there.
+    await expect(payment).toContainText(`opens with ${total} already in the box`);
+    await expect(payment).not.toContainText('please enter');
+
+    /*
+     * The amount on the link is the amount on the screen it was clicked from
+     * (#265, #261). A link carrying a stale figure is worse than one carrying
+     * none, so the href has to move with the totals rather than keep whatever
+     * the last paint put on it.
+     */
+    await page.locator('form[data-enhanced]').waitFor();
+    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+    const ticked = await payment.locator('.totals > li.due .amount').innerText();
+    expect(ticked).not.toBe(total);
+    await expect(payment.locator('[data-pay-online]')).toHaveAttribute(
+      'href',
+      `${VANCO}?amt=${ticked.replace('$', '')}`,
+    );
+
+    // And back again, so the figure follows a family changing their mind.
+    await page.uncheck('input[name="child-0-classes"][value="algebra-1:year"]');
+    await expect(payment.locator('[data-pay-online]')).toHaveAttribute(
+      'href',
+      `${VANCO}?amt=${total.replace('$', '')}`,
+    );
+
+    // Back to empty, back to the plain address: the fallback is the state the
+    // page was in before any of this, not a broken link.
+    await page.goto('/admin/school-details');
+    await page.getByLabel('Giving-page link template').fill('');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+
+    await page.goto('/admissions/apply');
+    await expect(payment.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
+  });
+
   test('puts the banner on the home page, and takes it off again', async ({ page }) => {
     await signIn(page);
     await setBanner(page, REGISTER);

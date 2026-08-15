@@ -127,6 +127,21 @@ export const schoolDetails = pgTable('school_details', {
    */
   payOnlineUrl: text('pay_online_url').notNull().default(''),
   /**
+   * The same giving page with the family's figures written onto it (#265) — a
+   * URL carrying `{amount}` and `{reference}`, checked at save against
+   * `pay_online_url` and refused if it is not that page.
+   *
+   * A setting rather than code because the query parameter it uses is
+   * undocumented: Vanco publishes nothing about it, so the day it changes is a
+   * paste into this box rather than a deploy. `money/giving-link.ts` is what
+   * reads it, and says what the checking is for.
+   *
+   * Empty is how it ships, and empty is a real state: the school's campaign
+   * opens set to a **Monthly** frequency, and an amount arriving prefilled
+   * beside a monthly selector is a recurring gift one default away.
+   */
+  givingLinkTemplate: text('giving_link_template').notNull().default(''),
+  /**
    * The announcement banner — the short, timely line at the top of the home
    * page (#15). Four columns rather than a table because there is one of it,
    * and it lives here rather than beside the announcements because saving this

@@ -41,6 +41,7 @@ import {
 import { paymentModeOf } from '../../lib/application/lifecycle.js';
 import { deliverApplication } from '../../lib/application/notices.js';
 import { applicationReference } from '../../lib/application/reference.js';
+import { givingLink, type GivingLink } from '../../lib/money/giving-link.js';
 import {
   createApplication,
   listApplications,
@@ -542,6 +543,33 @@ const childTotal = (index: number): number => cost.perChild[index]?.owed.total ?
 /** What the deposits take off the tuition, in the words the browser reprints. */
 const creditNote = depositCreditNote(cost.total.creditedAgainstTuition);
 
+/*
+ * The giving-page link, with the family's figures on it (#265).
+ *
+ * Two of them, because the page renders the button twice — the payment stage,
+ * where the application has no reference yet, and the confirmation, where it
+ * has one. A template asking for a reference falls back to the plain giving
+ * page on the stage that has none. Every fallback lives in `givingLink`, and
+ * the only thing this file assumes is that whatever comes back points at the
+ * giving page.
+ *
+ * `pattern` is the same link with `{amount}` still in it, handed to the browser
+ * so the href follows the total as the family ticks classes — the amount on the
+ * link a family clicks has to be the amount on the screen they clicked it from,
+ * and a link carrying a stale figure is worse than one carrying none. Null when
+ * there is nothing to follow, which is the state this ships in.
+ */
+const givingLinkFor = (withReference: string | null): GivingLink =>
+  givingLink({
+    payOnlineUrl: details.payOnlineUrl,
+    template: details.givingLinkTemplate,
+    reference: withReference,
+    amount: cost.total.total,
+  });
+
+const payLink = givingLinkFor(null);
+const paidLink = givingLinkFor(reference);
+
 const clashing = familyClashes(values, offerings, year);
 const clashCount = clashing.reduce((sum, one) => sum + one.clashes.length, 0);
 
@@ -665,27 +693,49 @@ const description =
                 All of it — <strong>{formatMoney(cost.total.total)}</strong> at today’s rates — in
                 one payment, online, through the church’s giving page:
               </p>
+              {/*
+                No `data-pay-template` here, unlike the stage above: this page
+                is the application as it was sent, and nothing on it moves. The
+                total is frozen, so the href the server wrote is the href that
+                is still right when it is clicked.
+              */}
               <p class="pay mt-5">
-                <a class="btn solid" href={details.payOnlineUrl} rel="external" data-pay-online>
+                <a class="btn solid" href={paidLink.href} rel="external" data-pay-online>
                   Pay online
                 </a>
                 <strong class="pay-total" data-pay-total>{formatMoney(cost.total.total)}</strong>
               </p>
               <p class="mt-5">
-                The giving page does not know what you owe, so please enter{' '}
-                <strong>{formatMoney(cost.total.total)}</strong> yourself.
+                {paidLink.carriesAmount ? (
+                  <Fragment>
+                    The giving page opens with <strong>{formatMoney(cost.total.total)}</strong>{' '}
+                    already in the box — check it before you pay.
+                  </Fragment>
+                ) : (
+                  <Fragment>
+                    The giving page does not know what you owe, so please enter{' '}
+                    <strong>{formatMoney(cost.total.total)}</strong> yourself.
+                  </Fragment>
+                )}
               </p>
               {/*
                 What the reference is for (#218). A payment through the giving
                 page reaches the school detached from this application — Vanco
-                tells the site nothing (ADR-0013) — so the note is the only
+                tells the site nothing (ADR-0013) — so the memo is the only
                 place the two can be joined, and the family is the only one who
                 can write it there. The same sentence is in their email.
+
+                It names the box as Vanco labels it, and says the page cannot
+                fill it in (#265). Now that the amount can arrive prefilled,
+                this is the one box left to type in — which makes it the one a
+                family skips, and a skipped memo is a payment the office cannot
+                match to anybody.
               */}
               <p class="mt-4" data-reference-note>
-                Please put your reference — <strong>{reference}</strong> — in the note when you
-                pay. A payment does not reach us attached to this application, so it is how we
-                match the two up.
+                Please type your reference — <strong>{reference}</strong> — into the{' '}
+                <strong>Memo</strong> box on the giving page. The giving page cannot fill it in
+                for you, and a payment does not reach us attached to this application, so it is
+                how we match the two up.
               </p>
             </div>
           ) : (
@@ -1134,10 +1184,12 @@ const description =
               online, the deposits by check — is reversed, and a check is only
               ever the fallback.
 
-              The giving page is a plain link and carries no amount with it, so
-              the copy has to name the number the family types in, and the total
-              has to be impossible to miss beside the button. That is what the
-              figure next to “Pay online” is for.
+              The link may carry the amount with it (#265), and says so when it
+              does — but it carries it only when the office has pasted a
+              template into School Details, and it ships without one. Either
+              way the total has to be impossible to miss beside the button,
+              which is what the figure next to “Pay online” is for, and either
+              way the memo is hand-typed: no parameter Vanco accepts sets it.
 
               Nothing about the application changes. Vanco sends us no
               confirmation, so a "paid online" flag on the row would be a claim
@@ -1153,18 +1205,42 @@ const description =
                   saying it a third time is the page distrusting its own layout.
                 */}
                 <p class="pay mt-7">
-                  <a class="btn solid" href={details.payOnlineUrl} rel="external" data-pay-online>
+                  <a
+                    class="btn solid"
+                    href={payLink.href}
+                    data-pay-template={payLink.pattern ?? undefined}
+                    rel="external"
+                    data-pay-online
+                  >
                     Pay online
                   </a>
                   <strong class="pay-total" data-pay-total data-total="total">
                     {formatMoney(cost.total.total)}
                   </strong>
                 </p>
+                {/*
+                  The first sentence is the page's claim about what the family
+                  is about to see, so it is written from whether the link
+                  actually carries the amount (#265) — telling somebody to type
+                  a figure that is already in the box is the page disagreeing
+                  with the button above it. The second sentence is true either
+                  way: no parameter Vanco accepts fills in the memo.
+                */}
                 <p class="mt-5">
-                  The giving page does not know what you owe, so please enter{' '}
-                  <strong data-total="total">{formatMoney(cost.total.total)}</strong> yourself. A
-                  payment through it does not reach us attached to this application, so the office
-                  matches the two up by hand.
+                  {payLink.carriesAmount ? (
+                    <Fragment>
+                      The giving page opens with{' '}
+                      <strong data-total="total">{formatMoney(cost.total.total)}</strong> already in
+                      the box — check it before you pay.
+                    </Fragment>
+                  ) : (
+                    <Fragment>
+                      The giving page does not know what you owe, so please enter{' '}
+                      <strong data-total="total">{formatMoney(cost.total.total)}</strong> yourself.
+                    </Fragment>
+                  )}{' '}
+                  A payment through it does not reach us attached to this application, so the
+                  office matches the two up by hand.
                 </p>
 
                 {/*
@@ -1359,7 +1435,7 @@ const description =
     type AmountOwed,
     type LiveMoneySettings,
   } from '../../lib/money/live.js';
-  import { depositCreditNote, formatMoney } from '../../lib/money/settings.js';
+  import { depositCreditNote, formatMoney, moneyOnALink } from '../../lib/money/settings.js';
 
   const found = document.querySelector<HTMLFormElement>('form[data-application-form]');
 
@@ -1653,6 +1729,32 @@ const description =
       // The credit clause, in the server's own words — the same function the
       // server printed it with, so the two cannot come to say it differently.
       write(form.querySelector('[data-credit]'), depositCreditNote(family.creditedAgainstTuition));
+
+      payOnlineAmount(family.total);
+    }
+
+    /**
+      The amount on the giving-page link, moved with the rest (#265).
+
+      The link a family clicks has to carry the total on the screen they clicked
+      it from — a link carrying a stale amount is worse than one carrying none.
+
+      One string replacement into a pattern the server wrote, and no giving-link
+      module on the wire: the server has already checked that the pattern is the
+      giving page and that its placeholders are the two known ones, so the only
+      thing left to substitute is a number this script computed. The figure is
+      written by `moneyOnALink`, which is the same function the server wrote the
+      first href with — a second rounding rule here is how the link and the
+      total beside it come to disagree over a dollar.
+
+      The attribute is absent whenever there is no template, which is the state
+      this ships in, and then the href the server rendered stands.
+    */
+    function payOnlineAmount(total: number): void {
+      const link = form.querySelector<HTMLAnchorElement>('[data-pay-online][data-pay-template]');
+      if (!link) return;
+
+      link.href = link.dataset.payTemplate!.replaceAll('{amount}', moneyOnALink(total));
     }
 
     /** Show or clear one field's sentence, and the wiring that points at it. */

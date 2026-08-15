@@ -411,8 +411,12 @@ export function applicationConfirmation(
       'A payment through the giving page does not reach us attached to this application, so we ' +
         'match the two up ourselves' +
         (reference
-          ? ` — please put your reference, ${reference}, in the note when you pay, and there is ` +
-            'nothing further for you to send us about it.'
+          ? // The box as Vanco labels it, and the box the giving page cannot fill
+            // in for the family (#265): whatever else a link carries, the memo
+            // is hand-typed, and it is the only thing joining a payment to this
+            // application (ADR-0016).
+            ` — please type your reference, ${reference}, into the Memo box when you pay, and ` +
+            'there is nothing further for you to send us about it.'
           : ' — there is nothing further for you to send us about it.'),
       '',
       'A place is held for each class as soon as your payment reaches us.',
