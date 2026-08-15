@@ -142,6 +142,19 @@ export type Course = {
    * page and its structured data read what it says.
    */
   instructorSlug: string | null;
+  /**
+   * When the school stopped running this class, or null while it runs (#263).
+   *
+   * Retiring is the low-stakes move and is deliberately not deletion: a retired
+   * course keeps its row, its address and its place in the class tally of
+   * applications already submitted, and loses the catalogue's age bands, the
+   * timetable and the Apply page's offerings. `listCourses` is where that
+   * distinction is drawn once, so no surface has to remember it.
+   *
+   * The date is the point of a timestamp over a flag: "when did we stop running
+   * this?" is a question the office asks of its own list.
+   */
+  retiredAt: Date | null;
   /** The stamp: who saved this course last, and when. Null for the seeded rows. */
   lastEditedBy: string | null;
   lastEditedAt: Date | null;

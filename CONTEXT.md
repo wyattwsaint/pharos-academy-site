@@ -309,6 +309,11 @@ A class the school has since removed from the catalogue is **still counted**,
 named from that capture and marked as no longer offered. Dropping it would move
 a number the school has already decided something on.
 
+A [retired](#retired) class is **still counted too, and is not marked**: the
+school still has it and expects it back, so "no longer offered" would be the
+tally saying something untrue about a class it can bring back in one press.
+Retired and removed read differently here because they are different facts.
+
 Not: "enrolment numbers" (a seat in the tally is not an enrolment), "roll",
 "class list".
 

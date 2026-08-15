@@ -4,7 +4,7 @@ import { fullDateLabel, SEEDED_SCHOOL_YEAR, trackColumn } from '../src/lib/calen
 import { CATALOGUE } from '../src/lib/courses/catalogue.js';
 import { timeLabel } from '../src/lib/courses/schedule.js';
 import { clashWarnings, meetingSlots, runningTracks } from '../src/lib/courses/slots.js';
-import { signIn } from './suite-admin.js';
+import { signIn, SUITE_RETIRED_COURSE } from './suite-admin.js';
 import { ensureUnstaffedCourse, UNSTAFFED } from './unstaffed-course.js';
 
 /**
@@ -321,5 +321,71 @@ test.describe('saving a class', () => {
         .join(' '),
     );
     expect(description).toContain('Tick the day track this class meets on.');
+  });
+});
+
+/**
+ * The retired section, read rather than written (#263).
+ *
+ * Nothing here presses either button, for the reason nothing in this file adds
+ * a course: the public suite pins the catalogue's size and its published prices
+ * and runs against this same throwaway database at the same time, so a class
+ * brought back here — even for a moment — would fail those specs from a
+ * distance. What retiring *does* is proved without a browser
+ * (`src/lib/courses/store.test.ts`, `src/lib/admin/retirement.test.ts`); what
+ * is only true in a browser is that the section is on the screen, unhidden,
+ * with the date and the way back on it.
+ *
+ * The class it reads is the one the throwaway database retires for exactly this
+ * (`SUITE_RETIRED_COURSE`).
+ */
+test.describe('the retired section', () => {
+  test('lists a retired class beneath the live ones, dated, never hidden', async ({ page }) => {
+    await page.goto('/admin/courses');
+
+    const retired = page.getByTestId('retired-courses');
+    await expect(retired).toBeVisible();
+    await expect(retired.getByRole('heading', { name: 'Suite Retired Class' })).toBeVisible();
+    await expect(page.getByTestId(`retired-on-${SUITE_RETIRED_COURSE}`)).toContainText('Retired ');
+    await expect(page.getByTestId(`unretire-${SUITE_RETIRED_COURSE}`)).toBeVisible();
+  });
+
+  test('keeps it out of the live list above', async ({ page }) => {
+    await page.goto('/admin/courses');
+
+    const running = page.getByTestId('running-courses');
+    await expect(running).toBeVisible();
+    await expect(running.getByText('Suite Retired Class')).toHaveCount(0);
+  });
+
+  test('says the class is retired on its own screen, and offers the one press back', async ({
+    page,
+  }) => {
+    await page.goto(`/admin/courses/${SUITE_RETIRED_COURSE}`);
+
+    const section = page.getByTestId('retirement');
+    await expect(section.getByRole('heading', { name: 'Retired' })).toBeVisible();
+    await expect(section).toContainText('still answers at its own address');
+    await expect(page.getByTestId('retire')).toHaveText('Bring it back');
+  });
+
+  test('offers Retire on a class the school is running', async ({ page }) => {
+    await page.goto(`/admin/courses/${SUBJECT.slug}`);
+
+    const section = page.getByTestId('retirement');
+    await expect(section.getByRole('heading', { name: 'Running' })).toBeVisible();
+    await expect(page.getByTestId('retire')).toHaveText('Retire');
+  });
+
+  test('is not on the public class page while the class runs', async ({ page }) => {
+    // The retired page's own notice, from the other side: the state exists and
+    // is not something every class page carries.
+    await page.goto(`/classes/${SUBJECT.slug}`);
+    await expect(page.locator('[data-section="class-retired"]')).toHaveCount(0);
+
+    await page.goto(`/classes/${SUITE_RETIRED_COURSE}`);
+    await expect(page.locator('[data-section="class-retired"]')).toContainText(
+      'not currently running this class',
+    );
   });
 });

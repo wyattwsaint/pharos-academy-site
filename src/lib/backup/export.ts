@@ -3,7 +3,7 @@ import { getSchoolDetails } from '../admin/school-details.js';
 import { listApplications } from '../application/store.js';
 import { getAttachment, listAnnouncements } from '../announcements/store.js';
 import { getSchoolYear, listEvents, listSyncedEvents } from '../calendar/store.js';
-import { listCourses } from '../courses/store.js';
+import { listEveryCourse } from '../courses/store.js';
 import { listInquiries } from '../inquiry/store.js';
 import { getMoneySettings, listAgreedTerms } from '../money/store.js';
 import { listPeople } from '../people/store.js';
@@ -142,7 +142,10 @@ export async function buildExport(db: Db, at = new Date()): Promise<BackupArchiv
   files.push(jsonEntry('content/school-details.json', details));
   tables.push({ table: 'school_details', file: 'content/school-details.json', rows: 1 });
 
-  const courses = await listCourses(db);
+  // Every course, retired ones included (#263): an archive that quietly dropped
+  // the classes the school is not running this year is an archive that cannot
+  // restore them, which is the one thing it exists to do.
+  const courses = await listEveryCourse(db);
   files.push(jsonEntry('content/courses.json', courses));
   tables.push({ table: 'courses', file: 'content/courses.json', rows: courses.length });
 

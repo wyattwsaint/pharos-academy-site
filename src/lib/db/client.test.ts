@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { listAnnouncements } from '../announcements/store.js';
-import { listCoursesForAdmin } from '../courses/store.js';
+import { listEveryCourse } from '../courses/store.js';
 import { listPeopleForAdmin } from '../people/store.js';
 import { listPolicies } from '../policies/store.js';
 import { createEphemeralDatabase, deleteSeededContent, type Db } from './client.js';
@@ -28,7 +28,7 @@ describe('deleteSeededContent', () => {
   it('empties all four seeded lists without tripping a foreign key', async () => {
     await deleteSeededContent(db);
 
-    expect(await listCoursesForAdmin(db)).toEqual([]);
+    expect(await listEveryCourse(db)).toEqual([]);
     expect(await listPeopleForAdmin(db)).toEqual([]);
     expect(await listAnnouncements(db)).toEqual([]);
     expect(await listPolicies(db)).toEqual([]);

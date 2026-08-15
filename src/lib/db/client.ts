@@ -59,6 +59,7 @@ async function open(): Promise<Db> {
       await deleteSeededContent(db);
     } else {
       await seedSuitePolicyFiles(db);
+      await seedSuiteRetiredCourse(db);
     }
     return db;
   }
@@ -223,6 +224,52 @@ async function seedSuitePolicyFiles(db: Db): Promise<void> {
       'Suite Admin',
     );
   }
+}
+
+/**
+ * The slug of the one class the throwaway database retires (#263).
+ *
+ * Written out again in `e2e/suite-admin.ts` rather than imported from here, the
+ * way `SUITE_KEPT` is: `playwright.config.ts` loads that module to build its
+ * environment, and importing this one would drag the driver and every migration
+ * into the config's own graph. Two literals, and the comment on each says so.
+ */
+export const SUITE_RETIRED_COURSE = 'suite-retired-class';
+
+/**
+ * A class that is already retired, so both suites have one to measure (#263).
+ *
+ * The same argument as Suite Kept above, in the catalogue rather than the user
+ * list. The retired states — the admin's own section and the class page that
+ * says the school is not currently running it — are two axe surfaces that
+ * cannot be reached unless something is retired, and no spec may retire a
+ * *seeded* class to reach them: the public suite pins the catalogue's size and
+ * its published prices, and it runs against this same database at the same
+ * time.
+ *
+ * So the suite gets a class of its own, added and then retired. Being retired
+ * is what makes it invisible to every one of those specs — it is off the age
+ * bands, off the timetable, out of the full descriptions and off the
+ * application — while its own page and the admin's retired section are exactly
+ * the two things there to be measured.
+ *
+ * Suite mode only, and suite mode already refuses to run on a deployment.
+ */
+async function seedSuiteRetiredCourse(db: Db): Promise<void> {
+  const { CATALOGUE } = await import('../courses/catalogue.js');
+  const { createCourse, retireCourse } = await import('../courses/store.js');
+
+  const donor = CATALOGUE[0];
+  if (!donor) return;
+  const { slug: _slug, retiredAt: _retired, lastEditedBy: _by, lastEditedAt: _at, ...edit } = donor;
+
+  await createCourse(
+    db,
+    SUITE_RETIRED_COURSE,
+    { ...edit, title: 'Suite Retired Class' },
+    'Suite Admin',
+  );
+  await retireCourse(db, SUITE_RETIRED_COURSE, 'Suite Admin');
 }
 
 /**

@@ -1,14 +1,17 @@
 ---
 export const prerender = false;
 
+import AdminBanner from '../../components/AdminBanner.astro';
 import AdminButton from '../../components/AdminButton.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import type { Banner } from '../../lib/admin/banner.js';
 import { UNIT_LABELS } from '../../lib/admin/courses.js';
-import { formatStamp } from '../../lib/admin/formatting.js';
-import { durationLabel } from '../../lib/courses/course.js';
+import { formatDay, formatStamp } from '../../lib/admin/formatting.js';
+import { pressRetirement, RETIRE_VALUES } from '../../lib/admin/retirement.js';
+import { durationLabel, type Course } from '../../lib/courses/course.js';
 import { priceSummary } from '../../lib/courses/pricing.js';
 import { timeLabel } from '../../lib/courses/schedule.js';
-import { listCoursesForAdmin } from '../../lib/courses/store.js';
+import { listEveryCourse } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
 import { getMoneySettings } from '../../lib/money/store.js';
 
@@ -24,14 +27,53 @@ import { getMoneySettings } from '../../lib/money/store.js';
  *
  * There is no delete, for the reason People has none: a class a family has
  * already applied to is a row other rows point at, and a button the database
- * would refuse is a button that lies. Withdrawing a class is a job for whoever
- * installed the site until the application flow says otherwise (#31).
+ * would refuse is a button that lies.
+ *
+ * What there is instead is **Retire** (#263), and the retired classes are on
+ * this screen rather than behind a filter. A screen that hid them is a screen
+ * where the office re-creates a class it already has, and then has two — so
+ * they sit in their own section beneath the live ones, each with the date the
+ * school stopped running it, one press from coming back.
+ *
+ * The press answers here rather than through a redirect, for the reason the
+ * editors do: retiring republishes the site, and the republish answer is a fact
+ * the office needs told. A redirect would throw it away.
  */
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
-const courses = await listCoursesForAdmin(db);
+let banner: Banner | null = null;
+
+if (Astro.request.method === 'POST') {
+  // The only thing this screen posts is a Retire, so a form it cannot read is
+  // not a save to fall through to — it is a button that named no class.
+  const pressed = await pressRetirement({
+    db,
+    form: await Astro.request.formData(),
+    actorName: actor.name,
+    url: Astro.url,
+  });
+  banner = pressed?.banner ?? {
+    ok: false,
+    message: 'Nothing changed — that button did not say which class.',
+  };
+}
+
+const courses = await listEveryCourse(db);
 const settings = await getMoneySettings(db);
+
+/** The two sections, in the order the office reads them: what runs, then what waits. */
+const running = courses.filter((course) => course.retiredAt === null);
+const retired = courses.filter((course) => course.retiredAt !== null);
+
+/** The one derived line both sections print under a title. */
+const summaryOf = (course: Course) =>
+  [
+    course.days.join(', '),
+    timeLabel(course.start, course.end),
+    durationLabel(course),
+    priceSummary(course, settings.rates),
+  ].join(' · ');
 ---
 
 <AdminLayout title="Classes" actor={actor}>
@@ -40,6 +82,8 @@ const settings = await getMoneySettings(db);
     One list, alphabetical. Each class appears by age, by day, in the full descriptions and on its
     own page — all four from this one row.
   </p>
+
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="retire-banner" retry />}
 
   <p class="mt-8">
     <AdminButton href="/admin/courses/new">Add a course</AdminButton>
@@ -52,24 +96,21 @@ const settings = await getMoneySettings(db);
         drawn from this one list, so while it is empty a parent finds nothing on any of the four.
         The first class added fills all of them at once.
       </p>
+    ) : running.length === 0 ? (
+      <p class="mt-8 border-t border-navy/15 pt-6" data-testid="all-retired">
+        Every class is retired. By age, by day, the full descriptions and each class's own page are
+        empty to a parent until one of the classes below is brought back, or a new one added.
+      </p>
     ) : (
-      <ul class="mt-8 flex flex-col gap-6">
-        {courses.map((course) => (
+      <ul class="mt-8 flex flex-col gap-6" data-testid="running-courses">
+        {running.map((course) => (
           <li class="border-t border-navy/15 pt-6">
             <h2 class="text-xl font-semibold text-navy">
               <a href={`/admin/courses/${course.slug}`} class="underline underline-offset-4">
                 {course.title}
               </a>
             </h2>
-            <p class="mt-1">
-              {course.days.join(', ')}
-              {' · '}
-              {timeLabel(course.start, course.end)}
-              {' · '}
-              {durationLabel(course)}
-              {' · '}
-              {priceSummary(course, settings.rates)}
-            </p>
+            <p class="mt-1">{summaryOf(course)}</p>
             <p class="mt-1 text-sm" data-testid={`units-${course.slug}`}>
               Families can enroll for:{' '}
               {course.enrolmentUnits.map((unit) => UNIT_LABELS[unit]).join(', ')}
@@ -91,9 +132,64 @@ const settings = await getMoneySettings(db);
             <p class="mt-1 text-sm" data-testid={`stamp-${course.slug}`}>
               {formatStamp(course.lastEditedBy, course.lastEditedAt)}
             </p>
+            <form method="post" class="mt-3">
+              <input type="hidden" name="slug" value={course.slug} />
+              <input type="hidden" name="retire" value={RETIRE_VALUES.retire} />
+              <AdminButton
+                small
+                variant="secondary"
+                pendingLabel="Retiring…"
+                testId={`retire-${course.slug}`}
+              >
+                Retire
+              </AdminButton>
+            </form>
           </li>
         ))}
       </ul>
+    )
+  }
+
+  {
+    retired.length > 0 && (
+      <section class="mt-12" data-testid="retired-courses">
+        <h2 class="text-2xl font-semibold text-navy">Retired</h2>
+        <p class="mt-2">
+          Classes the school is not running now. They are off the class lists, off the timetable and
+          not offered on the application — and each one still answers at its own address, saying the
+          school is not currently running it. Nothing has been lost: bringing one back puts it on
+          every list it left, with nothing retyped.
+        </p>
+        <ul class="mt-6 flex flex-col gap-6">
+          {retired.map((course) => (
+            <li class="border-t border-navy/15 pt-6">
+              <h3 class="text-xl font-semibold text-navy">
+                <a href={`/admin/courses/${course.slug}`} class="underline underline-offset-4">
+                  {course.title}
+                </a>
+              </h3>
+              <p class="mt-1" data-testid={`retired-on-${course.slug}`}>
+                Retired {formatDay(course.retiredAt!)}
+              </p>
+              <p class="mt-1 text-sm">{summaryOf(course)}</p>
+              <p class="mt-1 text-sm" data-testid={`stamp-${course.slug}`}>
+                {formatStamp(course.lastEditedBy, course.lastEditedAt)}
+              </p>
+              <form method="post" class="mt-3">
+                <input type="hidden" name="slug" value={course.slug} />
+                <input type="hidden" name="retire" value={RETIRE_VALUES.unretire} />
+                <AdminButton
+                  small
+                  pendingLabel="Bringing it back…"
+                  testId={`unretire-${course.slug}`}
+                >
+                  Bring it back
+                </AdminButton>
+              </form>
+            </li>
+          ))}
+        </ul>
+      </section>
     )
   }
 

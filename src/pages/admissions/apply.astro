@@ -52,7 +52,7 @@ import { SITE_URL } from '../../lib/site.js';
 import { getSchoolYear } from '../../lib/calendar/store.js';
 import { SEEDED_SCHOOL_YEAR } from '../../lib/calendar/year.js';
 import { timeLabel } from '../../lib/courses/schedule.js';
-import { listCourses } from '../../lib/courses/store.js';
+import { listCourses, listEveryCourse } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
 import { INQUIRY_PATH } from '../../lib/inquiry/inquiry.js';
 import { getInquiry } from '../../lib/inquiry/store.js';
@@ -302,7 +302,19 @@ if (Astro.request.method === 'POST') {
       // Read back including this application, so the count in the email is the
       // count Jill would see on the admin screen a second later — deduplicated,
       // never the raw number of rows.
-      tally: classTally(await applicationsForTally(), offerings),
+      /*
+       * Tallied against the school's own list, retired classes included
+       * (#263) — where the offerings above are the published one.
+       *
+       * The two readings are different questions of the same catalogue: what a
+       * family may choose is what the school is running, and what the office
+       * counts is every class somebody has applied to. Counting against the
+       * published list would drop a retired class out of the email — or mark
+       * it "no longer offered", which is untrue of a class the school still
+       * has — and this is the same count the admin screen shows a second later
+       * (`applications.astro`), so the two have to ask the same thing.
+       */
+      tally: classTally(await applicationsForTally(), offeringsOf(await listEveryCourse(db))),
       flagged: parsed.flagged,
       reference,
       /*

@@ -26,6 +26,17 @@ export const SUITE_ADMIN = {
  */
 export const SUITE_KEPT = 'Suite Kept';
 
+/**
+ * The class the throwaway database retires, so the retired states can be
+ * measured (#263).
+ *
+ * Written out rather than imported from `src/lib/db/client.ts`, the way
+ * `SUITE_KEPT` is: `playwright.config.ts` loads this module to build its
+ * environment, and re-exporting from the client would drag the database driver
+ * and every migration into the config's own import graph.
+ */
+export const SUITE_RETIRED_COURSE = 'suite-retired-class';
+
 /** Sign in and land on `next`. Fails loudly rather than leaving a spec adrift. */
 export async function signIn(page: Page, next = '/admin/school-details'): Promise<void> {
   await page.goto(`/admin/login?next=${encodeURIComponent(next)}`);

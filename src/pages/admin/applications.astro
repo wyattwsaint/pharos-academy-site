@@ -34,7 +34,7 @@ import { classTally, tallyLines } from '../../lib/application/tally.js';
 import type { Banner } from '../../lib/admin/banner.js';
 import { formatDay, formatTimestamp } from '../../lib/admin/formatting.js';
 import { applicationDeliveryNote } from '../../lib/admin/outbound-mail.js';
-import { listCourses } from '../../lib/courses/store.js';
+import { listEveryCourse } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
 import { formatMoney } from '../../lib/money/settings.js';
 import { getMoneySettings, listAgreedTerms } from '../../lib/money/store.js';
@@ -107,7 +107,16 @@ const actedOn = Astro.url.searchParams.get('at');
 
 const applications = await listApplications(db);
 const settings = await getMoneySettings(db);
-const offerings = offeringsOf(await listCourses(db));
+/*
+ * The school's own list, retired classes included (#263).
+ *
+ * A retired class still counts in the tally, because the families who chose it
+ * really did choose it — and it is not "no longer offered" either, which is
+ * what the published list would make this screen say about a class the school
+ * still has and expects to run again. Removal is the fact that reads that way;
+ * retirement is a class waiting.
+ */
+const offerings = offeringsOf(await listEveryCourse(db));
 /** What the catalogue still has, asked once for the whole page (#259). */
 const catalogue = catalogueCourses(offerings);
 const tally = classTally(applications, offerings);

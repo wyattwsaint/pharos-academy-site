@@ -946,6 +946,33 @@ export const MIGRATIONS: readonly Migration[] = [
     id: '0025-a-course-may-name-no-instructor',
     statements: [`alter table courses alter column instructor_slug drop not null`],
   },
+  {
+    /*
+     * Retiring a course, and — one ticket later — a person (#263).
+     *
+     * One nullable timestamp on each of the two tables, in one migration,
+     * because they are one column asked of two records: the school is not
+     * running this class now, the school is not listing this instructor now.
+     * Retiring the person is a separate ticket and reads this same column; it
+     * arrives here so that ticket ships without a second migration against a
+     * live database, which is the half of a schema change that has to be
+     * watched.
+     *
+     * A timestamp rather than a flag, and nullable rather than defaulted,
+     * because both halves carry meaning that a boolean throws away: **when**
+     * the school stopped is the question the office asks, and null is the live
+     * state — so every row either table already holds is live, which is exactly
+     * what they all are. There is no backfill for the same reason.
+     *
+     * Nothing is dropped, renamed or made not-null, so a re-run is a no-op and
+     * a rollback is a column nobody reads.
+     */
+    id: '0026-retiring-a-course-or-a-person',
+    statements: [
+      `alter table courses add column if not exists retired_at timestamptz`,
+      `alter table people add column if not exists retired_at timestamptz`,
+    ],
+  },
 ];
 
 /**
