@@ -13,6 +13,7 @@ import {
 import { monthGrid, printedYear, WEEKDAY_COLUMNS } from '../../lib/calendar/months.js';
 import { previewRows, schoolToday, SEMESTERS, type SchoolYear } from '../../lib/calendar/year.js';
 import { DAY_TRACKS } from '../../lib/courses/schedule.js';
+import { listCourses } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
 import { SITE_URL } from '../../lib/site.js';
 
@@ -54,6 +55,14 @@ const year = (await getSchoolYear(db)) as SchoolYear | undefined;
  */
 const published = await listPublishedEvents(db);
 const events = upcomingEvents(published, new Date());
+/*
+ * The catalogue, because a teaching date reveals what meets on it (#235).
+ *
+ * The whole catalogue rather than a query per date: the grid asks about roughly
+ * two hundred dates, and the meeting dates are computed from the same eight
+ * numbers the months are.
+ */
+const courses = await listCourses(db);
 
 const description =
   'Every class date for the Pharos Academy school year, by day track, with the days the school ' +
@@ -75,8 +84,13 @@ const semesters = year
  * asks in August. This answers "what is happening in October", which is the one
  * they ask in October — and it does it from the same eight numbers, so the two
  * halves of this page cannot disagree about whether the school is open.
+ *
+ * A calendar prints what is exceptional and reveals what is routine (ADR-0018),
+ * and both halves of that sentence are decided in the view model rather than
+ * here: the cell arrives already knowing its one-offs, its closure and what
+ * meets on it.
  */
-const months = year ? monthGrid(year, published) : [];
+const months = year ? monthGrid(year, published, courses) : [];
 /*
  * The month it is in Enola, so the page opens on it.
  *
@@ -231,7 +245,8 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       <p class="sub mt-5">
         The same year, drawn as a calendar. Open houses, concerts and picture days sit on their
         dates with their times — from the school’s own calendar and from the office, without
-        distinction — and a weekday in term time with no classes on it says so.
+        distinction — and a weekday in term time with no classes on it says so. On a teaching
+        day, press the count to see what meets.
       </p>
 
       {
@@ -278,12 +293,22 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
                                 {
                                   shut: cell.noSchool,
                                   /*
-                                    A cell carrying neither a one-off nor a mark
-                                    is the phone list's blank: it is a date and
-                                    nothing else, and a phone shows only the
-                                    dates something is true of.
+                                    A cell carrying nothing at all — no mark, no
+                                    one-off and nothing meeting — is the phone
+                                    list's blank: it is a date and nothing else,
+                                    and a phone shows only the dates something is
+                                    true of.
+
+                                    `empty` rather than the `quiet` this was
+                                    called, because under #235 "quiet" is exactly
+                                    what a cell holding classes it does not print
+                                    would want to be called, and one word cannot
+                                    mean both states (ADR-0018).
                                   */
-                                  quiet: !cell.noSchool && cell.events.length === 0,
+                                  empty:
+                                    !cell.noSchool &&
+                                    cell.events.length === 0 &&
+                                    cell.classLabel === null,
                                 },
                               ]}
                             >
@@ -327,6 +352,54 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
                                   </div>
                                 </div>
                               ))}
+                              {/*
+                                What meets that day, revealed rather than printed
+                                (#235). Last in the cell because the printed
+                                things come first and the control that opens more
+                                comes after them.
+
+                                A distinct labelled control and **not the date
+                                number turned into a button**: the number would
+                                give this page roughly a hundred identically
+                                named controls, which is a screen-reader failure,
+                                and would make one number mean two things. The
+                                date is in the name rather than the label so that
+                                "6 classes" is what is read and "6 classes on
+                                Wednesday 4 November" is what tells one control
+                                from the next.
+                              */}
+                              {cell.classLabel && (
+                                <div class="classes" data-disclosure-cell>
+                                  <button
+                                    class="classes-trigger"
+                                    type="button"
+                                    data-disclosure-trigger
+                                    aria-expanded="false"
+                                    aria-controls={`classes-${cell.date}`}
+                                  >
+                                    {cell.classLabel}
+                                    <span class="sr-only"> on {cell.label}</span>
+                                  </button>
+                                  <div
+                                    class="classes-panel"
+                                    id={`classes-${cell.date}`}
+                                    data-disclosure-panel
+                                  >
+                                    {cell.slots.map((slot) => (
+                                      <div class="slot">
+                                        <p class="slot-time">{slot.time}</p>
+                                        <ul class="slot-classes">
+                                          {slot.offerings.map((offering) => (
+                                            <li>
+                                              <a href={offering.href}>{offering.title}</a>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </td>
                           ),
                         )}
@@ -563,7 +636,56 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
   }
 
   /*
-    A one-off is the one thing on the grid that opens, so it is a real button.
+    The two things a cell opens: a one-off, and the classes that meet that day.
+
+    Their *shape* is one thing and is written once — a full-width button with a
+    rule down its left edge, and a panel that floats over the grid rather than
+    expanding inside its cell, because a cell that grew would push a whole week
+    of dates down the page under the pointer that opened it. What differs is
+    register, and only register is written twice below.
+  */
+  .one-off,
+  .classes {
+    position: relative;
+    margin-top: 0.25rem;
+  }
+
+  .one-off-trigger,
+  .classes-trigger {
+    display: block;
+    width: 100%;
+    padding: 0.2rem 0.3rem;
+    border: 0;
+    border-left-width: 2px;
+    border-left-style: solid;
+    font: inherit;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .one-off-panel,
+  .classes-panel {
+    display: none;
+    position: absolute;
+    z-index: 2;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    width: max-content;
+    padding: 0.7rem 0.85rem;
+    background: var(--color-cream);
+    border: 1px solid var(--color-rule);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--color-navy) 18%, transparent);
+    font-size: 0.85rem;
+  }
+
+  .one-off[data-open] .one-off-panel,
+  .classes[data-open] .classes-panel {
+    display: block;
+  }
+
+  /*
+    A one-off is news, so it takes the gold and the emphasis that goes with it.
 
     What it prints is the title and the time together (#234): "Fall Open House"
     alone does not say whether a family is coming at ten in the morning or at
@@ -572,24 +694,11 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     four or five characters wide and a title that wraps mid-word to make room
     for "6.30pm" is worse than either fact on its own.
   */
-  .one-off {
-    position: relative;
-    margin-top: 0.25rem;
-  }
-
   .one-off-trigger {
-    display: block;
-    width: 100%;
-    padding: 0.2rem 0.3rem;
-    border: 0;
-    border-left: 2px solid var(--color-gold-orn);
+    border-left-color: var(--color-gold-orn);
     background: color-mix(in srgb, var(--color-gold-orn) 18%, transparent);
-    font: inherit;
     font-size: 0.8rem;
-    line-height: 1.25;
-    text-align: left;
     color: var(--color-navy);
-    cursor: pointer;
   }
 
   .one-off-name {
@@ -601,6 +710,12 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     is what the title is qualified by, and a cell of two equal lines reads as two
     one-offs. A one-off with no start time has no line here at all — an absent
     time is a real state, and a dash standing in for it would invent a gap.
+
+    **Quieter by size and small caps, and not by colour.** The muted ink measures
+    3.9:1 on the trigger's gold and axe fails it, which is the same trap the date
+    number two rules up already names: grey on grey on gold is where the contrast
+    goes. Inheriting the trigger's navy is 8.7:1 and the hierarchy is unchanged,
+    because it was never the colour doing the work.
   */
   .one-off-time {
     display: block;
@@ -608,7 +723,6 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     line-height: 1.2;
     font-variant-caps: all-small-caps;
     letter-spacing: 0.04em;
-    color: var(--color-ink-2);
   }
 
   .one-off-trigger:hover,
@@ -617,35 +731,10 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     color: var(--color-gold-ink);
   }
 
-  .one-off-trigger:hover .one-off-time,
-  .one-off[data-open] .one-off-time {
-    color: inherit;
-  }
-
-  /*
-    The detail floats over the grid rather than expanding inside its cell: a cell
-    that grew would push a whole week of dates down the page under the pointer
-    that opened it.
-  */
   .one-off-panel {
-    display: none;
-    position: absolute;
-    z-index: 2;
-    top: calc(100% + 0.25rem);
-    left: 0;
-    width: max-content;
     max-width: 15rem;
-    padding: 0.7rem 0.85rem;
-    background: var(--color-cream);
-    border: 1px solid var(--color-rule);
-    box-shadow: 0 6px 18px color-mix(in srgb, var(--color-navy) 18%, transparent);
-    font-size: 0.85rem;
     line-height: 1.5;
     color: var(--color-ink-2);
-  }
-
-  .one-off[data-open] .one-off-panel {
-    display: block;
   }
 
   .one-off-panel .when {
@@ -655,6 +744,56 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
 
   .one-off-panel .where {
     margin-top: 0.25rem;
+  }
+
+  /*
+    A class is routine, so it is a rule and a count in the quiet ink.
+
+    Deliberately not the one-off's gold: if the two looked alike, the thing that
+    happens once a year would compete with the thing that happens every week.
+  */
+  .classes-trigger {
+    padding-top: 0.15rem;
+    padding-bottom: 0.15rem;
+    border-left-color: color-mix(in srgb, var(--color-navy) 30%, transparent);
+    background: none;
+    font-size: 0.75rem;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.04em;
+    color: var(--color-ink-2);
+  }
+
+  .classes-trigger:hover,
+  .classes[data-open] .classes-trigger {
+    background: color-mix(in srgb, var(--color-navy) 8%, transparent);
+    color: var(--color-navy);
+  }
+
+  .classes-panel {
+    max-width: 17rem;
+    line-height: 1.4;
+  }
+
+  .slot + .slot {
+    margin-top: 0.6rem;
+  }
+
+  /* The time heads its group, because the group is the answer: the classes
+     under one time are alternatives to each other, not a sequence. */
+  .slot-time {
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.06em;
+    color: var(--color-ink-2);
+  }
+
+  .slot-classes {
+    list-style: none;
+    margin: 0.15rem 0 0;
+    padding: 0;
+  }
+
+  .slot-classes li + li {
+    margin-top: 0.15rem;
   }
 
   /*
@@ -683,7 +822,7 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     }
 
     .month-grid td.blank,
-    .month-grid td.quiet {
+    .month-grid td.empty {
       display: none;
     }
 
@@ -708,9 +847,21 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       font-size: 0.95rem;
     }
 
-    /* Nothing to float over: the panel opens inside the row, in the list. */
-    .one-off-panel {
+    .classes-trigger {
+      font-size: 0.85rem;
+    }
+
+    /*
+      Nothing to float over: the panel opens inside the row, in the list.
+
+      `width: auto` with it, and that is the load-bearing half — a panel sized to
+      its own content is what a class title as long as "Introduction to Church
+      and Bible History" pushes off the side of a 390px page.
+    */
+    .one-off-panel,
+    .classes-panel {
       position: static;
+      width: auto;
       max-width: none;
       margin-top: 0.35rem;
       box-shadow: none;
