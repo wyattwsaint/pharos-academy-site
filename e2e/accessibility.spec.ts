@@ -63,6 +63,19 @@ async function openInstructorBio(page: Page) {
   await expect(cell.locator('[data-disclosure-panel]')).toBeVisible();
 }
 
+/**
+ * Open the classes on the first teaching date of the calendar's month grid.
+ *
+ * The panel is where the grid's new markup lives (#235) — a named control whose
+ * `aria-expanded` moves, and a list of links floating over a table. Closed, none
+ * of that is in the tree to measure.
+ */
+async function openMonthClasses(page: Page) {
+  const cell = page.locator('[data-section="calendar-months"] .classes').first();
+  await cell.locator('[data-disclosure-trigger]').click();
+  await expect(cell.locator('[data-disclosure-panel]')).toBeVisible();
+}
+
 /** Open the first card on the By Age surface. */
 async function openCatalogueCard(page: Page) {
   const cell = page.locator('.classcard').first();
@@ -184,6 +197,18 @@ const SURFACES = [
    * own box does, which is what a parent actually experiences.
    */
   { name: 'the calendar page', path: CALENDAR_PATH, state: 'closed', open: noop },
+  /*
+   * #235. Measured open as well, because the grid carries eighty-odd controls
+   * that only exist as controls once one of them is pressed: the panel is where
+   * the accessible name, the moved `aria-expanded` and a list of links over a
+   * table all have to hold up.
+   */
+  {
+    name: 'the calendar page',
+    path: CALENDAR_PATH,
+    state: 'with a date’s classes open',
+    open: openMonthClasses,
+  },
   // #30 AC 8. Two description lists, a two-column statement grid that stacks,
   // and three long essay paragraphs — the page that absorbed three Wix pages,
   // so it is also the longest one a 301 can land somebody part-way down.
