@@ -1,3 +1,7 @@
+import type { Course } from '../courses/course.js';
+import { minutesOfDay, timeLabel } from '../courses/schedule.js';
+import { meetingDatesOn } from '../courses/slots.js';
+import { classPath } from '../courses/views.js';
 import type { CalendarEvent } from './event.js';
 import {
   meetingsOf,
@@ -24,14 +28,49 @@ import {
  * here and does not try to. Week numbers stay on the sheet, which is why the
  * sheet stays.
  *
+ * **A cell prints what is exceptional and reveals what is routine** (#235,
+ * ADR-0018). A one-off and a closure happen once and are printed; a **meeting**
+ * of an **offering** is the same fact restated every week of a term, so it sits
+ * behind a labelled control the cell carries instead. That is why the courses
+ * are an input here rather than on the page: the wide grid, the phone list and
+ * the printed list are all drawn from this one return value, which is why no two
+ * of them can disagree about what meets on a Wednesday.
+ *
  * Nothing here is stored. The months, the school days and the closed days are
  * all computed from the same eight numbers and the same closure list the sheet
  * is computed from, so the two halves of one page cannot disagree about whether
  * the school is open — and there is still exactly one place to correct a date.
+ * The meeting dates are not computed here either: they come from
+ * `meetingDatesOn`, the one the clash check and the course page already use.
  *
- * Pure, and unit-tested without rendering: given a school year and the one-offs
- * the site holds, it returns the months.
+ * Pure, and unit-tested without rendering: given a school year, the one-offs the
+ * site holds and the catalogue, it returns the months.
  */
+
+/** One offering in a cell's panel, as the link that reaches its own page. */
+export type CellOffering = {
+  /** The school's own title. */
+  title: string;
+  /** `/classes/<slug>`. */
+  href: string;
+};
+
+/**
+ * One time slot on one date, and the offerings meeting in it.
+ *
+ * Grouped rather than flat, and that is the point: the five electives at 10:40
+ * are **alternatives to each other**, not a sequence one child attends in turn,
+ * and a flat list of six names says the wrong thing about a Wednesday morning.
+ */
+export type CellSlot = {
+  /** `HH:MM` — what the slots are ordered by, never printed. */
+  start: string;
+  end: string;
+  /** "10:40-11:40 a.m.", in the school's own way of writing a time. */
+  time: string;
+  /** The offerings meeting then, by title. */
+  offerings: CellOffering[];
+};
 
 /** One date on the grid, with everything that date carries. */
 export type MonthCell = {
@@ -47,6 +86,18 @@ export type MonthCell = {
   noSchool: boolean;
   /** What it is shut for, where the school has named it. */
   closure: string | null;
+  /** What meets on this date, grouped by time slot, earliest slot first. */
+  slots: CellSlot[];
+  /**
+   * "6 classes" — what the control naming the panel says, or null for no control.
+   *
+   * Null rather than "0 classes" because the **day track** running nothing is a
+   * routine state, not an empty one: the Tuesday track carries no courses at all,
+   * and a control that opens onto nothing is a promise the cell cannot keep. Such
+   * a cell is not ambiguous either — closures are marked, so an unmarked weekday
+   * with no control reads as open with nothing scheduled, which is true.
+   */
+  classLabel: string | null;
 };
 
 /** One month of the grid: a heading, and whole weeks of cells. */
@@ -90,8 +141,15 @@ export const WEEKDAY_COLUMNS = [
  * A one-off carries no year of its own, so there is no honest way to call one
  * "outside" the year; clipping would mean the site holding an event it never
  * draws, which is the one failure a calendar cannot have.
+ *
+ * The **courses do not widen the span**, and they cannot: every date they meet
+ * on is one of the year's own meeting dates, which are already in it.
  */
-export function monthGrid(year: SchoolYear, events: readonly CalendarEvent[]): MonthBlock[] {
+export function monthGrid(
+  year: SchoolYear,
+  events: readonly CalendarEvent[],
+  courses: readonly Course[] = [],
+): MonthBlock[] {
   const meetings = meetingsOf(year);
   const dates = [
     ...meetings.map((meeting) => meeting.date),
@@ -108,20 +166,93 @@ export function monthGrid(year: SchoolYear, events: readonly CalendarEvent[]): M
     held.set(event.heldOn, [...(held.get(event.heldOn) ?? []), event]);
   }
 
-  const cellOf = (date: string): MonthCell => ({
-    date,
-    day: Number(date.slice(8)),
-    label: weekdayDateLabel(date),
-    events: held.get(date) ?? [],
-    noSchool: isNoSchool(date, meets, terms),
-    closure: closures.get(date) ?? null,
-  });
+  const meeting = meetingsByDate(year, courses);
+
+  const cellOf = (date: string): MonthCell => {
+    const slots = slotsOf(meeting.get(date) ?? []);
+    const count = slots.reduce((total, slot) => total + slot.offerings.length, 0);
+    return {
+      date,
+      day: Number(date.slice(8)),
+      label: weekdayDateLabel(date),
+      events: held.get(date) ?? [],
+      noSchool: isNoSchool(date, meets, terms),
+      closure: closures.get(date) ?? null,
+      slots,
+      classLabel: count === 0 ? null : `${count} ${count === 1 ? 'class' : 'classes'}`,
+    };
+  };
 
   return monthsBetween(dates[0]!, dates[dates.length - 1]!).map((id) => ({
     id,
     heading: monthLabel(id),
     weeks: weeksOf(id, cellOf),
   }));
+}
+
+/**
+ * Which courses meet on which date — the whole catalogue, walked once.
+ *
+ * **No date is computed here.** `meetingDatesOn` is asked, because it is the
+ * same function the editor's clash check, the application's picker and the
+ * course page's own list already ask, and a second computation of "when does
+ * this meet" is how a cell comes to name a Wednesday the course page does not.
+ * The **enrolment unit** it takes is what makes a fall course contribute nothing
+ * to February and a block contribute only its own run.
+ *
+ * The dates of a two-track course are deduplicated before they are recorded: the
+ * tracks of a `year` course are disjoint, but a **block**'s picked dates are its
+ * own whichever track is asked, so a two-track block would otherwise be counted
+ * twice on each of its days.
+ *
+ * A block with no start date yet is `null` and contributes nothing. That is not
+ * a course drawn nowhere by accident — the dates it would be drawn on are the
+ * dates it has not got, and the clash check refuses to guess at them too.
+ */
+function meetingsByDate(year: SchoolYear, courses: readonly Course[]): Map<string, Course[]> {
+  const byDate = new Map<string, Course[]>();
+  for (const course of courses) {
+    const dates = new Set<string>();
+    for (const track of course.days) {
+      for (const date of meetingDatesOn(year, track, course.enrolment, course.dates) ?? []) {
+        dates.add(date);
+      }
+    }
+    for (const date of dates) byDate.set(date, [...(byDate.get(date) ?? []), course]);
+  }
+  return byDate;
+}
+
+/**
+ * One date's courses, grouped into the slots they meet in, earliest first.
+ *
+ * The slot is the start *and* the end, not the start alone: two courses opening
+ * at 9:00 and running to different times are two slots, and the school's own way
+ * of writing a meeting time (`timeLabel`) names both ends. Within a slot the
+ * offerings are alphabetical, which is the order the catalogue is read in
+ * everywhere else on the site.
+ */
+function slotsOf(courses: readonly Course[]): CellSlot[] {
+  const slots = new Map<string, CellSlot>();
+  for (const course of courses) {
+    const key = `${course.start}-${course.end}`;
+    const slot = slots.get(key) ?? {
+      start: course.start,
+      end: course.end,
+      time: timeLabel(course.start, course.end),
+      offerings: [],
+    };
+    slot.offerings.push({ title: course.title, href: classPath(course.slug) });
+    slots.set(key, slot);
+  }
+
+  for (const slot of slots.values()) {
+    slot.offerings.sort((a, b) => a.title.localeCompare(b.title));
+  }
+  return [...slots.values()].sort(
+    (a, b) =>
+      minutesOfDay(a.start) - minutesOfDay(b.start) || minutesOfDay(a.end) - minutesOfDay(b.end),
+  );
 }
 
 /**

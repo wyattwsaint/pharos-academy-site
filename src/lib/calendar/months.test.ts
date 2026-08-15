@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { CATALOGUE } from '../courses/catalogue.js';
 import { DAY_TRACKS } from '../courses/schedule.js';
 import type { CalendarEvent } from './event.js';
 import { monthGrid, type MonthCell } from './months.js';
@@ -8,6 +9,7 @@ import {
   previewRows,
   SEEDED_SCHOOL_YEAR,
   SEMESTERS,
+  trackColumn,
   trackOfDate,
   type SchoolYear,
 } from './year.js';
@@ -200,6 +202,114 @@ describe('the days the school is shut', () => {
     for (const [date, cell] of cells) {
       if (semesters.some((term) => date >= term.from && date <= term.to)) continue;
       expect(cell.noSchool, date).toBe(false);
+    }
+  });
+});
+
+/**
+ * What meets on a date (#235).
+ *
+ * The grid reveals the **meetings** rather than printing them, and this is where
+ * the revealing is proved: which offerings a date carries, which it does not, and
+ * how they are grouped. What Playwright is left is the one thing only a browser
+ * has — that the control opens, and opens from a keyboard.
+ */
+describe('the classes a date reveals', () => {
+  const cells = datedCells(monthGrid(SEEDED_SCHOOL_YEAR, [], CATALOGUE));
+  const bySlug = (slug: string) => CATALOGUE.find((course) => course.slug === slug)!;
+  /** Every offering on a date, slots flattened, as the links the panel shows. */
+  const hrefsOn = (date: string) =>
+    (cells.get(date)?.slots ?? []).flatMap((slot) => slot.offerings.map((one) => one.href));
+
+  it('carries the offerings meeting that day and no others', () => {
+    // The Monday of week 10, where the fall's Drawing joins the six year courses
+    // and the spring's Drawing — same track, same slot — is nowhere near it.
+    expect(hrefsOn('2026-11-09').sort()).toEqual(
+      [
+        '/classes/algebra-1',
+        '/classes/beginner-latin-grades-5-6',
+        '/classes/beginner-latin-grades-7-8',
+        '/classes/drawing-and-painting-grades-5-8',
+        '/classes/god-made-everything',
+        '/classes/kingdom-math',
+        '/classes/principles-of-drawing',
+      ].sort(),
+    );
+    expect(cells.get('2026-11-09')?.classLabel).toBe('7 classes');
+  });
+
+  it('gives a date whose day track runs nothing no control at all', () => {
+    /*
+     * The Tuesday track meets fourteen times in the seeded year and carries no
+     * courses, which is its routine state rather than a gap. The cell stays a
+     * school day — it is not marked shut — and simply offers nothing to open.
+     */
+    const tuesday = cells.get('2026-11-10')!;
+
+    expect(tuesday.noSchool).toBe(false);
+    expect(tuesday.slots).toEqual([]);
+    expect(tuesday.classLabel).toBeNull();
+  });
+
+  it('says "1 class" when one class meets', () => {
+    const alone = datedCells(monthGrid(SEEDED_SCHOOL_YEAR, [], [bySlug('kingdom-math')]));
+
+    expect(alone.get('2026-11-09')?.classLabel).toBe('1 class');
+  });
+
+  it('keeps a fall offering out of February and lets the spring one in', () => {
+    const february = trackColumn(SEEDED_SCHOOL_YEAR, 'Monday')
+      .map((meeting) => meeting.date)
+      .find((date) => date.startsWith('2027-02'))!;
+
+    // Both Drawings are the Monday 10:40 slot; the enrolment unit is the whole
+    // of what keeps them apart, and February is where it shows.
+    expect(hrefsOn(february)).toContain('/classes/drawing-and-painting-grades-2-4');
+    expect(hrefsOn(february)).not.toContain('/classes/drawing-and-painting-grades-5-8');
+    expect(hrefsOn('2026-11-09')).not.toContain('/classes/drawing-and-painting-grades-2-4');
+  });
+
+  it('gives a block only its own run', () => {
+    // Six Wednesdays from 14 October, over the Election Day closure, ending on
+    // 18 November — and nothing on the Wednesday after it.
+    const run = bySlug('the-virtue-of-kindness').dates;
+    const href = '/classes/the-virtue-of-kindness';
+
+    for (const date of run) expect(hrefsOn(date), date).toContain(href);
+    expect(hrefsOn('2026-11-25')).not.toContain(href);
+    expect(hrefsOn('2026-10-07')).not.toContain(href);
+    // And every date it is drawn on is one of its own.
+    for (const [date, cell] of cells) {
+      if (cell.slots.some((slot) => slot.offerings.some((one) => one.href === href))) {
+        expect(run, date).toContain(date);
+      }
+    }
+  });
+
+  it('groups the offerings by their time slot, earliest slot first', () => {
+    const monday = cells.get('2026-11-09')!;
+
+    expect(monday.slots.map((slot) => slot.time)).toEqual([
+      '9:00-10:00 a.m.',
+      '9:00-10:30 a.m.',
+      '10:10-11:10 a.m.',
+      '10:40 a.m.-12:10 p.m.',
+      '11:20 a.m.-12:20 p.m.',
+    ]);
+    // The 10:40 slot is two alternatives at once, not a sequence of two, and it
+    // is one group saying so rather than two lines that look consecutive.
+    expect(monday.slots[3]?.offerings.map((one) => one.title)).toEqual([
+      bySlug('drawing-and-painting-grades-5-8').title,
+      bySlug('kingdom-math').title,
+    ]);
+  });
+
+  it('reveals nothing when it is given no catalogue', () => {
+    // The page passes the courses; a caller that does not gets a grid with no
+    // controls on it rather than a grid that has invented a timetable.
+    for (const cell of datedCells(monthGrid(SEEDED_SCHOOL_YEAR, [])).values()) {
+      expect(cell.slots, cell.date).toEqual([]);
+      expect(cell.classLabel, cell.date).toBeNull();
     }
   });
 });

@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-import { monthGrid } from '../src/lib/calendar/months.js';
+import { monthGrid, type MonthCell } from '../src/lib/calendar/months.js';
 import { CALENDAR_FEED_PATH } from '../src/lib/calendar/views.js';
 import { CALENDAR_PATH } from '../src/lib/current-families/section.js';
 import { meetingsOf, SEEDED_SCHOOL_YEAR, trackColumn } from '../src/lib/calendar/year.js';
+import { CATALOGUE } from '../src/lib/courses/catalogue.js';
 
 /**
  * The calendar page and the feed, over HTTP (#23).
@@ -75,14 +76,37 @@ test.describe('the calendar page', () => {
  * The view model is proved without a browser in
  * `src/lib/calendar/months.test.ts`, date by date and against the sheet. What is
  * only true in a browser is here: that the months are drawn, that the page opens
- * on the one it currently is, that a one-off's detail can be opened from a
- * keyboard, and that a phone gets a list rather than seven columns it cannot
- * read.
+ * on the one it currently is, that a one-off's detail and a date's classes can
+ * be opened from a keyboard, and that a phone gets a list rather than seven
+ * columns it cannot read.
  *
  * That a **past** one-off is drawn is proved in `admin-calendar.spec.ts`, which
  * can make one; which one-offs the site holds today is no longer knowable from
  * the repository (#153).
  */
+/**
+ * The month grid alone.
+ *
+ * The sheet above it holds a `<time>` for every one of the same dates, so an
+ * unscoped date selector matches two cells on this page until #237 deletes it.
+ */
+const GRID = '[data-section="calendar-months"]';
+
+/**
+ * One date's cell, from the same view model the page renders.
+ *
+ * The seeded catalogue rather than the database's: the suite runs against the
+ * seeded one, and reading the expected classes out of the model is what keeps
+ * this file from being a second, hand-typed timetable.
+ */
+function cellOn(date: string): MonthCell {
+  const cell = monthGrid(SEEDED_SCHOOL_YEAR, [], CATALOGUE)
+    .flatMap((month) => month.weeks.flat())
+    .find((one) => one?.date === date);
+  if (!cell) throw new Error(`${date} is not on the seeded year's grid.`);
+  return cell;
+}
+
 test.describe('the month grid', () => {
   test('draws every month the year touches, and opens on the current one', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
@@ -167,18 +191,93 @@ test.describe('the month grid', () => {
     await expect(panel).toBeHidden();
   });
 
+  /*
+   * What meets on a date (#235).
+   *
+   * Which offerings a date carries, and which it does not, is proved without a
+   * browser in `months.test.ts` — term by term, block by block, and for the
+   * empty track. What is only true in a browser is here: that the control is
+   * named, that it opens from a keyboard, and that the link in the panel goes
+   * somewhere.
+   */
+  test('reveals what meets on a teaching date, grouped by time slot', async ({ page }) => {
+    await page.goto(CALENDAR_PATH);
+
+    // 4 November 2026, a Wednesday in the fall — read off the view model rather
+    // than typed, so the page and the model are held to the same count.
+    const expected = cellOn('2026-11-04');
+    const trigger = page.locator(`${GRID} td:has(time[datetime="2026-11-04"]) .classes-trigger`);
+    await expect(trigger).toContainText(expected.classLabel!);
+    // Distinguishable from the eighty-odd others: the date is in the name.
+    await expect(trigger).toHaveAccessibleName(`${expected.classLabel} on ${expected.label}`);
+
+    const panel = page.locator('#classes-2026-11-04');
+    await expect(panel).toBeHidden();
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toBeVisible();
+
+    // Grouped by slot, each group headed by the time it meets at.
+    const slots = panel.locator('.slot');
+    await expect(slots).toHaveCount(expected.slots.length);
+    for (const [index, slot] of expected.slots.entries()) {
+      await expect(slots.nth(index).locator('.slot-time')).toHaveText(slot.time);
+      await expect(slots.nth(index).locator('.slot-classes li')).toHaveCount(slot.offerings.length);
+    }
+
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+  });
+
+  test('links each class in the panel to its own page', async ({ page }) => {
+    await page.goto(CALENDAR_PATH);
+
+    const first = cellOn('2026-11-04').slots[0]!.offerings[0]!;
+    await page.locator(`${GRID} td:has(time[datetime="2026-11-04"]) .classes-trigger`).click();
+    const link = page.locator(`#classes-2026-11-04 a`, { hasText: first.title });
+
+    await expect(link).toHaveAttribute('href', first.href);
+    await link.click();
+    await expect(page).toHaveURL(new RegExp(`${first.href}$`));
+    await expect(page.locator('h1')).toContainText(first.title);
+  });
+
+  test('offers no control on a teaching date whose day track runs nothing', async ({ page }) => {
+    await page.goto(CALENDAR_PATH);
+
+    /*
+     * The Tuesday track meets and carries no courses, which is its routine
+     * state. A control that opened onto nothing would be a broken promise, and
+     * the cell is not ambiguous without one: it is an unmarked weekday, which
+     * reads as open with nothing scheduled.
+     */
+    const tuesday = page.locator(`${GRID} td:has(time[datetime="2026-11-10"])`);
+    await expect(tuesday).not.toContainText('No school');
+    await expect(tuesday.locator('.classes-trigger')).toHaveCount(0);
+  });
+
   test('is a dated list on a phone, with nothing off the side of the page', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(CALENDAR_PATH);
 
     const section = page.locator('[data-section="calendar-months"]');
-    // A date with nothing true of it steps out; a marked one stays and says
-    // which day it is in full, because there is no column heading left to.
-    await expect(section.locator('td:has(time[datetime="2026-11-04"])')).toBeHidden();
+    // A date with nothing true of it steps out — a Saturday, which no track
+    // teaches on and nothing is held on. A marked one stays and says which day
+    // it is in full, because there is no column heading left to.
+    await expect(section.locator('td:has(time[datetime="2026-11-07"])')).toBeHidden();
     await expect(section.locator('td:has(time[datetime="2026-11-25"])')).toBeVisible();
     await expect(section.locator('time[datetime="2026-11-25"]')).toContainText(
       'Wednesday 25 November',
     );
+
+    // And a teaching date stays too, with the same control and the same panel
+    // the wide grid has: a phone has less scan space, not more, so what is
+    // revealed rather than printed is revealed here as well (#235).
+    const trigger = section.locator('td:has(time[datetime="2026-11-04"]) .classes-trigger');
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+    await expect(page.locator('#classes-2026-11-04')).toBeVisible();
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
