@@ -935,8 +935,11 @@ column half filled in is extra information rather than a new defect.
 
 **It is derived, never stored.** There is no "checked" state and no "valid" flag:
 the browser re-derives it on every keystroke and the server on every render and
-every POST, from one rule set. Pressing **Check these choices** is a preview and
-never a step.
+every POST, from one rule set. There is no button a family presses to make the
+figures true: the totals follow their choices, and **Send the application** is
+the only button they are given. A browser with scripting off follows nothing, so
+that page keeps a preview — **Update the totals** — which asks the server for
+the same figures one round trip later and writes nothing.
 
 Not: "validated", "approved", "accepted" (the school does that, later, by
 reading it).

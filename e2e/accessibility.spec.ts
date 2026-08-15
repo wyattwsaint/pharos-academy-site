@@ -11,6 +11,7 @@ import { STAFF_PATH } from '../src/lib/people/views.js';
 import { POLICIES_PATH } from '../src/lib/policies/views.js';
 import { TEACH_PATH } from '../src/lib/teach/teach.js';
 import { AXE_TAGS, describeViolation } from './axe.js';
+import { previewTotals } from './preview.js';
 import { SUITE_RETIRED_COURSE } from './suite-admin.js';
 
 /**
@@ -107,14 +108,20 @@ async function rejectInquiry(page: Page) {
 
 /**
  * Tick the #31 AC 3 pair — Algebra 1 (year) and Beginner Latin 5-6 (year) both
- * meet Monday 11:20–12:20 — and ask for a check, so axe measures the page with
- * the clash warnings displayed. A check re-renders the warnings and **writes
- * nothing**, so like `rejectInquiry` this is safe against a real deployment.
+ * meet Monday 11:20–12:20 — and ask the server for the totals, so axe measures
+ * the page with the clash warnings displayed. That POST re-renders the warnings
+ * and **writes nothing**, so like `rejectInquiry` this is safe against a real
+ * deployment.
+ *
+ * The POST is made rather than clicked (#264): the button that asks for one is
+ * inside `<noscript>`, where a browser running axe cannot reach it. What is
+ * measured is the page a family meets — scripting on, warnings rendered by the
+ * server — and `previewTotals` is the request that button makes.
  */
 async function showClashes(page: Page) {
   await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
   await page.check('input[name="child-0-classes"][value="beginner-latin-grades-5-6:year"]');
-  await page.getByRole('button', { name: 'Check these choices' }).click();
+  await previewTotals(page);
   await expect(page.locator('li[data-severity="clash"]').first()).toBeVisible();
 }
 
@@ -252,10 +259,10 @@ const SURFACES: Surface[] = [
   { name: 'the statement of faith', path: '/about/beliefs', state: 'closed', open: noop },
   /*
    * #31 AC 11. The longest form on the site — three radio grids asked of three
-   * respondents, eight-way child rows of checkboxes, totals and two submits —
+   * respondents, eight-way child rows of checkboxes, totals and a submit —
    * measured as it is reached and with the clash warnings displayed, because
    * the warnings are a `role="status"` region with severity borders and they
-   * only exist in the checked state. Forms are where axe finds real
+   * only exist once something has been posted. Forms are where axe finds real
    * violations, and this one is the site's biggest.
    */
   { name: 'the application page', path: APPLICATION_PATH, state: 'closed', open: noop },
