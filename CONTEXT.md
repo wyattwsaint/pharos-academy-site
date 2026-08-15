@@ -431,10 +431,12 @@ the Statement of Faith body — stays in git as `.astro` and is *not* in the
 editable set. There is **no second seam inside the editable set**: everything in
 that list is equally theirs.
 
-**What is in the set can be removed as well as changed.** Editable means the
-school owns it, and owning it includes taking it out: a course, a person, an
-announcement and a policy can each be deleted from the admin, and a list may be
-emptied entirely if that is the truth. What cannot be removed is on the other
+**What is in the set can be removed as well as changed**, where it is a record
+rather than a settings screen. Editable means the school owns it, and owning it
+includes taking it out: a course, a person, an announcement and a policy can each
+be deleted from the admin, and any of those lists may be emptied entirely if that
+is the truth. School details and money settings are single rows the school edits
+and nobody deletes. What cannot be removed at all is on the other
 side of the seam — an application, an inquiry and [agreed terms](#agreed-terms)
 are records of what a family sent, not the school's content, and were never in
 this list (ADR-0021).
@@ -597,15 +599,16 @@ morning it happens. The subscribed calendar is deliberately unfiltered: it is th
 record of the year, and the phone reading it decides what to draw.
 
 It is **deleted rather than kept**: a cancelled concert left on a subscribed feed
-is a family driving to a school that is dark. It was once the only record on this
-site that was, and it is not any more — a course, a person, an announcement and a
-policy are all removable too. What has not changed is **why removing it confirms
-first**: the press is final, there is no undo, and a subscribed phone acts on it
-without anybody here seeing. So it confirms on a screen naming the one-off and its
-date and saying again what a subscribed phone will do — the same round trip
-[money settings](#money-settings) uses, and the one every other delete on the site
-now follows. Confirming lands back on the list, which names what went and whether
-the [republish](#republish) reached the live site.
+is a family driving to a school that is dark. It was once the only piece of the
+school's own content that was, and it is not any more — a course, a person, an
+announcement and a policy are all removable too. What has not changed is **why
+removing it confirms first**: the press is final, there is no undo, and a
+subscribed phone acts on it without anybody here seeing. So it confirms on a
+screen naming the one-off and its date and saying again what a subscribed phone
+will do — the same round trip [money settings](#money-settings) uses, and the one
+every other delete on the site now follows. Confirming lands back on the list,
+which names what went and whether the [republish](#republish) reached the live
+site.
 
 Not: "event" on its own (which also names an application's lifecycle events),
 "closure" (a day the school is shut, which belongs to the year), "announcement".
@@ -726,14 +729,6 @@ resolving. The confirmation names what is kept as well as what goes, because
 "delete" would otherwise read as though the documents went with it (ADR-0021). A
 policy with no document yet deletes with nothing left behind, which is the
 mistake case it is mostly for.
-
-**A policy brought back keeps its address and its numbering.** Re-adding one
-reuses the slug it always had — that address is on printed handbooks and behind a
-301 from the old site — and its next upload continues from the surviving version
-numbers, so no `slug@n` ever names two different documents. The site cannot tell a
-policy returning from an unrelated new one that happens to mint the same slug, so
-creating a policy at an address that already has kept documents **asks which is
-meant**.
 
 The **updated date** is stamped from the upload and is typeable nowhere: there is
 no date control on either policy form, so the published date cannot disagree with

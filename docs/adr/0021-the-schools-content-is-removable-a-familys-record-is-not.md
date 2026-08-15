@@ -29,8 +29,9 @@ it, and nobody is relying on the duplicate instructor.
 But the append-only stance is not uniformly wrong, and the reason it exists is
 real. This site holds two different kinds of thing under one admin. Some of it is
 **what the school says** — the catalogue, the staff page, the notices, the policy
-set. The rest is **what a family sent** — an [application](../../CONTEXT.md#complete-application),
-an inquiry, [agreed terms](../../CONTEXT.md#agreed-terms). The second kind is a
+set. The rest is **what a family sent** — an
+[application](../../CONTEXT.md#complete-application), an inquiry,
+[agreed terms](../../CONTEXT.md#agreed-terms). The second kind is a
 record of a transaction between two parties, and one party does not get to edit
 it. [ADR-0006](0006-agreed-terms-are-copied-not-referenced.md) already made that
 argument for money: agreed terms are a frozen copy rather than a foreign key,
@@ -102,7 +103,7 @@ rename would otherwise rewrite what the family was shown, which is the ADR-0006
 argument applied to the catalogue instead of to money.
 
 **No undo and no soft delete.** The safety net is a confirmation screen that names
-the thing before it goes and says plainly that there is nothing to undo — the
+the thing before it goes and says plainly that there is nothing to undo — the same
 round trip removing a one-off already uses. Putting something back means typing it
 in again.
 
@@ -135,12 +136,10 @@ table are untouched.
   ask whether the record is the school's or the family's.
 - **Two admin screens now say something false** and change with the code. Removing
   those sentences is not a copy tidy-up; it is this decision landing.
-- **"Retired" is not in this ADR.** Retirement is a convenience — a reversible,
-  unconfirmed, visible state for a course or a person that is expected back — and
-  it decides nothing about what may be removed. It is defined in
-  [`CONTEXT.md`](../../CONTEXT.md#retired) and nowhere else. Nothing on this site
-  is retireable-but-not-deletable; retire is the low-stakes move and delete is the
-  escape hatch, never the other way round.
+- **"Retired" is not in this ADR.** Retirement is a convenience, and it decides
+  nothing about what may be removed — everything retireable is also deletable, so
+  no rule above turns on it. It is defined in
+  [`CONTEXT.md`](../../CONTEXT.md#retired) and nowhere else.
 - **Sequencing is load-bearing, in two places and in opposite directions.**
   Course delete must ship *after* the unresolved-key readers, or a delete silently
   edits a submitted application. Policy delete must ship *after* the cascade is

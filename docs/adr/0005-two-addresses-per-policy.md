@@ -1,6 +1,11 @@
 # ADR-0005 — Two addresses per policy: a fixed one that revalidates, a versioned one that is immutable
 
-**Status:** accepted
+**Status:** accepted; the permanence of the policy row superseded by
+[ADR-0021](0021-the-schools-content-is-removable-a-familys-record-is-not.md)
+(#252). A policy can be deleted from the admin, so "nothing can take an address
+down" below is now a claim about the *versioned* addresses only. Everything else
+stands — two addresses, the caching split, and the append-only version table
+whose rows survive the policy and go on serving the same bytes.
 **Date:** 2026-08-05
 **Context:** [#28](https://github.com/wyattwsaint/pharos-academy-site/issues/28), implements [#18](https://github.com/wyattwsaint/pharos-academy-site/issues/18)
 
