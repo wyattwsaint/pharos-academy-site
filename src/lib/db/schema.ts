@@ -152,7 +152,7 @@ export const schoolDetails = pgTable('school_details', {
 });
 
 /**
- * The catalogue — the nineteen courses, and the one place they exist (#22).
+ * The catalogue — the school's courses, and the one place they exist (#22).
  *
  * The live site publishes these across nine hand-maintained artefacts that
  * already disagree with one another. This table is the answer to that: a parent

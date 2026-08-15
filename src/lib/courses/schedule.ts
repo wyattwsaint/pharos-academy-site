@@ -75,8 +75,8 @@ export function contactHours(course: Course): number {
  *
  * Derived from the two 24-hour times rather than stored, and the meridiem is
  * written once when both ends share it and twice when they do not, which is
- * precisely the school's own habit. `catalogue.test.ts` regenerates all
- * nineteen of these and compares them against the published strings.
+ * precisely the school's own habit. `catalogue.test.ts` regenerates every one
+ * of these and compares them against the published strings.
  */
 export function timeLabel(start: string, end: string): string {
   const from = clockParts(start);

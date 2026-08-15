@@ -9,7 +9,7 @@ import type { Course, EnrolmentUnit, RateTier, Stage } from './course.js';
  *
  * Every public surface goes through here, which is the point of #22: By Age, By
  * Day, the full descriptions and each class's own page all render the same
- * nineteen rows, so they cannot disagree with one another the way the live
+ * rows, so they cannot disagree with one another the way the live
  * site's nine artefacts do.
  *
  * The row and the domain type are close but not identical — the row is columns,
@@ -22,7 +22,7 @@ import type { Course, EnrolmentUnit, RateTier, Stage } from './course.js';
  *
  * An empty catalogue is treated as a broken deployment rather than as a school
  * with no classes, for the same reason `getSchoolDetails` refuses a missing
- * row: the migration seeds all nineteen, so "none" means the migration has not
+ * row: the migration seeds the whole catalogue, so "none" means it has not
  * been run against this database — and a `/classes` page rendering four empty
  * surfaces is how that ships to production and is discovered by a parent.
  */

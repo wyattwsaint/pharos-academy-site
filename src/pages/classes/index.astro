@@ -23,9 +23,12 @@ import { SITE_URL } from '../../lib/site.js';
  * course appears under every band its range touches, which is why a class shows
  * up more than once and why the panel ids are prefixed with the band.
  *
- * The count in the heading is `courses.length`, not a typed word (#138). Add a
- * class in the admin and the heading counts it; nothing here can say a number
- * the page below it does not show.
+ * The heading states no count at all (#247). It stated a derived one until
+ * then, which was at least always true; what it was not was the school's to
+ * say. How many classes there are is a claim about the size of the school, and
+ * the page below already answers it for anyone who wants to count. The band
+ * counts stay, because "8 classes are open to this age" is a fact about the
+ * reader's child rather than about the school.
  *
  * Algebra 1 is in every band. It publishes no numeric age range — its gate is a
  * prerequisite — and the rule that a course with no range is shown to everyone
@@ -65,7 +68,7 @@ const jsonLd = [
 >
   <ClassesHeader
     current="by-age"
-    heading={`${courses.length} Classes, by the Age They Are Written For`}
+    heading="Our Classes, by the Age They Are Written For"
     lede="Ages first, because that is how the school writes them — the grade equivalents on each class are approximations. A class appears under every age it is open to."
   />
 

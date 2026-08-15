@@ -23,8 +23,10 @@ import { listPeople } from '../../lib/people/store.js';
  * with them; what makes it a distinct surface is that everything is open at
  * once, for the parent who would rather read than click.
  *
- * The count in the lede is `courses.length` (#138), so "all" is a promise the
- * page keeps whatever the catalogue holds.
+ * The lede states no count (#247). It carried a derived one, which made "all"
+ * a promise with a number attached; without the number the promise is the same
+ * and the page is still the thing that keeps it — every course row is below,
+ * and the jump nav lists them.
  */
 const view = viewFor('full-descriptions');
 const db = await getDb();
@@ -48,7 +50,7 @@ const jsonLd = [courseListJsonLd(courses, view.path, Astro.site ?? SITE_URL)];
   <ClassesHeader
     current="full-descriptions"
     heading="Every Class, in Full"
-    lede={`All ${courses.length}, alphabetically, with the description, texts, prerequisites and fees the school publishes for each.`}
+    lede="Every class, alphabetically, with the description, texts, prerequisites and fees the school publishes for each."
   />
 
   <section class="band" data-section="full-descriptions">

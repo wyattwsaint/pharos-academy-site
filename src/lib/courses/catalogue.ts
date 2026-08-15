@@ -1,5 +1,5 @@
 /**
- * The nineteen courses of 2026–2027, reconciled.
+ * The courses of 2026–2027, reconciled.
  *
  * This is the seed, not the store: `migrations.ts` turns it into rows and every
  * public surface reads it back out of Neon. It is held in the repo because the
@@ -10,8 +10,8 @@
  * Every string below is the school's own, carried from `docs/mirror/` unedited.
  * What is deliberately *absent* is any number that can be derived: there is no
  * price and no contact-hours field, because both are computed from `weeks`, the
- * meeting times and the rate tier (`pricing.ts`), and the tests recompute all
- * nineteen against the published figures.
+ * meeting times and the rate tier (`pricing.ts`), and the tests recompute every
+ * one of them against the published figures.
  *
  * Two entries carry the school's own unresolved questions rather than a
  * resolution invented here: *Poetry, Plays, and Patterns* has "TBA" for its
@@ -60,7 +60,7 @@ const DRAWING_AND_PAINTING_DESCRIPTION =
 /**
  * A seed row: everything the school published, minus what only the editor
  * manages. `enrolmentUnits` and the stamp are derived below rather than written
- * nineteen times, because the seed's rule is one rule: a course starts
+ * once per row, because the seed's rule is one rule: a course starts
  * purchasable only as its own shape.
  */
 type SeedCourse = Omit<Course, 'enrolmentUnits' | 'lastEditedBy' | 'lastEditedAt'>;

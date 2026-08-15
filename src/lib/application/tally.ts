@@ -66,8 +66,8 @@ export type TallyEntry = {
  *
  * Newest application first, so the first sighting of a seat is the family's
  * latest word on it and later sightings only add the note. Courses come back in
- * catalogue order and only when somebody chose them: a tally listing nineteen
- * classes, sixteen of them empty, is a tally nobody reads to the bottom of.
+ * catalogue order and only when somebody chose them: a tally listing the whole
+ * catalogue, most of it empty, is a tally nobody reads to the bottom of.
  */
 export function classTally(
   applications: readonly TalliedApplication[],

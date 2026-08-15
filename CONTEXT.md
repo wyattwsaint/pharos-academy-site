@@ -146,10 +146,15 @@ settings are seeded and not.
 
 A **course** paired with an **enrolment unit** — the concrete thing a family
 selects and pays a deposit against. The **catalogue** is the courses — however
-many the school currently publishes, which is a number the site derives and
-never types (#138); "offerings" is what the application flow actually operates
-on, because *Latin I, Fall* and *Latin I, Year* are two different purchases of
-one course.
+many the school currently publishes, which is a number **no surface states, in
+any form** (#247, tightening #138). Not typed, and not derived either: a
+correct count is still the site announcing how big the school is, and the pages
+list every class for anyone who wants to count. What survives is the count of a
+*subset* — how many classes are open to a given age, meet on a given day, or
+fall on a given date — because that is a fact about the reader's question
+rather than a claim about the school. "Offerings" is what the application flow
+actually operates on, because *Latin I, Fall* and *Latin I, Year* are two
+different purchases of one course.
 
 Not: "product", "SKU", "enrolment" on its own.
 

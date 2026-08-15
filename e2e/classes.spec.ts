@@ -67,31 +67,44 @@ test.describe('the four surfaces', () => {
     }
   });
 
-  test('count the classes they show rather than stating a typed number', async ({ page }) => {
-    // #138. The heading and the lede quote the catalogue, so the number a
-    // parent reads is the number of cards under it — not a word somebody typed
-    // once and stopped maintaining. Compared against what the page rendered
-    // rather than against `CATALOGUE.length`, because the course editor can add
-    // rows past the seeded ones (`live-routes.ts`) and a page counting them is
-    // right, not broken. The seed is the floor: never fewer than it holds.
+  test('state no class count in the heading or the lede', async ({ page }) => {
+    // #247, reversing what #138 left. The heading quoted `courses.length` and
+    // the lede quoted it again, so the number was always true and was still the
+    // site saying how big the school is. Asserted on what rendered rather than
+    // on the source, because a count is a count whether it was typed or derived
+    // — and the classes are still all there, which is what the test above says.
     await page.goto('/classes');
-    // Distinct slugs, because a class shows up under every band it is open to.
-    const shown = new Set(
-      await page.locator('[data-section="by-age"] .classcard').evaluateAll((cards) =>
-        cards.map((card) => card.getAttribute('data-course')),
-      ),
-    );
-    expect(shown.size).toBeGreaterThanOrEqual(CATALOGUE.length);
-    await expect(page.locator('h1')).toHaveText(
-      `${shown.size} Classes, by the Age They Are Written For`,
-    );
+    await expect(page.locator('h1')).toHaveText('Our Classes, by the Age They Are Written For');
+    await expect(page.locator('[data-section="classes-header"] .sub')).not.toHaveText(/\d/);
 
     await page.goto('/classes/descriptions');
     const listed = await page.locator('[data-section="full-descriptions"] [data-course]').count();
+    // The seed is the floor: the course editor can add rows past it
+    // (`live-routes.ts`), and a page showing more of them is right, not broken.
     expect(listed).toBeGreaterThanOrEqual(CATALOGUE.length);
-    await expect(page.locator('[data-section="classes-header"] .sub')).toContainText(
-      `All ${listed},`,
-    );
+    await expect(page.locator('h1')).toHaveText('Every Class, in Full');
+    await expect(page.locator('[data-section="classes-header"] .sub')).not.toHaveText(/\d/);
+  });
+
+  test('publish no class count in the markup either', async ({ page }) => {
+    // #247. `numberOfItems` was the count the heading used to state, in the one
+    // place a crawler reads. The list itself is untouched: what is dropped is
+    // the assertion of a total, not the classes.
+    for (const path of ['/classes', '/classes/by-day', '/classes/descriptions']) {
+      await page.goto(path);
+      const graphs = await page
+        .locator('script[type="application/ld+json"]')
+        .evaluateAll((tags) => tags.map((tag) => JSON.parse(tag.textContent ?? '{}')));
+      const lists = graphs
+        .flatMap((graph) => (graph['@graph'] ?? [graph]) as Record<string, unknown>[])
+        .filter((node) => node['@type'] === 'ItemList');
+
+      expect(lists, path).toHaveLength(1);
+      expect(lists[0], path).not.toHaveProperty('numberOfItems');
+      expect((lists[0].itemListElement as unknown[]).length, path).toBeGreaterThanOrEqual(
+        CATALOGUE.length,
+      );
+    }
   });
 });
 
