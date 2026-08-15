@@ -21,13 +21,14 @@ import {
   type CourseFormFields,
 } from '../../../lib/admin/courses.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
+import { pressRetirement, RETIRE_VALUES } from '../../../lib/admin/retirement.js';
 import { saveErrorMessage } from '../../../lib/admin/save-errors.js';
 import {
   describeRevalidation,
   revalidateAll,
   revalidationOrigin,
 } from '../../../lib/admin/revalidate.js';
-import { formatStamp } from '../../../lib/admin/formatting.js';
+import { formatDay, formatStamp } from '../../../lib/admin/formatting.js';
 import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
 import { fullDateLabel, type SchoolYear } from '../../../lib/calendar/year.js';
 import { getSchoolYear } from '../../../lib/calendar/store.js';
@@ -136,26 +137,50 @@ let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republi
 let fields: CourseFormFields | null = null;
 
 if (Astro.request.method === 'POST') {
-  const parsed = parseCourse(await Astro.request.formData(), { year, instructorSlugs });
-  values = parsed.values;
-  errors = parsed.errors;
-  fields = parsed.fields;
+  const form = await Astro.request.formData();
+  /*
+   * Two buttons post to this address, and Retire is read first (#263).
+   *
+   * It is not a field of the course form and never goes through the parser: a
+   * retirement is one column and a stamp, where a save is the whole row, and
+   * folding them together would mean a class could be brought back by a save
+   * that only fixed a typo. `parseRetirement` answers null for the Save form,
+   * which is what falls through to the parser below.
+   */
+  const pressed = course
+    ? await pressRetirement({ db, form, slug: course.slug, actorName: actor.name, url: Astro.url })
+    : null;
 
-  if (Object.keys(errors).length > 0) {
-    banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
-  } else {
-    try {
-      course = course
-        ? await saveCourse(db, course.slug, parsed.edit, actor.name)
-        : await createCourse(db, slugFor(parsed.edit.title), parsed.edit, actor.name);
+  if (pressed) {
+    banner = pressed.banner;
+    // Absent when the write was refused, which leaves the screen showing the
+    // class exactly as it was — which is what happened to it.
+    if (pressed.course) {
+      course = pressed.course;
       values = fieldsOf(course);
-      const result = await revalidateAll({
-        origin: revalidationOrigin(Astro.url),
-        bypassToken: isrBypassToken(),
-      });
-      banner = { ok: result.ok, message: describeRevalidation(result) };
-    } catch (error) {
-      banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
+    }
+  } else {
+    const parsed = parseCourse(form, { year, instructorSlugs });
+    values = parsed.values;
+    errors = parsed.errors;
+    fields = parsed.fields;
+
+    if (Object.keys(errors).length > 0) {
+      banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+    } else {
+      try {
+        course = course
+          ? await saveCourse(db, course.slug, parsed.edit, actor.name)
+          : await createCourse(db, slugFor(parsed.edit.title), parsed.edit, actor.name);
+        values = fieldsOf(course);
+        const result = await revalidateAll({
+          origin: revalidationOrigin(Astro.url),
+          bypassToken: isrBypassToken(),
+        });
+        banner = { ok: result.ok, message: describeRevalidation(result) };
+      } catch (error) {
+        banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
+      }
     }
   }
 }
@@ -618,6 +643,43 @@ function warningLine(warning: ClashWarning): string {
 
     <AdminButton class="self-start">Save</AdminButton>
   </form>
+
+  {
+    /*
+      Retire, outside the form above because a form cannot hold another one —
+      and the separation is honest anyway: this button writes one column and
+      the Save button writes the row.
+
+      One press, no confirmation. Nothing is lost, the class keeps its address,
+      and the way back is the same button saying the opposite (#263).
+    */
+    course && (
+      <section class="mt-10 border-t border-navy/15 pt-6" data-testid="retirement">
+        <h2 class="text-xl font-semibold text-navy">
+          {course.retiredAt ? 'Retired' : 'Running'}
+        </h2>
+        <p class="mt-2">
+          {course.retiredAt
+            ? `Retired ${formatDay(course.retiredAt)}. It is off the class lists, off the timetable and not offered on the application — and it still answers at its own address, saying the school is not currently running it. Bringing it back puts it on every list it left, with nothing retyped.`
+            : 'The school is running this class, so it is by age, by day, in the full descriptions and on the application. Retiring takes it off all four and leaves its page up, saying the school is not currently running it. Nothing is lost and it is one press back.'}
+        </p>
+        <form method="post" action={action} class="mt-3">
+          <input
+            type="hidden"
+            name="retire"
+            value={course.retiredAt ? RETIRE_VALUES.unretire : RETIRE_VALUES.retire}
+          />
+          <AdminButton
+            variant={course.retiredAt ? 'primary' : 'secondary'}
+            pendingLabel={course.retiredAt ? 'Bringing it back…' : 'Retiring…'}
+            testId="retire"
+          >
+            {course.retiredAt ? 'Bring it back' : 'Retire'}
+          </AdminButton>
+        </form>
+      </section>
+    )
+  }
 
   {
     stamp && (

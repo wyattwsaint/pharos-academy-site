@@ -220,6 +220,20 @@ export const courses = pgTable('courses', {
    * absence rather than inventing a name.
    */
   instructorSlug: text('instructor_slug').references(() => people.slug),
+  /**
+   * When the school stopped running this class, or null while it runs (#263).
+   *
+   * A timestamp rather than a boolean, because "when did we stop running this?"
+   * is a question the office asks and a `retired boolean` cannot answer. Null is
+   * the live state, so every row written before this column existed is live —
+   * which is what they all were.
+   *
+   * Retiring is **not** deleting. The row stays, its class page stays at its own
+   * address, and the applications that named it still count in the class tally;
+   * what a retired course loses is the catalogue's listings, the timetable and
+   * the Apply page's offerings (`listCourses`).
+   */
+  retiredAt: timestamp('retired_at', { withTimezone: true }),
   /** The stamp: who saved this course last, and when. Overwritten, never appended. */
   lastEditedBy: text('last_edited_by'),
   lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
@@ -248,6 +262,16 @@ export const people = pgTable('people', {
   photo: text('photo'),
   /** Position on the staff page, low first. Null means not leadership. */
   leadershipRank: integer('leadership_rank'),
+  /**
+   * When the school stopped listing this person, or null while it does (#263).
+   *
+   * The same column as `courses.retired_at`, added by the same migration and
+   * for the same reason — an instructor who has left is not a row to delete,
+   * because the classes they taught point at it. Nothing reads it yet: retiring
+   * a person is its own ticket, and this is here so that ticket needs no second
+   * migration against a live database.
+   */
+  retiredAt: timestamp('retired_at', { withTimezone: true }),
   /** The stamp: who saved this person last, and when. Overwritten, never appended. */
   lastEditedBy: text('last_edited_by'),
   lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),

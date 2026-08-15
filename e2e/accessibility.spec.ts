@@ -11,6 +11,7 @@ import { STAFF_PATH } from '../src/lib/people/views.js';
 import { POLICIES_PATH } from '../src/lib/policies/views.js';
 import { TEACH_PATH } from '../src/lib/teach/teach.js';
 import { AXE_TAGS, describeViolation } from './axe.js';
+import { SUITE_RETIRED_COURSE } from './suite-admin.js';
 
 /**
  * WCAG 2.2 AA is a hard target (spec #18 §"Accessibility"), and the acceptance
@@ -125,7 +126,16 @@ const noop = async (_page: Page) => {};
  * One list, so a page added to it is measured at all five widths by
  * construction rather than by somebody remembering to copy a block.
  */
-const SURFACES = [
+type Surface = {
+  name: string;
+  path: string;
+  state: string;
+  open: (page: Page) => Promise<void>;
+  /** Measured only against a server this config started — see the retired class. */
+  localOnly?: true;
+};
+
+const SURFACES: Surface[] = [
   { name: 'the home page', path: '/', state: 'closed', open: noop },
   { name: 'the home page', path: '/', state: 'with a H.O.P.E. card open', open: openHopeCard },
   {
@@ -255,12 +265,40 @@ const SURFACES = [
     state: 'with clash warnings displayed',
     open: showClashes,
   },
+  /*
+   * #263 AC 13. A class the school has retired keeps its address and says so,
+   * which is a state no other surface has: a notice band above facts written in
+   * the past tense, and a page with the primary call to action taken off it.
+   *
+   * Local only, and that is a fact about the school rather than about the test.
+   * The suite's throwaway database retires a class of its own so this state
+   * always exists to be measured (`SUITE_RETIRED_COURSE`); a real deployment
+   * has whatever the school has actually retired, which on the day the ticket
+   * ships is nothing.
+   */
+  {
+    name: 'a retired class page',
+    path: `/classes/${SUITE_RETIRED_COURSE}`,
+    state: 'closed',
+    open: noop,
+    localOnly: true,
+  },
 ];
 
+/** True unless the suite is pointed at a real deployment. */
+const LOCAL = !process.env.PLAYWRIGHT_BASE_URL;
+
 for (const surface of SURFACES) {
+  const skip = () =>
+    test.skip(
+      !LOCAL && surface.localOnly === true,
+      'only the suite’s own throwaway database has a retired class in it',
+    );
+
   test.describe(`${surface.name} (${surface.path}), ${surface.state}`, () => {
     for (const width of WIDTHS) {
       test(`has zero axe violations at ${width}px`, async ({ page }) => {
+        skip();
         await page.setViewportSize({ width, height: 900 });
         await page.goto(surface.path);
         await surface.open(page);
@@ -271,6 +309,7 @@ for (const surface of SURFACES) {
       });
 
       test(`does not overflow horizontally at ${width}px`, async ({ page }) => {
+        skip();
         await page.setViewportSize({ width, height: 900 });
         await page.goto(surface.path);
         await surface.open(page);
@@ -334,7 +373,8 @@ test.describe('an inline prose link', () => {
  * asserting it three times only buys flakiness.
  */
 test.describe('every page', () => {
-  for (const path of [...new Set(SURFACES.map((surface) => surface.path))]) {
+  const everywhere = SURFACES.filter((surface) => LOCAL || surface.localOnly !== true);
+  for (const path of [...new Set(everywhere.map((surface) => surface.path))]) {
     test(`${path} has exactly one h1`, async ({ page }) => {
       await page.goto(path);
       await expect(page.locator('h1')).toHaveCount(1);

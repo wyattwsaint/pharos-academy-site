@@ -63,7 +63,7 @@ const DRAWING_AND_PAINTING_DESCRIPTION =
  * once per row, because the seed's rule is one rule: a course starts
  * purchasable only as its own shape.
  */
-type SeedCourse = Omit<Course, 'enrolmentUnits' | 'lastEditedBy' | 'lastEditedAt'>;
+type SeedCourse = Omit<Course, 'enrolmentUnits' | 'retiredAt' | 'lastEditedBy' | 'lastEditedAt'>;
 
 const SEEDS: readonly SeedCourse[] = [
   {
@@ -689,6 +689,8 @@ const SEEDS: readonly SeedCourse[] = [
 export const CATALOGUE: readonly Course[] = SEEDS.map((seed) => ({
   ...seed,
   enrolmentUnits: [seed.enrolment],
+  // Every seeded class is one the school runs, which is what null says (#263).
+  retiredAt: null,
   lastEditedBy: null,
   lastEditedAt: null,
 }));

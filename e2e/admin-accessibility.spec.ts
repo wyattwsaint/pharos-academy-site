@@ -5,7 +5,7 @@ import { SEEDED_ANNOUNCEMENTS } from '../src/lib/announcements/announcement.js';
 import { eventSlug } from '../src/lib/calendar/event.js';
 import { addDays, schoolToday } from '../src/lib/calendar/year.js';
 import { AXE_TAGS, describeViolation } from './axe.js';
-import { SUITE_ADMIN, SUITE_KEPT, signIn } from './suite-admin.js';
+import { SUITE_ADMIN, SUITE_KEPT, SUITE_RETIRED_COURSE, signIn } from './suite-admin.js';
 
 /**
  * The lock (#202).
@@ -76,9 +76,19 @@ const SCREENS = [
   // three groups of checkboxes, four selects and a computed price that is
   // read-only text rather than a disabled input, which is the part a
   // screen reader has to be told correctly.
+  /*
+   * #263. This screen also carries the retired section — a second list beneath
+   * the first, each row a heading, a date and a one-press form. It is always
+   * populated here: the throwaway database retires a class of its own
+   * (`SUITE_RETIRED_COURSE`) so the section is a measured surface rather than
+   * one that only appears on a day the office has retired something.
+   */
   '/admin/courses',
   '/admin/courses/algebra-1',
   '/admin/courses/new',
+  // #263. The same two states as the list, on the class's own screen: the
+  // Retire section is "Running" here and "Retired" on the class below it.
+  `/admin/courses/${SUITE_RETIRED_COURSE}`,
   // #25. A list of what families typed, with a warning line on any inquiry
   // the school was not emailed about — and the one admin screen whose content
   // comes from the public site rather than from an admin form.

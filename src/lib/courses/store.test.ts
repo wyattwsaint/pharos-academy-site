@@ -4,7 +4,16 @@ import { createEphemeralDatabase, runMigrations, type Db } from '../db/client.js
 import { courses as coursesTable } from '../db/schema.js';
 import { CATALOGUE } from './catalogue.js';
 import type { Course } from './course.js';
-import { createCourse, getCourse, listCourses, saveCourse, type CourseEdit } from './store.js';
+import {
+  createCourse,
+  getCourse,
+  listCourses,
+  listEveryCourse,
+  retireCourse,
+  saveCourse,
+  unretireCourse,
+  type CourseEdit,
+} from './store.js';
 
 /**
  * The catalogue, against real Postgres.
@@ -86,7 +95,7 @@ describe('the seeded catalogue', () => {
 
 /** The course as an edit — everything but the key and the stamp. */
 function editOf(course: Course): CourseEdit {
-  const { slug: _slug, lastEditedBy: _by, lastEditedAt: _at, ...edit } = course;
+  const { slug: _slug, retiredAt: _retired, lastEditedBy: _by, lastEditedAt: _at, ...edit } = course;
   return edit;
 }
 
@@ -192,6 +201,18 @@ describe('adding a course', () => {
     expect((await getCourse(db, 'winter-birds'))?.instructorSlug).toBeNull();
   });
 
+  it('adds it running, not retired', async () => {
+    const donor = (await getCourse(db, 'backyard-botany'))!;
+    await createCourse(
+      db,
+      'winter-birds',
+      { ...editOf(donor), title: 'Winter Birds', enrolment: 'spring', enrolmentUnits: ['spring'] },
+      'Jill Kilker',
+    );
+
+    expect((await getCourse(db, 'winter-birds'))?.retiredAt).toBeNull();
+  });
+
   it('refuses an instructor who is not on the one list of people', async () => {
     // ADR-0004's foreign key doing its job at authoring time: the catalogue
     // cannot name somebody the staff page does not have.
@@ -204,5 +225,99 @@ describe('adding a course', () => {
         'Jill Kilker',
       ),
     ).rejects.toThrow();
+  });
+});
+
+/**
+ * Retiring a class, and bringing it back (#263).
+ *
+ * The two readers are the whole mechanism, so they are what is asserted:
+ * `listCourses` is what every public surface renders and a retired class is not
+ * in it, `listEveryCourse` is the school's own list and it is. Everything else
+ * — the age bands, the timetable, the Apply page's offerings — is downstream of
+ * the first, and the class page and the class tally are downstream of the
+ * second, so proving the pair proves the surfaces.
+ */
+describe('retiring a course', () => {
+  it('takes it out of the published list and leaves it in the school’s own', async () => {
+    await retireCourse(db, 'backyard-botany', 'Jill Kilker');
+
+    const published = (await listCourses(db)).map((course) => course.slug);
+    const every = (await listEveryCourse(db)).map((course) => course.slug);
+
+    expect(published).not.toContain('backyard-botany');
+    expect(every).toContain('backyard-botany');
+  });
+
+  it('still answers at its own address, which is what keeps the page up', async () => {
+    // A printed flyer and the redirect from the old site both point here, so a
+    // retired class says the school is not running it rather than 404ing.
+    await retireCourse(db, 'backyard-botany', 'Jill Kilker');
+    expect((await getCourse(db, 'backyard-botany'))?.title).toBe('Backyard Botany');
+  });
+
+  it('records when it happened, and stamps the row like any other save', async () => {
+    const at = new Date('2026-08-15T14:00:00Z');
+    const retired = await retireCourse(db, 'backyard-botany', 'Jill Kilker', at);
+
+    expect(retired.retiredAt).toEqual(at);
+    expect(retired.lastEditedBy).toBe('Jill Kilker');
+    expect(retired.lastEditedAt).toEqual(at);
+  });
+
+  it('clears the date on the way back, and stamps that too', async () => {
+    const at = new Date('2026-09-01T14:00:00Z');
+    await retireCourse(db, 'backyard-botany', 'Jill Kilker');
+    const back = await unretireCourse(db, 'backyard-botany', 'George Jensen', at);
+
+    expect(back.retiredAt).toBeNull();
+    expect(back.lastEditedBy).toBe('George Jensen');
+    expect(back.lastEditedAt).toEqual(at);
+    expect((await listCourses(db)).map((course) => course.slug)).toContain('backyard-botany');
+  });
+
+  it('loses nothing on the round trip — no field is retyped', async () => {
+    const before = (await getCourse(db, 'backyard-botany'))!;
+    await retireCourse(db, 'backyard-botany', 'Jill Kilker');
+    const after = await unretireCourse(db, 'backyard-botany', 'Jill Kilker');
+
+    // Everything but the two things retiring is *for*: the date, and the stamp
+    // that says who last touched the row.
+    const { retiredAt: _wasRetired, lastEditedBy: _by, lastEditedAt: _at, ...kept } = before;
+    expect(after).toMatchObject(kept);
+  });
+
+  it('refuses to retire a course that is not there', async () => {
+    await expect(retireCourse(db, 'underwater-basket-weaving', 'Jill Kilker')).rejects.toThrow(
+      /underwater-basket-weaving/,
+    );
+  });
+
+  it('does not read a fully retired catalogue as an unmigrated database', async () => {
+    // The empty-catalogue guard is about rows, not about listings: a school
+    // that has retired everything has made a decision, where a database with no
+    // course rows in it has never had the migration run. Throwing here would
+    // take the whole public site down on the last retire.
+    for (const course of await listEveryCourse(db)) {
+      await retireCourse(db, course.slug, 'Jill Kilker');
+    }
+    expect(await listCourses(db)).toEqual([]);
+  });
+
+  it('leaves the retirement alone when the editor saves the rest of the row', async () => {
+    // Retire and Save are two buttons and two writes. A save carrying the whole
+    // form must not quietly bring a class back, which is what would happen if
+    // the date rode along in `CourseEdit`.
+    const at = new Date('2026-08-15T14:00:00Z');
+    await retireCourse(db, 'backyard-botany', 'Jill Kilker', at);
+    const before = (await getCourse(db, 'backyard-botany'))!;
+    const saved = await saveCourse(
+      db,
+      'backyard-botany',
+      { ...editOf(before), requiredText: 'A field notebook' },
+      'Jill Kilker',
+    );
+
+    expect(saved.retiredAt).toEqual(at);
   });
 });

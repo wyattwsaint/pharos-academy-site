@@ -30,6 +30,12 @@ import { listPeople } from '../../lib/people/store.js';
  *
  * A slug that is not a class is a 404, not an empty page. Rendering a blank
  * course would be the site claiming the school offers something it does not.
+ *
+ * A **retired** class is the one thing that is neither (#263). It has come off
+ * the age bands, the timetable and the application, but printed flyers and the
+ * redirect from the old site point here — so the page resolves and says the
+ * school is not currently running it, which is an answer, where a 404 is the
+ * family wondering whether they have the wrong address.
  */
 const { slug } = Astro.params;
 const db = await getDb();
@@ -44,7 +50,9 @@ if (!course) {
 // usually working out what else that trip can carry — and the ones that
 // overlap are exactly what they need to see, so they are shown rather than
 // filtered out, with their times attached.
-const everyCourse = await listCourses(db);
+// The published list, not `listEveryCourse`: a class the school has retired is
+// not something else to do with the morning.
+const running = await listCourses(db);
 const { rates } = await getMoneySettings(db);
 /*
  * The instructor comes from the one list of people (#26), never from a name
@@ -57,7 +65,7 @@ const { rates } = await getMoneySettings(db);
 const instructor = instructorOf(bySlug(await listPeople(db)), course);
 const seen = new Set<string>([course.slug]);
 const alongside = course.days
-  .flatMap((day) => coursesOnTrack(everyCourse, day))
+  .flatMap((day) => coursesOnTrack(running, day))
   .filter((other) => (seen.has(other.slug) ? false : seen.add(other.slug)));
 
 /*
@@ -71,9 +79,13 @@ const alongside = course.days
 const schoolYear = await getSchoolYear(db);
 const meetings = schoolYear ? courseMeetings(schoolYear, course) : null;
 
-const description = `${course.title} at Pharos Academy — ${ageLine(course)}, ${course.days.join(
-  ' and ',
-)} ${timeLabel(course.start, course.end)}, ${priceSummary(course, rates)}.`;
+const retired = course.retiredAt !== null;
+
+const description = retired
+  ? `${course.title} at Pharos Academy — not currently running. The school expects to offer it again.`
+  : `${course.title} at Pharos Academy — ${ageLine(course)}, ${course.days.join(
+      ' and ',
+    )} ${timeLabel(course.start, course.end)}, ${priceSummary(course, rates)}.`;
 
 /*
  * The class, in structured data (#151).
@@ -83,14 +95,23 @@ const description = `${course.title} at Pharos Academy — ${ageLine(course)}, $
  * different price or a different morning from the facts list beside it would be
  * the #22 failure again, in the half a parent never sees.
  */
-const jsonLd = [
-  courseJsonLd({
-    course,
-    rates,
-    instructorName: instructor?.name ?? null,
-    site: Astro.site ?? SITE_URL,
-  }),
-];
+/*
+ * A retired class publishes none of it (#263). The markup's whole job is to
+ * tell a search engine that the school offers this course at this price — which
+ * is the one thing that has stopped being true, and the page says so in words a
+ * few lines below. Advertising it in the half a parent never sees would be the
+ * #22 failure exactly: two surfaces of one class disagreeing.
+ */
+const jsonLd = retired
+  ? []
+  : [
+      courseJsonLd({
+        course,
+        rates,
+        instructorName: instructor?.name ?? null,
+        site: Astro.site ?? SITE_URL,
+      }),
+    ];
 ---
 
 <BaseLayout details={details} title={course.title} description={description} jsonLd={jsonLd}>
@@ -106,12 +127,38 @@ const jsonLd = [
     </div>
   </section>
 
+  {
+    /*
+      Said once, at the top, before any of the facts below it.
+
+      The facts stay — the description, the ages, the books, the instructor —
+      because a family holding a flyer is trying to find out what this class
+      *was*, and a page stripped back to an apology answers nothing. What the
+      notice does is put the tense right before they read a word of it.
+    */
+    retired && (
+      <section class="band band-quiet" data-section="class-retired">
+        <div class="wide">
+          <p class="sub">
+            Pharos Academy is not currently running this class. It is not on this year's timetable
+            and cannot be chosen on the application. Everything below is how the school ran it —
+            <a href={INQUIRY_HREF}>ask us</a> whether it is coming back.
+          </p>
+        </div>
+      </section>
+    )
+  }
+
   <section class="band" data-section="class-detail">
     <div class="wide">
       <div class="classdetail">
         <div>
           <p class="classdetail-lede">{course.description}</p>
-          <a class="btn solid" href={INQUIRY_HREF}>Ask us about this class</a>
+          {!retired && (
+            <a class="btn solid" href={INQUIRY_HREF}>
+              Ask us about this class
+            </a>
+          )}
         </div>
         <CourseFacts
           course={course}
@@ -121,7 +168,15 @@ const jsonLd = [
         />
       </div>
 
-      <CourseDates meetings={meetings} />
+      {
+        /*
+          Absent for a retired class rather than empty. `courseMeetings` would
+          happily compute this year's dates for it — the arithmetic knows
+          nothing about retirement — and a list of Tuesdays under a notice
+          saying the class is not running is the page contradicting itself.
+        */
+        !retired && <CourseDates meetings={meetings} />
+      }
 
       <h2 class="mt-9">Also on {course.days.join(' and ')}</h2>
       <ul class="alongside">

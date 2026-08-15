@@ -27,21 +27,35 @@ import type { Course, EnrolmentUnit, RateTier, Stage } from './course.js';
  * surfaces is how that ships to production and is discovered by a parent.
  */
 export async function listCourses(db: Db): Promise<Course[]> {
-  const rows = await listCoursesForAdmin(db);
+  const rows = await listEveryCourse(db);
   if (rows.length === 0) {
     throw new Error('The course catalog is empty — run `npm run db:migrate`.');
   }
-  return rows;
+  /*
+   * The retired ones come out here and nowhere else (#263).
+   *
+   * After the guard, deliberately: "no rows at all" is a database the migration
+   * has never been run against, and "every row retired" is a decision the
+   * school made. Filtering first would turn the last retire into an outage.
+   */
+  return rows.filter((course) => course.retiredAt === null);
 }
 
 /**
- * The same catalogue with the guard left off, for the admin list alone (#197).
+ * The whole table, retired classes included, with the guard left off.
  *
- * The admin Classes screen is where an empty catalogue is *reported* — "this
- * database has not been set up" — rather than shipped to a parent, so it has to
- * render "none" instead of failing the way the public surfaces must.
+ * Three readers want this rather than the published list, and each for its own
+ * reason. The admin Classes screen is where an empty catalogue is *reported* —
+ * "this database has not been set up" — rather than shipped to a parent (#197),
+ * and it is also the screen that shows the retired ones in their own section
+ * (#263). The live route list needs them because a retired class keeps its
+ * address and has to be republished at it. The backup needs them because a
+ * backup that drops rows is not one.
+ *
+ * It was `listCoursesForAdmin` while the admin list was the only caller; the
+ * name says what it returns now that three things want it.
  */
-export async function listCoursesForAdmin(db: Db): Promise<Course[]> {
+export async function listEveryCourse(db: Db): Promise<Course[]> {
   const rows = await db.select().from(coursesTable);
   return rows.map(toCourse).sort((a, b) => a.title.localeCompare(b.title));
 }
@@ -53,8 +67,14 @@ export async function getCourse(db: Db, slug: string): Promise<Course | undefine
   return row ? toCourse(row) : undefined;
 }
 
-/** What a save may change. The slug is the key and the stamp is the store's. */
-export type CourseEdit = Omit<Course, 'slug' | 'lastEditedBy' | 'lastEditedAt'>;
+/**
+ * What a save may change.
+ *
+ * The slug is the key and the stamp is the store's. `retiredAt` is absent for a
+ * third reason (#263): retiring is its own press with its own writer, and a
+ * form that carried the date would let an unrelated save un-retire the class.
+ */
+export type CourseEdit = Omit<Course, 'slug' | 'retiredAt' | 'lastEditedBy' | 'lastEditedAt'>;
 
 /**
  * Save a course and stamp it.
@@ -99,6 +119,66 @@ export async function createCourse(
     .returning();
 
   if (!row) throw new Error(`Could not add a course with the slug "${slug}".`);
+  return toCourse(row);
+}
+
+/**
+ * Retire a class the school is not running now, and stamp it (#263).
+ *
+ * One press and no confirmation, because nothing is lost: the row stays, the
+ * class page stays at its own address, the applications that named it still
+ * count, and `unretireCourse` is the whole of the way back. A confirmation
+ * belongs on a move that cannot be undone, and putting one here would teach the
+ * office to click through the ones that can.
+ *
+ * The date is what is written, not a flag, so the school's own list can answer
+ * "when did we stop running this?". The stamp is written beside it because this
+ * is a save like any other and attribution is the only control there is.
+ *
+ * Retiring a class already retired re-dates it rather than refusing, which is
+ * the harmless reading of a double press.
+ */
+export async function retireCourse(
+  db: Db,
+  slug: string,
+  editorName: string,
+  now = new Date(),
+): Promise<Course> {
+  return setRetirement(db, slug, now, editorName, now);
+}
+
+/** Bring it back. The date is cleared; nothing else about the row is touched. */
+export async function unretireCourse(
+  db: Db,
+  slug: string,
+  editorName: string,
+  now = new Date(),
+): Promise<Course> {
+  return setRetirement(db, slug, null, editorName, now);
+}
+
+/**
+ * The one write both halves are.
+ *
+ * Deliberately *not* part of `CourseEdit`: the editor's Save posts the whole
+ * form, and a retirement carried in it would be un-retired by any save made
+ * while the class was off the catalogue — including the save that only fixed a
+ * typo in its description.
+ */
+async function setRetirement(
+  db: Db,
+  slug: string,
+  retiredAt: Date | null,
+  editorName: string,
+  now: Date,
+): Promise<Course> {
+  const [row] = await db
+    .update(coursesTable)
+    .set({ retiredAt, lastEditedBy: editorName, lastEditedAt: now })
+    .where(eq(coursesTable.slug, slug))
+    .returning();
+
+  if (!row) throw new Error(`No course with the slug "${slug}".`);
   return toCourse(row);
 }
 
@@ -159,6 +239,7 @@ function toCourse(row: CourseRow): Course {
     assessmentFeeNote: row.assessmentFeeNote,
     prerequisites: row.prerequisites,
     instructorSlug: row.instructorSlug,
+    retiredAt: row.retiredAt,
     lastEditedBy: row.lastEditedBy,
     lastEditedAt: row.lastEditedAt,
   };
