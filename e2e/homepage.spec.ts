@@ -6,7 +6,7 @@ import { APPLICATION_PATH } from '../src/lib/application/application.js';
 import { REGISTRATION_LABEL } from '../src/lib/home/registration-cta.js';
 import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
-import { SCHOOL_DESCRIPTION } from '../src/lib/site.js';
+import { SCHOOL_DESCRIPTION_TITLE } from '../src/lib/site.js';
 
 /**
  * The homepage's acceptance criteria from #21, one describe block each.
@@ -76,7 +76,7 @@ test.describe('the hero', () => {
   // this asserts the hero is the thing rendering it.
   test('names the school the one way the site names it', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('.hero-sub')).toHaveText(SCHOOL_DESCRIPTION);
+    await expect(page.locator('.hero-sub')).toHaveText(SCHOOL_DESCRIPTION_TITLE);
   });
 
   test('under prefers-reduced-motion the video has no source and fetches nothing', async ({

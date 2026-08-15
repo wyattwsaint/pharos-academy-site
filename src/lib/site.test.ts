@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { SCHOOL_DESCRIPTION, SCHOOL_DESCRIPTION_INLINE } from './site.js';
+import {
+  SCHOOL_DESCRIPTION,
+  SCHOOL_DESCRIPTION_INLINE,
+  SCHOOL_DESCRIPTION_TITLE,
+} from './site.js';
 
 /**
  * The description drifted once already — the hero said "homeschool" while
@@ -15,5 +19,9 @@ describe('the school description', () => {
 
   it('reads mid-sentence without a second string to keep in step', () => {
     expect(SCHOOL_DESCRIPTION_INLINE).toBe('a Christian, classical hybrid microschool');
+  });
+
+  it('title-cases for the hero lockup, comma and all', () => {
+    expect(SCHOOL_DESCRIPTION_TITLE).toBe('A Christian, Classical Hybrid Microschool');
   });
 });
