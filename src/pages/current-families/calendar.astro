@@ -226,9 +226,9 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       <h2>Month by month</h2>
       <p class="sub mt-5">
         The same year, drawn as a calendar. Open houses, concerts and picture days sit on their
-        dates — from the school’s own calendar and from the office, without distinction — and a
-        weekday in term time with no classes on it says so. On a teaching day, press the count to
-        see what meets.
+        dates with their times — from the school’s own calendar and from the office, without
+        distinction — and a weekday in term time with no classes on it says so. On a teaching
+        day, press the count to see what meets.
       </p>
 
       {
@@ -306,13 +306,18 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
                               {cell.events.map((event) => (
                                 <div class="one-off" data-disclosure-cell>
                                   <button
-                                    class="one-off-title"
+                                    class="one-off-trigger"
                                     type="button"
                                     data-disclosure-trigger
                                     aria-expanded="false"
                                     aria-controls={`one-off-${event.slug}`}
                                   >
-                                    {event.title}
+                                    <span class="one-off-name">{event.title}</span>
+                                    {event.startTime && (
+                                      <time class="one-off-time" datetime={event.startTime}>
+                                        {eventTimeLabel(event.startTime)}
+                                      </time>
+                                    )}
                                   </button>
                                   <div
                                     class="one-off-panel"
@@ -323,9 +328,6 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
                                       <time datetime={event.heldOn}>
                                         {eventDateLabel(event.heldOn)}
                                       </time>
-                                      {event.startTime && (
-                                        <span> · {eventTimeLabel(event.startTime)}</span>
-                                      )}
                                     </p>
                                     {event.place && <p class="where">{event.place}</p>}
                                     {event.note && <p class="mt-2">{event.note}</p>}
@@ -582,7 +584,7 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     margin-top: 0.25rem;
   }
 
-  .one-off-title,
+  .one-off-trigger,
   .classes-trigger {
     display: block;
     width: 100%;
@@ -616,18 +618,51 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     display: block;
   }
 
-  /* A one-off is news, so it takes the gold and the emphasis that goes with it. */
-  .one-off-title {
+  /*
+    A one-off is news, so it takes the gold and the emphasis that goes with it.
+
+    What it prints is the title and the time together (#234): "Fall Open House"
+    alone does not say whether a family is coming at ten in the morning or at
+    half past six, which is most of what they came to the month for. The time
+    sits on its own line rather than after a separator, because a grid cell is
+    four or five characters wide and a title that wraps mid-word to make room
+    for "6.30pm" is worse than either fact on its own.
+  */
+  .one-off-trigger {
     border-left-color: var(--color-gold-orn);
     background: color-mix(in srgb, var(--color-gold-orn) 18%, transparent);
     font-size: 0.8rem;
     color: var(--color-navy);
   }
 
-  .one-off-title:hover,
-  .one-off[data-open] .one-off-title {
+  .one-off-name {
+    display: block;
+  }
+
+  /*
+    Quieter than the title, in the same register the closure mark uses: the time
+    is what the title is qualified by, and a cell of two equal lines reads as two
+    one-offs. A one-off with no start time has no line here at all — an absent
+    time is a real state, and a dash standing in for it would invent a gap.
+  */
+  .one-off-time {
+    display: block;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.04em;
+    color: var(--color-ink-2);
+  }
+
+  .one-off-trigger:hover,
+  .one-off[data-open] .one-off-trigger {
     background: color-mix(in srgb, var(--color-gold-orn) 32%, transparent);
     color: var(--color-gold-ink);
+  }
+
+  .one-off-trigger:hover .one-off-time,
+  .one-off[data-open] .one-off-time {
+    color: inherit;
   }
 
   .one-off-panel {
@@ -742,7 +777,7 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       letter-spacing: 0.05em;
     }
 
-    .one-off-title {
+    .one-off-trigger {
       font-size: 0.95rem;
     }
 

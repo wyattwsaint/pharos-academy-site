@@ -77,3 +77,28 @@ describe('the events the school already published', () => {
     }
   });
 });
+
+/**
+ * The time as the school writes it, which the month grid now prints in the cell
+ * (#234) rather than hiding behind the disclosure. It went from a line inside a
+ * panel to the second thing a parent reads on the page, so it is worth proving
+ * against the hours that break it rather than only against the seed.
+ */
+describe('how a time is written', () => {
+  it('drops the minutes where there are none, which is how a school publishes', () => {
+    expect(eventTimeLabel('18:00')).toBe('6pm');
+  });
+
+  it('separates the minutes with a point, not a colon', () => {
+    expect(eventTimeLabel('18:30')).toBe('6.30pm');
+  });
+
+  it('pads a single-digit minute', () => {
+    expect(eventTimeLabel('09:05')).toBe('9.05am');
+  });
+
+  it('calls midnight and noon twelve rather than zero', () => {
+    expect(eventTimeLabel('00:15')).toBe('12.15am');
+    expect(eventTimeLabel('12:00')).toBe('12pm');
+  });
+});

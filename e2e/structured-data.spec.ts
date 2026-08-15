@@ -96,7 +96,9 @@ test.describe('the events’ structured data', () => {
   test('describes the upcoming subset of what the grid draws', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
     const events = nodesOfType<EventNode>(await graphOf(page), 'Event');
-    const shown = page.locator('[data-section="calendar-months"] .one-off-title');
+    // The title alone: the cell prints the time beside it (#234), and what a
+    // crawler is given as the event's `name` is the name of the thing.
+    const shown = page.locator('[data-section="calendar-months"] .one-off-name');
 
     /*
      * The grid draws the whole year, past one-offs included, because a cell says
