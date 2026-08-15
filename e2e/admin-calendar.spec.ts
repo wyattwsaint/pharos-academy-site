@@ -198,7 +198,11 @@ test.describe('the Events screen', () => {
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
 
     await page.goto(CALENDAR_PATH);
-    const cell = page.locator(`[data-section="calendar-months"] td:has(time[datetime="${heldOn}"])`);
+    // Its cell on the grid, wherever the grid is being drawn — this page, a
+    // narrow one, or one with no script running.
+    const cellOn = (on: Page) =>
+      on.locator(`[data-section="calendar-months"] td:has(time[datetime="${heldOn}"])`);
+    const cell = cellOn(page);
     /*
      * The title and the time, both read off the cell without pressing anything
      * (#234). A parent scanning the month wants to know whether this is a
@@ -235,14 +239,13 @@ test.describe('the Events screen', () => {
      * time wherever it appears, so a family that learns the wide page has
      * nothing to unlearn on the narrow one.
      */
-    await page.keyboard.press('Escape');
-    const wide = page.viewportSize();
-    await page.setViewportSize({ width: 390, height: 844 });
-    await expect(cell).toBeVisible();
-    await expect(cell).toContainText('Suite open house');
-    await expect(cell).toContainText('6.30pm');
-    await expect(panel).toBeHidden();
-    if (wide) await page.setViewportSize(wide);
+    const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const listed = await phone.newPage();
+    await listed.goto(CALENDAR_PATH);
+    await expect(cellOn(listed)).toBeVisible();
+    await expect(cellOn(listed)).toContainText('Suite open house');
+    await expect(cellOn(listed)).toContainText('6.30pm');
+    await phone.close();
 
     /*
      * And with no script at all (#234). The time is the second half of what the
@@ -250,13 +253,11 @@ test.describe('the Events screen', () => {
      * browser — a visitor with JavaScript off loses the disclosure and the
      * scroll to this month, and neither of those is the time.
      */
-    const context = await browser.newContext({ javaScriptEnabled: false });
-    const served = await context.newPage();
+    const unscripted = await browser.newContext({ javaScriptEnabled: false });
+    const served = await unscripted.newPage();
     await served.goto(CALENDAR_PATH);
-    await expect(
-      served.locator(`[data-section="calendar-months"] td:has(time[datetime="${heldOn}"])`),
-    ).toContainText('6.30pm');
-    await context.close();
+    await expect(cellOn(served)).toContainText('6.30pm');
+    await unscripted.close();
 
     // And in the feed, as a timed event rather than a whole day.
     const feed = await (await request.get(CALENDAR_FEED_PATH)).text();

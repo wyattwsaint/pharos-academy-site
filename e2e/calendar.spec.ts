@@ -153,7 +153,7 @@ test.describe('the month grid', () => {
 
   test('opens a one-off’s detail from the keyboard, and closes it again', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
-    const trigger = page.locator('[data-section="calendar-months"] .one-off-title').first();
+    const trigger = page.locator('[data-section="calendar-months"] .one-off-trigger').first();
     test.skip((await trigger.count()) === 0, 'Nothing is on the calendar — see admin-calendar.');
 
     const panel = page.locator(`#${await trigger.getAttribute('aria-controls')}`);

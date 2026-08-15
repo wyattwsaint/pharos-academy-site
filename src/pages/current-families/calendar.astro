@@ -281,7 +281,7 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
                               {cell.events.map((event) => (
                                 <div class="one-off" data-disclosure-cell>
                                   <button
-                                    class="one-off-title"
+                                    class="one-off-trigger"
                                     type="button"
                                     data-disclosure-trigger
                                     aria-expanded="false"
@@ -289,9 +289,9 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
                                   >
                                     <span class="one-off-name">{event.title}</span>
                                     {event.startTime && (
-                                      <span class="one-off-time">
+                                      <time class="one-off-time" datetime={event.startTime}>
                                         {eventTimeLabel(event.startTime)}
-                                      </span>
+                                      </time>
                                     )}
                                   </button>
                                   <div
@@ -511,7 +511,7 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     margin-top: 0.25rem;
   }
 
-  .one-off-title {
+  .one-off-trigger {
     display: block;
     width: 100%;
     padding: 0.2rem 0.3rem;
@@ -545,13 +545,13 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     color: var(--color-ink-2);
   }
 
-  .one-off-title:hover,
-  .one-off[data-open] .one-off-title {
+  .one-off-trigger:hover,
+  .one-off[data-open] .one-off-trigger {
     background: color-mix(in srgb, var(--color-gold-orn) 32%, transparent);
     color: var(--color-gold-ink);
   }
 
-  .one-off-title:hover .one-off-time,
+  .one-off-trigger:hover .one-off-time,
   .one-off[data-open] .one-off-time {
     color: inherit;
   }
@@ -638,7 +638,7 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       letter-spacing: 0.05em;
     }
 
-    .one-off-title {
+    .one-off-trigger {
       font-size: 0.95rem;
     }
 
