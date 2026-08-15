@@ -56,6 +56,7 @@ import {
   type ApplicationFields,
   type FaithAnswers,
 } from './validation.js';
+import { sumOwed } from '../money/live.js';
 import { amountOwed, type AmountOwed, type Selection } from '../money/owed.js';
 import type { MoneySettings } from '../money/settings.js';
 import type { SchoolYear } from '../calendar/year.js';
@@ -418,18 +419,4 @@ export function familyClashes(
       clashes: clashesAmong(childOfferings(child, offerings), year),
     }))
     .filter((one) => one.clashes.length > 0);
-}
-
-function sumOwed(parts: readonly AmountOwed[]): AmountOwed {
-  const add = (pick: (owed: AmountOwed) => number): number =>
-    parts.reduce((sum, owed) => sum + pick(owed), 0);
-
-  return {
-    registration: add((owed) => owed.registration),
-    deposits: add((owed) => owed.deposits),
-    tuition: add((owed) => owed.tuition),
-    creditedAgainstTuition: add((owed) => owed.creditedAgainstTuition),
-    tuitionDue: add((owed) => owed.tuitionDue),
-    total: add((owed) => owed.total),
-  };
 }

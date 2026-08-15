@@ -81,3 +81,30 @@ export function amountOwedForPrices(
     total: registration + deposits + tuitionDue,
   };
 }
+
+/**
+ * Several children's figures as one family's.
+ *
+ * Added child by child rather than over one pooled list of prices, because the
+ * registration fee is once per *student*: a family enrolling three children
+ * pays it three times, and one flat total would charge it once and understate
+ * the cheque. The deposit credit is per child for the same reason — one child's
+ * $90 block cannot be paid for by a sibling's spare deposit.
+ *
+ * Here rather than in `application.ts` because the browser sums the same way
+ * over the same rows (ADR-0019), and two implementations of a family's total is
+ * the failure this leaf exists to prevent.
+ */
+export function sumOwed(parts: readonly AmountOwed[]): AmountOwed {
+  const add = (pick: (owed: AmountOwed) => number): number =>
+    parts.reduce((sum, owed) => sum + pick(owed), 0);
+
+  return {
+    registration: add((owed) => owed.registration),
+    deposits: add((owed) => owed.deposits),
+    tuition: add((owed) => owed.tuition),
+    creditedAgainstTuition: add((owed) => owed.creditedAgainstTuition),
+    tuitionDue: add((owed) => owed.tuitionDue),
+    total: add((owed) => owed.total),
+  };
+}

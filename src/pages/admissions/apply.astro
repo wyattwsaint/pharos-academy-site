@@ -16,6 +16,7 @@ import {
   MAX_CHILDREN,
   parseApplication,
   prefillFrom,
+  priceUnit,
   statementVersion,
   validateApplication,
   type ApplicationChild,
@@ -55,6 +56,7 @@ import { listCourses } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
 import { INQUIRY_PATH } from '../../lib/inquiry/inquiry.js';
 import { getInquiry } from '../../lib/inquiry/store.js';
+import { unitPrice } from '../../lib/money/owed.js';
 import { formatMoney, type MoneySettings } from '../../lib/money/settings.js';
 import { getMoneySettings, recordAgreedTerms } from '../../lib/money/store.js';
 import { publishedPolicies } from '../../lib/policies/policy.js';
@@ -500,6 +502,48 @@ const NEEDED: { field: ErrorField; href: string; label: string }[] = [
 
 const cost = applicationCost(values, offerings, settings);
 
+/**
+ * What the browser is handed, and the whole of it (ADR-0019).
+ *
+ * One resolved price per control the family can tick, and three settings. The
+ * rate card, the catalogue, the timetable and the Statement of Faith stay on
+ * this side of the wire — the browser adds up numbers it was given and knows
+ * nothing about where they came from.
+ *
+ * Resolved here by the same `unitPrice` the server totals with, so the figure
+ * on a checkbox and the figure `applicationCost` charges for it cannot be two
+ * different numbers.
+ */
+const priceOf = (offering: (typeof offerings)[number]): number =>
+  unitPrice({ course: offering.course, unit: priceUnit(offering.unit) }, settings);
+
+const liveMoney = JSON.stringify({
+  registrationFee: settings.registrationFee,
+  classDeposit: settings.classDeposit,
+  depositCreditedAgainstTuition: settings.depositCreditedAgainstTuition,
+});
+
+/**
+ * One child's own total, by their place in the form.
+ *
+ * `perChild` is indexed the way `childAt` is — a row nobody touched is not a
+ * child — so a row past the end of it has chosen nothing and owes nothing.
+ */
+const childTotal = (index: number): number => cost.perChild[index]?.owed.total ?? 0;
+
+/**
+ * What the deposits take off the tuition, or nothing to say.
+ *
+ * A whole string rather than a fragment around a figure, because the browser
+ * rewrites this one as a whole string too — printed the same way on both sides,
+ * a family with scripting on and a family without read the same sentence rather
+ * than two spacings of it.
+ */
+const creditNote =
+  cost.total.creditedAgainstTuition > 0
+    ? ` — the deposits come off this, ${formatMoney(cost.total.creditedAgainstTuition)} of it`
+    : '';
+
 const clashing = familyClashes(values, offerings, year);
 const clashCount = clashing.reduce((sum, one) => sum + one.clashes.length, 0);
 
@@ -666,7 +710,7 @@ const description =
         </div>
       </section>
     ) : (
-      <form method="post" novalidate data-application-form>
+      <form method="post" novalidate data-application-form data-money={liveMoney}>
         <section class="band" id="faith" data-section="apply-faith">
           <div class="wide">
             <h2>{stage('faith')}</h2>
@@ -900,6 +944,7 @@ const description =
                               type="checkbox"
                               name={`child-${index}-classes`}
                               value={offeringKey(offering)}
+                              data-price={priceOf(offering)}
                               checked={childAt(index).offeringKeys.includes(offeringKey(offering))}
                               aria-describedby={errors.classes ? 'apply-classes-error' : undefined}
                               autofocus={focus === 'classes' && index === 0 && at === 0}
@@ -917,6 +962,21 @@ const description =
                     </ul>
                   )}
                 </fieldset>
+
+                {/*
+                  What this child's classes come to (#261).
+
+                  Beside the boxes that decide it, because "which classes" and
+                  "how much" is one question a family asks per child, and the
+                  four-line list four sections down cannot answer it for one of
+                  them. Not a live region: the grand total is the announced
+                  figure, and eight rows announcing themselves as a family works
+                  down the form is the noise ADR-0019 kept out of the list.
+                */}
+                <p class="child-total mt-6">
+                  <span class="amount" data-child-total={index}>{formatMoney(childTotal(index))}</span>
+                  <span>for this child, at today’s rates</span>
+                </p>
               </fieldset>
             ))}
 
@@ -1035,26 +1095,32 @@ const description =
               on the site and is the plumbing rather than the answer — a family
               came here to find out what they owe, and the list below says so
               without being introduced.
+
+              Which of the four lines is announced (#261, ADR-0019). The list
+              itself is not a live region: a family ticking a class would have
+              four figures read back at them, three of which are the working.
+              The last line is, on its own — "All of it: $1,340" is what their
+              choice cost, and it is the number they type into the giving page.
             */}
             <ul class="totals mt-7">
               <li>
-                <span class="amount">{formatMoney(cost.total.registration)}</span>
+                <span class="amount" data-total="registration">
+                  {formatMoney(cost.total.registration)}
+                </span>
                 <span>Registration — once per student, not refundable</span>
               </li>
               <li>
-                <span class="amount">{formatMoney(cost.total.deposits)}</span>
+                <span class="amount" data-total="deposits">{formatMoney(cost.total.deposits)}</span>
                 <span>Deposits — one per class, holding the seats</span>
               </li>
               <li>
-                <span class="amount">{formatMoney(cost.total.tuitionDue)}</span>
-                <span>
-                  Tuition — one payment, upfront
-                  {cost.total.creditedAgainstTuition > 0 &&
-                    ` — the deposits come off this, ${formatMoney(cost.total.creditedAgainstTuition)} of it`}
+                <span class="amount" data-total="tuitionDue">
+                  {formatMoney(cost.total.tuitionDue)}
                 </span>
+                <span>Tuition — one payment, upfront<span data-credit>{creditNote}</span></span>
               </li>
-              <li class="due">
-                <span class="amount">{formatMoney(cost.total.total)}</span>
+              <li class="due" aria-live="polite">
+                <span class="amount" data-total="total">{formatMoney(cost.total.total)}</span>
                 <span>All of it, at today’s rates — one payment</span>
               </li>
             </ul>
@@ -1090,13 +1156,15 @@ const description =
                   <a class="btn solid" href={details.payOnlineUrl} rel="external" data-pay-online>
                     Pay online
                   </a>
-                  <strong class="pay-total" data-pay-total>{formatMoney(cost.total.total)}</strong>
+                  <strong class="pay-total" data-pay-total data-total="total">
+                    {formatMoney(cost.total.total)}
+                  </strong>
                 </p>
                 <p class="mt-5">
                   The giving page does not know what you owe, so please enter{' '}
-                  <strong>{formatMoney(cost.total.total)}</strong> yourself. A payment through it
-                  does not reach us attached to this application, so the office matches the two up
-                  by hand.
+                  <strong data-total="total">{formatMoney(cost.total.total)}</strong> yourself. A
+                  payment through it does not reach us attached to this application, so the office
+                  matches the two up by hand.
                 </p>
 
                 {/*
@@ -1110,8 +1178,8 @@ const description =
                 <details class="alternative mt-7" data-pay-by-check>
                   <summary>Prefer to pay by check?</summary>
                   <p class="mt-4">
-                    Post a check for <strong>{formatMoney(cost.total.total)}</strong> — all of it —
-                    made out to Pharos Academy, to:
+                    Post a check for <strong data-total="total">{formatMoney(cost.total.total)}</strong>{' '}
+                    — all of it — made out to Pharos Academy, to:
                   </p>
                   <p class="address mt-4">{details.address}</p>
                 </details>
@@ -1120,8 +1188,9 @@ const description =
               <Fragment>
                 <p class="mt-7">
                   All of it is paid to Pharos Academy by check —{' '}
-                  <strong>{formatMoney(cost.total.total)}</strong>, the registration, the deposits
-                  and the tuition together — made out to Pharos Academy and posted to:
+                  <strong data-total="total">{formatMoney(cost.total.total)}</strong>, the
+                  registration, the deposits and the tuition together — made out to Pharos Academy
+                  and posted to:
                 </p>
                 <p class="address mt-4">{details.address}</p>
                 <p class="mt-6 text-ink-2">
@@ -1256,6 +1325,14 @@ const description =
     for this reason: importing `application.ts` here would ship the Statement of
     Faith text, the catalogue, the clash rule and the money graph to a browser
     that only needs to notice an empty box.
+
+    The totals are imported for the same reason and on the same terms (#261,
+    ADR-0019). `money/live.ts` is the one implementation of what a family owes
+    and it imports nothing; `formatMoney` comes from `money/settings.ts`, which
+    imports nothing either. What crosses the wire is a price per checkbox and
+    three settings on the form — never the rate card, the catalogue or the
+    timetable, which is why `applicationCost` is not reachable from here and
+    `validation.test.ts` fails the moment it is.
   */
   import type {
     AgreementAnswer,
@@ -1276,6 +1353,13 @@ const description =
     type ErrorField,
     type FaithAnswers,
   } from '../../lib/application/validation.js';
+  import {
+    amountOwedForPrices,
+    sumOwed,
+    type AmountOwed,
+    type LiveMoneySettings,
+  } from '../../lib/money/live.js';
+  import { formatMoney } from '../../lib/money/settings.js';
 
   const found = document.querySelector<HTMLFormElement>('form[data-application-form]');
 
@@ -1475,6 +1559,111 @@ const description =
       };
     }
 
+    /**
+      The three settings the arithmetic needs, off the form (ADR-0019).
+
+      Null if the page did not hand them over, or handed over something that is
+      not them. The totals then stay exactly as the server rendered them, which
+      is the correct page one round trip behind rather than a page showing a
+      number nobody computed. There is no default fee in this file: a browser
+      that has not been told the rates cannot invent them.
+    */
+    function moneyOn(form: HTMLFormElement): LiveMoneySettings | null {
+      try {
+        const read = JSON.parse(form.dataset.money ?? '') as Partial<LiveMoneySettings>;
+        const { registrationFee, classDeposit, depositCreditedAgainstTuition } = read;
+        if (typeof registrationFee !== 'number' || typeof classDeposit !== 'number') return null;
+        if (typeof depositCreditedAgainstTuition !== 'boolean') return null;
+        return { registrationFee, classDeposit, depositCreditedAgainstTuition };
+      } catch {
+        return null;
+      }
+    }
+
+    const money = moneyOn(form);
+
+    /**
+      What one row's ticked classes cost, or null if one of them will not say.
+
+      A price that is missing or unreadable makes the whole update wrong rather
+      than short, and a family types the wrong number into the giving page. So
+      an unreadable box abandons the recalculation and leaves the server's
+      figures standing, rather than quietly totalling the rest.
+    */
+    function pricesIn(row: HTMLFieldSetElement): number[] | null {
+      const prices: number[] = [];
+      for (const box of row.querySelectorAll<HTMLInputElement>(
+        'input[name$="-classes"]:checked',
+      )) {
+        const carried = box.dataset.price;
+        const price = Number(carried);
+        if (carried === undefined || carried === '' || !Number.isFinite(price)) return null;
+        prices.push(price);
+      }
+      return prices;
+    }
+
+    /** Write a figure, and only when it is a different figure. */
+    function say(element: Element | null, text: string): void {
+      if (element && element.textContent !== text) element.textContent = text;
+    }
+
+    /**
+      Every figure on the page, from the form as it stands (#261, ADR-0019).
+
+      Per row and then added, because the registration fee is once per student
+      and the deposit credit is capped against that child's own tuition — the
+      same shape `applicationCost` totals in on the server, through the same
+      `sumOwed`. A hidden row is a row that is not there: it is skipped from the
+      family's total exactly as it is skipped from the POST, and its own figure
+      is still kept current so that raising the count again does not reveal a
+      stale one.
+    */
+    function totals(): void {
+      if (!money) return;
+
+      const perRow = rows.map((row) => {
+        const prices = pricesIn(row);
+        return prices === null ? null : amountOwedForPrices(prices, money);
+      });
+      if (perRow.some((owed) => owed === null)) return;
+
+      const owed = perRow as AmountOwed[];
+      rows.forEach((row, index) => {
+        say(row.querySelector('[data-child-total]'), formatMoney(owed[index]!.total));
+      });
+
+      const family = sumOwed(owed.filter((_owed, index) => !rows[index]!.disabled));
+
+      for (const [field, amount] of [
+        ['registration', family.registration],
+        ['deposits', family.deposits],
+        ['tuitionDue', family.tuitionDue],
+        ['total', family.total],
+      ] as const) {
+        // Every figure, wherever it is: the four-line list, the total beside
+        // Pay online, the amount the family is asked to type in themselves and
+        // the one inside the check disclosure. A figure left out of this loop
+        // is the one somebody pays.
+        for (const figure of form.querySelectorAll(`[data-total="${field}"]`)) {
+          say(figure, formatMoney(amount));
+        }
+      }
+
+      /*
+        The credit clause, in the server's own words. The one sentence this
+        file restates rather than imports — it is phrasing rather than
+        arithmetic, and the figure inside it comes from the same sum as
+        everything else.
+      */
+      say(
+        form.querySelector('[data-credit]'),
+        family.creditedAgainstTuition > 0
+          ? ` — the deposits come off this, ${formatMoney(family.creditedAgainstTuition)} of it`
+          : '',
+      );
+    }
+
     /** Show or clear one field's sentence, and the wiring that points at it. */
     function paint(field: ErrorField, message: string | undefined): void {
       const wiring = WIRING[field];
@@ -1503,6 +1692,10 @@ const description =
       longer supports.
     */
     function render(): ApplicationErrors {
+      // The money moves with the form, not with the gate: a family who has not
+      // typed a name yet still gets the total for the class they just ticked.
+      totals();
+
       const errors = validateApplication(read(), asked);
       const incomplete = Object.keys(errors).length > 0;
 
@@ -1861,6 +2054,23 @@ const description =
 
   .totals > li.due .amount {
     font-weight: 600;
+  }
+
+  /*
+    One child's own figure, quieter than the family's (#261). It sits under the
+    boxes that decide it and it is not the number anybody pays — the grand
+    total four sections down is, and reading at the same size as that one would
+    put eight rival totals on the page.
+  */
+  .child-total {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem;
+  }
+
+  .child-total .amount {
+    font-size: 1.15rem;
   }
 
   /*
