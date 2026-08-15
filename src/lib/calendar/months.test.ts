@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CATALOGUE } from '../courses/catalogue.js';
 import { DAY_TRACKS } from '../courses/schedule.js';
 import type { CalendarEvent } from './event.js';
-import { monthGrid, type MonthCell } from './months.js';
+import { monthGrid, printedYear, type MonthCell } from './months.js';
 import {
   addDays,
   previewRows,
@@ -319,5 +319,176 @@ describe('a year with nothing in it', () => {
   it('draws no months at all', () => {
     const empty: SchoolYear = { ...SEEDED_SCHOOL_YEAR, terms: [], closures: [] };
     expect(monthGrid(empty, [], [])).toEqual([]);
+  });
+});
+
+/**
+ * The year on paper (#236).
+ *
+ * Asserted here rather than through a stylesheet: the folding is arithmetic over
+ * dates and names, and the case that would be caught in a school office — a run
+ * crossing a month boundary — is one no rendered page makes obvious.
+ */
+describe('the year as a printed list', () => {
+  const printed = (year: SchoolYear, events: CalendarEvent[] = []) =>
+    printedYear(monthGrid(year, events, []));
+
+  /** Every line of every month, in the order paper prints them. */
+  const linesOf = (months: ReturnType<typeof printedYear>) =>
+    months.flatMap((month) => month.lines);
+
+  it('lists the year month by month, and only the months carrying something', () => {
+    const months = printed(SEEDED_SCHOOL_YEAR);
+
+    /*
+     * The four months the seeded year has closures in — and December is not one
+     * of them, which is the boundary case rather than an omission: its only
+     * closed day is 1 December, and that is the far end of a Thanksgiving run
+     * that opened on 30 November and prints as one line under November.
+     */
+    expect(months.map((month) => month.id)).toEqual(['2026-09', '2026-11', '2027-03']);
+    expect(months[0]?.heading).toBe('September 2026');
+    // Every line belongs to the month it is printed under.
+    for (const month of months) {
+      for (const line of month.lines) expect(line.date.slice(0, 7), line.days).toBe(month.id);
+    }
+  });
+
+  it('prints only the dates carrying something', () => {
+    const dates = new Set(linesOf(printed(SEEDED_SCHOOL_YEAR)).map((line) => line.date));
+
+    // The school's own closures, and not the 112 dates it teaches on.
+    expect(dates).toContain('2026-09-07');
+    expect(dates).not.toContain('2026-09-08');
+    expect(dates).not.toContain('2026-09-02');
+  });
+
+  it('prints a one-off’s title, its time and its place', () => {
+    const evening: CalendarEvent = {
+      ...event('2026-10-17', 'Fall open house'),
+      startTime: '18:30',
+      place: 'The gym',
+    };
+    const months = printed(SEEDED_SCHOOL_YEAR, [evening]);
+
+    expect(linesOf(months)).toContainEqual({
+      date: '2026-10-17',
+      through: '2026-10-17',
+      days: '17',
+      entry: { kind: 'one-off', title: 'Fall open house', time: '6.30pm', place: 'The gym' },
+    });
+  });
+
+  it('prints a one-off with no time as its title alone, saying nothing is missing', () => {
+    const months = printed(SEEDED_SCHOOL_YEAR, [event('2026-10-17', 'Field day')]);
+
+    const line = linesOf(months).find((one) => one.date === '2026-10-17');
+
+    expect(line?.entry).toEqual({ kind: 'one-off', title: 'Field day', time: null, place: null });
+  });
+
+  it('carries a one-off the school keeps in its own Google calendar', () => {
+    /*
+     * A synced one-off is the same shape as a typed one and arrives on the same
+     * list (#153), so what this proves is that nothing here filters by where a
+     * one-off came from — which is the whole of AC 4.
+     */
+    const synced = { ...event('2027-02-11', 'Founders’ day'), slug: 'google-abc123' };
+    const dates = linesOf(printed(SEEDED_SCHOOL_YEAR, [synced])).map((line) => line.date);
+
+    expect(dates).toContain('2027-02-11');
+  });
+
+  it('folds consecutive closures sharing a name into one line', () => {
+    // Thanksgiving's Wednesday and Thursday, which the school named once.
+    const thanksgiving = linesOf(printed(SEEDED_SCHOOL_YEAR)).find(
+      (line) => line.date === '2026-11-25',
+    );
+
+    expect(thanksgiving).toEqual({
+      date: '2026-11-25',
+      through: '2026-11-26',
+      days: '25–26',
+      entry: { kind: 'closure', label: 'Thanksgiving' },
+    });
+  });
+
+  it('leaves a single closure a single line, not a range of one', () => {
+    const labor = linesOf(printed(SEEDED_SCHOOL_YEAR)).find((line) => line.date === '2026-09-07');
+
+    expect(labor).toMatchObject({ through: '2026-09-07', days: '7' });
+  });
+
+  it('keeps two adjacent closures called different things as two lines', () => {
+    const year: SchoolYear = {
+      ...SEEDED_SCHOOL_YEAR,
+      closures: [
+        { date: '2026-11-25', label: 'Thanksgiving' },
+        { date: '2026-11-26', label: 'Staff day' },
+      ],
+    };
+    const lines = linesOf(printed(year)).filter((line) => line.date.startsWith('2026-11-2'));
+
+    // The name is the only thing that says two shut days are one thing.
+    expect(lines.map((line) => line.days)).toEqual(['25', '26']);
+  });
+
+  it('never folds two shut days the school has not named', () => {
+    /*
+     * The same year `the days the school is shut` uses: a Monday track two
+     * weeks short leaves 7 and 14 December taught by nobody and called nothing.
+     * Two *adjacent* such days would fold on `null === null` and print as a
+     * range the school never gave a reason for, so the fall's last Wednesday and
+     * Thursday are taken off here to make a pair that sits side by side.
+     */
+    const year: SchoolYear = {
+      ...SEEDED_SCHOOL_YEAR,
+      terms: SEEDED_SCHOOL_YEAR.terms.map((term) =>
+        term.semester === 'fall' && (term.track === 'Wednesday' || term.track === 'Thursday')
+          ? { ...term, weeks: 13 }
+          : term,
+      ),
+    };
+    const unnamed = linesOf(printed(year)).filter(
+      (line) => line.entry.kind === 'closure' && line.entry.label === null,
+    );
+
+    // 9 and 10 December, side by side and each on its own line.
+    expect(unnamed.map((line) => line.date)).toEqual(['2026-12-09', '2026-12-10']);
+    for (const line of unnamed) expect(line.through, line.days).toBe(line.date);
+  });
+
+  it('folds a run that crosses a month boundary, and says both months', () => {
+    const year: SchoolYear = {
+      ...SEEDED_SCHOOL_YEAR,
+      closures: [
+        { date: '2026-11-30', label: 'Thanksgiving' },
+        { date: '2026-12-01', label: 'Thanksgiving' },
+      ],
+    };
+    const lines = linesOf(printed(year)).filter((line) => line.entry.kind === 'closure');
+
+    // One line, printed under the month it starts in, naming the month it ends in.
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({
+      date: '2026-11-30',
+      through: '2026-12-01',
+      days: '30 November–1 December',
+    });
+    expect(printed(year).find((month) => month.id === '2026-11')?.lines).toContainEqual(lines[0]);
+    expect(printed(year).map((month) => month.id)).not.toContain('2026-12');
+  });
+
+  it('prints the closure of a date above the one-offs held on it', () => {
+    const year: SchoolYear = {
+      ...SEEDED_SCHOOL_YEAR,
+      closures: [{ date: '2026-11-25', label: 'Thanksgiving' }],
+    };
+    const lines = linesOf(printed(year, [event('2026-11-25', 'Turkey trot')]));
+    const kinds = lines
+      .filter((line) => line.date === '2026-11-25')
+      .map((line) => line.entry.kind);
+
+    expect(kinds).toEqual(['closure', 'one-off']);
   });
 });

@@ -2,8 +2,10 @@ import type { Course } from '../courses/course.js';
 import { minutesOfDay, timeLabel } from '../courses/schedule.js';
 import { meetingDatesOn } from '../courses/slots.js';
 import { classPath } from '../courses/views.js';
-import type { CalendarEvent } from './event.js';
+import { eventTimeLabel, type CalendarEvent } from './event.js';
 import {
+  addDays,
+  dayLabel,
   meetingsOf,
   monthLabel,
   SEMESTERS,
@@ -348,5 +350,186 @@ function weeksOf(month: string, cellOf: (date: string) => MonthCell): (MonthCell
 /** Which of the seven columns a date belongs in — 0 is Monday. */
 function columnOf(date: string): number {
   return (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
+}
+
+/*
+ * The year on paper: a dated list, month by month (#236).
+ *
+ * This is the artefact the school already hand-maintains — the sheet pinned up
+ * in an office, which a family reads from across a hallway. What print used to
+ * put on paper was the four-column semester sheet, and the fundraisers, the
+ * picture days and the open houses were on the half of the page print hid.
+ *
+ * **Derived from the grid rather than from the year again.** A month on paper
+ * carries exactly what the same month carries on screen, minus one thing, so
+ * there is no second reading of the school's dates to drift from the first. The
+ * exception is a one-off's note: prose in a two-column list is what breaks the
+ * page, and it is the only thing paper keeps behind a press it does not have.
+ *
+ * The **offerings are not here at all**, which is not an omission. The reference
+ * the school keeps has none on it, a calendar prints what is exceptional and
+ * reveals what is routine, and paper is where space is scarcest.
+ *
+ * Pure and rendered by nobody, so the folding below is unit-tested as arithmetic
+ * rather than asserted through a stylesheet.
+ */
+
+/** What one printed line is about: the school being shut, or a one-off. */
+export type PrintedEntry =
+  | {
+      kind: 'closure';
+      /** What the school calls it, where it has named it. */
+      label: string | null;
+    }
+  | {
+      kind: 'one-off';
+      title: string;
+      /** "6.30pm", or null where the one-off is an all-day one. */
+      time: string | null;
+      place: string | null;
+    };
+
+/** One line of the printed list: some dates, and one thing that is on them. */
+export type PrintedLine = {
+  /** The first date the line covers, `YYYY-MM-DD` — its key and its order. */
+  date: string;
+  /** The last date it covers. The same date, unless a run of closures folded. */
+  through: string;
+  /** "17", "25–26", or "30 November–1 December" where a run crosses a month. */
+  days: string;
+  entry: PrintedEntry;
+};
+
+/** One month of the printed list. A month carrying nothing is not drawn. */
+export type PrintedMonth = { id: string; heading: string; lines: PrintedLine[] };
+
+/**
+ * The grid, folded down to the lines paper wants.
+ *
+ * **Consecutive closures sharing a name are one line.** Thanksgiving is six
+ * closures that happen to sit next to each other, and six lines saying "No
+ * school — Thanksgiving" is a list nobody reads to the end of; *"25–30"* is how
+ * the school writes it by hand. The name is what says two shut days are one
+ * thing — the year stores no run and no span — so a run breaks where the name
+ * changes, and two adjacent days off called different things stay two lines.
+ *
+ * A month is dropped when it holds nothing. The grid draws an empty October so
+ * that November is not read as October; a list has no such geometry to keep, and
+ * a heading with nothing under it is a line of paper spent saying nothing.
+ */
+export function printedYear(months: readonly MonthBlock[]): PrintedMonth[] {
+  const cells = months.flatMap((month) =>
+    month.weeks.flat().filter((cell): cell is MonthCell => cell !== null),
+  );
+
+  const lines = [...closureLines(cells), ...oneOffLines(cells)]
+    .sort((a, b) => a.date.localeCompare(b.date) || shutFirst(a.entry) - shutFirst(b.entry))
+    // The dates are written once, here, so a folded run and a single day cannot
+    // come out in two formats.
+    .map((line) => ({ ...line, days: daysLabel(line.date, line.through) }));
+
+  return months
+    .map((month) => ({
+      id: month.id,
+      heading: month.heading,
+      lines: lines.filter((line) => line.date.slice(0, 7) === month.id),
+    }))
+    .filter((month) => month.lines.length > 0);
+}
+
+/** A closure prints above the one-offs of its date: the school being shut first. */
+function shutFirst(entry: PrintedEntry): number {
+  return entry.kind === 'closure' ? 0 : 1;
+}
+
+/** A line before its dates are written out: what the two builders below return. */
+type UnwrittenLine = Omit<PrintedLine, 'days'>;
+
+/**
+ * The days off, with the runs folded.
+ *
+ * Adjacency is the calendar's and not the school week's: a run continues where
+ * the next day is the next date, so Thanksgiving's Wednesday and Thursday fold
+ * and the Monday on the far side of the weekend opens a new line. That is the
+ * honest reading — the school did not say it was shut on the Saturday, and a
+ * range that swallowed it would be the site inventing a closure.
+ *
+ * **The cells must arrive in date order**, which is what the grid hands over:
+ * only the line still open is offered the next shut day, so an out-of-order
+ * cell would open a second line for a day that belongs to a run above it.
+ *
+ * **A shut day the school has not named never folds.** The grid marks a weekday
+ * in term time that nobody meets on even where no closure names it, and two of
+ * those in a row are two facts about an empty timetable rather than one thing
+ * with two days in it. The name is what says a run is a run, so an absent name
+ * cannot say it — folding on `null === null` would print a range the school
+ * never gave a reason for.
+ */
+function closureLines(cells: readonly MonthCell[]): UnwrittenLine[] {
+  const lines: UnwrittenLine[] = [];
+
+  for (const cell of cells) {
+    if (!cell.noSchool) continue;
+
+    const open = lines[lines.length - 1];
+    const continues =
+      open !== undefined &&
+      open.entry.kind === 'closure' &&
+      open.entry.label !== null &&
+      open.entry.label === cell.closure &&
+      addDays(open.through, 1) === cell.date;
+
+    if (continues) open.through = cell.date;
+    else {
+      lines.push({
+        date: cell.date,
+        through: cell.date,
+        entry: { kind: 'closure', label: cell.closure },
+      });
+    }
+  }
+
+  return lines;
+}
+
+/**
+ * The one-offs, each its own line, in the order the date holds them.
+ *
+ * Title, time and place — the rule #234 sets on the grid, which paper keeps
+ * rather than restates: a one-off prints its title and its time everywhere it
+ * appears, and an absent time is a real state rather than a gap to apologise
+ * for. A pinned-up sheet saying "Fall Open House" and not whether it is an
+ * evening is the same complaint the cell answered.
+ *
+ * The place comes with them because a printed sheet has no panel to put it in
+ * and a family reading it is not standing at the school.
+ */
+function oneOffLines(cells: readonly MonthCell[]): UnwrittenLine[] {
+  return cells.flatMap((cell) =>
+    cell.events.map((event) => ({
+      date: cell.date,
+      through: cell.date,
+      entry: {
+        kind: 'one-off' as const,
+        title: event.title,
+        time: event.startTime ? eventTimeLabel(event.startTime) : null,
+        place: event.place,
+      },
+    })),
+  );
+}
+
+/**
+ * "17", "25–26", or "30 November–1 December".
+ *
+ * A bare number while the month heading above is still saying which month it
+ * is, and both months written out when the run crosses one — a range reading
+ * "30–1" is a range read as a typo.
+ */
+function daysLabel(date: string, through: string): string {
+  const day = (one: string) => String(Number(one.slice(8)));
+  if (date === through) return day(date);
+  if (date.slice(0, 7) === through.slice(0, 7)) return `${day(date)}–${day(through)}`;
+  return `${dayLabel(date)}–${dayLabel(through)}`;
 }
 

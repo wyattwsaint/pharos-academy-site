@@ -10,7 +10,7 @@ import {
   semesterHeading,
   SUBSCRIPTION_CAVEAT,
 } from '../../lib/calendar/views.js';
-import { monthGrid, WEEKDAY_COLUMNS } from '../../lib/calendar/months.js';
+import { monthGrid, printedYear, WEEKDAY_COLUMNS } from '../../lib/calendar/months.js';
 import { previewRows, schoolToday, SEMESTERS, type SchoolYear } from '../../lib/calendar/year.js';
 import { DAY_TRACKS } from '../../lib/courses/schedule.js';
 import { listCourses } from '../../lib/courses/store.js';
@@ -31,9 +31,11 @@ import { SITE_URL } from '../../lib/site.js';
  * 4 November on Wednesday, because each track skips only its own holidays.
  *
  * One download, and it is the same bytes the subscribe link serves. Printing is
- * the other half — a school office prints this sheet, and the print rules at
- * the bottom of this file are why it comes out as the calendar rather than as a
- * website with a navigation bar across the top.
+ * the other half, and what it puts on paper is neither of the two things on the
+ * screen: a school office gets the year as a dated list (#236), which is the
+ * sheet it already maintains by hand, and the print rules at the bottom of this
+ * file are why it comes out as that rather than as a website with a navigation
+ * bar across the top.
  */
 const db = await getDb();
 const details = await getSchoolDetails(db);
@@ -98,6 +100,22 @@ const months = year ? monthGrid(year, published, courses) : [];
  * whose other dated decision (what is still ahead) is already made here.
  */
 const currentMonth = schoolToday(new Date()).slice(0, 7);
+
+/*
+ * The same year a third time, as the sheet a school office pins up (#236).
+ *
+ * Rendered always and shown only to a printer. It is folded from the grid above
+ * rather than computed again, so paper cannot say something the screen does not:
+ * the two-column list is the same months, the same closures and the same
+ * one-offs — the school's own and the ones synced from its Google calendar —
+ * with the runs of shut days folded into ranges and a one-off's note left off,
+ * because prose in a two-column list is what breaks the page.
+ *
+ * What is *not* on it is the offerings and the week numbers. The reference the
+ * school already maintains by hand has neither, and paper is where space is
+ * scarcest.
+ */
+const printedMonths = printedYear(months);
 
 /*
  * The events, in structured data (#151) — the upcoming subset of what the grid
@@ -394,6 +412,54 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
           </disclosure-group>
         )
       }
+    </div>
+  </section>
+
+  {/*
+    The printed year (#236).
+
+    Off the screen entirely and on the paper alone: a family reading this page
+    has the grid, which says what is on in October better than any list can, and
+    a school office walking to the printer wants the whole year on one pinnable
+    sheet. Rendered rather than generated in the browser, so printing works with
+    no JavaScript and the same bytes come out of a phone.
+  */}
+  <section class="printed" data-section="calendar-print">
+    <div class="wide">
+      {/*
+        No title of its own: the page's own heading band prints above this and
+        already names the year. What that band says about day tracks does not
+        survive to paper, and is hidden below with the sheets it describes.
+      */}
+      <div class="printed-columns">
+        {
+          printedMonths.map((month) => (
+            <div class="printed-month" data-print-month={month.id}>
+              <h2>{month.heading}</h2>
+              <ul>
+                {month.lines.map((line) => (
+                  <li>
+                    <span class="printed-days">{line.days}</span>
+                    <span class="printed-what">
+                      {line.entry.kind === 'closure' ? (
+                        <Fragment>
+                          No school{line.entry.label ? ` — ${line.entry.label}` : ''}
+                        </Fragment>
+                      ) : (
+                        <Fragment>
+                          {line.entry.title}
+                          {line.entry.time && `, ${line.entry.time}`}
+                          {line.entry.place && `, ${line.entry.place}`}
+                        </Fragment>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </div>
     </div>
   </section>
 </BaseLayout>
@@ -802,50 +868,87 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     }
   }
 
-  /*
-    Printed, this is the calendar and nothing else.
+  /* The printed year exists on paper and nowhere else. */
+  .printed {
+    display: none;
+  }
 
-    A school office prints this sheet and pins it up, so the header, the footer,
-    the buttons and the bands' colour all come off, the table gets its rules
-    back in black, and a semester is not allowed to break across two sheets in
-    the middle of a week. Everything here is print-only: nothing in this block
-    can change what the page looks like on a screen.
+  /*
+    Printed, this is the year as a dated list and nothing else (#236).
+
+    A school office prints this page to pin the year up, and what it wants
+    pinned up is the artefact it already maintains by hand: every date carrying
+    something, month by month, two columns down the sheet. So the header, the
+    footer and the buttons come off, and so do the two halves of the screen page
+    — the semester sheets, which are a table of week numbers with no fundraiser
+    on it, and the month grid, which is nine sheets of mostly empty boxes.
+
+    Everything here is print-only: nothing in this block can change what the
+    page looks like on a screen.
   */
   @media print {
     .actions,
     .caveat,
+    .months,
+    [data-section='calendar-fall'],
+    [data-section='calendar-spring'],
     /*
-      The grid comes off with the buttons. A school office prints this page to
-      pin the year up, and what it pins up is the sheet; the grid is the same
-      year again, and a second copy of it in nine sheets of paper is not what
-      anybody walked to the printer for.
+      The page's standfirst goes with them: it describes four columns of class
+      dates, and on paper there are none to describe.
     */
-    .months {
+    [data-section='calendar-header'] .sub {
       display: none;
     }
 
-    .sheet-scroll {
-      overflow: visible;
+    .printed {
+      display: block;
     }
 
-    .sheet {
-      min-width: 0;
+    /*
+      Two columns, and the browser keeps a month whole where it can. A month
+      broken across the fold of a column is the one thing a pinned-up sheet is
+      read wrong from — the eye finds the heading and reads the wrong dates
+      under it.
+    */
+    .printed-columns {
+      columns: 2;
+      column-gap: 2rem;
       font-size: 10pt;
+      line-height: 1.35;
     }
 
-    .sheet th,
-    .sheet td {
-      padding: 0.2rem 0.4rem;
-      border-bottom: 1px solid #000;
-    }
-
-    .sheet tr.closed td {
-      background: none;
-      font-style: italic;
-    }
-
-    .sheet tr {
+    .printed-month {
       break-inside: avoid;
+      margin-bottom: 0.9rem;
+    }
+
+    .printed-month h2 {
+      font-size: 11pt;
+      font-variant-caps: all-small-caps;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid #000;
+      padding-bottom: 0.1rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .printed-month li {
+      display: flex;
+      gap: 0.5rem;
+      break-inside: avoid;
+      padding: 0.05rem 0;
+    }
+
+    /*
+      The dates in their own column, so the sheet reads down the days rather
+      than down a ragged left edge — which is what the school's own hand-kept
+      calendar does. The width is a floor and not a cap: a bare "3" still lines
+      up under a "25–26", and a run that crossed a month and reads "30
+      November–1 December" takes the room it needs rather than wrapping.
+    */
+    .printed-days {
+      flex: 0 0 auto;
+      min-width: 2.2rem;
+      font-variant-numeric: tabular-nums;
     }
   }
 </style>
