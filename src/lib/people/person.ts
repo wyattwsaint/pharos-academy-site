@@ -183,14 +183,25 @@ export function bySlug(people: readonly Person[]): ReadonlyMap<string, Person> {
 }
 
 /**
- * The person a course is taught by.
+ * The person a course is taught by, or nobody.
  *
- * Throws rather than printing an empty instructor line. The column is a foreign
- * key, so a course can only name somebody who exists; if this ever fires it
- * means the page was handed a partial list of people, and a class page quietly
- * missing its instructor is worse than a loud failure.
+ * **This is the one place the site decides whether a class names an
+ * instructor** (#257), and every surface goes through it: the class page, the
+ * full descriptions, the timetable and the class's own structured data. A
+ * crawler therefore cannot hold a name the page does not print, because the
+ * markup and the markup's page read the same answer.
+ *
+ * Null is the school not having staffed the class yet, and it is rendered as an
+ * absence — no line, no empty label, no dash. It is not the same thing as a
+ * course naming somebody who is not on the list, which still throws: the column
+ * is a foreign key, so that can only mean the page was handed a partial list of
+ * people, and a name silently dropped is worse than a loud failure.
  */
-export function instructorOf(directory: ReadonlyMap<string, Person>, course: Course): Person {
+export function instructorOf(
+  directory: ReadonlyMap<string, Person>,
+  course: Course,
+): Person | null {
+  if (course.instructorSlug === null) return null;
   const person = directory.get(course.instructorSlug);
   if (!person) throw new Error(`No person with the slug "${course.instructorSlug}".`);
   return person;

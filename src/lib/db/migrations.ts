@@ -921,6 +921,31 @@ export const MIGRATIONS: readonly Migration[] = [
        end $$`,
     ],
   },
+  {
+    /*
+     * A course may name no instructor (#257).
+     *
+     * 0002 created the column as a name and 0003 made it a `not null` foreign
+     * key, which left the school unable to type in a class it means to run and
+     * has not staffed yet. Dropping the constraint is the whole migration: no
+     * row is touched, so every course keeps the instructor it has, and null
+     * becomes what it should always have been — a class the school has not
+     * decided about, rendered as an absence rather than as a name.
+     *
+     * Preview, Production and Development are one Neon endpoint here, so this
+     * runs against the live database the moment it is applied. It is safe in
+     * both directions, which is what makes shipping it beside the code that
+     * reads a null honest rather than lucky: dropping a constraint only widens
+     * what the column accepts, every existing row keeps the instructor it has,
+     * and the first null appears only when somebody in the admin saves a class
+     * without one — which the deployed code by then already renders.
+     *
+     * `drop not null` on a column that is already nullable is a no-op rather
+     * than an error, so the statement survives a re-run unguarded.
+     */
+    id: '0025-a-course-may-name-no-instructor',
+    statements: [`alter table courses alter column instructor_slug drop not null`],
+  },
 ];
 
 /**
@@ -1201,10 +1226,25 @@ function courseValues(course: Course): string {
      * so the SQL 0002 produces is byte-for-byte what Neon already applied.
      * 0003 replaces the column a moment later.
      */
-    literal(seededName(course.instructorSlug)),
+    literal(seededName(seededInstructorOf(course))),
   ];
 
   return `(${values.join(', ')})`;
+}
+
+/**
+ * The instructor of a seeded course, which every one of them has.
+ *
+ * A course may name none since #257, but 0002's column was `not null` and the
+ * statement this feeds is the one Neon already applied — so a seed added
+ * without an instructor is a fault here rather than a null written into a
+ * column that cannot take one.
+ */
+function seededInstructorOf(course: Course): string {
+  if (course.instructorSlug === null) {
+    throw new Error(`The seeded course "${course.slug}" names no instructor, and 0002 requires one.`);
+  }
+  return course.instructorSlug;
 }
 
 /** A single-quoted SQL string literal. Only ever called on constants above. */

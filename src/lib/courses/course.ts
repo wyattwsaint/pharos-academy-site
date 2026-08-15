@@ -132,8 +132,16 @@ export type Course = {
    * corrects it on the class page, in the timetable and on the staff page
    * together. `instructorOf` in `people/person.ts` is how a surface gets from
    * this slug to the person.
+   *
+   * **Null is a real state** (#257): the school schedules a class before it
+   * decides who teaches it, so a course with nobody named is one it means to
+   * run and has not staffed. It is the same kind of absence a person's missing
+   * bio and missing photograph are, and it is rendered the same way — nothing
+   * printed, nothing invented, no dash and no placeholder. `instructorOf` is
+   * the one place that decides whether a class names anybody, and both the
+   * page and its structured data read what it says.
    */
-  instructorSlug: string;
+  instructorSlug: string | null;
   /** The stamp: who saved this course last, and when. Null for the seeded rows. */
   lastEditedBy: string | null;
   lastEditedAt: Date | null;

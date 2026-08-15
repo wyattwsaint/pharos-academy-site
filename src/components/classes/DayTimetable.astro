@@ -93,26 +93,36 @@ const rows = (layout.endMinutes - layout.startMinutes) / STEP;
       }
 
       {
-        layout.placed.map(({ course, startMinutes, endMinutes, lane }) => (
-          <a
-            class="slot"
-            href={classPath(course.slug)}
-            data-course={course.slug}
-            data-lane={lane}
-            data-start={startMinutes}
-            data-end={endMinutes}
-            style={`grid-column:${lane + 2}; grid-row:${rowFor(startMinutes)} / span ${
-              (endMinutes - startMinutes) / STEP
-            }`}
-          >
-            <span class="slot-title">{course.title}</span>
-            <span class="slot-time">{timeLabel(course.start, course.end)}</span>
-            <span class="slot-meta">
-              {ageLine(course)} · {priceSummary(course, rates)}
-            </span>
-            <span class="slot-who">{instructorOf(directory, course).name}</span>
-          </a>
-        ))
+        layout.placed.map(({ course, startMinutes, endMinutes, lane }) => {
+          /*
+            Who teaches it, asked once and asked where every other surface asks
+            it (#257). A class the school has scheduled and not staffed carries
+            no line at all — not an empty one, which would draw a gap where a
+            name goes and read as a name mislaid rather than as a decision the
+            school has not made yet.
+          */
+          const instructor = instructorOf(directory, course);
+          return (
+            <a
+              class="slot"
+              href={classPath(course.slug)}
+              data-course={course.slug}
+              data-lane={lane}
+              data-start={startMinutes}
+              data-end={endMinutes}
+              style={`grid-column:${lane + 2}; grid-row:${rowFor(startMinutes)} / span ${
+                (endMinutes - startMinutes) / STEP
+              }`}
+            >
+              <span class="slot-title">{course.title}</span>
+              <span class="slot-time">{timeLabel(course.start, course.end)}</span>
+              <span class="slot-meta">
+                {ageLine(course)} · {priceSummary(course, rates)}
+              </span>
+              {instructor && <span class="slot-who">{instructor.name}</span>}
+            </a>
+          );
+        })
       }
     </div>
   </div>

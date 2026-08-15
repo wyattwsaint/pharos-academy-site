@@ -507,6 +507,31 @@ title, test name, type and identifier: a `person` is what the code has, and
 being an instructor is still a fact about the catalogue rather than a status on
 the row.
 
+### unstaffed course
+
+A course the school has put on the schedule and has **not decided who teaches**.
+It names no person, and that is an answer rather than a gap: the school fixes a
+morning, an age band and a price before it fixes a teacher, and until #257 such
+a class could not be typed into the admin at all.
+
+Every public surface **renders the absence** — no instructor line on the class
+page, none in the full descriptions, none in the timetable, and no `instructor`
+in the class's structured data. Not a dash, not "TBA", not an empty label: the
+same stance a **person** with no bio and no photograph takes. `instructorOf` is
+the one place the site decides whether a class names anybody, and both the
+rendered page and its markup read that one answer, so a crawler can never hold a
+name the page does not print.
+
+The **admin's Classes list says so**, because the public pages correctly do not.
+That is the only place the want is visible, and it is the list the office scans.
+
+Not: "TBA", "unassigned course", "instructor: none" as a stored value. The printed page
+says **class**, as it does everywhere; the entity is a **course** and so is the identifier.
+
+This narrows one consequence of ADR-0004, which said the foreign key made a course with no
+instructor impossible. The rest of that decision stands: one list, an instructor derived
+from the catalogue, and no course naming somebody who is not a person.
+
 ### retired
 
 A **course** or a **person** the school is not currently running or listing, but
