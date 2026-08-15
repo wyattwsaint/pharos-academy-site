@@ -38,6 +38,23 @@ export const SCHOOL_DESCRIPTION_INLINE =
   SCHOOL_DESCRIPTION.charAt(0).toLowerCase() + SCHOOL_DESCRIPTION.slice(1);
 
 /**
+ * The same description, title-cased, for the home hero lockup only.
+ *
+ * The hero sets the line as display type under the school's name, where
+ * sentence case reads as a caption rather than as part of the lockup. Every
+ * other surface — About, `llms.txt`, the structured-data node — stays sentence
+ * case, so this is a rendering of the one wording and not a second wording.
+ *
+ * Derived, like {@link SCHOOL_DESCRIPTION_INLINE}, so the words can only ever be
+ * typed once. Not `text-transform: capitalize`, because the cased string is what
+ * a screen reader and a copy-paste both get.
+ */
+export const SCHOOL_DESCRIPTION_TITLE = SCHOOL_DESCRIPTION.replace(
+  /\b[a-z]/g,
+  (letter) => letter.toUpperCase(),
+);
+
+/**
  * Who built the site, credited at the foot of the staff page (#150).
  *
  * The Head of School asked for the credit, and the wording is his own, shown to
