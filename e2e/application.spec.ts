@@ -971,6 +971,12 @@ test.describe('the application page without scripting', () => {
     // moment later is a figure a family can catch stale.
     await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
 
+    // Every figure has moved off zero — internal agreement alone would be
+    // satisfied by a page that had quietly dropped the class — and the grand
+    // total reads the same wherever it is printed.
+    const figures = await allFigures(page);
+    expect(figures.every((amount) => amount > 0)).toBe(true);
+
     const grand = await grandTotals(page);
     expect(new Set(grand).size).toBe(1);
     expect(grand[0]).toBe(
@@ -978,7 +984,33 @@ test.describe('the application page without scripting', () => {
         (await figure(page, 'deposits')) +
         (await figure(page, 'tuitionDue')),
     );
+    expect(grand[0]).toBe(
+      (await classPrice(page, 'algebra-1:year')) + (await figure(page, 'registration')),
+    );
     expect(await childFigure(page, 0)).toBe(grand[0]);
+  });
+
+  test('prints each child’s figure on the row their classes are on (#261)', async ({ page }) => {
+    // A POST closes the gaps in the children: a family who leaves the first row
+    // blank and fills the second gets one row back, with that child's name, age
+    // and boxes on it. The figure has to travel with them — a row showing one
+    // child's classes beside another child's money is the failure this asserts
+    // against, and it is only reachable through the round trip.
+    await page.goto(APPLICATION_PATH);
+    await page.selectOption('#apply-child-count', '2');
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+
+    await page.fill('#apply-child-1-name', 'Suite Child');
+    await page.fill('#apply-child-1-age', '13');
+    await page.check('input[name="child-1-classes"][value="algebra-1:year"]');
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
+
+    for (const row of await page.locator('fieldset[data-child-row]:not([disabled])').all()) {
+      const chosen = await row.locator('input[name$="-classes"]:checked').count();
+      const owed = dollars(await row.locator('[data-child-total]').innerText());
+      expect(chosen > 0).toBe(owed > 0);
+    }
   });
 
   test('leaves the send ungreyed when the classes collide', async ({ page }) => {

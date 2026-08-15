@@ -14,9 +14,9 @@ import {
   familyClashes,
   firstError,
   MAX_CHILDREN,
+  offeringPrice,
   parseApplication,
   prefillFrom,
-  priceUnit,
   statementVersion,
   validateApplication,
   type ApplicationChild,
@@ -56,8 +56,7 @@ import { listCourses } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
 import { INQUIRY_PATH } from '../../lib/inquiry/inquiry.js';
 import { getInquiry } from '../../lib/inquiry/store.js';
-import { unitPrice } from '../../lib/money/owed.js';
-import { formatMoney, type MoneySettings } from '../../lib/money/settings.js';
+import { depositCreditNote, formatMoney, type MoneySettings } from '../../lib/money/settings.js';
 import { getMoneySettings, recordAgreedTerms } from '../../lib/money/store.js';
 import { publishedPolicies } from '../../lib/policies/policy.js';
 import { listPolicies } from '../../lib/policies/store.js';
@@ -505,18 +504,12 @@ const cost = applicationCost(values, offerings, settings);
 /**
  * What the browser is handed, and the whole of it (ADR-0019).
  *
- * One resolved price per control the family can tick, and three settings. The
- * rate card, the catalogue, the timetable and the Statement of Faith stay on
- * this side of the wire — the browser adds up numbers it was given and knows
+ * One resolved price per control the family can tick — `offeringPrice`, which
+ * is what `applicationCost` charges for the same class — and three settings.
+ * The rate card, the catalogue, the timetable and the Statement of Faith stay
+ * on this side of the wire: the browser adds up numbers it was given and knows
  * nothing about where they came from.
- *
- * Resolved here by the same `unitPrice` the server totals with, so the figure
- * on a checkbox and the figure `applicationCost` charges for it cannot be two
- * different numbers.
  */
-const priceOf = (offering: (typeof offerings)[number]): number =>
-  unitPrice({ course: offering.course, unit: priceUnit(offering.unit) }, settings);
-
 const liveMoney = JSON.stringify({
   registrationFee: settings.registrationFee,
   classDeposit: settings.classDeposit,
@@ -526,23 +519,16 @@ const liveMoney = JSON.stringify({
 /**
  * One child's own total, by their place in the form.
  *
- * `perChild` is indexed the way `childAt` is — a row nobody touched is not a
- * child — so a row past the end of it has chosen nothing and owes nothing.
+ * The same index `childAt` reads, into the same list: a row nobody touched is
+ * not a child, so a POST closes the gaps and row *n* carries `children[n]`'s
+ * name, age, ticked boxes **and** figure together. Indexing this any other way
+ * is how a row comes to show one child's classes beside another child's money.
+ * A row past the end of the list has chosen nothing and owes nothing.
  */
 const childTotal = (index: number): number => cost.perChild[index]?.owed.total ?? 0;
 
-/**
- * What the deposits take off the tuition, or nothing to say.
- *
- * A whole string rather than a fragment around a figure, because the browser
- * rewrites this one as a whole string too — printed the same way on both sides,
- * a family with scripting on and a family without read the same sentence rather
- * than two spacings of it.
- */
-const creditNote =
-  cost.total.creditedAgainstTuition > 0
-    ? ` — the deposits come off this, ${formatMoney(cost.total.creditedAgainstTuition)} of it`
-    : '';
+/** What the deposits take off the tuition, in the words the browser reprints. */
+const creditNote = depositCreditNote(cost.total.creditedAgainstTuition);
 
 const clashing = familyClashes(values, offerings, year);
 const clashCount = clashing.reduce((sum, one) => sum + one.clashes.length, 0);
@@ -944,7 +930,7 @@ const description =
                               type="checkbox"
                               name={`child-${index}-classes`}
                               value={offeringKey(offering)}
-                              data-price={priceOf(offering)}
+                              data-price={offeringPrice(offering, settings)}
                               checked={childAt(index).offeringKeys.includes(offeringKey(offering))}
                               aria-describedby={errors.classes ? 'apply-classes-error' : undefined}
                               autofocus={focus === 'classes' && index === 0 && at === 0}
@@ -974,7 +960,7 @@ const description =
                   down the form is the noise ADR-0019 kept out of the list.
                 */}
                 <p class="child-total mt-6">
-                  <span class="amount" data-child-total={index}>{formatMoney(childTotal(index))}</span>
+                  <span class="amount" data-child-total>{formatMoney(childTotal(index))}</span>
                   <span>for this child, at today’s rates</span>
                 </p>
               </fieldset>
@@ -1117,7 +1103,9 @@ const description =
                 <span class="amount" data-total="tuitionDue">
                   {formatMoney(cost.total.tuitionDue)}
                 </span>
-                <span>Tuition — one payment, upfront<span data-credit>{creditNote}</span></span>
+                <span>
+                  Tuition — one payment, upfront<span data-credit>{creditNote}</span>
+                </span>
               </li>
               <li class="due" aria-live="polite">
                 <span class="amount" data-total="total">{formatMoney(cost.total.total)}</span>
@@ -1359,7 +1347,7 @@ const description =
     type AmountOwed,
     type LiveMoneySettings,
   } from '../../lib/money/live.js';
-  import { formatMoney } from '../../lib/money/settings.js';
+  import { depositCreditNote, formatMoney } from '../../lib/money/settings.js';
 
   const found = document.querySelector<HTMLFormElement>('form[data-application-form]');
 
@@ -1603,8 +1591,8 @@ const description =
       return prices;
     }
 
-    /** Write a figure, and only when it is a different figure. */
-    function say(element: Element | null, text: string): void {
+    /** Print a figure, and only when it is a different figure. */
+    function write(element: Element | null, text: string): void {
       if (element && element.textContent !== text) element.textContent = text;
     }
 
@@ -1630,7 +1618,7 @@ const description =
 
       const owed = perRow as AmountOwed[];
       rows.forEach((row, index) => {
-        say(row.querySelector('[data-child-total]'), formatMoney(owed[index]!.total));
+        write(row.querySelector('[data-child-total]'), formatMoney(owed[index]!.total));
       });
 
       const family = sumOwed(owed.filter((_owed, index) => !rows[index]!.disabled));
@@ -1646,22 +1634,13 @@ const description =
         // the one inside the check disclosure. A figure left out of this loop
         // is the one somebody pays.
         for (const figure of form.querySelectorAll(`[data-total="${field}"]`)) {
-          say(figure, formatMoney(amount));
+          write(figure, formatMoney(amount));
         }
       }
 
-      /*
-        The credit clause, in the server's own words. The one sentence this
-        file restates rather than imports — it is phrasing rather than
-        arithmetic, and the figure inside it comes from the same sum as
-        everything else.
-      */
-      say(
-        form.querySelector('[data-credit]'),
-        family.creditedAgainstTuition > 0
-          ? ` — the deposits come off this, ${formatMoney(family.creditedAgainstTuition)} of it`
-          : '',
-      );
+      // The credit clause, in the server's own words — the same function the
+      // server printed it with, so the two cannot come to say it differently.
+      write(form.querySelector('[data-credit]'), depositCreditNote(family.creditedAgainstTuition));
     }
 
     /** Show or clear one field's sentence, and the wiring that points at it. */
