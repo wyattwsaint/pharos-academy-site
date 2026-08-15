@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { CALENDAR_PATH } from '../src/lib/calendar/views.js';
 import { schoolToday } from '../src/lib/calendar/year.js';
 import { jsonLdProblems } from '../src/lib/structured-data.test-helper.js';
+import { ensureUnstaffedCourse } from './unstaffed-course.js';
 
 /**
  * The structured data, as a browser and a crawler actually receive it (#30 AC 6,
@@ -28,7 +29,10 @@ type CourseNode = LdNode & {
   name: string;
   provider: { '@id': string };
   offers: unknown[];
-  hasCourseInstance: { courseSchedule: { byDay: string[] } };
+  hasCourseInstance: {
+    courseSchedule: { byDay: string[] };
+    instructor?: { name: string };
+  };
 };
 type EventNode = LdNode & { name: string; startDate: string };
 type BreadcrumbNode = LdNode & { itemListElement: { name: string; position: number }[] };
@@ -90,6 +94,24 @@ test.describe('a class’s structured data', () => {
     expect(course!.provider['@id']).toBe(nodesOfType(graph, 'School')[0]!['@id']);
   });
 
+  test('claims no instructor for a class the school has not staffed', async ({ page }) => {
+    /*
+     * #257, and the reason it is asserted in a browser as well as in
+     * `structured-data.test.ts`: the page and the markup are supposed to be one
+     * decision, so what has to be checked here is that the *rendered* page
+     * prints no name and the *rendered* graph carries none — a crawler holding
+     * a teacher the page never mentioned is the failure, and only a request
+     * shows both halves at once.
+     */
+    test.skip(!!process.env.PLAYWRIGHT_BASE_URL, 'adds a course to the database');
+    const path = await ensureUnstaffedCourse(page);
+    await page.goto(path);
+
+    const [course] = nodesOfType<CourseNode>(await graphOf(page), 'Course');
+    expect(course).toBeTruthy();
+    expect(course!.hasCourseInstance).not.toHaveProperty('instructor');
+    await expect(page.locator('.coursefacts dt', { hasText: /^Instructor$/ })).toHaveCount(0);
+  });
 });
 
 test.describe('the events’ structured data', () => {

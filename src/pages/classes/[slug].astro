@@ -46,8 +46,14 @@ if (!course) {
 // filtered out, with their times attached.
 const everyCourse = await listCourses(db);
 const { rates } = await getMoneySettings(db);
-// The instructor comes from the one list of people (#26), never from a name
-// typed onto the course, so a correction on the staff page lands here too.
+/*
+ * The instructor comes from the one list of people (#26), never from a name
+ * typed onto the course, so a correction on the staff page lands here too — and
+ * it may be nobody (#257), for a class the school has scheduled and not staffed
+ * yet. Asked **once**, here: the facts list below and the structured data
+ * further down both read this one answer, so the markup cannot claim a name the
+ * page does not print.
+ */
 const instructor = instructorOf(bySlug(await listPeople(db)), course);
 const seen = new Set<string>([course.slug]);
 const alongside = course.days
@@ -81,7 +87,7 @@ const jsonLd = [
   courseJsonLd({
     course,
     rates,
-    instructorName: instructor.name,
+    instructorName: instructor?.name ?? null,
     site: Astro.site ?? SITE_URL,
   }),
 ];

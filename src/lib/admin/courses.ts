@@ -131,7 +131,7 @@ export type ParsedCourse = {
 export type CourseContext = {
   /** The saved school year — the days on offer and every block date come from it. */
   year: SchoolYear;
-  /** Everybody on the people list. A course may only name one of them. */
+  /** Everybody on the people list. A course names one of them, or nobody (#257). */
   instructorSlugs: readonly string[];
 };
 
@@ -243,7 +243,7 @@ export function fieldsOf(course: Course): CourseFields {
     assessmentFee: course.assessmentFee === null ? '' : String(course.assessmentFee),
     assessmentFeeNote: course.assessmentFeeNote ?? '',
     prerequisites: course.prerequisites,
-    instructorSlug: course.instructorSlug,
+    instructorSlug: course.instructorSlug ?? '',
   };
 }
 
@@ -358,8 +358,17 @@ export function parseCourse(form: FormData, context: CourseContext): ParsedCours
       'A note qualifies a fee — give the assessment fee, or clear the note.';
   }
 
-  if (!context.instructorSlugs.includes(values.instructorSlug)) {
-    errors.instructorSlug = 'Pick who teaches it from the people list.';
+  /*
+   * The one field the form may be saved without (#257).
+   *
+   * The school puts a class on the schedule before it decides who teaches it,
+   * so "nobody yet" is an answer rather than an omission — and refusing the
+   * save was how a class it means to run could not be typed in at all. A name
+   * that is not on the people list is still refused: that is a typo or a stale
+   * form, not a decision.
+   */
+  if (values.instructorSlug && !context.instructorSlugs.includes(values.instructorSlug)) {
+    errors.instructorSlug = 'Pick who teaches it from the people list, or leave it unset.';
   }
 
   /*
@@ -400,7 +409,7 @@ export function parseCourse(form: FormData, context: CourseContext): ParsedCours
     assessmentFee,
     assessmentFeeNote: optional(values.assessmentFeeNote),
     prerequisites: values.prerequisites,
-    instructorSlug: values.instructorSlug,
+    instructorSlug: optional(values.instructorSlug),
   };
 
   return { values, fields, edit, errors };

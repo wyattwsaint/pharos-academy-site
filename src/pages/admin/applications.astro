@@ -22,7 +22,12 @@ import {
   paymentStatusLabel,
   paymentStatusNow,
 } from '../../lib/application/lifecycle.js';
-import { offeringsOf, title as offeringTitle } from '../../lib/application/offerings.js';
+import {
+  catalogueCourses,
+  chosenClassLabel,
+  chosenClasses,
+} from '../../lib/application/chosen-classes.js';
+import { offeringsOf } from '../../lib/application/offerings.js';
 import { applicationReference } from '../../lib/application/reference.js';
 import { listApplications, type ApplicationRecord } from '../../lib/application/store.js';
 import { classTally, tallyLines } from '../../lib/application/tally.js';
@@ -103,6 +108,8 @@ const actedOn = Astro.url.searchParams.get('at');
 const applications = await listApplications(db);
 const settings = await getMoneySettings(db);
 const offerings = offeringsOf(await listCourses(db));
+/** What the catalogue still has, asked once for the whole page (#259). */
+const catalogue = catalogueCourses(offerings);
 const tally = classTally(applications, offerings);
 const now = new Date();
 
@@ -253,7 +260,8 @@ const resubmittedIds = new Set(
               {application.flagged && (
                 <p class="mt-3 border-l-4 border-navy pl-3 font-semibold" data-testid="application-flag">
                   Conversation flag — somebody answered “no” to one of the Statement of Faith
-                  questions, or wrote something they want to talk about. It is not a refusal.
+                  questions, said their family does not agree to one of the documents, or wrote
+                  something they want to talk about. It is not a refusal.
                   {application.objections && (
                     <span class="mt-1 block font-normal whitespace-pre-line">
                       {application.objections}
@@ -295,17 +303,20 @@ const resubmittedIds = new Set(
                   <li data-testid="application-child">
                     <span class="font-semibold">{child.name || 'A child'}</span>
                     {child.age && <span> — age {child.age}</span>}
+                    {/*
+                      The classes as this application recorded them (#259),
+                      never as today's catalogue would name them. A course
+                      renamed since reads as it was submitted, and one the
+                      school has removed is named and marked rather than
+                      silently dropped off the family's record.
+                    */}
                     <ul class="mt-1 ml-4 list-disc">
                       {child.offeringKeys.length === 0 ? (
                         <li>No classes chosen.</li>
                       ) : (
-                        offerings
-                          .filter((offering) =>
-                            child.offeringKeys.includes(
-                              `${offering.course.slug}:${offering.unit}`,
-                            ),
-                          )
-                          .map((offering) => <li>{offeringTitle(offering)}</li>)
+                        chosenClasses(child, catalogue).map((chosen) => (
+                          <li data-offered={String(chosen.offered)}>{chosenClassLabel(chosen)}</li>
+                        ))
                       )}
                     </ul>
                   </li>

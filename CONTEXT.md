@@ -298,19 +298,51 @@ number that would otherwise look wrong.
 **Blocking a second application on the email address is wrong**: two households
 share one, and re-applying is a real thing to do.
 
-Nothing about it is stored — no `supersedes` column, no pointer written at
-submission. It is recomputed from the applications each time, so a correction is
-a correction rather than a migration, and the record of what each family sent
-stays exactly what they sent.
+**No seat is stored** — no `supersedes` column, no pointer written at
+submission. The count is recomputed from the applications each time, so a
+correction is a correction rather than a migration, and the record of what each
+family sent stays exactly what they sent. What *is* stored is the
+[captured class title](#captured-class-title) each application carries, which is
+how the tally names a class rather than what it counts.
+
+A class the school has since removed from the catalogue is **still counted**,
+named from that capture and marked as no longer offered. Dropping it would move
+a number the school has already decided something on.
 
 Not: "enrolment numbers" (a seat in the tally is not an enrolment), "roll",
 "class list".
 
+### captured class title
+
+The title of each [offering](#offering) a child selected, written onto the
+**application** at the moment it is submitted and never updated afterwards.
+
+It exists because an application is the record of what a family sent. Resolving
+a class against the live catalogue when the screen is read means a course
+renamed changes what an old application says, and a course removed makes a class
+silently vanish out of one — loss the office cannot even see happen.
+
+It is a **freeze, not a foreign key**, and the same construction as
+[agreed terms](#agreed-terms) for the same reason: record what the family was
+shown rather than looking it up later against something that moves. Nothing
+keeps it in step with the catalogue, and nothing may.
+
+Applications submitted before the capture existed hold none, and fall back to
+the slug out of the offering key. That fallback is deliberate and is **not
+backfilled** — there is no honest title to recover for them.
+
+Not: "course title" (which is the catalogue's, and moves).
+
 ### conversation flag
 
 The mark an application carries when somebody answered "no" to one of the three
-Statement of Faith questions, or wrote something in the objections field. It
-routes the application to a conversation.
+Statement of Faith questions, answered **No** to one of the two
+[agreements](#agreement) (ADR-0020), or wrote something in the objections field.
+It routes the application to a conversation.
+
+**It is decided at submission and never recomputed.** A row written before an
+answer changed what the flag reads keeps the flag it was given — the three
+answers ADR-0020 retired are not reread as refusals.
 
 **It is not a rejection, and nothing in the codebase may make it one.** The flag
 is recorded at submission, printed above the family's name in the school's
@@ -383,9 +415,10 @@ the class pages and the Admissions page in the same republish. A test walks the
 public templates and fails on a dollar figure written as a literal.
 
 Saving it asks for an **explicit confirmation naming the change and its effect
-on every family** — the only save on the site that confirms, though the two
-things that take something away now confirm the same way (deleting an account,
-removing a [one-off](#one-off)) — and an identical save is refused rather than
+on every family** — the only save on the site that confirms, though everything
+that takes something away now confirms the same way (deleting an account,
+removing a [one-off](#one-off), deleting a [policy](#policy)) — and an
+identical save is refused rather than
 **stamped**, because the stamp is the only control on the money once
 permissions are flat.
 
@@ -473,6 +506,31 @@ asked for and the words a parent uses. The rule above still binds every issue
 title, test name, type and identifier: a `person` is what the code has, and
 being an instructor is still a fact about the catalogue rather than a status on
 the row.
+
+### unstaffed course
+
+A course the school has put on the schedule and has **not decided who teaches**.
+It names no person, and that is an answer rather than a gap: the school fixes a
+morning, an age band and a price before it fixes a teacher, and until #257 such
+a class could not be typed into the admin at all.
+
+Every public surface **renders the absence** — no instructor line on the class
+page, none in the full descriptions, none in the timetable, and no `instructor`
+in the class's structured data. Not a dash, not "TBA", not an empty label: the
+same stance a **person** with no bio and no photograph takes. `instructorOf` is
+the one place the site decides whether a class names anybody, and both the
+rendered page and its markup read that one answer, so a crawler can never hold a
+name the page does not print.
+
+The **admin's Classes list says so**, because the public pages correctly do not.
+That is the only place the want is visible, and it is the list the office scans.
+
+Not: "TBA", "unassigned course", "instructor: none" as a stored value. The printed page
+says **class**, as it does everywhere; the entity is a **course** and so is the identifier.
+
+This narrows one consequence of ADR-0004, which said the foreign key made a course with no
+instructor impossible. The rest of that decision stands: one list, an instructor derived
+from the catalogue, and no course naming somebody who is not a person.
 
 ### retired
 
@@ -774,11 +832,15 @@ one), "attachment" (that is an [announcement](#announcement)'s optional PDF),
 
 ### agreement
 
-A family's answer to "who agrees to this document?", asked on the
+A family's answer to "does your family agree to this document?", asked on the
 [application](#conversation-flag) about the two [policies](#policy) families
-sign — the Code of Conduct and the Handbook. Three answers, in the school's own
-words from its live form: **Student agrees**, **Parent agrees**, **Neither
-agrees**.
+sign — the Code of Conduct and the Handbook. Two answers: **Yes** and **No**
+(ADR-0020).
+
+The three answers it used to offer — **Student agrees**, **Parent agrees**,
+**Neither agrees** — were the school's own words from its live form, kept while
+nobody had asked otherwise. Applications recorded before the change keep them,
+and are read back as "Agreed" and "Did not agree"; nothing rewrites them.
 
 **It is asked once, of the family.** The live form asks once, and an application
 carrying three children still records one answer per document. The singular word
@@ -795,10 +857,11 @@ now only possible for a document that was never published.
 reinterpret what a family agreed to. The link a family reads goes to the policy's
 fixed address; only the record keeps the number.
 
-**No answer to it blocks a submission, and none of them raises the
-[conversation flag](#conversation-flag).** "Neither agrees" is an ordinary
-answer and goes through like any other. Whether it should route to a
-conversation is the school's call, not the site's (#71).
+**No answer to it blocks a submission.** **No** sends like any other answer —
+and it raises the [conversation flag](#conversation-flag), because a family
+saying they do not agree to a document the school requires is a conversation
+(ADR-0020). "Neither agrees" did not raise it: under three answers it was as
+often a family declining to nominate a person as a refusal.
 
 Not: "signature" (nothing is signed here — the paper at enrolment is), "consent",
 "acceptance".
@@ -812,8 +875,9 @@ column** of the Statement of Faith grid by any one respondent, and an
 complete, **Send the application** is greyed and a list beside it names what is
 still needed.
 
-**Complete means answered, never agreed** (#85, ADR-0009). "No" is complete.
-"Neither agrees" is complete. An objection is complete, and still raises the
+**Complete means answered, never agreed** (#85, ADR-0009). "No" is complete —
+to a faith question and to an [agreement](#agreement) alike. An objection is
+complete, and still raises the
 [conversation flag](#conversation-flag). Nothing about what a family thinks can
 make their application incomplete, and a request to change that is a different
 decision with its own ADR.
@@ -971,9 +1035,9 @@ already wrote and the screen decides the wording from it, refusing any part that
 is not in the closed lists (#201).
 
 **A deleted row is the one thing the code cannot name.** Removing a
-[one-off](#one-off) and deleting an [announcement](#announcement) both redirect
-to a list that can no longer look the row up, so its name travels beside the code
-as text. That is data and not a message: the list still chooses every word around
+[one-off](#one-off) and deleting a [policy](#policy) or an
+[announcement](#announcement) each redirect to a list that can no longer look the
+row up, so its name travels beside the code as text. That is data and not a message: the list still chooses every word around
 it from its own closed lists, so a rewritten URL can put a wrong noun in the
 banner but never a claim the site did not make.
 

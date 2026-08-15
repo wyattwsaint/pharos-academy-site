@@ -72,7 +72,7 @@ describe('the catalogue', () => {
       const published = mirrorFor(course.title);
       // Through the one list of people (#26): the course stores a slug, and
       // the name the school publishes is that person's, in one place.
-      expect(seededName(course.instructorSlug), course.title).toBe(published.instructor);
+      expect(seededName(course.instructorSlug!), course.title).toBe(published.instructor);
       expect(course.materialsFee, course.title).toBe(published.materialsFee);
       expect(course.assessmentFee, course.title).toBe(published.assessmentFee);
       // The credit line is reworded only where the capture spells a fraction

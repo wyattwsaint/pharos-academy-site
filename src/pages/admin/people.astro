@@ -15,13 +15,11 @@ import { listPeopleForAdmin } from '../../lib/people/store.js';
  * is the store's, which is the staff page's, so what Jill sees here is what a
  * parent sees there.
  *
- * There is no delete **yet**. Removing somebody who teaches would leave their
- * courses pointing at a row that is gone — the foreign key refuses it, and a
- * screen offering a button the database will not honour is a screen that lies.
- * ADR-0021 reverses the stance and a person becomes deletable once
- * `instructor_slug` is nullable; until that migration lands, this screen has no
- * delete. What it no longer does is *say* so — that sentence was a promise the
- * school has withdrawn (#258).
+ * There is no delete **here yet**. ADR-0021 reverses the stance that there
+ * never would be, and #257 has already cleared the obstacle by making
+ * `instructor_slug` nullable — so what is left is the screen, on its own
+ * ticket. What this one no longer does is *promise* there will never be one:
+ * that sentence was withdrawn with the decision behind it (#258).
  */
 const db = await getDb();
 const actor = Astro.locals.actor!;

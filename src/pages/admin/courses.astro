@@ -74,6 +74,20 @@ const settings = await getMoneySettings(db);
               Families can enroll for:{' '}
               {course.enrolmentUnits.map((unit) => UNIT_LABELS[unit]).join(', ')}
             </p>
+            {
+              /*
+                A class the school has scheduled and not staffed (#257). Said
+                here rather than left to be noticed on the class's own screen,
+                because this is the list somebody scans — and the public pages
+                say nothing at all about it, correctly, so this is the only
+                place the want is visible.
+              */
+              course.instructorSlug === null && (
+                <p class="mt-1 text-sm" data-testid={`no-instructor-${course.slug}`}>
+                  No instructor yet — this class is scheduled and unstaffed.
+                </p>
+              )
+            }
             <p class="mt-1 text-sm" data-testid={`stamp-${course.slug}`}>
               {formatStamp(course.lastEditedBy, course.lastEditedAt)}
             </p>

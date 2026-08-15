@@ -27,7 +27,7 @@
  */
 
 import { americanDateLabel, type SchoolYear } from '../calendar/year.js';
-import type { Course, EnrolmentUnit } from '../courses/course.js';
+import { ENROLMENT_UNITS, type Course, type EnrolmentUnit } from '../courses/course.js';
 import { meetingDatesOn } from '../courses/slots.js';
 import { DAY_TRACKS, minutesOfDay, type DayTrack } from '../courses/schedule.js';
 
@@ -70,6 +70,31 @@ const UNIT_ORDER: readonly EnrolmentUnit[] = ['year', 'fall', 'spring', 'block']
 /** Read a posted key back, or null if it names a course or unit that is not offered. */
 export function findOffering(offerings: readonly Offering[], key: string): Offering | null {
   return offerings.find((offering) => offeringKey(offering) === key) ?? null;
+}
+
+/**
+ * A posted key split back into its two halves, or null if it is not one.
+ *
+ * The inverse of `offeringKey`, and beside it so the one format has one home.
+ * It answers what `findOffering` cannot: a key naming a course the catalogue no
+ * longer has is still a class somebody chose (#259), and the application that
+ * carries it has to be able to say which class and which unit.
+ *
+ * The unit is the part after the **last** colon, because the slug is the half a
+ * hand-typed key gets wrong and splitting on the first colon would hand a
+ * mangled slug back as though it were real. A key naming no known unit is not a
+ * class at all — it is a garbled field — and is nothing rather than a guess.
+ */
+export function splitOfferingKey(
+  key: string,
+): { courseSlug: string; unit: EnrolmentUnit } | null {
+  const at = key.lastIndexOf(':');
+  if (at < 1) return null;
+
+  const unit = key.slice(at + 1);
+  if (!ENROLMENT_UNITS.includes(unit as EnrolmentUnit)) return null;
+
+  return { courseSlug: key.slice(0, at), unit: unit as EnrolmentUnit };
 }
 
 /**
@@ -201,7 +226,19 @@ export function clashSentence(clash: OfferingClash): string {
 
 /** "Algebra 1 (full year)" — the class and the unit, as one name. */
 export function title(offering: Offering): string {
-  return `${offering.course.title} (${unitLabel(offering.unit).toLowerCase()})`;
+  return classAndUnit(offering.course.title, offering.unit);
+}
+
+/**
+ * The same name, from a title the caller already holds.
+ *
+ * An application names its classes from what it **captured** rather than from a
+ * course row (#259), so it has a title and a unit and no offering. One shape,
+ * so the Apply page and the Applications screen cannot drift into naming the
+ * same purchase two ways.
+ */
+export function classAndUnit(courseTitle: string, unit: EnrolmentUnit): string {
+  return `${courseTitle} (${unitLabel(unit).toLowerCase()})`;
 }
 
 /**

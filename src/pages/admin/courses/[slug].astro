@@ -463,10 +463,12 @@ function warningLine(warning: ClashWarning): string {
         /*
           The two ends of a slot the timetable does not run yet.
 
-          `optional` here — and on every select on this screen — is the HTML
+          `optional` here — and on most selects on this screen — is the HTML
           sense of the word rather than the school's: the parser refuses a blank
-          time, rate or instructor as firmly as it refuses a blank title. What it
-          says is that the *browser* must not stop the form, because whether
+          time or rate as firmly as it refuses a blank title. The instructor is
+          the one that means both (#257) — a class may be scheduled before it is
+          staffed. What `optional` says is that the *browser* must not stop the
+          form, because whether
           these two are wanted depends on the answer above them, and a form
           refused before it is posted is a form the parser never gets to explain.
         */
@@ -572,7 +574,7 @@ function warningLine(warning: ClashWarning): string {
       name="instructorSlug"
       type="select"
       label={LABELS.instructorSlug}
-      placeholder="Not picked yet"
+      placeholder="Nobody yet"
       options={people.map((person) => ({ value: person.slug, label: person.name }))}
       value={values.instructorSlug}
       error={errors.instructorSlug}
@@ -580,7 +582,9 @@ function warningLine(warning: ClashWarning): string {
     >
       <Fragment slot="hint">
         From the <a href="/admin/people" class="underline underline-offset-4">people list</a> — never
-        a typed name, so correcting a name corrects it here too.
+        a typed name, so correcting a name corrects it here too. Leave it unset for a class you mean
+        to run and have not staffed: no page invents a name for it, and the Classes list says one is
+        wanted.
       </Fragment>
     </AdminField>
 

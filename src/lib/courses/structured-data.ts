@@ -36,8 +36,15 @@ export type CourseJsonLdInput = {
   rates: RateCard;
   /**
    * Who teaches it, resolved from the one list of people (#26) — never a name
-   * typed onto the course. Absent when the page could not resolve one, in which
-   * case the instructor is simply not claimed.
+   * typed onto the course, and never read here: the page asks `instructorOf`
+   * once and hands the same answer to the facts list and to this, which is what
+   * makes "a crawler cannot hold a name the page does not print" a property
+   * rather than a promise (#257).
+   *
+   * Null is a class the school has scheduled and not staffed. The instructor is
+   * then **omitted entirely** — not an empty `Person`, not an empty string,
+   * which would be the markup asserting a teacher exists and refusing to say
+   * who.
    */
   instructorName?: string | null;
   site: string | URL;

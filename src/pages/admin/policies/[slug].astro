@@ -2,15 +2,19 @@
 export const prerender = false;
 
 import AdminBanner from '../../../components/AdminBanner.astro';
+import AdminButton from '../../../components/AdminButton.astro';
+import AdminConfirm from '../../../components/AdminConfirm.astro';
 import AdminPublishing from '../../../components/AdminPublishing.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import type { Banner } from '../../../lib/admin/banner.js';
+import { isConfirmed } from '../../../lib/admin/confirmation.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
 import { saveErrorMessage } from '../../../lib/admin/save-errors.js';
 import {
   LABELS,
   parsePolicy,
   parsePolicyDraft,
+  policyDeletion,
   positionNumber,
   type PolicyErrors,
   type PolicyFields,
@@ -26,6 +30,7 @@ import { getDb } from '../../../lib/db/client.js';
 import { policySlug, type Policy, type PolicyVersion } from '../../../lib/policies/policy.js';
 import {
   createPolicy,
+  deletePolicy,
   getPolicy,
   listPolicies,
   listPolicyVersions,
@@ -57,6 +62,16 @@ import {
  * **Uploading is what stamps the date.** There is no date control anywhere on
  * this page. A replacement lands at the policy's existing address with no
  * redirect, and the version it replaced keeps its own address forever.
+ *
+ * **The policy can be deleted; its documents cannot** (#260, ADR-0021). The
+ * paragraph above used to end by saying the address was permanent and that was
+ * why there was no way back — half right. The versioned addresses are the ones
+ * on paper and in a family's record, and they survive this; the row does not
+ * have to. So the screen grows a delete, and it confirms first the way every
+ * destructive action here does: the first press replaces the form with a screen
+ * naming what goes *and what is kept*, and only the second press — the same
+ * form plus `confirm` — deletes. Confirming republishes and leaves for the list,
+ * because this screen is what has just stopped existing.
  */
 const NEW = 'new';
 
@@ -92,11 +107,39 @@ const EMPTY: PolicyFields = {
 let values: PolicyFields = policy ? fieldsOf(policy) : EMPTY;
 let errors: PolicyErrors = {};
 let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republished'));
+/** True only on the confirmation screen, which replaces the form. */
+let confirmingDeletion = false;
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
 
-  if (policy) {
+  const deleting = form.get('delete') !== null && policy !== undefined;
+
+  if (deleting && !isConfirmed(form)) {
+    /*
+     * The first press asks, and nothing is parsed on the way. The delete form
+     * carries no fields, so handing it to `parsePolicy` would refuse a policy
+     * for having an empty title the reader never touched.
+     */
+    confirmingDeletion = true;
+  } else if (deleting && policy) {
+    const deleted = policy.title;
+    await deletePolicy(db, policy.slug);
+    const result = await revalidateAll({
+      origin: revalidationOrigin(Astro.url),
+      bypassToken: isrBypassToken(),
+    });
+    /*
+     * The answer travels in the query string, the way a republish's does
+     * (#198): this screen is a 404 from here on, and the list is where the
+     * deletion is visible. In the URL rather than rendered there so a refresh
+     * of the list repeats nothing.
+     */
+    const back = new URL('/admin/policies', Astro.url.origin);
+    back.searchParams.set('deleted', deleted);
+    back.searchParams.set('republished', result.ok ? 'live' : 'stale');
+    return Astro.redirect(`${back.pathname}${back.search}`, 303);
+  } else if (policy) {
     const parsed = await parsePolicy(form);
     values = parsed.values;
     errors = parsed.errors;
@@ -173,6 +216,14 @@ if (Astro.request.method === 'POST') {
 
 const versions: PolicyVersion[] = policy ? await listPolicyVersions(db, policy.slug) : [];
 
+/**
+ * The confirmation's four sentences, which turn on how many documents there
+ * are: a policy nobody ever uploaded to has nothing to reassure the school
+ * about, and saying "every document is kept" over an empty list would be a
+ * reassurance about nothing.
+ */
+const deletion = policy ? policyDeletion(policy.title, versions.length) : null;
+
 const action = policy ? `/admin/policies/${policy.slug}` : '/admin/policies/new';
 const heading = policy ? policy.title : 'Add a Policy';
 const stamp = policy ? formatStamp(policy.lastEditedBy, policy.lastEditedAt) : null;
@@ -224,7 +275,32 @@ function detailOf(error: unknown): string {
 
   {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner" retry />}
 
-  <form method="post" action={action} enctype="multipart/form-data" class="mt-8 flex flex-col gap-6">
+  {
+    confirmingDeletion && policy && deletion ? (
+      <AdminConfirm
+        heading={deletion.heading}
+        action={action}
+        confirmLabel={deletion.confirmLabel}
+        destructive
+        declineHref={action}
+        declineLabel={deletion.declineLabel}
+      >
+        <Fragment slot="fields">
+          <input type="hidden" name="delete" value="1" />
+        </Fragment>
+
+        <p class="mt-3" data-testid="deletion-goes">
+          {deletion.goes}
+        </p>
+        <p class="mt-3" data-testid="deletion-kept">
+          {deletion.kept}
+        </p>
+        <p class="mt-3" data-testid="deletion-undo">
+          {deletion.undo}
+        </p>
+      </AdminConfirm>
+    ) : (
+      <form method="post" action={action} enctype="multipart/form-data" class="mt-8 flex flex-col gap-6">
     <div class="flex flex-col gap-2">
       <label for="title" class="font-semibold">{LABELS.title}</label>
       <p id="title-hint" class="text-sm">
@@ -370,10 +446,12 @@ function detailOf(error: unknown): string {
     >
       {policy ? 'Save' : 'Create'}
     </button>
-  </form>
+      </form>
+    )
+  }
 
   {
-    policy && (
+    policy && !confirmingDeletion && (
       <section class="mt-10 border-t border-navy/15 pt-6">
         <h2 class="text-xl font-semibold text-navy">Versions</h2>
         {versions.length === 0 ? (
@@ -413,13 +491,25 @@ function detailOf(error: unknown): string {
   }
 
   {
-    stamp && (
+    stamp && !confirmingDeletion && (
       <AdminPublishing stamp={stamp}>
         <p class="mt-2" data-testid="updated-on">
           {policy!.updatedAt
             ? `Parents are told this was updated ${updatedOnLabel(policy!.updatedAt)} — the day the current document was uploaded.`
             : 'Parents are told nothing yet: there is no document, so this policy is not on the policies page.'}
         </p>
+
+        <form method="post" action={action} class="mt-6">
+          <p class="text-sm">
+            No longer part of the school’s policy set? Delete it, and it comes off the policies page
+            and out of this admin. Every document already uploaded is kept and stays readable at the
+            address it was given, so nothing a family has already agreed to is lost. You will be
+            asked to confirm first.
+          </p>
+          <AdminButton variant="destructive" name="delete" value="1" class="mt-3">
+            Delete this policy
+          </AdminButton>
+        </form>
       </AdminPublishing>
     )
   }

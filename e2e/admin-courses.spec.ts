@@ -5,6 +5,7 @@ import { CATALOGUE } from '../src/lib/courses/catalogue.js';
 import { timeLabel } from '../src/lib/courses/schedule.js';
 import { clashWarnings, meetingSlots, runningTracks } from '../src/lib/courses/slots.js';
 import { signIn } from './suite-admin.js';
+import { ensureUnstaffedCourse, UNSTAFFED } from './unstaffed-course.js';
 
 /**
  * The course editor, driven the way Jill drives it (#24).
@@ -17,12 +18,18 @@ import { signIn } from './suite-admin.js';
  * is **no price to type**, and that saving into an occupied slot warns and
  * saves anyway — the warning being the point, the refusal never.
  *
- * **Nothing here adds a course.** The public suite pins the catalogue's size,
- * its empty Tuesday and every published price, and it runs against this same
- * throwaway database at the same time; a class added here would fail those
- * specs from a distance. So the end-to-end save is an *edit* — of a course no
- * other spec mentions, to the one field no other spec asserts — and it is put
- * back afterwards.
+ * **Almost nothing here adds a course.** The public suite reads this same
+ * throwaway database at the same time, so a class added here shows up in its
+ * assertions from a distance. The end-to-end save is therefore an *edit* — of a
+ * course no other spec mentions, to the one field no other spec asserts — and
+ * it is put back afterwards.
+ *
+ * The exception is the unstaffed class (#257), which cannot be an edit: no
+ * seeded course lacks an instructor, and clearing one would take that person's
+ * class off the staff page while `staff.spec.ts` was reading it. It is added
+ * instead, once, by the shared fixture in `unstaffed-course.ts` — at an hour the
+ * school already meets at, on the day with no geometry to disturb, so both the
+ * time list here and the lanes over there are what they always were.
  */
 
 /**
@@ -236,6 +243,26 @@ test.describe('saving a class', () => {
     );
   });
 
+  test('saves a class with no instructor, and the list says one is wanted', async ({ page }) => {
+    /*
+     * #257. The save succeeding is the acceptance criterion — before this, a
+     * class the school meant to run and had not staffed could not be typed in
+     * at all. The public pages say nothing about the gap, correctly, so this
+     * list is the only place it is visible, and it is the place Jill scans.
+     */
+    await ensureUnstaffedCourse(page);
+    await page.goto('/admin/courses');
+
+    await expect(page.getByTestId(`no-instructor-${UNSTAFFED.slug}`)).toBeVisible();
+    // Only that class. Every other course names somebody, and a list that said
+    // so about all of them would say nothing about any of them.
+    await expect(page.locator('[data-testid^="no-instructor-"]')).toHaveCount(1);
+
+    // And the form comes back with nothing picked rather than with a guess.
+    await page.goto(`/admin/courses/${UNSTAFFED.slug}`);
+    await expect(page.locator('#instructorSlug')).toHaveValue('');
+  });
+
   test('refuses a class with nothing typed, and says everything at once', async ({ page }) => {
     // The parser's promise, in a browser: the form comes back with every
     // complaint rather than one per round trip, and nothing was written.
@@ -252,15 +279,18 @@ test.describe('saving a class', () => {
 
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
     await expect(page.getByTestId('save-banner')).toContainText('Nothing was saved');
-    // Stages, days, the shape, the units, the rate and the instructor are all
-    // unanswered, and all six are said now.
+    // Stages, days, the shape, the units and the rate are all unanswered, and
+    // all five are said now.
     const form = page.locator('form[action="/admin/courses/new"]');
     await expect(form).toContainText('Tick at least one stage');
     await expect(form).toContainText('Tick the day track');
     await expect(form).toContainText('Say what shape the course runs as');
     await expect(form).toContainText('Tick at least one');
     await expect(form).toContainText('Pick which hourly rate');
-    await expect(form).toContainText('Pick who teaches it');
+    // Not the instructor (#257). An empty one is an answer — a class the school
+    // means to run and has not staffed — so it is the one blank on this form
+    // that draws no complaint.
+    await expect(form).not.toContainText('Pick who teaches it');
 
     // And what was typed is still there — a rejected form does not empty itself.
     await expect(page.locator('#title')).toHaveValue('A class the suite never saves');

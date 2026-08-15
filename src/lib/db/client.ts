@@ -228,7 +228,15 @@ async function seedSuitePolicyFiles(db: Db): Promise<void> {
 /**
  * Delete every row the migrations seeded into the four admin lists, in the
  * order the foreign keys allow: a course names its teacher, so courses go
- * before people; a policy's versions cascade with their policy.
+ * before people.
+ *
+ * **A policy's versions no longer go with it** (#260). This used to lean on a
+ * cascade that migration 0023 dropped, and it still does the right thing for
+ * the reason the run exists: the empty-lists server skips
+ * `seedSuitePolicyFiles`, so there are no version rows to leave behind. Adding
+ * a delete of `policy_versions` here would be the opposite of what the site now
+ * promises — a document survives its policy — so what stays behind on a
+ * differently-ordered run is a retained document, correctly.
  *
  * This is the whole of the `E2E_EMPTY_LISTS` seam. It deletes list content
  * only — school details, money, the school year and the calendar stay, because

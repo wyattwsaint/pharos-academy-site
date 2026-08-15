@@ -179,19 +179,19 @@ describe('what an application must carry before it can be sent (#85)', () => {
     {
       slug: 'code-of-conduct',
       title: 'Code of Conduct',
-      question: 'Who agrees to the Pharos Academy Code of Conduct?',
+      question: 'Does your family agree to the Pharos Academy Code of Conduct?',
       version: 2,
     },
     {
       slug: 'handbook',
       title: 'Handbook',
-      question: 'Who agrees to the Pharos Academy Handbook?',
+      question: 'Does your family agree to the Pharos Academy Handbook?',
       version: 5,
     },
   ];
 
   /** Both published documents answered, so a case can be about one thing.  */
-  const AGREED = { 'agreement-code-of-conduct': 'parent', 'agreement-handbook': 'parent' };
+  const AGREED = { 'agreement-code-of-conduct': 'yes', 'agreement-handbook': 'yes' };
 
   const errorsOf = (
     over: Record<string, string | string[]>,
@@ -252,7 +252,7 @@ describe('what an application must carry before it can be sent (#85)', () => {
       expect(errorsOf({}, ASKABLE).agreements).toBeTruthy();
     });
 
-    it.each(['student', 'parent', 'neither'])('takes “%s” as the answer it is', (answer) => {
+    it.each(['yes', 'no'])('takes “%s” as the answer it is', (answer) => {
       const answered = {
         'agreement-code-of-conduct': answer,
         'agreement-handbook': answer,
@@ -268,13 +268,13 @@ describe('what an application must carry before it can be sent (#85)', () => {
     it('asks only about the one that is published', () => {
       const onlyHandbook = ASKABLE.filter((document) => document.slug === 'handbook');
 
-      expect(errorsOf({ 'agreement-handbook': 'neither' }, onlyHandbook)).toEqual({});
-      expect(errorsOf({ 'agreement-code-of-conduct': 'neither' }, onlyHandbook).agreements)
+      expect(errorsOf({ 'agreement-handbook': 'no' }, onlyHandbook)).toEqual({});
+      expect(errorsOf({ 'agreement-code-of-conduct': 'no' }, onlyHandbook).agreements)
         .toBeTruthy();
     });
 
     it('still refuses when one of the two is left alone', () => {
-      expect(errorsOf({ 'agreement-handbook': 'parent' }, ASKABLE).agreements).toBeTruthy();
+      expect(errorsOf({ 'agreement-handbook': 'yes' }, ASKABLE).agreements).toBeTruthy();
     });
   });
 

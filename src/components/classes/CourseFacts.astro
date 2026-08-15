@@ -25,13 +25,18 @@ import type { Person } from '../../lib/people/person.js';
 interface Props {
   course: Course;
   /**
-   * The person who teaches it, resolved from the one list of people (#26).
+   * The person who teaches it, resolved from the one list of people (#26), or
+   * nobody — a class the school has scheduled and not staffed (#257).
    *
    * Passed in rather than looked up here, because this component renders once
    * per class on the full-descriptions surface and the page has already read
-   * the list once.
+   * the list once — and because the page hands the same answer to the class's
+   * structured data, so the two cannot disagree about whether there is a name.
+   *
+   * No instructor is no row, like every other unfilled field below: never an
+   * "Instructor" label with nothing beside it, and never a dash.
    */
-  instructor: Person;
+  instructor: Person | null;
   /**
    * The two hourly rates, read from the money settings by the page (#29).
    *
@@ -89,7 +94,7 @@ const facts: Fact[] = [
       ? course.dates.map((date) => dateFormat.format(new Date(`${date}T00:00:00Z`))).join(', ')
       : null,
   ),
-  { term: 'Instructor', value: instructor.name },
+  ...optional('Instructor', instructor?.name ?? null),
 ];
 ---
 

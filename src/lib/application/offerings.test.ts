@@ -10,6 +10,7 @@ import {
   offeringKey,
   offeringsOf,
   selectedOfferings,
+  splitOfferingKey,
   type Offering,
 } from './offerings.js';
 
@@ -70,6 +71,25 @@ describe('the offerings the picker shows (#31 AC 2)', () => {
 
     expect(selected.map(offeringKey)).toEqual(['algebra-1:year', 'kingdom-math:year']);
     expect(findOffering(offerings, 'not-a-class:year')).toBeNull();
+  });
+
+  /*
+   * Splitting a key back up is what `findOffering` cannot do (#259): an
+   * application carries keys for classes the catalogue may since have lost, and
+   * it still has to say which class and which unit.
+   */
+  it('splits a posted key back into the course and the unit', () => {
+    expect(splitOfferingKey('algebra-1:year')).toEqual({ courseSlug: 'algebra-1', unit: 'year' });
+  });
+
+  it('reads no class out of a key naming no known unit', () => {
+    expect(splitOfferingKey('algebra-1:decade')).toBeNull();
+    expect(splitOfferingKey('algebra-1')).toBeNull();
+    expect(splitOfferingKey(':year')).toBeNull();
+  });
+
+  it('splits at the last colon, so a stray one does not eat the slug', () => {
+    expect(splitOfferingKey('a:b:year')).toEqual({ courseSlug: 'a:b', unit: 'year' });
   });
 });
 

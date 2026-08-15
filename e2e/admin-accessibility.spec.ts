@@ -287,8 +287,9 @@ test.describe('the login screen', () => {
  * Each is a whole screen rather than a dialog, reached by a POST and rendered
  * in place of what asked for it — so none of them is measured by the screen
  * list above, and each is the last thing a person reads before an irreversible
- * click. Money's, the account delete and the announcement delete are here; the
- * event removal needs a saved event and is measured with it below.
+ * click. Money's, the account delete, the policy delete and the announcement
+ * delete are here; the event removal needs a saved event and is measured with
+ * it below.
  */
 test.describe('a confirmation screen', () => {
   for (const width of ADMIN_WIDTHS) {
@@ -315,6 +316,24 @@ test.describe('a confirmation screen', () => {
       // account is still there for the next width.
       await page.getByRole('button', { name: `Delete ${SUITE_KEPT}` }).click();
       await expect(page.getByTestId('confirm')).toContainText(`Delete ${SUITE_KEPT}?`);
+
+      await expectNoViolations(page);
+    });
+
+    /*
+     * #260. The longest of them — four paragraphs rather than one, because it
+     * has to name what survives as well as what goes — and reached from inside
+     * a Publishing section, so its heading follows an `h2` Money's and the
+     * account delete do not have.
+     *
+     * The seeded Handbook, and asking is not deleting: nothing is confirmed
+     * here, so the policy the rest of the suite reads is still there afterwards.
+     */
+    test(`deleting a policy has zero axe violations at ${width}px`, async ({ page }) => {
+      await openAt(page, '/admin/policies/handbook', width);
+
+      await page.getByRole('button', { name: 'Delete this policy' }).click();
+      await expect(page.getByTestId('confirm')).toContainText('Delete Handbook?');
 
       await expectNoViolations(page);
     });

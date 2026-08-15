@@ -538,7 +538,7 @@ export const MIGRATIONS: readonly Migration[] = [
      *
      * One column, and an array like `faith` rather than four columns, because
      * an unanswered question has to be able to be absent: a null column would
-     * read as "Neither agrees", which is an answer the family did not give.
+     * read as a "no", which is an answer the family did not give.
      * Each cell carries the policy version it was answered against, so the
      * question "what did the family who enrolled in August sign?" survives the
      * next upload.
@@ -850,6 +850,102 @@ export const MIGRATIONS: readonly Migration[] = [
       `alter table school_details add column if not exists pay_online_url text not null default ''`,
     ],
   },
+  {
+    /*
+     * What the family was shown, frozen onto the application (#259).
+     *
+     * The Applications screen and the class tally read a child's classes out of
+     * the live catalogue, so a course renamed changed a submitted application
+     * and a course removed made one vanish out of it. This column is the freeze
+     * that ends that: written once at submit, never updated.
+     *
+     * Existing rows default to empty and are **not** backfilled — there is no
+     * honest title to recover for them, and the reader falls back to the slug
+     * out of the key.
+     */
+    id: '0023-application-offering-titles',
+    statements: [
+      `alter table application_children
+         add column if not exists offering_titles text[] not null default array[]::text[]`,
+    ],
+  },
+  {
+    /*
+     * A policy's documents survive the policy (#260, ADR-0021).
+     *
+     * 0005 gave `policy_versions` a foreign key to `policies` with
+     * `on delete cascade`, and said in as many words that no `on delete` path
+     * could take a policy without taking its versions too. That is now the one
+     * thing standing between the admin and a delete it is entitled to have, and
+     * it is standing there in the most damaging possible way: an application
+     * records its agreements as text — `handbook=parent@3`, no foreign key — so
+     * a cascade would silently destroy the document a family was given while
+     * leaving the record that names it intact.
+     *
+     * So the constraint goes entirely rather than being softened. `set null` is
+     * unavailable to a not-null column that is half the primary key, and
+     * `no action` would refuse exactly the delete the school is asking for. A
+     * version row is the same kind of thing an agreement cell already is: a
+     * permanent record naming a slug and a number, which goes on resolving
+     * whether or not anything still owns that slug.
+     *
+     * **This ships in the same commit as the delete on purpose.** Dropping the
+     * cascade alone is inert; a delete alone destroys retained documents on the
+     * first press. Neither half can arrive without the other.
+     *
+     * Dropped by lookup rather than by name because the constraint was created
+     * unnamed, so its name is whatever Postgres minted — and the loop makes the
+     * statement a no-op on a second run and on a database that never had it.
+     * Narrowed to keys pointing at `policies` rather than to every foreign key
+     * on the table: there is only one today, and a migration that says "drop
+     * whatever is there" would quietly take a later one with it.
+     */
+    id: '0024-a-policys-documents-survive-the-policy',
+    statements: [
+      `do $$
+       declare
+         orphaning text;
+       begin
+         for orphaning in
+           select con.conname
+             from pg_constraint con
+             join pg_class rel on rel.oid = con.conrelid
+             join pg_namespace nsp on nsp.oid = rel.relnamespace
+            where con.contype = 'f'
+              and rel.relname = 'policy_versions'
+              and nsp.nspname = current_schema()
+              and con.confrelid = to_regclass('policies')
+         loop
+           execute format('alter table policy_versions drop constraint %I', orphaning);
+         end loop;
+       end $$`,
+    ],
+  },
+  {
+    /*
+     * A course may name no instructor (#257).
+     *
+     * 0002 created the column as a name and 0003 made it a `not null` foreign
+     * key, which left the school unable to type in a class it means to run and
+     * has not staffed yet. Dropping the constraint is the whole migration: no
+     * row is touched, so every course keeps the instructor it has, and null
+     * becomes what it should always have been — a class the school has not
+     * decided about, rendered as an absence rather than as a name.
+     *
+     * Preview, Production and Development are one Neon endpoint here, so this
+     * runs against the live database the moment it is applied. It is safe in
+     * both directions, which is what makes shipping it beside the code that
+     * reads a null honest rather than lucky: dropping a constraint only widens
+     * what the column accepts, every existing row keeps the instructor it has,
+     * and the first null appears only when somebody in the admin saves a class
+     * without one — which the deployed code by then already renders.
+     *
+     * `drop not null` on a column that is already nullable is a no-op rather
+     * than an error, so the statement survives a re-run unguarded.
+     */
+    id: '0025-a-course-may-name-no-instructor',
+    statements: [`alter table courses alter column instructor_slug drop not null`],
+  },
 ];
 
 /**
@@ -1130,10 +1226,25 @@ function courseValues(course: Course): string {
      * so the SQL 0002 produces is byte-for-byte what Neon already applied.
      * 0003 replaces the column a moment later.
      */
-    literal(seededName(course.instructorSlug)),
+    literal(seededName(seededInstructorOf(course))),
   ];
 
   return `(${values.join(', ')})`;
+}
+
+/**
+ * The instructor of a seeded course, which every one of them has.
+ *
+ * A course may name none since #257, but 0002's column was `not null` and the
+ * statement this feeds is the one Neon already applied — so a seed added
+ * without an instructor is a fault here rather than a null written into a
+ * column that cannot take one.
+ */
+function seededInstructorOf(course: Course): string {
+  if (course.instructorSlug === null) {
+    throw new Error(`The seeded course "${course.slug}" names no instructor, and 0002 requires one.`);
+  }
+  return course.instructorSlug;
 }
 
 /** A single-quoted SQL string literal. Only ever called on constants above. */

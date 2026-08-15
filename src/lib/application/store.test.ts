@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { CATALOGUE } from '../courses/catalogue.js';
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import { SEEDED_MONEY_SETTINGS } from '../money/settings.js';
 import { recordAgreedTerms } from '../money/store.js';
@@ -8,7 +9,9 @@ import {
   statementVersion,
   type ApplicationFields,
 } from './application.js';
+import { catalogueCourses, chosenClasses } from './chosen-classes.js';
 import { CHEQUE_GRACE_DAYS, paymentStatusNow } from './lifecycle.js';
+import { offeringsOf } from './offerings.js';
 import {
   createApplication,
   getApplication,
@@ -28,6 +31,8 @@ import {
  */
 
 let db: Db;
+
+const ALGEBRA = CATALOGUE.find((course) => course.slug === 'algebra-1')!;
 
 beforeEach(async () => {
   db = await createEphemeralDatabase();
@@ -156,6 +161,84 @@ describe('an application', () => {
     for (const forbidden of ['dob', 'birth', 'address', 'street', 'zip', 'allerg', 'medical', 'diagnos', 'custody', 'iep', 'adhd', 'evaluation']) {
       expect(names.filter((name) => name.includes(forbidden))).toEqual([]);
     }
+  });
+});
+
+/**
+ * The classes an application was submitted with (#259).
+ *
+ * The freeze is the ticket: a submitted application is the record of what a
+ * family sent, and neither a rename nor a removal in the catalogue afterwards
+ * may change a word of it. Proved against a real table because "written once
+ * and never updated" is a claim about rows.
+ */
+describe('the classes an application was submitted with', () => {
+  const catalogue = (title: string) =>
+    offeringsOf([{ ...ALGEBRA, title, enrolmentUnits: ['year'] }]);
+
+  const classesOf = async (id: string, offerings: ReturnType<typeof catalogue>) =>
+    chosenClasses((await getApplication(db, id))!.children[0]!, catalogueCourses(offerings));
+
+  it('captures the title of each class the child chose', async () => {
+    const id = await createApplication(db, fields(), {
+      statementVersion: statementVersion(),
+      offerings: catalogue('Algebra 1'),
+    });
+
+    const [row] = await listApplications(db);
+    expect(row!.children[0]!.offeringTitles).toEqual({ 'algebra-1:year': 'Algebra 1' });
+    // A child chosen for nothing has nothing to capture.
+    expect(row!.children[1]!.offeringTitles).toEqual({});
+    expect(id).toBeDefined();
+  });
+
+  it('survives a course rename', async () => {
+    const id = await createApplication(db, fields(), {
+      statementVersion: statementVersion(),
+      offerings: catalogue('Algebra 1'),
+    });
+
+    // The school renames the class the next morning. The application still
+    // reads as it was submitted.
+    const [chosen] = await classesOf(id, catalogue('Algebra I — Foundations'));
+
+    expect(chosen!.title).toBe('Algebra 1');
+    expect(chosen!.offered).toBe(true);
+  });
+
+  it('survives the course being absent from the catalogue', async () => {
+    const id = await createApplication(db, fields(), {
+      statementVersion: statementVersion(),
+      offerings: catalogue('Algebra 1'),
+    });
+
+    const [chosen] = await classesOf(id, []);
+
+    expect(chosen!.title).toBe('Algebra 1');
+    expect(chosen!.offered).toBe(false);
+  });
+
+  it('is not touched by any later write to the application', async () => {
+    const id = await createApplication(db, fields(), {
+      statementVersion: statementVersion(),
+      offerings: catalogue('Algebra 1'),
+    });
+
+    await moveApplication(db, id, 'enrol');
+    await moveApplicationPayment(db, id, 'receive');
+    await recordApplicationDelivery(db, id, { notified: true, confirmed: true });
+
+    const [chosen] = await classesOf(id, []);
+    expect(chosen!.title).toBe('Algebra 1');
+  });
+
+  it('falls back to the slug for a row written before the capture existed', async () => {
+    // Every application already in Neon. There is no honest title to recover,
+    // and the fallback is deliberate rather than a backfill waiting to happen.
+    const id = await createApplication(db, fields(), { statementVersion: statementVersion() });
+
+    const [chosen] = await classesOf(id, catalogue('Algebra 1'));
+    expect(chosen!.title).toBe('algebra-1');
   });
 });
 

@@ -25,6 +25,7 @@ import { sendAll, type Mail, type Sender } from '../backup/monthly.js';
 import { formatMoney, type MoneySettings } from '../money/settings.js';
 import { unitPrice } from '../money/owed.js';
 import { SCHOOL_NAME } from '../site.js';
+import { AGREEMENT_DOCUMENTS, agreementLabel } from './agreements.js';
 import {
   APPLICATION_PATH,
   FAITH_QUESTIONS,
@@ -192,8 +193,9 @@ export function applicationNotification(
   if (flagged) {
     lines.push(
       'CONVERSATION FLAG: somebody on this application answered "no" to one of the Statement ' +
-        'of Faith questions, or wrote something they want to talk about. It is not a refusal — ' +
-        'the family is asking to speak to you.',
+        'of Faith questions, said their family does not agree to one of the documents, or ' +
+        'wrote something they want to talk about. It is not a refusal — the family is asking ' +
+        'to speak to you.',
       '',
     );
   }
@@ -219,6 +221,9 @@ export function applicationNotification(
     'THE STATEMENT OF FAITH',
     ...faithRecord(values),
   );
+
+  const agreements = agreementRecord(values);
+  if (agreements.length > 0) lines.push('', 'THE TWO AGREEMENTS', ...agreements);
 
   if (values.objections.trim()) {
     lines.push('', 'What they said they want to talk about:', values.objections.trim());
@@ -321,6 +326,27 @@ function faithRecord(values: ApplicationFields): string[] {
     );
   }
   return lines.length > 0 ? lines : ['  Nobody answered any of the three questions.'];
+}
+
+/**
+ * What the family said about the two documents, as the office reads it (#255).
+ *
+ * `agreementLabel` writes the whole sentence — "Family agrees" — because a bare
+ * "No" beside a document title in a scanned email says nothing about which way
+ * it points, and this email is scanned.
+ *
+ * Only the documents that were *answered*, and so nothing at all for a school
+ * that has published neither: an unasked question printed as "not answered"
+ * reads as a family who skipped something. The admin screen lists both either
+ * way, because there the pair is a record rather than a paragraph.
+ */
+function agreementRecord(values: ApplicationFields): string[] {
+  return AGREEMENT_DOCUMENTS.flatMap((document) => {
+    const agreement = values.agreements[document.slug];
+    if (!agreement || agreement.answer === '') return [];
+    const version = agreement.version === null ? '' : ` (version ${agreement.version})`;
+    return [`  ${document.title}: ${agreementLabel(agreement.answer)}${version}`];
+  });
 }
 
 /**
