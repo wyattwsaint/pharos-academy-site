@@ -273,6 +273,32 @@ describe('school details', () => {
     expect(schoolDetailsFields(saved).payOnlineUrl).toBe(saved.payOnlineUrl);
   });
 
+  /*
+   * #265. The template ships empty and stays empty until somebody pastes one
+   * in — which is the acceptance criterion, not a detail: the school's campaign
+   * still opens set to Monthly, and an amount arriving prefilled beside a
+   * monthly selector is a recurring gift one default away.
+   */
+  it('starts with no giving-page link template, and keeps the one it is given', async () => {
+    const before = await getSchoolDetails(db);
+    expect(before.givingLinkTemplate).toBe('');
+
+    const template = 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION?amt={amount}';
+    const saved = await saveSchoolDetails(
+      db,
+      {
+        ...schoolDetailsFields(before),
+        payOnlineUrl: 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION',
+        givingLinkTemplate: template,
+      },
+      'Jill Kilker',
+    );
+
+    expect(saved.givingLinkTemplate).toBe(template);
+    expect((await getSchoolDetails(db)).givingLinkTemplate).toBe(template);
+    expect(schoolDetailsFields(saved).givingLinkTemplate).toBe(template);
+  });
+
   // #15. The banner is on this row because saving this row is what revalidates
   // the published pages — so what matters is that it survives that save.
   it('starts with the announcement banner off and empty', async () => {

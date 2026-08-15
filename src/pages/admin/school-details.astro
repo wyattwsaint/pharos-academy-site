@@ -107,6 +107,20 @@ const FIELDS: Field[] = [
     hint: 'Optional. Where families pay the registration and the tuition online, in one payment — the Vanco page. Left empty, the Apply page offers no online payment at all.',
     optional: true,
   },
+  {
+    name: 'givingLinkTemplate',
+    /*
+     * `text`, not `url`, for a field that holds a URL (#265). What goes in here
+     * is a link with `{amount}` in it, and a browser deciding for itself that
+     * braces are not a web address would refuse a submission the server accepts
+     * — leaving the office with a box they cannot save and no message saying
+     * why. The checking that matters is the server's, and it is stricter than
+     * any `type="url"`: same origin, same path, those two placeholders only.
+     */
+    type: 'text',
+    hint: 'Optional. The same Vanco page with {amount} and {reference} where the figures go, so a family finds the amount already filled in. It has to start with the online payment link above.',
+    optional: true,
+  },
 ];
 
 /** The banner's three written fields, below its switch. */

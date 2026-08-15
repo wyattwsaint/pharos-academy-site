@@ -400,6 +400,22 @@ describe('what the family is told', () => {
     );
   });
 
+  /*
+   * The memo, in Vanco's own word for the box (#265).
+   *
+   * No parameter Vanco accepts fills it in — `memo`, `memoline`, `memoLine`,
+   * `memo_line` and `note` were each tried and each ignored — so however much
+   * else the link carries, this one thing is typed by the family, and it is
+   * the only thing joining their payment to their application (ADR-0016). The
+   * Apply page says it in the same words.
+   */
+  it('names the Memo box when it asks for the reference, and never says it is filled in', async () => {
+    const { toFamily } = await delivered('online');
+
+    expect(toFamily.text).toContain(`type your reference, ${REFERENCE}, into the Memo box`);
+    expect(toFamily.text).not.toMatch(/memo.{0,40}(already|filled in|prefilled)/i);
+  });
+
   it('gives a family paying by check the address and the whole total, and no link', async () => {
     const { toFamily, toSchool } = await delivered('check');
 

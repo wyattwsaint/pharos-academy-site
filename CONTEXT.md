@@ -214,6 +214,27 @@ details row, so the office moves it without a deploy, and empty there means the
 Apply page offers no online payment at all. A **check** to the school is the
 fallback, for the whole total and never the deposits alone.
 
+Since #265 the link may **carry the amount with it**. Vanco's campaign pages
+accept an amount on the query string and accept **no memo** — `memo`,
+`memoline`, `memoLine`, `memo_line` and `note` were all tried and all ignored —
+so the figure can arrive prefilled and the [reference](#reference) stays
+hand-typed, which is what keeps it the only thing joining a payment to an
+application (ADR-0013, ADR-0016).
+
+Because that parameter is undocumented, **the shape of the link is a setting and
+not code**: a `giving_link_template` on the same row, a URL carrying `{amount}`
+and `{reference}`, refused at save unless it starts with `pay_online_url`'s own
+origin and path and carries no other placeholder. The **Pay online** button uses
+it when it substitutes cleanly and the plain address in every other case —
+empty, invalid, or a reference that does not exist yet — so the button can never
+point anywhere but the giving page. Nothing about an application changes because
+a link carried an amount; Vanco still tells the site nothing.
+
+**It ships empty**, and empty is the state to expect: the school's campaign
+opens with its frequency set to **Monthly**, and an amount arriving prefilled
+beside a monthly selector is a recurring gift one default away. Turning it on
+waits on the school changing that default in MyVanco.
+
 Every surface now words it that way: both emails (#221), and the Apply page
 (#219), which asks the family which method they mean and records the answer —
 see **stated payment method** below.

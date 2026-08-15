@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 
 import type { Db } from '../db/client.js';
 import { isEmailAddress, textField as text } from '../forms.js';
+import { givingLinkTemplateError } from '../money/giving-link.js';
 import { schoolDetails, type SchoolDetails } from '../db/schema.js';
 import { SCHOOL_TIME_ZONE } from './formatting.js';
 
@@ -36,6 +37,13 @@ export type SchoolDetailsFields = {
    * online option at all.
    */
   payOnlineUrl: string;
+  /**
+   * The same giving page with the family's figures on it (#265) — a URL
+   * carrying `{amount}` and `{reference}`, or empty. Empty is how this ships;
+   * what it means, and why it is a setting rather than code, is
+   * `money/giving-link.ts`.
+   */
+  givingLinkTemplate: string;
   /** The announcement banner's switch — see `home/announcement-banner.ts`. */
   bannerEnabled: boolean;
   bannerMessage: string;
@@ -115,6 +123,7 @@ export function schoolDetailsFields(details: SchoolDetails): SchoolDetailsFields
     vision: details.vision,
     giveUrl: details.giveUrl,
     payOnlineUrl: details.payOnlineUrl,
+    givingLinkTemplate: details.givingLinkTemplate,
     bannerEnabled: details.bannerEnabled,
     bannerMessage: details.bannerMessage,
     // Back to the empty string a `<input type="date">` posts when it is blank.
@@ -134,6 +143,7 @@ export function parseSchoolDetails(form: FormData): ParsedSchoolDetails {
     vision: text(form, 'vision'),
     giveUrl: text(form, 'giveUrl'),
     payOnlineUrl: text(form, 'payOnlineUrl'),
+    givingLinkTemplate: text(form, 'givingLinkTemplate'),
     // A checkbox posts its value only when it is ticked, so "absent" is "off".
     bannerEnabled: form.get('bannerEnabled') !== null,
     bannerMessage: text(form, 'bannerMessage'),
@@ -180,6 +190,16 @@ export function parseSchoolDetails(form: FormData): ParsedSchoolDetails {
     errors.payOnlineUrl =
       'The online payment link needs a full web address starting http:// or https://.';
   }
+  /*
+   * The one field checked against another (#265). A template is only ever
+   * allowed to be the online payment link with figures on it, so an online
+   * payment link that is itself being rejected leaves nothing to check against
+   * — and complaining about both would tell the office to fix the wrong one.
+   */
+  if (!errors.payOnlineUrl) {
+    const templateError = givingLinkTemplateError(values.givingLinkTemplate, values.payOnlineUrl);
+    if (templateError) errors.givingLinkTemplate = templateError;
+  }
 
   return { values, errors };
 }
@@ -194,6 +214,7 @@ export const LABELS: Record<keyof SchoolDetailsFields, string> = {
   vision: 'Vision',
   giveUrl: 'Give link',
   payOnlineUrl: 'Online payment link',
+  givingLinkTemplate: 'Giving-page link template',
   bannerEnabled: 'Show the banner on the home page',
   bannerMessage: 'Banner message',
   bannerDate: 'Banner date',

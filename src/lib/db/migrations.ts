@@ -973,6 +973,20 @@ export const MIGRATIONS: readonly Migration[] = [
       `alter table people add column if not exists retired_at timestamptz`,
     ],
   },
+  {
+    /*
+     * The giving page, with the family's figures on it (#265).
+     *
+     * Empty for every existing row and empty for new ones, which is the state
+     * this ships in — the link the Apply page renders is unchanged until the
+     * office pastes a template in.
+     */
+    id: '0027-the-giving-link-carries-the-amount',
+    statements: [
+      `alter table school_details
+         add column if not exists giving_link_template text not null default ''`,
+    ],
+  },
 ];
 
 /**

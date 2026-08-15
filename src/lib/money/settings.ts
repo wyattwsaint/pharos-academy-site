@@ -244,6 +244,21 @@ export function formatMoney(amount: number): string {
 }
 
 /**
+ * "420". The same figure a query string can carry (#265).
+ *
+ * `formatMoney` without the dollar sign, which a giving-page link has no use
+ * for — and beside it rather than in `giving-link.ts`, because both sides write
+ * this figure and only one of them may import that module. The browser puts the
+ * amount on the **Pay online** link as the family ticks classes, and the page's
+ * import graph is asserted down to the module (`application/validation.test.ts`)
+ * — `giving-link.ts` is not on that list and should not be. One writer, either
+ * side of the wire, so the link and the server cannot come to round differently.
+ */
+export function moneyOnALink(amount: number): string {
+  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+}
+
+/**
  * What the deposits take off the tuition, said once (#261).
  *
  * The Apply page prints this twice — the server renders it, and the browser
