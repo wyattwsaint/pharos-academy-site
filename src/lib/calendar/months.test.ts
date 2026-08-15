@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { CATALOGUE } from '../courses/catalogue.js';
-import type { CalendarEvent } from './event.js';
+import { eventTimeLabel, type CalendarEvent } from './event.js';
 import { monthGrid, printedYear, type MonthCell } from './months.js';
-import { SEEDED_SCHOOL_YEAR, trackColumn, type SchoolYear } from './year.js';
+import {
+  meetingsOf,
+  SEEDED_SCHOOL_YEAR,
+  SEMESTERS,
+  trackColumn,
+  type SchoolYear,
+} from './year.js';
 
 /**
  * The month grid, against the year the school has already published (#186).
@@ -283,7 +289,7 @@ describe('a year with nothing in it', () => {
  */
 describe('the year as a printed list', () => {
   const printed = (year: SchoolYear, events: CalendarEvent[] = []) =>
-    printedYear(monthGrid(year, events, []));
+    printedYear(monthGrid(year, events, []), year);
 
   /** Every line of every month, in the order paper prints them. */
   const linesOf = (months: ReturnType<typeof printedYear>) =>
@@ -293,13 +299,23 @@ describe('the year as a printed list', () => {
     const months = printed(SEEDED_SCHOOL_YEAR);
 
     /*
-     * The four months the seeded year has closures in — and December is not one
-     * of them, which is the boundary case rather than an omission: its only
-     * closed day is 1 December, and that is the far end of a Thanksgiving run
-     * that opened on 30 November and prints as one line under November.
+     * The months the seeded year has closures in, plus the four the term
+     * boundaries land in (#271). December is in the list for its last teaching
+     * day and *not* for its only closed day: 1 December is the far end of a
+     * Thanksgiving run that opened on 30 November and prints as one line under
+     * November. October is the month with genuinely nothing in it, and is
+     * dropped.
      */
-    expect(months.map((month) => month.id)).toEqual(['2026-09', '2026-11', '2027-03']);
-    expect(months[0]?.heading).toBe('September 2026');
+    expect(months.map((month) => month.id)).toEqual([
+      '2026-08',
+      '2026-09',
+      '2026-11',
+      '2026-12',
+      '2027-01',
+      '2027-03',
+      '2027-04',
+    ]);
+    expect(months[0]?.heading).toBe('August 2026');
     // Every line belongs to the month it is printed under.
     for (const month of months) {
       for (const line of month.lines) expect(line.date.slice(0, 7), line.days).toBe(month.id);
@@ -428,7 +444,150 @@ describe('the year as a printed list', () => {
       days: '30 November–1 December',
     });
     expect(printed(year).find((month) => month.id === '2026-11')?.lines).toContainEqual(lines[0]);
-    expect(printed(year).map((month) => month.id)).not.toContain('2026-12');
+    /*
+     * December is drawn — the fall's last teaching day is in it — and the run's
+     * far end is not repeated under it. The month exists for its own reason and
+     * carries no closure.
+     */
+    const december = printed(year).find((month) => month.id === '2026-12');
+    expect(december?.lines.map((line) => line.entry.kind)).not.toContain('closure');
+  });
+
+  /**
+   * The four days the year turns on (#271).
+   *
+   * Arithmetic like the folding above it: each is the earliest or the latest of
+   * the meetings a semester actually produces, which is not the date the school
+   * typed — the typed first class date is the Monday track's, and the Wednesday
+   * track opens two days after it.
+   */
+  describe('the term boundaries', () => {
+    /** The `term` lines of a year, in the order paper prints them. */
+    const boundaries = (year: SchoolYear) =>
+      linesOf(printed(year)).flatMap((line) =>
+        line.entry.kind === 'term' ? [{ date: line.date, label: line.entry.label }] : [],
+      );
+
+    it('names the first and last teaching day of each semester, and the resumption', () => {
+      const meetings = SEMESTERS.map((semester) =>
+        meetingsOf(SEEDED_SCHOOL_YEAR)
+          .filter((meeting) => meeting.semester === semester)
+          .map((meeting) => meeting.date)
+          .sort(),
+      );
+      const [fall, spring] = meetings as [string[], string[]];
+
+      expect(boundaries(SEEDED_SCHOOL_YEAR)).toEqual([
+        { date: fall[0], label: 'First day of classes' },
+        { date: fall[fall.length - 1], label: 'Last day of the fall semester' },
+        { date: spring[0], label: 'Classes resume' },
+        { date: spring[spring.length - 1], label: 'Last day of classes' },
+      ]);
+    });
+
+    it('takes the earliest track’s day, not the date the school typed', () => {
+      /*
+       * The Monday track opens on 31 August and the Wednesday track on 2
+       * September, and the year's first teaching day is the earlier of them.
+       * Reading `firstClassDate` off one term row would print whichever row
+       * happened to be first in the list.
+       */
+      const [first] = boundaries(SEEDED_SCHOOL_YEAR);
+
+      expect(first).toEqual({ date: '2026-08-31', label: 'First day of classes' });
+    });
+
+    it('draws a month that carries a boundary and nothing else', () => {
+      // August has no closure and no one-off in the seeded year, and the year
+      // opens in it. A list that dropped it would open in September.
+      const august = printed(SEEDED_SCHOOL_YEAR).find((month) => month.id === '2026-08');
+
+      expect(august?.lines.map((line) => line.days)).toEqual(['31']);
+    });
+
+    it('opens and closes a one-semester year without inventing a resumption', () => {
+      const fall: SchoolYear = {
+        ...SEEDED_SCHOOL_YEAR,
+        terms: SEEDED_SCHOOL_YEAR.terms.filter((term) => term.semester === 'fall'),
+      };
+
+      expect(boundaries(fall).map((line) => line.label)).toEqual([
+        'First day of classes',
+        'Last day of classes',
+      ]);
+    });
+
+    it('names no boundary at all for a year nobody teaches in', () => {
+      const empty: SchoolYear = { ...SEEDED_SCHOOL_YEAR, terms: [] };
+
+      expect(boundaries(empty)).toEqual([]);
+    });
+
+    it('prints a boundary above a one-off sharing its date', () => {
+      /*
+       * The stated order is term, then closure, then one-off — what the date
+       * *is* before what happens on it. A closure cannot share a date with a
+       * boundary, since a boundary is a day the school taught on; the one-off
+       * is the pairing that actually occurs, and an open house on the first day
+       * of classes is an ordinary thing for this school to hold.
+       */
+      const lines = linesOf(printed(SEEDED_SCHOOL_YEAR, [event('2026-08-31', 'Meet the teachers')]));
+      const kinds = lines.filter((line) => line.date === '2026-08-31').map((line) => line.entry.kind);
+
+      expect(kinds).toEqual(['term', 'one-off']);
+    });
+
+    it('prints a boundary above a closure sharing its date', () => {
+      /*
+       * The other half of the stated order, and the one the real year cannot
+       * produce: a boundary is a day some track met on, and a shut day is a day
+       * none did. So the grid is handed over by hand here rather than computed
+       * — the point is that the rank says which wins, not that the pairing
+       * happens.
+       */
+      const shut: MonthCell = {
+        date: '2026-08-31',
+        day: 31,
+        label: 'Monday 31 August',
+        events: [],
+        noSchool: true,
+        closure: 'Staff day',
+        slots: [],
+        classLabel: null,
+      };
+      const lines = printedYear(
+        [{ id: '2026-08', heading: 'August 2026', weeks: [[shut]] }],
+        SEEDED_SCHOOL_YEAR,
+      ).flatMap((month) => month.lines);
+
+      expect(lines.map((line) => line.entry.kind)).toEqual(['term', 'closure']);
+    });
+  });
+
+  /**
+   * The reference sheet's format is copied and its typography is not (#271).
+   *
+   * The sheet the school supplied as the format to match writes a date range
+   * with a hyphen and a time as `6:30 PM`. This repo decided both the other way
+   * — an en dash between dates, `eventTimeLabel` for a time — and paper that
+   * spelled either differently from the screen and the subscribed feed would be
+   * one calendar saying two things. Pinned here because the temptation is a real
+   * one, sitting in the reference this very issue asks us to imitate.
+   */
+  it('writes a range with an en dash and a time the way the site writes one', () => {
+    const evening: CalendarEvent = {
+      ...event('2026-11-25', 'Thanksgiving concert'),
+      startTime: '18:30',
+    };
+    const lines = linesOf(printed(SEEDED_SCHOOL_YEAR, [evening]));
+
+    const range = lines.find((line) => line.date === '2026-11-25' && line.entry.kind === 'closure');
+    expect(range?.days).toBe('25–26');
+    expect(range?.days).not.toContain('-');
+
+    const one = lines.find((line) => line.entry.kind === 'one-off');
+    expect(one?.entry).toMatchObject({ time: eventTimeLabel('18:30') });
+    expect(one?.entry).toMatchObject({ time: '6.30pm' });
   });
 
   it('prints the closure of a date above the one-offs held on it', () => {
