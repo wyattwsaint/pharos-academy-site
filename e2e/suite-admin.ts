@@ -17,6 +17,15 @@ export const SUITE_ADMIN = {
   password: 'a-long-enough-suite-passphrase',
 };
 
+/**
+ * The account that exists so the delete confirmation can be measured (#202).
+ *
+ * Seeded beside Suite Spare by `src/lib/db/client.ts` and never deleted: the
+ * spare is removed by `admin.spec.ts`, so an axe spec aimed at the
+ * confirmation screen could not rely on it still being there.
+ */
+export const SUITE_KEPT = 'Suite Kept';
+
 /** Sign in and land on `next`. Fails loudly rather than leaving a spec adrift. */
 export async function signIn(page: Page, next = '/admin/school-details'): Promise<void> {
   await page.goto(`/admin/login?next=${encodeURIComponent(next)}`);

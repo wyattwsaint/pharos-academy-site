@@ -89,6 +89,7 @@ export default defineConfig({
             // working one and assert the opposite of what it means.
             testMatch: [
               '**/admin.spec.ts',
+              '**/admin-accessibility.spec.ts',
               '**/admin-calendar.spec.ts',
               '**/admin-courses.spec.ts',
               '**/admin-forms.spec.ts',
