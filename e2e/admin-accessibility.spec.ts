@@ -1,10 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { SEEDED_ANNOUNCEMENTS } from '../src/lib/announcements/announcement.js';
 import { eventSlug } from '../src/lib/calendar/event.js';
 import { addDays, schoolToday } from '../src/lib/calendar/year.js';
-import { AXE_TAGS } from './axe.js';
+import { AXE_TAGS, describeViolation } from './axe.js';
 import { SUITE_ADMIN, SUITE_KEPT, signIn } from './suite-admin.js';
 
 /**
@@ -44,13 +44,14 @@ const ADMIN_WIDTHS = [390, 1440];
 const SEEDED_ANNOUNCEMENT = `/admin/announcements/${SEEDED_ANNOUNCEMENTS[0]!.slug}`;
 
 /**
- * Every admin screen, at rest.
+ * Every admin screen a signed-in person can reach, at rest.
  *
  * One list, so a screen added to the admin is measured at both widths by
- * construction rather than by somebody remembering to copy a block.
+ * construction rather than by somebody remembering to copy a block. The login
+ * page is the one screen not on it — there is nobody signed in to reach it, so
+ * it is measured on its own below, at rest and refused together.
  */
 const SCREENS = [
-  '/admin/login',
   '/admin/money',
   '/admin/school-details',
   '/admin/users',
@@ -92,10 +93,7 @@ test.describe('every admin screen', () => {
   for (const path of SCREENS) {
     for (const width of ADMIN_WIDTHS) {
       test(`${path} has zero axe violations at ${width}px`, async ({ page }) => {
-        if (path !== '/admin/login') await signIn(page, path);
-
-        await page.setViewportSize({ width, height: 900 });
-        await page.goto(path);
+        await openAt(page, path, width);
 
         await expectNoViolations(page);
       });
@@ -186,8 +184,14 @@ const REFUSALS: { path: string; complains: string; refuse: (page: Page) => Promi
   {
     path: '/admin/school-year',
     complains: 'a first class date that is not that track’s weekday',
+    // Scoped to the term's own fieldset rather than reached by id: every track
+    // label appears twice on this screen, once per term, so the label alone is
+    // ambiguous and the id is `AdminField`'s business rather than this spec's.
     refuse: async (page) => {
-      await page.locator('#fall\\.Wednesday\\.firstClassDate').fill('2026-09-03');
+      await page
+        .getByRole('group', { name: /Fall/ })
+        .getByLabel('Wednesday — first class')
+        .fill('2026-09-03');
     },
   },
   {
@@ -202,7 +206,7 @@ const REFUSALS: { path: string; complains: string; refuse: (page: Page) => Promi
     path: '/admin/courses/algebra-1',
     complains: 'a class with no title',
     refuse: async (page) => {
-      await page.locator('#title').fill('   ');
+      await page.getByLabel('Title').fill('   ');
     },
   },
   {
@@ -213,11 +217,11 @@ const REFUSALS: { path: string; complains: string; refuse: (page: Page) => Promi
     path: '/admin/courses/new',
     complains: 'every group left unanswered',
     refuse: async (page) => {
-      await page.locator('#title').fill('A class the suite never saves');
-      await page.locator('#description').fill('Typed, so the browser lets the form through.');
-      await page.locator('#ageLabel').fill('Any age');
-      await page.locator('#prerequisites').fill('None');
-      await page.locator('#weeks').fill('14');
+      await page.getByLabel('Title').fill('A class the suite never saves');
+      await page.getByLabel('Description').fill('Typed, so the browser lets the form through.');
+      await page.getByLabel('Ages, in the school’s words').fill('Any age');
+      await page.getByLabel('Prerequisites').fill('None');
+      await page.getByLabel('Weeks').fill('14');
     },
   },
 ];
@@ -228,9 +232,7 @@ test.describe('an editor with its form refused', () => {
       test(`${path} has zero axe violations complaining about ${complains} at ${width}px`, async ({
         page,
       }) => {
-        await signIn(page, path);
-        await page.setViewportSize({ width, height: 900 });
-        await page.goto(path);
+        await openAt(page, path, width);
 
         await refuse(page);
         await save(page);
@@ -248,16 +250,23 @@ test.describe('an editor with its form refused', () => {
 });
 
 /**
- * The login screen refused, which is its own shape of error.
+ * The login screen, which nobody is signed in to reach.
  *
- * Not in `REFUSALS`: there is no save banner and no field-level complaint here
- * — one `role="alert"` for the whole form, deliberately saying nothing about
- * which half was wrong (#18 §4). It is still a refused form and still where
- * the wiring can rot.
+ * Refused separately from `REFUSALS` because its refusal is a different shape:
+ * no save banner and no field-level complaint, but one `role="alert"` for the
+ * whole form, deliberately saying nothing about which half was wrong (#18 §4).
+ * It is still a refused form and still where the wiring can rot.
  */
-test.describe('the login screen refused', () => {
+test.describe('the login screen', () => {
   for (const width of ADMIN_WIDTHS) {
     test(`has zero axe violations at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/admin/login');
+
+      await expectNoViolations(page);
+    });
+
+    test(`has zero axe violations refused at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/admin/login');
 
@@ -273,19 +282,18 @@ test.describe('the login screen refused', () => {
 });
 
 /**
- * The three screens that ask "are you sure?" (#200, #29).
+ * The screens that ask "are you sure?" (#200, #29).
  *
  * Each is a whole screen rather than a dialog, reached by a POST and rendered
  * in place of what asked for it — so none of them is measured by the screen
- * lists above, and each is the last thing a person reads before an
- * irreversible click.
+ * list above, and each is the last thing a person reads before an irreversible
+ * click. Money's and the account delete are here; the event removal needs a
+ * saved event and is measured with it below.
  */
 test.describe('a confirmation screen', () => {
   for (const width of ADMIN_WIDTHS) {
     test(`Money’s confirmation has zero axe violations at ${width}px`, async ({ page }) => {
-      await signIn(page, '/admin/money');
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto('/admin/money');
+      await openAt(page, '/admin/money', width);
 
       // Asking is not saving: the first Save renders the confirmation and
       // writes nothing, so this measures the screen without moving the figure
@@ -300,9 +308,7 @@ test.describe('a confirmation screen', () => {
     });
 
     test(`deleting an account has zero axe violations at ${width}px`, async ({ page }) => {
-      await signIn(page, '/admin/users');
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto('/admin/users');
+      await openAt(page, '/admin/users', width);
 
       // Suite Kept, not Suite Spare: the spare is deleted by `admin.spec.ts`
       // and would be gone by the time this ran. Nothing here confirms, so the
@@ -326,7 +332,7 @@ test.describe('a confirmation screen', () => {
  * does not survive a dozen of them. One add and one removal is what this
  * costs.
  *
- * Serial, because the four measurements share that one event.
+ * Serial, because the six measurements share that one event.
  */
 test.describe('a saved event', () => {
   test.describe.configure({ mode: 'serial' });
@@ -351,17 +357,30 @@ test.describe('a saved event', () => {
 
   for (const width of ADMIN_WIDTHS) {
     test(`its editor has zero axe violations at ${width}px`, async ({ page }) => {
-      await signIn(page, EDITOR);
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto(EDITOR);
+      await openAt(page, EDITOR, width);
+
+      await expectNoViolations(page);
+    });
+
+    /*
+     * The edit path's refused state, which `/admin/events/new` does not stand
+     * in for: this form carries a Publishing section, a stamp and the removal
+     * control, so a complaint here is rendered among markup the add form does
+     * not have.
+     */
+    test(`its editor has zero axe violations refused at ${width}px`, async ({ page }) => {
+      await openAt(page, EDITOR, width);
+
+      await page.getByLabel('What it is').fill('   ');
+      await save(page);
+
+      await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
 
       await expectNoViolations(page);
     });
 
     test(`taking it off the calendar has zero axe violations at ${width}px`, async ({ page }) => {
-      await signIn(page, EDITOR);
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto(EDITOR);
+      await openAt(page, EDITOR, width);
 
       // Asking is not removing: the first press renders the confirmation and
       // writes nothing, so the event is still there for the next measurement.
@@ -476,7 +495,7 @@ test.describe('the keyboard', () => {
 /**
  * Press whichever Save this screen calls its own.
  *
- * Three names, because three screens named it for what it does rather than for
+ * Three names, because two screens named it for what it does rather than for
  * what it is: the School Year saves a year, and a policy that does not exist
  * yet is created rather than saved.
  */
@@ -509,13 +528,27 @@ async function removeEvent(page: Page, editor: string): Promise<void> {
 }
 
 /**
+ * Sign in, size the window, and land on the screen about to be measured.
+ *
+ * One helper because every measurement below opens the same way, and the
+ * height is part of that opening: 900 is tall enough that no admin screen is
+ * measured through a letterbox, and a screen measured at a different height is
+ * a screen measured against a different bar.
+ */
+async function openAt(page: Page, path: string, width: number): Promise<void> {
+  await signIn(page, path);
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto(path);
+}
+
+/**
  * Tab forward until `target` has focus, failing loudly if it never does.
  *
  * The claim is reachability — that a person pressing Tab from the top of the
  * page arrives at this control — which `focus()` cannot make: it puts focus
  * where no key sequence might.
  */
-async function tabTo(page: Page, target: ReturnType<Page['getByRole']>): Promise<void> {
+async function tabTo(page: Page, target: Locator): Promise<void> {
   for (let press = 0; press < 60; press += 1) {
     if (await target.evaluate((element) => element === document.activeElement)) return;
     await page.keyboard.press('Tab');
@@ -528,15 +561,4 @@ async function expectNoViolations(page: Page): Promise<void> {
   const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
 
   expect(violations.map(describeViolation)).toEqual([]);
-}
-
-/** A violation rendered so a CI failure names the rule and the element. */
-function describeViolation(violation: {
-  id: string;
-  impact?: string | null;
-  nodes: { target: unknown[] }[];
-}) {
-  return `${violation.id} (${violation.impact ?? 'unknown'}): ${violation.nodes
-    .map((node) => node.target.join(' '))
-    .join(', ')}`;
 }

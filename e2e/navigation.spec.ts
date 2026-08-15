@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { APPLICATION_PATH } from '../src/lib/application/application.js';
 import { INQUIRY_HREF, NAV_ITEMS } from '../src/lib/home/sections.js';
+import { AXE_TAGS, describeViolation } from './axe.js';
 
 /**
  * The small-screen navigation menu (#139).
@@ -22,12 +23,7 @@ import { INQUIRY_HREF, NAV_ITEMS } from '../src/lib/home/sections.js';
 const PHONE = { width: 390, height: 844 };
 const DESKTOP = { width: 1440, height: 900 };
 
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
-
-/** A violation rendered so a CI failure names the rule and the element. */
-function describeViolation(violation: { id: string; nodes: { target: unknown[] }[] }) {
-  return `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(', ')}`;
-}
+const TAGS = AXE_TAGS;
 
 const toggle = (page: Page) => page.locator('[data-nav-menu-toggle]');
 const panel = (page: Page) => page.locator('[data-nav-menu-panel]');

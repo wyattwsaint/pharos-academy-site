@@ -1527,9 +1527,7 @@ test.describe('applications', () => {
   });
 });
 
-/**
- * The axe pass over the signed-in admin lives in `admin-accessibility.spec.ts`
- * (#202) — every screen, each editor's refused state and the confirmation
- * screens, plus the keyboard pass. It was moved out of this file when it grew
- * past a closing block into a suite of its own.
- */
+// The axe pass over the signed-in admin lives in `admin-accessibility.spec.ts`
+// (#202) — every screen, each editor's refused state and the confirmation
+// screens, plus the keyboard pass. It was moved out of this file when it grew
+// past a closing block into a suite of its own.

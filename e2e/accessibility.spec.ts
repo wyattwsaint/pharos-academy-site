@@ -10,6 +10,7 @@ import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
 import { POLICIES_PATH } from '../src/lib/policies/views.js';
 import { TEACH_PATH } from '../src/lib/teach/teach.js';
+import { AXE_TAGS, describeViolation } from './axe.js';
 
 /**
  * WCAG 2.2 AA is a hard target (spec #18 §"Accessibility"), and the acceptance
@@ -32,7 +33,7 @@ import { TEACH_PATH } from '../src/lib/teach/teach.js';
  */
 const WIDTHS = [390, 768, 834, 1024, 1440];
 
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+const TAGS = AXE_TAGS;
 
 /** Open the first H.O.P.E. card and leave it stuck open. */
 async function openHopeCard(page: Page) {
@@ -345,14 +346,3 @@ test.describe('every page', () => {
     await expect(page.locator('h1')).toContainText('Pharos Academy');
   });
 });
-
-/** A violation rendered so a CI failure names the rule and the element. */
-function describeViolation(violation: {
-  id: string;
-  impact?: string | null;
-  nodes: { target: unknown[] }[];
-}) {
-  return `${violation.id} (${violation.impact ?? 'unknown'}): ${violation.nodes
-    .map((node) => node.target.join(' '))
-    .join(', ')}`;
-}
