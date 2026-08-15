@@ -218,6 +218,22 @@ test.describe('the Events screen', () => {
     await expect(panel).toContainText('6.30pm');
     await expect(panel).toContainText('The hall');
 
+    /*
+     * And on the paper, with its time and its place beside it (#236 AC 3).
+     *
+     * Here for the same reason the keyboard assertion is: the printed list
+     * carries whatever the site holds, and this suite is the one that can make
+     * a one-off to hold. The note is deliberately not asserted — prose is the
+     * one thing a two-column list leaves behind.
+     */
+    await page.emulateMedia({ media: 'print' });
+    const line = page
+      .locator(`[data-print-month="${heldOn.slice(0, 7)}"] li`)
+      .filter({ hasText: 'Suite open house' });
+    await expect(line).toContainText('6.30pm');
+    await expect(line).toContainText('The hall');
+    await page.emulateMedia({ media: 'screen' });
+
     // And in the feed, as a timed event rather than a whole day.
     const feed = await (await request.get(CALENDAR_FEED_PATH)).text();
     expect(feed.replace(/\r\n /g, '')).toContain('SUMMARY:Suite open house');

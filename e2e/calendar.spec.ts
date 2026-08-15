@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { monthGrid } from '../src/lib/calendar/months.js';
+import { monthGrid, printedYear } from '../src/lib/calendar/months.js';
 import { CALENDAR_FEED_PATH } from '../src/lib/calendar/views.js';
 import { CALENDAR_PATH } from '../src/lib/current-families/section.js';
 import { meetingsOf, SEEDED_SCHOOL_YEAR, trackColumn } from '../src/lib/calendar/year.js';
@@ -55,17 +55,67 @@ test.describe('the calendar page', () => {
     await expect(page.getByTestId('subscription-caveat')).toContainText('own schedule');
   });
 
-  test('prints as the calendar, not as a website', async ({ page }) => {
+  /**
+   * What comes out of the printer is the year as a dated list (#236).
+   *
+   * The folding is proved as arithmetic in `src/lib/calendar/months.test.ts`.
+   * What is only true in a browser is here: that print media swaps the screen's
+   * two halves for the list, and that the list is on the paper at all.
+   *
+   * This replaces the assertion that the semester sheet survived print. It did,
+   * and that was the bug: a school office pinned up a table of week numbers
+   * with no fundraiser, no picture day and no open house on it.
+   */
+  test('prints as the year’s dated list, not as a website', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
     await page.emulateMedia({ media: 'print' });
 
     await expect(page.locator('.site-header')).toBeHidden();
     await expect(page.locator('.site-footer')).toBeHidden();
     await expect(page.getByTestId('calendar-download')).toBeHidden();
-    // The grid comes off with the buttons: what is pinned up is the sheet.
+    // Both drawings of the year on the screen come off: the sheet is week
+    // numbers, and the grid is nine sheets of mostly empty boxes.
     await expect(page.locator('.months')).toBeHidden();
-    // The sheet itself is still there, and still whole.
-    await expect(page.locator('[data-section="calendar-fall"] tbody tr').first()).toBeVisible();
+    await expect(page.locator('[data-section="calendar-fall"]')).toBeHidden();
+    await expect(page.locator('[data-section="calendar-spring"]')).toBeHidden();
+    // Which is what takes the week numbers and the offerings off the paper:
+    // they are the sheets' and the grid's, and neither is printed.
+    await expect(page.getByRole('columnheader', { name: 'Week' })).toBeHidden();
+
+    // And the list is there, month by month, in the two columns it is read in.
+    const printed = page.locator('[data-section="calendar-print"]');
+    await expect(printed).toBeVisible();
+    const months = printedYear(monthGrid(SEEDED_SCHOOL_YEAR, [])).map((month) => month.id);
+    for (const month of months) {
+      await expect(printed.locator(`[data-print-month="${month}"]`), month).toBeVisible();
+    }
+    await expect(printed.locator('.printed-columns')).toHaveCSS('column-count', '2');
+  });
+
+  /**
+   * The dates the school shut, and the one-offs, on the paper (#236 ACs 3–7).
+   *
+   * Read against the seeded year's own closures, which are computed rather than
+   * typed here; the one-offs are not knowable from the repository (#153), so
+   * that half is asserted in `admin-calendar.spec.ts` with an event it creates.
+   */
+  test('folds a run of closures into one printed line', async ({ page }) => {
+    await page.goto(CALENDAR_PATH);
+    await page.emulateMedia({ media: 'print' });
+
+    const november = page.locator('[data-print-month="2026-11"]');
+    // Thanksgiving's Wednesday and Thursday as one line, and the run that
+    // crosses into December as one more — printed under the month it opens in.
+    await expect(november.locator('li', { hasText: '25–26' })).toContainText(
+      'No school — Thanksgiving',
+    );
+    await expect(november.locator('li', { hasText: '30 November–1 December' })).toBeVisible();
+    // Election Day is one day off with its own name: a line, not a range of one.
+    const election = november.locator('li', { hasText: 'Election Day' });
+    await expect(election.locator('.printed-days')).toHaveText('3');
+
+    // No week numbers and no offerings anywhere on the sheet.
+    await expect(page.locator('[data-section="calendar-print"]')).not.toContainText('Week');
   });
 });
 
