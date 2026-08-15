@@ -1,22 +1,34 @@
 /**
- * The Code of Conduct and Handbook agreements (#71, the live form's Q34 and Q35).
+ * The Code of Conduct and Handbook agreements (#71, #255, the live form's Q34
+ * and Q35).
  *
- * Two questions, one answer each, asked once of the family: **Student agrees**,
- * **Parent agrees**, **Neither agrees**. The school's live form asks them that
- * way — once, not per child — and this module keeps that shape rather than
- * inferring a per-child question from the singular word "student".
+ * Two questions, one answer each, asked once of the family: **Yes** or **No**.
+ * The school's live form asks them once, not per child, and this module keeps
+ * that shape rather than inferring a per-child question from it.
  *
- * Three decisions are structural rather than cosmetic.
+ * The decisions below are structural rather than cosmetic.
  *
- * **"Neither agrees" is a real answer and never gates a submission.** The live
- * form allows it. Nothing here returns an error, nothing here can be read as
- * one, and `isFlagged` does not consult these answers: the flag routes an
- * application to a conversation, and flagging every family who left the
- * Handbook question alone would bury the Statement of Faith signal under
- * routine noise. Whether that should change is Jill's call, not this module's,
- * and it is one line in `application.ts` when she makes it.
+ * **The wording is the site's, and ADR-0020 is why.** These questions were once
+ * transcribed from the live form — "Who agrees to the Pharos Academy Handbook?",
+ * answered **Student agrees** / **Parent agrees** / **Neither agrees** — on the
+ * rule that what a school asks a family to agree to is the school's sentence.
+ * The school has since asked for a Yes-or-No question, so the site's questions
+ * now differ from the live form's on purpose; that divergence is recorded in
+ * `docs/adr/0020-yes-or-no-replaces-who-agrees.md` rather than here.
  *
- * **An unanswered question stays unanswered.** Absent is not "neither", exactly
+ * **Old answers are read, never rewritten.** `student`, `parent` and `neither`
+ * still decode and still read back — as "Agreed" and "Did not agree" — and only
+ * `yes` and `no` are written from now on. There is no migration: rewriting a
+ * parent's "Student agrees" into a family "Yes" would claim something no family
+ * said, and what a family was shown is the point of storing the version with it.
+ *
+ * **No never gates a submission.** Nothing here returns an error and nothing
+ * here can be read as one: the application gates on having *answered*
+ * (ADR-0009), and a **No** is a complete application that sends like any other.
+ * It does raise the conversation flag — that is `isFlagged`'s line in
+ * `application.ts`, and the one behaviour ADR-0020 changed.
+ *
+ * **An unanswered question stays unanswered.** Absent is not "no", exactly
  * as an absent `faith` cell is not a "no" — so an answer is stored only once it
  * is given, and the array shape next door is copied for that reason.
  *
@@ -41,31 +53,45 @@ export const AGREEMENT_DOCUMENTS = [
   {
     slug: 'code-of-conduct',
     title: 'Code of Conduct',
-    question: 'Who agrees to the Pharos Academy Code of Conduct?',
+    question: 'Does your family agree to the Pharos Academy Code of Conduct?',
   },
   {
     slug: 'handbook',
     title: 'Handbook',
-    question: 'Who agrees to the Pharos Academy Handbook?',
+    question: 'Does your family agree to the Pharos Academy Handbook?',
   },
 ] as const;
 
 export type AgreementSlug = (typeof AGREEMENT_DOCUMENTS)[number]['slug'];
 
 /**
- * The three answers, in the family's own words from the live form.
+ * The two answers, and the only two that are ever written (ADR-0020).
  *
- * Transcribed rather than drafted, for the reason the Statement's questions are:
- * what a school asks a family to agree to is the school's sentence.
+ * There is no third radio: "Not answered" is what an untouched question already
+ * is, and offering it as a choice invited a family to un-answer a question they
+ * cannot un-ask. A mis-click is corrected by choosing the other answer.
  */
 export const AGREEMENT_CHOICES = [
-  { value: 'student', label: 'Student agrees' },
-  { value: 'parent', label: 'Parent agrees' },
-  { value: 'neither', label: 'Neither agrees' },
+  { value: 'yes', label: 'Yes' },
+  { value: 'no', label: 'No' },
 ] as const;
 
-/** One answer. Empty is ordinary and is never read as "neither". */
-export type AgreementAnswer = 'student' | 'parent' | 'neither' | '';
+/**
+ * The answers the record still holds from before ADR-0020, and how it reads
+ * them back.
+ *
+ * Read-only: nothing writes these, and nothing rewrites the rows that have
+ * them. `student` and `parent` both said the document was agreed to and neither
+ * said by whom in a way the school acted on, so both read back as "Agreed".
+ */
+const LEGACY_ANSWERS = [
+  { value: 'student', label: 'Agreed' },
+  { value: 'parent', label: 'Agreed' },
+  { value: 'neither', label: 'Did not agree' },
+] as const;
+
+/** One answer. Empty is ordinary and is never read as a "no". */
+export type AgreementAnswer = 'yes' | 'no' | 'student' | 'parent' | 'neither' | '';
 
 /** What was answered, and against which version of the document. */
 export type Agreement = {
@@ -117,12 +143,16 @@ export function askableAgreements(
  * policy the page did not render — a stale form, or a hand-made POST — records
  * nothing, because the version it would be recorded against is the version the
  * family was never shown.
+ *
+ * Only `yes` and `no` are taken. A posted `parent` is a form from before
+ * ADR-0020 or one built by hand, and writing it would put a fourth vocabulary
+ * into a record that is only ever meant to gain rows in the new one.
  */
 export function parseAgreements(form: FormData, askable: readonly AskableAgreement[]): Agreements {
   const agreements: Agreements = {};
   for (const document of askable) {
     const value = text(form, agreementKey(document.slug));
-    if (isAgreementAnswer(value) && value !== '') {
+    if (isWritableAnswer(value)) {
       agreements[document.slug] = { answer: value, version: document.version };
     }
   }
@@ -134,13 +164,23 @@ export function agreementAnswer(agreements: Agreements, slug: AgreementSlug): Ag
   return agreements[slug]?.answer ?? '';
 }
 
-/** The answer as the admin reads it back — the family's own words. */
+/**
+ * The answer as the office reads it back — a sentence, never a bare "No".
+ *
+ * The radios say **Yes** and **No** under a question that supplies the rest;
+ * the admin list and the notification email have no such question beside them,
+ * and "Handbook: No" in a scanned column says nothing about which way it points.
+ * Rows from before ADR-0020 read back as "Agreed" and "Did not agree", which is
+ * what they said without claiming they said "family".
+ */
 export function agreementLabel(answer: AgreementAnswer): string {
-  return AGREEMENT_CHOICES.find((choice) => choice.value === answer)?.label ?? 'Not answered';
+  if (answer === 'yes') return 'Family agrees';
+  if (answer === 'no') return 'Family does not agree';
+  return LEGACY_ANSWERS.find((legacy) => legacy.value === answer)?.label ?? 'Not answered';
 }
 
 /**
- * The answers as `handbook=parent@3`, answered ones only.
+ * The answers as `handbook=yes@3`, answered ones only.
  *
  * One array column rather than four, for the reason `faith` is one: it is one
  * repeated control, and an unanswered question must be able to be *absent*
@@ -157,6 +197,15 @@ export function encodeAgreements(agreements: Agreements): string[] {
   });
 }
 
+/**
+ * Every answer the record can hold, including the three no form writes any
+ * longer.
+ *
+ * A reader is deliberately wider than a writer here: the rows carrying
+ * `student`, `parent` and `neither` are not migrated, so a decoder that only
+ * knew `yes` and `no` would silently blank the applications this school already
+ * took (ADR-0020).
+ */
 export function decodeAgreements(cells: readonly string[]): Agreements {
   const agreements: Agreements = {};
   for (const cell of cells) {
@@ -166,13 +215,13 @@ export function decodeAgreements(cells: readonly string[]): Agreements {
     if (!isAgreementSlug(slug)) continue;
 
     const [answer, version] = splitVersion(cell.slice(at + 1));
-    if (!isAgreementAnswer(answer) || answer === '') continue;
+    if (!isStorableAnswer(answer)) continue;
     agreements[slug] = { answer, version };
   }
   return agreements;
 }
 
-/** `parent@3` as its two halves. A cell with no version is one from before one. */
+/** `yes@3` as its two halves. A cell with no version is one from before one. */
 function splitVersion(value: string): [string, number | null] {
   const at = value.lastIndexOf('@');
   if (at < 0) return [value, null];
@@ -185,6 +234,12 @@ function isAgreementSlug(value: string): value is AgreementSlug {
   return AGREEMENT_DOCUMENTS.some((document) => document.slug === value);
 }
 
-function isAgreementAnswer(value: string): value is AgreementAnswer {
-  return value === '' || AGREEMENT_CHOICES.some((choice) => choice.value === value);
+/** One of the two a form may post. Blank and the old three are not among them. */
+function isWritableAnswer(value: string): value is 'yes' | 'no' {
+  return AGREEMENT_CHOICES.some((choice) => choice.value === value);
+}
+
+/** One of the five the record may hold — the two written and the three kept. */
+function isStorableAnswer(value: string): value is Exclude<AgreementAnswer, ''> {
+  return isWritableAnswer(value) || LEGACY_ANSWERS.some((legacy) => legacy.value === value);
 }

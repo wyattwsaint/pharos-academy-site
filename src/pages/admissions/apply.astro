@@ -455,9 +455,8 @@ const focus: ErrorField | null = rejected ? firstError(errors, childNeeds.index)
 
 /**
  * Which document a refused send should land on — the first one nobody has
- * answered, matching `FOCUS.agreements`. "Not answered" posts an empty value,
- * so an explicit "Not answered" and an untouched question are the same thing
- * here, exactly as the rules read them.
+ * answered, matching `FOCUS.agreements`. Since #255 there is no radio that
+ * un-answers one, so this can only ever be a question nobody has touched.
  */
 const agreementNeeds = Math.max(
   askable.findIndex((document) => !agreementAnswer(values.agreements, document.slug)),
@@ -474,7 +473,11 @@ const NEEDED: { field: ErrorField; href: string; label: string }[] = [
     label: 'Each child’s name and their age',
   },
   { field: 'classes', href: '#apply-classes', label: 'At least one class, for one child' },
-  { field: 'agreements', href: '#apply-agreements', label: 'Who agrees to each of the documents' },
+  {
+    field: 'agreements',
+    href: '#apply-agreements',
+    label: 'Whether your family agrees to each of the documents',
+  },
   /*
    * Last, because the question is last on the page (#219 AC 8). It appears in
    * the list from the first paint like every other line — the list is what a
@@ -954,19 +957,21 @@ const description =
 
           Since #85 an *asked* question has to be answered before the
           application can be sent — and that is a requirement to answer, never a
-          requirement to agree. All three choices pass, "Neither agrees"
-          included. A document the school has not published produces no question
-          and no requirement, so the gate can never be about something a family
-          was not shown.
+          requirement to agree. **No** passes, and sends (ADR-0020). A document
+          the school has not published produces no question and no requirement,
+          so the gate can never be about something a family was not shown.
+
+          Two radios and no "Not answered" (#255): an untouched question is
+          already unanswered, and the third radio only let a family take an
+          answer back. The gate's "still needed" entry is therefore unreachable
+          once a question has been answered once, which is the deliberate cost.
         */}
         {askable.length > 0 && (
           <section class="band" id="agreements" data-section="apply-agreements">
             <div class="wide">
               <h2>{stage('agreements')}</h2>
               <p class="sub mt-4">
-                Two documents families sign. Read them here — they open in full — and tell us who
-                agrees. We need an answer to each, and any of them will do: "Neither agrees" is a
-                real answer rather than a problem, and none of them stops your application.
+                Read each one, then tell us whether you agree. Either answer sends your application.
               </p>
 
               <div class="faith mt-7" id="apply-agreements" data-agreements>
@@ -978,27 +983,25 @@ const description =
                       version published today.
                     </p>
                     <div class="mt-4">
-                      {[...AGREEMENT_CHOICES, { value: '', label: 'Not answered' } as const].map(
-                        (choice, choiceAt) => (
-                          <label class="check">
-                            <input
-                              type="radio"
-                              name={agreementKey(document.slug)}
-                              value={choice.value}
-                              checked={
-                                agreementAnswer(values.agreements, document.slug) === choice.value
-                              }
-                              aria-describedby={
-                                errors.agreements ? 'apply-agreements-error' : undefined
-                              }
-                              autofocus={
-                                focus === 'agreements' && at === agreementNeeds && choiceAt === 0
-                              }
-                            />
-                            <span>{choice.label}</span>
-                          </label>
-                        ),
-                      )}
+                      {AGREEMENT_CHOICES.map((choice, choiceAt) => (
+                        <label class="check">
+                          <input
+                            type="radio"
+                            name={agreementKey(document.slug)}
+                            value={choice.value}
+                            checked={
+                              agreementAnswer(values.agreements, document.slug) === choice.value
+                            }
+                            aria-describedby={
+                              errors.agreements ? 'apply-agreements-error' : undefined
+                            }
+                            autofocus={
+                              focus === 'agreements' && at === agreementNeeds && choiceAt === 0
+                            }
+                          />
+                          <span>{choice.label}</span>
+                        </label>
+                      ))}
                     </div>
                   </fieldset>
                 ))}

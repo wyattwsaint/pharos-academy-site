@@ -241,7 +241,7 @@ export function validateApplication(
 
   if (asked.some((document) => agreementAnswer(values.agreements, document.slug) === '')) {
     errors.agreements =
-      'Tell us who agrees to each of these. “Neither agrees” is a real answer — ' +
+      'Tell us whether your family agrees to each of these. Either answer is fine — ' +
       'we only need to know.';
   }
 

@@ -636,7 +636,7 @@ export const applications = pgTable('applications', {
    */
   faith: text('faith').array().notNull(),
   /**
-   * The Code of Conduct and Handbook agreements as `handbook=parent@3` (#71).
+   * The Code of Conduct and Handbook agreements as `handbook=yes@3` (#71, #255).
    *
    * **A new column on a table ADR-0007 keeps narrow, and it is argued for
    * rather than assumed.** It is not sensitive data about a student: an
@@ -647,10 +647,14 @@ export const applications = pgTable('applications', {
    * is meant to meet that guard and pass it on its merits.
    *
    * One array rather than four columns, for `faith`'s reason: an unanswered
-   * question must stay *absent*, where a null column reads as "neither". The
+   * question must stay *absent*, where a null column reads as a "no". The
    * version rides in the cell so an agreement is always readable against the
    * text that was on screen — a later upload appends a version and cannot
    * change what this row says was agreed.
+   *
+   * The cells hold two vocabularies and are not migrated between them: `yes`
+   * and `no` since ADR-0020, and the `student`, `parent` and `neither` written
+   * before it, which are still read and never rewritten.
    */
   agreements: text('agreements').array().notNull().default([]),
   /** The money terms frozen for this family, when they were recorded. */
