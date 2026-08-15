@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { listCourses } from '../courses/store.js';
+import { listCourses, listEveryCourse, retireCourse } from '../courses/store.js';
 import { createEphemeralDatabase, runMigrations, type Db } from '../db/client.js';
 import { courses as coursesTable, people as peopleTable } from '../db/schema.js';
 import { bySlug, instructorOf, leadershipAmong, PEOPLE } from './person.js';
@@ -145,6 +145,22 @@ describe('deleting a person', () => {
     const courses = await listCourses(db);
     expect(courses).toHaveLength(19);
     expect(courses.every((course) => course.instructorSlug === null)).toBe(true);
+  });
+
+  it('is not refused by a retired class either, and unstaffs that one too', async () => {
+    /*
+     * #262's "not by a retired course", which only became testable when #263
+     * shipped retirement. A retired class is still the school's own copy and
+     * still names its instructor — it is simply not being run this year — so
+     * the delete clears it like any other and comes back if the class does.
+     */
+    await retireCourse(db, 'kingdom-math', 'Jill Kilker');
+
+    await expect(deletePerson(db, TEACHES_EIGHT)).resolves.toBeUndefined();
+
+    const retired = (await listEveryCourse(db)).find((course) => course.slug === 'kingdom-math')!;
+    expect(retired.retiredAt).not.toBeNull();
+    expect(retired.instructorSlug).toBeNull();
   });
 
   it('says nothing about a slug that is not there', async () => {
