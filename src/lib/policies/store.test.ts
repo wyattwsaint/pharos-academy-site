@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
-import { SEEDED_POLICIES } from './policy.js';
+import { distinctPolicySlug, SEEDED_POLICIES, type Policy } from './policy.js';
 import {
   createPolicy,
   deletePolicy,
@@ -11,6 +11,7 @@ import {
   getPolicyFile,
   listPolicies,
   listPolicyVersions,
+  occupiedPolicySlugs,
   replacePolicyFile,
   savePolicy,
 } from './store.js';
@@ -365,5 +366,171 @@ describe('deleting a policy', () => {
     for (const policy of await listPolicies(db)) await deletePolicy(db, policy.slug);
 
     expect(await listPolicies(db)).toEqual([]);
+  });
+});
+
+/**
+ * Re-adding a deleted policy (#268).
+ *
+ * The store's half of the ticket is one number. #260 left the versions behind
+ * when the policy went, so the slug a returning policy is created back onto
+ * already has documents under it — and the next upload has to take the number
+ * after the highest of them rather than starting again. Version 1 minted twice
+ * would mean `/policies/handbook/v1.pdf` naming two different documents, which
+ * is the failure a permanent address exists to make impossible, and it would
+ * silently rewrite what an application recorded an agreement to.
+ *
+ * Nothing in the store decides *whether* to inherit — that is the question the
+ * screen asks. What is proved here is that once the slug is chosen, the
+ * numbering follows from it and cannot be made to repeat.
+ */
+describe('re-adding a deleted policy', () => {
+  /** The Handbook, uploaded to twice and then deleted, its documents left behind. */
+  async function deletedHandbook(): Promise<{ v1: Buffer; v2: Buffer }> {
+    const v1 = await handbookPdf();
+    const v2 = await codeOfConductPdf();
+    await replacePolicyFile(db, 'handbook', { filename: 'handbook.pdf', bytes: v1 }, 'Jill Kilker');
+    await replacePolicyFile(
+      db,
+      'handbook',
+      { filename: 'handbook-2.pdf', bytes: v2 },
+      'Jill Kilker',
+    );
+    await deletePolicy(db, 'handbook');
+    return { v1, v2 };
+  }
+
+  /** Put it back at the address it always had. */
+  async function readd(slug = 'handbook'): Promise<Policy> {
+    return createPolicy(db, { slug, title: 'Handbook', position: 1, signed: true }, 'Jill Kilker');
+  }
+
+  it('comes back at the address it always had', async () => {
+    await deletedHandbook();
+
+    const back = await readd();
+
+    expect(back.slug).toBe('handbook');
+    expect((await getPolicy(db, 'handbook'))?.title).toBe('Handbook');
+  });
+
+  // A policy is published by its file and not by its row, and a re-added one is
+  // no exception: the kept documents belong to the address, not to this row.
+  it('comes back unpublished, with no current document', async () => {
+    await deletedHandbook();
+
+    const back = await readd();
+
+    expect(back.version).toBeNull();
+    expect(back.filename).toBeNull();
+    expect(back.updatedAt).toBeNull();
+    expect(await getPolicyFile(db, 'handbook')).toBeUndefined();
+  });
+
+  // The ticket, in one assertion. Counting the row would give 1; counting the
+  // table gives 3, which is the only answer that keeps a version number meaning
+  // one document forever.
+  it('takes the next version after the highest surviving one, never version 1', async () => {
+    await deletedHandbook();
+    await readd();
+
+    const uploaded = await replacePolicyFile(
+      db,
+      'handbook',
+      { filename: 'handbook-3.pdf', bytes: await handbookPdf() },
+      'Jill Kilker',
+    );
+
+    expect(uploaded.version).toBe(3);
+  });
+
+  it('reuses no version number, across as many deletes as the school makes', async () => {
+    await deletedHandbook();
+
+    for (const round of [3, 4, 5]) {
+      await readd();
+      const uploaded = await replacePolicyFile(
+        db,
+        'handbook',
+        { filename: `handbook-${round}.pdf`, bytes: await codeOfConductPdf() },
+        'Jill Kilker',
+      );
+      expect(uploaded.version).toBe(round);
+      await deletePolicy(db, 'handbook');
+    }
+
+    const versions = (await listPolicyVersions(db, 'handbook')).map((one) => one.version);
+    expect(versions).toEqual([5, 4, 3, 2, 1]);
+    expect(new Set(versions).size).toBe(versions.length);
+  });
+
+  /*
+   * The whole reason the school is allowed to re-add at all. An application
+   * from August says `handbook=parent@1`; that reference is text with no key to
+   * follow, so what has to be true after the delete *and* after the re-add is
+   * that the number still opens the document that family was shown — and not
+   * the one uploaded after the policy came back.
+   */
+  it('still resolves an agreement recorded before the deletion', async () => {
+    const { v1, v2 } = await deletedHandbook();
+    await readd();
+    await replacePolicyFile(
+      db,
+      'handbook',
+      { filename: 'handbook-3.pdf', bytes: await handbookPdf() },
+      'Jill Kilker',
+    );
+
+    const agreed = await getPolicyFile(db, 'handbook', 1);
+    expect(agreed!.version).toBe(1);
+    expect(agreed!.bytes.equals(v1)).toBe(true);
+    expect((await getPolicyFile(db, 'handbook', 2))!.bytes.equals(v2)).toBe(true);
+  });
+
+  // Re-adding moves nothing and renames nothing: the kept documents keep the
+  // filenames and the upload dates they were given, under the same slug.
+  it('leaves the kept documents exactly as they were', async () => {
+    await deletedHandbook();
+    const before = await listPolicyVersions(db, 'handbook');
+
+    await readd();
+
+    expect(await listPolicyVersions(db, 'handbook')).toEqual(before);
+  });
+
+  /*
+   * The other answer to the question the screen asks. A different document that
+   * happens to mint the same slug goes to a slug of its own, and the orphaned
+   * history is not touched by that — it stays orphaned and stays readable.
+   */
+  it('leaves the kept documents orphaned when a distinct address is used', async () => {
+    const { v1 } = await deletedHandbook();
+
+    const separate = await readd(distinctPolicySlug('handbook', await occupiedPolicySlugs(db)));
+
+    expect(separate.slug).toBe('handbook-2');
+    expect(await listPolicyVersions(db, 'handbook-2')).toEqual([]);
+    expect((await getPolicyFile(db, 'handbook', 1))!.bytes.equals(v1)).toBe(true);
+    expect(await getPolicy(db, 'handbook')).toBeUndefined();
+  });
+
+  // Both senses of "taken", in one read: the four seeded rows, plus a slug that
+  // holds nothing but documents. Minting a second address over the latter would
+  // recreate the exact ambiguity the school was asked about.
+  it('counts an orphaned slug as spoken for, and names each slug once', async () => {
+    await deletedHandbook();
+    await replacePolicyFile(
+      db,
+      'code-of-conduct',
+      { filename: 'code.pdf', bytes: await codeOfConductPdf() },
+      'Jill Kilker',
+    );
+
+    const occupied = await occupiedPolicySlugs(db);
+
+    expect(occupied).toContain('handbook');
+    expect(occupied).toContain('code-of-conduct');
+    expect(new Set(occupied).size).toBe(occupied.length);
+    expect(occupied).toHaveLength(4);
   });
 });

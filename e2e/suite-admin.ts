@@ -46,6 +46,16 @@ export const SUITE_RETIRED_COURSE = 'suite-retired-class';
  */
 export const SUITE_RETIRED_PERSON = 'suite-departed-instructor';
 
+/**
+ * The title of the policy the throwaway database deletes, leaving its two
+ * documents behind (#268).
+ *
+ * Typing it into the create form is what reaches the question the site asks
+ * when an address already has kept documents under it. Written out here rather
+ * than imported from `src/lib/db/client.ts` for the same reason as above.
+ */
+export const SUITE_ORPHANED_POLICY = 'Suite Kept Policy';
+
 /** Sign in and land on `next`. Fails loudly rather than leaving a spec adrift. */
 export async function signIn(page: Page, next = '/admin/school-details'): Promise<void> {
   await page.goto(`/admin/login?next=${encodeURIComponent(next)}`);

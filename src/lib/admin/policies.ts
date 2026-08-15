@@ -1,4 +1,5 @@
 import type { PolicyFile } from '../policies/store.js';
+import { updatedOnLabel } from '../policies/views.js';
 import { isPdf, MAX_UPLOAD_BYTES, megabytes, plainFilename } from './pdf-upload.js';
 
 /**
@@ -202,6 +203,100 @@ function keptSentence(versions: number): string {
     return 'The one document already uploaded is kept. It stays readable at the permanent address it was given, so a family who has already agreed to it can still open exactly what they were shown.';
   }
   return `All ${versions} documents already uploaded are kept. Each stays readable at the permanent address it was given, so a family who has already agreed to one of them can still open exactly what they were shown.`;
+}
+
+/**
+ * What the screen says when a new policy's address already has documents (#268).
+ *
+ * The one question the site genuinely cannot answer for itself. A school
+ * re-adding the Handbook it deleted last term and a school creating an unrelated
+ * document that happens to mint `handbook` post the identical form, and guessing
+ * is wrong in both directions: inherit, and a brand new policy silently adopts
+ * three PDFs nobody meant; do not inherit, and a returning policy loses the
+ * history it left behind — or worse, restarts at version 1 under a slug where
+ * version 1 already means a different document.
+ *
+ * So the screen asks, and the asking is here rather than in the page for the
+ * reason `policyDeletion` is: the two choices lead to permanently different
+ * addresses, and the sentences a person picks between are worth a seam.
+ *
+ * It **names the documents it found** — how many, and when they arrived. That is
+ * what makes the question answerable: "three documents, uploaded between March
+ * and August" is recognisably the Handbook to the person who uploaded them, and
+ * recognisably nothing to do with a new form that happens to be called one.
+ */
+export type PolicyInheritance = {
+  heading: string;
+  /** How many kept documents there are and when they were uploaded. */
+  documents: string;
+  /** What each of the two choices does, including the version it lands on. */
+  choice: string;
+  continueLabel: string;
+  freshLabel: string;
+  /** The banner after continuing the history. */
+  continued: string;
+  /** The banner after taking a different address. */
+  separate: string;
+};
+
+/** What a kept document has to say about itself for the question to be asked. */
+export type KeptDocument = {
+  version: number;
+  uploadedAt: Date;
+};
+
+/**
+ * The sentence every create lands on, whichever way it went.
+ *
+ * A policy is published by its file and not by its row, so the one thing that
+ * is true of a freshly created policy — including a re-added one, which is the
+ * case a school would most reasonably expect to be back on the site already —
+ * is that it is not on the policies page yet.
+ */
+export const NOT_PUBLISHED_YET =
+  'It is not on the policies page yet — write the line that says what it is, choose the PDF, and save.';
+
+export function policyInheritance(
+  title: string,
+  kept: readonly KeptDocument[],
+  addresses: { existing: string; fresh: string },
+): PolicyInheritance {
+  const next = Math.max(...kept.map((document) => document.version)) + 1;
+
+  return {
+    heading: 'That Address Already Has Documents',
+    documents: documentsSentence(kept, addresses.existing),
+    choice: `If this is ${title} coming back, continue that history: the policy returns to ${addresses.existing}, and the next document uploaded to it is version ${next} rather than version 1, so no version number ever means two different documents. If it is a different document that happens to be called the same thing, give it ${addresses.fresh} instead and the kept documents stay exactly where they are.`,
+    continueLabel: `Continue the history at ${addresses.existing}`,
+    freshLabel: `Use ${addresses.fresh} instead`,
+    continued: `Created at ${addresses.existing}, continuing the history that was already there — the next document uploaded is version ${next}. ${NOT_PUBLISHED_YET}`,
+    separate: `Created at ${addresses.fresh}, with a history of its own. The documents kept at ${addresses.existing} were left exactly as they were. ${NOT_PUBLISHED_YET}`,
+  };
+}
+
+/**
+ * The documents that are already there, counted and dated.
+ *
+ * Written out per case rather than assembled, like `keptSentence` above and for
+ * the same reason: this is the sentence the school reads to decide which of two
+ * permanent addresses a document gets, and a plural agreement threaded through
+ * a template is the wrong way to write the sentence that decision rests on.
+ */
+function documentsSentence(kept: readonly KeptDocument[], address: string): string {
+  const dates = kept.map((document) => document.uploadedAt.getTime()).sort((a, b) => a - b);
+  const oldest = dateLabel(dates[0]!);
+  const newest = dateLabel(dates[dates.length - 1]!);
+
+  if (kept.length === 1) {
+    return `One document was uploaded to ${address}, on ${oldest}, by a policy that has since been deleted. It is still readable at its own permanent address, and an application that recorded an agreement still names it.`;
+  }
+  const when = oldest === newest ? `all on ${oldest}` : `between ${oldest} and ${newest}`;
+  return `${kept.length} documents were uploaded to ${address}, ${when}, by a policy that has since been deleted. Each is still readable at its own permanent address, and an application that recorded an agreement still names one of them.`;
+}
+
+/** The upload date as the school writes it — the policies page's own format. */
+function dateLabel(time: number): string {
+  return updatedOnLabel(new Date(time));
 }
 
 /** The list position, as a number, or the reason it is not one. */

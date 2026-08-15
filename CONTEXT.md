@@ -884,6 +884,18 @@ resolving. The confirmation names what is kept as well as what goes, because
 policy with no document yet deletes with nothing left behind, which is the
 mistake case it is mostly for.
 
+**It can come back, and it comes back to the same address.** Re-adding a deleted
+policy returns it to the slug its title has always minted, continuing the
+numbering the kept documents left behind — the next upload is version 4, never
+version 1, so a slug and a version together never name two different documents.
+Creating a policy whose address already has kept documents is therefore the one
+create on the site that **asks**: the site cannot tell a returning Handbook from
+an unrelated document that happens to mint `handbook`, and either guess is
+destructive, so the screen names how many documents are there and when they
+arrived and offers the two answers — continue that history, or take a distinct
+address beside it. A re-added policy is off the policies page until it is
+uploaded to, like any other, because a policy is published by its file.
+
 The **updated date** is stamped from the upload and is typeable nowhere: there is
 no date control on either policy form, so the published date cannot disagree with
 the document. It is not the [stamp](#stamp) — correcting a description in August
