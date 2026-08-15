@@ -6,6 +6,7 @@ import { createEphemeralDatabase, type Db } from '../db/client.js';
 import { SEEDED_POLICIES } from './policy.js';
 import {
   createPolicy,
+  deletePolicy,
   getPolicy,
   getPolicyFile,
   listPolicies,
@@ -251,5 +252,118 @@ describe('a policy that does not exist', () => {
       'Jill Kilker',
     );
     expect(await getPolicyFile(db, 'handbook', 7)).toBeUndefined();
+  });
+});
+
+/**
+ * Deleting a policy (#260, ADR-0021).
+ *
+ * The whole of this ticket is one claim about the database, and it is a claim
+ * about what a delete does **not** reach. Migration 0023 dropped the cascade
+ * from `policy_versions`, so a version row is now the same kind of thing an
+ * application's `handbook=parent@3` already was: a permanent record naming a
+ * slug and a number, resolving whether or not anything still holds that slug.
+ *
+ * Proved with two real PDFs rather than short strings, for the reason the rest
+ * of this file uses them — what has to survive the delete is *the bytes*, and a
+ * five-byte fixture would come back identical under any encoding at all.
+ */
+describe('deleting a policy', () => {
+  /** Two versions of the Handbook, so there is something to lose. */
+  async function handbookWithTwoVersions(): Promise<{ v1: Buffer; v2: Buffer }> {
+    const v1 = await handbookPdf();
+    const v2 = await codeOfConductPdf();
+    await replacePolicyFile(db, 'handbook', { filename: 'handbook.pdf', bytes: v1 }, 'Jill Kilker');
+    await replacePolicyFile(db, 'handbook', { filename: 'handbook-2.pdf', bytes: v2 }, 'Jill Kilker');
+    return { v1, v2 };
+  }
+
+  it('takes the policy off the list and out of every read of it', async () => {
+    await deletePolicy(db, 'handbook');
+
+    expect(await getPolicy(db, 'handbook')).toBeUndefined();
+    expect((await listPolicies(db)).map((policy) => policy.slug)).not.toContain('handbook');
+  });
+
+  // The claim the cascade used to make false. Nothing else in this suite would
+  // catch its return: the delete would simply succeed and the rows would be
+  // gone, which is what it looks like when it is working.
+  it('deletes no version row', async () => {
+    await handbookWithTwoVersions();
+    expect(await listPolicyVersions(db, 'handbook')).toHaveLength(2);
+
+    await deletePolicy(db, 'handbook');
+
+    const kept = await listPolicyVersions(db, 'handbook');
+    expect(kept.map((version) => version.version)).toEqual([2, 1]);
+    expect(kept.map((version) => version.filename)).toEqual(['handbook-2.pdf', 'handbook.pdf']);
+  });
+
+  /*
+   * The versioned address is the one on paper and the one an agreement names,
+   * and it goes on serving the same bytes. `getPolicyFile` reads the version
+   * table alone when a number is given, which is what makes that possible with
+   * no policy row left to read.
+   */
+  it('leaves every versioned document readable, byte for byte', async () => {
+    const { v1, v2 } = await handbookWithTwoVersions();
+
+    await deletePolicy(db, 'handbook');
+
+    const first = await getPolicyFile(db, 'handbook', 1);
+    const second = await getPolicyFile(db, 'handbook', 2);
+    expect(first!.bytes.equals(v1)).toBe(true);
+    expect(second!.bytes.equals(v2)).toBe(true);
+    expect(first!.filename).toBe('handbook.pdf');
+  });
+
+  /*
+   * An August application says `handbook=parent@1`. The number is the whole of
+   * the reference — there is no foreign key to follow and never was — so what
+   * has to be true after the delete is that the number still resolves to the
+   * document that family was shown, and not to the one that replaced it.
+   */
+  it('still resolves the version an application recorded, and not a later one', async () => {
+    const { v1 } = await handbookWithTwoVersions();
+    const [slug, version] = ['handbook', 1];
+
+    await deletePolicy(db, slug);
+
+    const agreed = await getPolicyFile(db, slug, version);
+    expect(agreed!.version).toBe(1);
+    expect(agreed!.bytes.equals(v1)).toBe(true);
+  });
+
+  // The fixed address is the half that is *meant* to go: it resolves through
+  // the policy row, and the policies page it belongs to no longer lists this.
+  it('takes the fixed address down, because that is what deleting the policy means', async () => {
+    await handbookWithTwoVersions();
+
+    await deletePolicy(db, 'handbook');
+
+    expect(await getPolicyFile(db, 'handbook')).toBeUndefined();
+  });
+
+  // The mistake case: a policy created with the wrong title before anybody
+  // uploaded anything. There is nothing to orphan, and nothing is left behind.
+  it('deletes a policy with no document cleanly', async () => {
+    await createPolicy(
+      db,
+      { slug: 'photography-consent', title: 'Photography Consent', position: 5, signed: false },
+      'Jill Kilker',
+    );
+
+    await deletePolicy(db, 'photography-consent');
+
+    expect(await getPolicy(db, 'photography-consent')).toBeUndefined();
+    expect(await listPolicyVersions(db, 'photography-consent')).toEqual([]);
+  });
+
+  // Every policy, gone. A school between years is entitled to say so, and the
+  // admin's empty state is only reachable at all because this works.
+  it('lets the whole list be emptied', async () => {
+    for (const policy of await listPolicies(db)) await deletePolicy(db, policy.slug);
+
+    expect(await listPolicies(db)).toEqual([]);
   });
 });

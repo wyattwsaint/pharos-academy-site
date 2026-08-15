@@ -339,13 +339,20 @@ export const policies = pgTable('policies', {
  * Scale, from the mirror: 18 PDFs at 3.0 MB total, largest 921 KB. A decade of
  * retained versions is roughly 30 MB against Neon Free's 0.5 GB, which is the
  * arithmetic that made keeping everything cheaper than deciding what to prune.
+ *
+ * **`policy_slug` names a policy and does not point at one** (#260, ADR-0021).
+ * It carried a foreign key with `on delete cascade` until 0023 dropped it,
+ * which made the policy row load-bearing for documents that outlive it: an
+ * application records its agreements as text — `handbook=parent@3`, no key of
+ * its own — so a cascade would take away the PDF a family agreed to and leave
+ * the record naming it behind. A version row is the same kind of thing that
+ * agreement cell is, and it goes on resolving at its own permanent address
+ * whether or not any policy still holds the slug.
  */
 export const policyVersions = pgTable(
   'policy_versions',
   {
-    policySlug: text('policy_slug')
-      .notNull()
-      .references(() => policies.slug, { onDelete: 'cascade' }),
+    policySlug: text('policy_slug').notNull(),
     /** 1, 2, 3 … per policy. The number in the versioned URL. */
     version: integer('version').notNull(),
     filename: text('filename').notNull(),

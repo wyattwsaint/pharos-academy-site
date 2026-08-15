@@ -884,12 +884,12 @@ test.describe('policies', () => {
     expect(prior.headers()['cache-control']).toContain('immutable');
   });
 
-  // The address is on printed paper, so nothing here may take it away. Delete
-  // is not merely unimplemented — it must not appear.
-  test('offers no way to delete a policy or take its document down', async ({ page }) => {
+  // There is no way to take a *document* down, and there never will be: the
+  // versioned address is on printed paper and in a family's record. Replacing
+  // the current file is the only thing this screen does to a document.
+  test('offers no way to take a document down', async ({ page }) => {
     await signIn(page, `/admin/policies/${SLUG}`);
 
-    await expect(page.getByRole('button', { name: /delete/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /remove/i })).toHaveCount(0);
   });
 
@@ -914,6 +914,73 @@ test.describe('policies', () => {
     // And the document families are being served is untouched.
     const response = await request.get(PATH);
     expect(Buffer.from(await response.body()).equals(SECOND)).toBe(true);
+  });
+
+  /*
+   * The delete, and the promise that makes it safe (#260, ADR-0021).
+   *
+   * Last in the file, because it takes away the policy every test above works
+   * on. What only a browser can show is the round trip — a screen rather than a
+   * `confirm()`, a first press that writes nothing, and a decline that leaves
+   * the policy exactly where it was. What it shows that nothing else can is the
+   * two versioned addresses answering *after* the row that used to own them is
+   * gone, with the same bytes the tests above uploaded.
+   */
+  test('asks before deleting a policy, and takes no for an answer', async ({ page }) => {
+    await signIn(page, `/admin/policies/${SLUG}`);
+
+    await page.getByRole('button', { name: 'Delete this policy' }).click();
+
+    // A screen, not a dialog: it is in the page, and it says all three things.
+    const confirm = page.getByTestId('confirm');
+    await expect(confirm).toContainText(`Delete ${TITLE}?`);
+    await expect(page.getByTestId('deletion-goes')).toContainText('policies page');
+    await expect(page.getByTestId('deletion-kept')).toContainText('All 2 documents');
+    await expect(page.getByTestId('deletion-kept')).toContainText('already agreed');
+    await expect(page.getByTestId('deletion-undo')).toContainText('no undo');
+
+    // Backing out writes nothing and puts the editor back.
+    await page.getByRole('link', { name: 'Go back without deleting' }).click();
+    await expect(page.getByTestId('confirm')).toHaveCount(0);
+    await expect(page.getByTestId('versions').locator('li')).toHaveCount(2);
+  });
+
+  test('deletes it, and keeps every document families were given', async ({ page, request }) => {
+    await signIn(page, `/admin/policies/${SLUG}`);
+
+    await page.getByRole('button', { name: 'Delete this policy' }).click();
+    await page.getByRole('button', { name: `Yes, delete ${TITLE}` }).click();
+
+    // It lands on the list, which says what went and whether the live site
+    // caught up — the deleted screen is not there to say it on.
+    await expect(page).toHaveURL(/\/admin\/policies\?/);
+    const banner = page.getByTestId('policies-banner');
+    await expect(banner).toContainText(`${TITLE} is deleted.`);
+    await expect(banner).toContainText('still readable');
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+
+    // Gone from the admin, from the public page, and from its own screen.
+    await expect(page.locator(`a[href="/admin/policies/${SLUG}"]`)).toHaveCount(0);
+    await page.goto(POLICIES_PATH);
+    await expect(page.locator(`[id="${SLUG}"]`)).toHaveCount(0);
+    const editor = await page.goto(`/admin/policies/${SLUG}`);
+    expect(editor!.status()).toBe(404);
+
+    // The fixed address goes with the policy — it is the one the policies page
+    // pointed at, and the school has just said it no longer asks for this.
+    expect((await request.get(PATH)).status()).toBe(404);
+
+    // And this is the whole ticket: both versioned addresses still answer, with
+    // the bytes that were uploaded, so an application recording version 1 still
+    // opens the document that family was shown.
+    const first = await request.get(`/policies/${SLUG}/v1.pdf`);
+    expect(first.status()).toBe(200);
+    expect(Buffer.from(await first.body()).equals(FIRST)).toBe(true);
+    expect(first.headers()['cache-control']).toContain('immutable');
+
+    const second = await request.get(`/policies/${SLUG}/v2.pdf`);
+    expect(second.status()).toBe(200);
+    expect(Buffer.from(await second.body()).equals(SECOND)).toBe(true);
   });
 });
 

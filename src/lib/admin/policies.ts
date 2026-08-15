@@ -142,6 +142,57 @@ async function readFile(form: FormData): Promise<{ file?: PolicyFile; error?: st
   return { file: { filename: plainFilename(file.name, 'policy.pdf'), bytes } };
 }
 
+/**
+ * What the screen says before a policy is deleted (#260, ADR-0021).
+ *
+ * The wording is here rather than in the page because it is the whole safety
+ * net. There is no undo, no soft delete and no trash view; the only thing
+ * standing between a stray press and a policy that has to be typed in again is
+ * these four sentences, and a sentence that matters that much is testable at a
+ * seam rather than asserted through a browser.
+ *
+ * **It names what is kept as loudly as what goes**, which is the one way this
+ * confirmation differs from every other delete on the site. "Delete" reads as
+ * though the documents go with the policy, and here they do not: an application
+ * records its agreement as `handbook=parent@3` with no foreign key, so the PDF
+ * a family was given has to stay readable forever whatever happens to the row
+ * that used to own it. A confirmation that left that unsaid would be asking the
+ * school to take a risk it is not actually taking.
+ *
+ * The empty case is not a footnote — it is the case this delete is mostly for.
+ * A policy created with the wrong title before anybody uploaded anything has
+ * nothing to keep, and saying so is what makes it obviously safe to press.
+ */
+export type PolicyDeletion = {
+  heading: string;
+  confirmLabel: string;
+  declineLabel: string;
+  /** What deleting it takes away. */
+  goes: string;
+  /** What it does not take away — or that there was never anything to keep. */
+  kept: string;
+  /** That the press is final. */
+  undo: string;
+};
+
+export function policyDeletion(title: string, versions: number): PolicyDeletion {
+  return {
+    heading: `Delete ${title}?`,
+    confirmLabel: `Yes, delete ${title}`,
+    declineLabel: 'Go back without deleting',
+    goes: `${title} comes off the policies page and out of this admin, and the short address the policies page links stops working.`,
+    kept:
+      versions === 0
+        ? 'No document has ever been uploaded to it, so there is nothing to keep and nothing else goes with it.'
+        : `${
+            versions === 1 ? 'The one document' : `All ${versions} documents`
+          } already uploaded ${versions === 1 ? 'is' : 'are'} kept. ${
+            versions === 1 ? 'It stays' : 'Each stays'
+          } readable at the permanent address it was given, so a family who has already agreed to one of them can still open exactly the document they were shown.`,
+    undo: 'There is no undo. Putting it back means typing it in again.',
+  };
+}
+
 /** The list position, as a number, or the reason it is not one. */
 export function positionNumber(value: string): number {
   return Number.parseInt(value, 10);

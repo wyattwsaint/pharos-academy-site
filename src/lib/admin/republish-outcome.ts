@@ -32,6 +32,31 @@ export function removalOutcome(removed: string | null, published: string | null)
   };
 }
 
+/**
+ * What `?deleted=` on the Policies list means (#260).
+ *
+ * The same shape the Events list uses, and a different sentence, because the
+ * two removals are not the same event. Taking a one-off off the calendar takes
+ * away the whole of it; deleting a policy takes away the row and keeps every
+ * document, so the line that reports it says both halves — the school has just
+ * pressed something that reads as though it destroyed what families signed, and
+ * this is the screen that tells it otherwise.
+ *
+ * The republish answer rides along in the same query string, said in the same
+ * words every other screen says it in. A refresh re-fires neither half: the
+ * delete already happened and the URL only reports it.
+ */
+export function policyDeletionOutcome(deleted: string | null, published: string | null): Banner | null {
+  if (deleted === null) return null;
+  const republish = republishOutcome(published);
+  return {
+    ok: republish?.ok ?? true,
+    message: `${deleted} is deleted. Every document already uploaded to it is still readable at the address it was given.${
+      republish ? ` ${republish.message}` : ''
+    }`,
+  };
+}
+
 export function republishOutcome(published: string | null): Banner | null {
   if (published === 'live') {
     return { ok: true, message: 'Republished — the live site is up to date.' };

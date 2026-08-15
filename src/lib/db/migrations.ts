@@ -869,6 +869,54 @@ export const MIGRATIONS: readonly Migration[] = [
          add column if not exists offering_titles text[] not null default array[]::text[]`,
     ],
   },
+  {
+    /*
+     * A policy's documents survive the policy (#260, ADR-0021).
+     *
+     * 0005 gave `policy_versions` a foreign key to `policies` with
+     * `on delete cascade`, and said in as many words that no `on delete` path
+     * could take a policy without taking its versions too. That is now the one
+     * thing standing between the admin and a delete it is entitled to have, and
+     * it is standing there in the most damaging possible way: an application
+     * records its agreements as text — `handbook=parent@3`, no foreign key — so
+     * a cascade would silently destroy the document a family was given while
+     * leaving the record that names it intact.
+     *
+     * So the constraint goes entirely rather than being softened. `set null` is
+     * unavailable to a not-null column that is half the primary key, and
+     * `no action` would refuse exactly the delete the school is asking for. A
+     * version row is the same kind of thing an agreement cell already is: a
+     * permanent record naming a slug and a number, which goes on resolving
+     * whether or not anything still owns that slug.
+     *
+     * **This ships in the same commit as the delete on purpose.** Dropping the
+     * cascade alone is inert; a delete alone destroys retained documents on the
+     * first press. Neither half can arrive without the other.
+     *
+     * Dropped by lookup rather than by name because the constraint was created
+     * unnamed, so its name is whatever Postgres minted — and the loop makes the
+     * statement a no-op on a second run and on a database that never had it.
+     */
+    id: '0024-a-policys-documents-survive-the-policy',
+    statements: [
+      `do $$
+       declare
+         orphaning text;
+       begin
+         for orphaning in
+           select con.conname
+             from pg_constraint con
+             join pg_class rel on rel.oid = con.conrelid
+             join pg_namespace nsp on nsp.oid = rel.relnamespace
+            where con.contype = 'f'
+              and rel.relname = 'policy_versions'
+              and nsp.nspname = current_schema()
+         loop
+           execute format('alter table policy_versions drop constraint %I', orphaning);
+         end loop;
+       end $$`,
+    ],
+  },
 ];
 
 /**
