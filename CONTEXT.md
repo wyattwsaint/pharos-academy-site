@@ -515,8 +515,12 @@ would drift the first time it was corrected in one of them.
 **Instructor is not a status a person carries.** It is a fact about the
 catalogue: a person is an instructor exactly when some course names them, so
 assigning a course makes them one on the staff page, the class page and the
-timetable at once. **Leadership** *is* stored, as a rank, because it carries an
-order the staff page renders in that nothing else can derive.
+timetable at once. The one exception is a [retired](#retired) person, and it is
+that same fact working: a course the school still runs stops naming them, while
+a retired course goes on naming them, decided in the one place a class's
+instructor is decided and stored nowhere. **Leadership** *is* stored, as a rank,
+because it carries an order the staff page renders in that nothing else can
+derive.
 
 **A person can be deleted, and the delete is unconditional** (#262, ADR-0021).
 The staff list of a new school is in flux — somebody typed in twice, somebody

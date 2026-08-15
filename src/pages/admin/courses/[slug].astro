@@ -40,7 +40,7 @@ import { createCourse, getCourse, listCourses, saveCourse } from '../../../lib/c
 import { getDb } from '../../../lib/db/client.js';
 import { getMoneySettings } from '../../../lib/money/store.js';
 import { slugify } from '../../../lib/people/person.js';
-import { getPerson, listPeople } from '../../../lib/people/store.js';
+import { listEveryPerson } from '../../../lib/people/store.js';
 
 /**
  * One course, added or edited (#24).
@@ -129,10 +129,15 @@ const settings = await getMoneySettings(db);
  * are not somebody the school can hand a class to, and a live class naming them
  * would print no instructor at all.
  */
-const listed = await listPeople(db);
-const named = course?.instructorSlug ? await getPerson(db, course.instructorSlug) : undefined;
-const people =
-  named && named.retiredAt !== null ? [...listed, named] : listed;
+/*
+ * Filtered out of the whole list rather than fetched as two, so the order is
+ * the store's own — leadership first and then by name, the order the staff page
+ * and the People screen render in. Somebody appended to the published list
+ * would be the one name in the admin that is not where it is everywhere else.
+ */
+const people = (await listEveryPerson(db)).filter(
+  (person) => person.retiredAt === null || person.slug === course?.instructorSlug,
+);
 const instructorSlugs = people.map((person) => person.slug);
 /*
  * Read before the save, and used for both the slot list and the clash

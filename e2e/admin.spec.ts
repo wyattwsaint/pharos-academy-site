@@ -785,16 +785,19 @@ test.describe('deleting a person', () => {
  * this (`SUITE_RETIRED_PERSON`), who teaches nothing.
  */
 test.describe('the retired people section', () => {
+  /** What that person is called, as the seed writes them. */
+  const DEPARTED = 'Mrs. Suite Departed';
+
   test('lists a retired person beneath the listed ones, dated, never hidden', async ({ page }) => {
     await signIn(page, '/admin/people');
 
     const retired = page.getByTestId('retired-people');
     await expect(retired).toBeVisible();
-    await expect(retired.getByRole('heading', { name: SUITE_RETIRED_PERSON.name })).toBeVisible();
-    await expect(page.getByTestId(`retired-on-${SUITE_RETIRED_PERSON.slug}`)).toContainText(
+    await expect(retired.getByRole('heading', { name: DEPARTED })).toBeVisible();
+    await expect(page.getByTestId(`retired-on-${SUITE_RETIRED_PERSON}`)).toContainText(
       'Retired ',
     );
-    await expect(page.getByTestId(`unretire-${SUITE_RETIRED_PERSON.slug}`)).toBeVisible();
+    await expect(page.getByTestId(`unretire-${SUITE_RETIRED_PERSON}`)).toBeVisible();
   });
 
   test('keeps them out of the listed people above', async ({ page }) => {
@@ -802,13 +805,13 @@ test.describe('the retired people section', () => {
 
     const listed = page.getByTestId('listed-people');
     await expect(listed).toBeVisible();
-    await expect(listed.getByText(SUITE_RETIRED_PERSON.name)).toHaveCount(0);
+    await expect(listed.getByText(DEPARTED)).toHaveCount(0);
   });
 
   test('says they are retired on their own screen, and offers the one press back', async ({
     page,
   }) => {
-    await signIn(page, `/admin/people/${SUITE_RETIRED_PERSON.slug}`);
+    await signIn(page, `/admin/people/${SUITE_RETIRED_PERSON}`);
 
     const section = page.getByTestId('retirement');
     await expect(section.getByRole('heading', { name: 'Retired' })).toBeVisible();
@@ -826,7 +829,7 @@ test.describe('the retired people section', () => {
 
   test('takes them off the staff page', async ({ page }) => {
     await page.goto(STAFF_PATH);
-    await expect(page.getByText(SUITE_RETIRED_PERSON.name)).toHaveCount(0);
+    await expect(page.getByText(DEPARTED)).toHaveCount(0);
     // The screen is not simply empty: somebody the school does list is on it.
     await expect(page.locator('#jill-kilker')).toBeVisible();
   });

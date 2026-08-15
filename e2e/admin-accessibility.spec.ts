@@ -74,7 +74,7 @@ const SCREENS = [
   '/admin/people/new',
   // #266. The same two states as the list, on the person's own screen: the
   // Retire section reads "Listed" above and "Retired" here.
-  `/admin/people/${SUITE_RETIRED_PERSON.slug}`,
+  `/admin/people/${SUITE_RETIRED_PERSON}`,
   '/admin/announcements',
   SEEDED_ANNOUNCEMENT,
   '/admin/announcements/new',

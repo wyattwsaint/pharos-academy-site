@@ -44,10 +44,7 @@ export const SUITE_RETIRED_COURSE = 'suite-retired-class';
  * They teach nothing: a retired person who taught a seeded class would unname
  * it on four public surfaces the rest of this suite pins against the seed.
  */
-export const SUITE_RETIRED_PERSON = {
-  slug: 'suite-departed-instructor',
-  name: 'Mrs. Suite Departed',
-} as const;
+export const SUITE_RETIRED_PERSON = 'suite-departed-instructor';
 
 /** Sign in and land on `next`. Fails loudly rather than leaving a spec adrift. */
 export async function signIn(page: Page, next = '/admin/school-details'): Promise<void> {
