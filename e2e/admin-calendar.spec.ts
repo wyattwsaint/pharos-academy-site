@@ -183,7 +183,11 @@ test.describe('the Events screen', () => {
    */
   const heldOn = addDays(schoolToday(new Date()), 100);
 
-  test('adds a one-off, publishes it, and takes it off again', async ({ page, request }) => {
+  test('adds a one-off, publishes it, and takes it off again', async ({
+    browser,
+    page,
+    request,
+  }) => {
     await page.goto('/admin/events/new');
     await page.getByLabel('Date').fill(heldOn);
     await page.getByLabel('What it is').fill('Suite open house');
@@ -194,8 +198,19 @@ test.describe('the Events screen', () => {
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
 
     await page.goto(CALENDAR_PATH);
-    const cell = page.locator(`[data-section="calendar-months"] td:has(time[datetime="${heldOn}"])`);
+    // Its cell on the grid, wherever the grid is being drawn — this page, a
+    // narrow one, or one with no script running.
+    const cellOn = (on: Page) =>
+      on.locator(`[data-section="calendar-months"] td:has(time[datetime="${heldOn}"])`);
+    const cell = cellOn(page);
+    /*
+     * The title and the time, both read off the cell without pressing anything
+     * (#234). A parent scanning the month wants to know whether this is a
+     * school-day event or an evening one, and that is the answer, not the
+     * reward for finding the control.
+     */
     await expect(cell).toContainText('Suite open house');
+    await expect(cell).toContainText('6.30pm');
 
     /*
      * And its detail opens from a keyboard (#186 AC 4).
@@ -212,11 +227,37 @@ test.describe('the Events screen', () => {
     await trigger.focus();
     await page.keyboard.press('Enter');
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    // Revealed, not merely announced: the time and the place are what the cell
-    // itself has no room for, and an off-screen detail is not a disclosure.
+    // Revealed, not merely announced: the place is what the cell has no room
+    // for, and an off-screen detail is not a disclosure.
     await expect(panel).toBeVisible();
-    await expect(panel).toContainText('6.30pm');
     await expect(panel).toContainText('The hall');
+
+    /*
+     * And the same at phone width (#234), where the grid is a dated list.
+     *
+     * One rule rather than two behaviours: a one-off prints its title and its
+     * time wherever it appears, so a family that learns the wide page has
+     * nothing to unlearn on the narrow one.
+     */
+    const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const listed = await phone.newPage();
+    await listed.goto(CALENDAR_PATH);
+    await expect(cellOn(listed)).toBeVisible();
+    await expect(cellOn(listed)).toContainText('Suite open house');
+    await expect(cellOn(listed)).toContainText('6.30pm');
+    await phone.close();
+
+    /*
+     * And with no script at all (#234). The time is the second half of what the
+     * month is for, so it is served in the markup rather than assembled in the
+     * browser — a visitor with JavaScript off loses the disclosure and the
+     * scroll to this month, and neither of those is the time.
+     */
+    const unscripted = await browser.newContext({ javaScriptEnabled: false });
+    const served = await unscripted.newPage();
+    await served.goto(CALENDAR_PATH);
+    await expect(cellOn(served)).toContainText('6.30pm');
+    await unscripted.close();
 
     // And in the feed, as a timed event rather than a whole day.
     const feed = await (await request.get(CALENDAR_FEED_PATH)).text();
@@ -254,6 +295,13 @@ test.describe('the Events screen', () => {
     await page.goto(CALENDAR_PATH);
     const cell = page.locator(`[data-section="calendar-months"] td:has(time[datetime="${gone}"])`);
     await expect(cell).toContainText('Suite spring concert');
+    /*
+     * And its title is the whole of what the cell prints (#234). This one-off
+     * was saved with no time, which is a complete one-off and not an unfinished
+     * one, so the cell says nothing where the time would have been — no
+     * placeholder, no dash, nothing to read as a gap.
+     */
+    await expect(cell.locator('[data-disclosure-trigger]')).toHaveText('Suite spring concert');
 
     await page.goto(`/admin/events/${eventSlug(gone, 'Suite spring concert')}`);
     await page.getByRole('button', { name: 'Take this off the calendar' }).click();
