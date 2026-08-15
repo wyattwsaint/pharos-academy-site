@@ -56,7 +56,8 @@ import {
   type ApplicationFields,
   type FaithAnswers,
 } from './validation.js';
-import { amountOwed, type AmountOwed, type Selection } from '../money/owed.js';
+import { sumOwed } from '../money/live.js';
+import { amountOwed, unitPrice, type AmountOwed, type Selection } from '../money/owed.js';
 import type { MoneySettings } from '../money/settings.js';
 import type { SchoolYear } from '../calendar/year.js';
 import { clashesAmong, findOffering, type Offering, type OfferingClash } from './offerings.js';
@@ -338,6 +339,20 @@ export function selectionsOf(offerings: readonly Offering[]): Selection[] {
   }));
 }
 
+/**
+ * What one offering costs at these rates.
+ *
+ * The catalogue's unit resolved to the rate card's and then priced — the two
+ * halves that always travel together. In one place because three surfaces ask
+ * the question: the email itemises a class (`notices.ts`), the Apply page hands
+ * the browser a price per checkbox (ADR-0019), and `applicationCost` charges
+ * for the same class. A surface that assembled it itself is a surface that can
+ * quote a family a semester of Algebra 1 for the price of a year.
+ */
+export function offeringPrice(offering: Offering, settings: MoneySettings): number {
+  return unitPrice({ course: offering.course, unit: priceUnit(offering.unit) }, settings);
+}
+
 /** One child, their offerings resolved, and what they cost. */
 export type ChildCost = {
   child: ApplicationChild;
@@ -418,18 +433,4 @@ export function familyClashes(
       clashes: clashesAmong(childOfferings(child, offerings), year),
     }))
     .filter((one) => one.clashes.length > 0);
-}
-
-function sumOwed(parts: readonly AmountOwed[]): AmountOwed {
-  const add = (pick: (owed: AmountOwed) => number): number =>
-    parts.reduce((sum, owed) => sum + pick(owed), 0);
-
-  return {
-    registration: add((owed) => owed.registration),
-    deposits: add((owed) => owed.deposits),
-    tuition: add((owed) => owed.tuition),
-    creditedAgainstTuition: add((owed) => owed.creditedAgainstTuition),
-    tuitionDue: add((owed) => owed.tuitionDue),
-    total: add((owed) => owed.total),
-  };
 }

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { amountOwedForPrices, type LiveMoneySettings } from './live.js';
+import { amountOwedForPrices, sumOwed, type LiveMoneySettings } from './live.js';
 
 /**
  * The one implementation of what a family owes (#253, ADR-0019).
@@ -71,6 +71,35 @@ describe('what a family owes', () => {
     expect(onTop.tuitionDue).toBe(1260);
     // The whole tuition, the deposits as well, and the fee: $300 more than credited.
     expect(onTop.total).toBe(1585);
+  });
+});
+
+describe('what a family owes for several children', () => {
+  it('charges the registration fee once per child, not once per family', () => {
+    const each = amountOwedForPrices([420], settings());
+    const family = sumOwed([each, each, each]);
+
+    expect(family.registration).toBe(75);
+    expect(family.total).toBe(each.total * 3);
+  });
+
+  it('credits a child’s deposits against their own tuition', () => {
+    // A $90 block and a $420 year. The block's credit stops at $90 — the spare
+    // ten dollars of deposit is not lent to the sibling's tuition.
+    const family = sumOwed([
+      amountOwedForPrices([90], settings()),
+      amountOwedForPrices([420], settings()),
+    ]);
+
+    expect(family.creditedAgainstTuition).toBe(190);
+    expect(family.tuitionDue).toBe(320);
+    // Two fees, two deposits, and the tuition that is left.
+    expect(family.total).toBe(570);
+  });
+
+  it('charges nothing for a family who has chosen nothing', () => {
+    expect(sumOwed([]).total).toBe(0);
+    expect(sumOwed([amountOwedForPrices([], settings())]).registration).toBe(0);
   });
 });
 

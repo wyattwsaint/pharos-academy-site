@@ -105,7 +105,25 @@ describe('the rules are a leaf', () => {
       for (const name of reachableFrom(entry)) shipped.add(name);
     }
 
-    expect([...shipped].sort()).toEqual(['agreements.ts', 'forms.ts', 'validation.ts']);
+    /*
+      Five, and the two that were added are named (#261, ADR-0019). The browser
+      totals the money now, so it has the arithmetic leaf and the module the
+      currency formatter lives in — both of which import nothing themselves,
+      which is the whole reason they were allowed across.
+
+      What is *not* here is the point of the list: `application.ts`,
+      `offerings.ts`, `owed.ts` and `pricing.ts` are all one import away from a
+      total, and every one of them drags the rate card, the catalogue, the
+      timetable or the Statement of Faith onto the wire. Adding one fails here,
+      and should.
+    */
+    expect([...shipped].sort()).toEqual([
+      'agreements.ts',
+      'forms.ts',
+      'live.ts',
+      'settings.ts',
+      'validation.ts',
+    ]);
   });
 });
 

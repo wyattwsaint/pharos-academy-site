@@ -243,6 +243,20 @@ export function formatMoney(amount: number): string {
   return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
 }
 
+/**
+ * What the deposits take off the tuition, said once (#261).
+ *
+ * The Apply page prints this twice — the server renders it, and the browser
+ * rewrites it as the family ticks (ADR-0019) — so it lives beside the formatter
+ * both of them already import rather than as two literals to drift apart.
+ * Empty when there is no credit: a family who owes nothing is not told that
+ * nothing came off it.
+ */
+export function depositCreditNote(creditedAgainstTuition: number): string {
+  if (creditedAgainstTuition <= 0) return '';
+  return ` — the deposits come off this, ${formatMoney(creditedAgainstTuition)} of it`;
+}
+
 /** What one field's value reads as on the confirmation screen. */
 export function describeValue(values: MoneySettings, field: MoneyField): string {
   switch (field) {

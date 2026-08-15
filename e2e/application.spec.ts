@@ -184,6 +184,54 @@ async function fillSendable(page: Page, except?: string) {
   if (except !== 'paymentMethod') await statePaymentMethod(page);
 }
 
+/**
+ * A figure on the page, as a number (#261).
+ *
+ * Read back off the rendered text rather than off a data attribute, because
+ * what a family reads is the text — a page that keeps a correct number in an
+ * attribute and prints a stale one beside "Pay online" is the failure these
+ * tests exist for.
+ */
+const dollars = (text: string): number => Number(text.replace(/[^0-9.]/g, ''));
+
+/** Every money figure the family can see, including the child's own. */
+async function allFigures(page: Page): Promise<number[]> {
+  const texts = await page
+    .locator('form [data-total], form fieldset[data-child-row]:not([disabled]) [data-child-total]')
+    .allTextContents();
+  return texts.map(dollars);
+}
+
+/** One line of the four-line breakdown. */
+async function figure(page: Page, field: string): Promise<number> {
+  return dollars(await page.locator(`form [data-total="${field}"]`).first().innerText());
+}
+
+/** The grand total, everywhere it is printed. They are meant to be one number. */
+async function grandTotals(page: Page): Promise<number[]> {
+  const texts = await page.locator('form [data-total="total"]').allTextContents();
+  return texts.map(dollars);
+}
+
+/**
+ * What the page says one class costs, off the box that carries it (#261).
+ *
+ * Read rather than written down, because the rate card is the school's to
+ * change from the admin: a test with $840 in it would fail the day Jill raises
+ * the standard rate, and it is the arithmetic these tests are about, not the
+ * rates. `settings.test.ts` is where a rate is a number.
+ */
+async function classPrice(page: Page, value: string): Promise<number> {
+  const box = page.locator(`input[name="child-0-classes"][value="${value}"]`);
+  return Number(await box.getAttribute('data-price'));
+}
+
+/** One child's own figure, by their row. */
+async function childFigure(page: Page, index: number): Promise<number> {
+  const row = page.locator(`fieldset[data-child-row="${index}"]`);
+  return dollars(await row.locator('[data-child-total]').innerText());
+}
+
 test.describe('the application page', () => {
   test('answers 200 and is the stages on one document', async ({ page }) => {
     const response = await open(page);
@@ -712,6 +760,103 @@ test.describe('the application page', () => {
     expect(await greyed(page)).toBe(false);
   });
 
+  /**
+   * The figures follow the family as they choose (#261, ADR-0019).
+   *
+   * The arithmetic is unit-tested in `money/live.test.ts` and the import graph
+   * is guarded in `validation.test.ts`. What only a browser can settle is the
+   * figure somebody forgot to wire up: a total beside "Pay online" that still
+   * reads $0 while the list above it reads $445 is the number a family types
+   * into the giving page.
+   */
+  test('moves every figure on the page as a class is ticked', async ({ page }) => {
+    await open(page);
+
+    const before = await allFigures(page);
+    expect(before.every((amount) => amount === 0)).toBe(true);
+
+    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+
+    // Every one of them, not the first one: the four-line list, the total
+    // beside Pay online, the amount the family is asked to enter themselves,
+    // the check-by-post amount inside the disclosure, and the child's own.
+    // Whichever of those the deployment renders — which of the two payment
+    // sections is on screen is a fact about the school details, so the sweep
+    // reads what is there rather than naming the figures one by one.
+    const after = await allFigures(page);
+    expect(after).toHaveLength(before.length);
+    expect(after.every((amount) => amount > 0)).toBe(true);
+
+    // And they agree with each other. Registration, deposits and the tuition
+    // that is left are the working; the grand total is the sum of them, and it
+    // reads the same wherever it appears.
+    const grand = await grandTotals(page);
+    expect(new Set(grand).size).toBe(1);
+    expect(grand[0]).toBe(
+      (await figure(page, 'registration')) +
+        (await figure(page, 'deposits')) +
+        (await figure(page, 'tuitionDue')),
+    );
+
+    // The credit, live and capped: one deposit comes off the tuition for the
+    // one class, and the clause beside it says so.
+    await expect(page.locator('[data-credit]')).toContainText('the deposits come off this');
+    expect(await figure(page, 'tuitionDue')).toBe(
+      (await classPrice(page, 'algebra-1:year')) - (await figure(page, 'deposits')),
+    );
+  });
+
+  test('takes a child’s registration fee off when their last class goes', async ({ page }) => {
+    // The fee is once per student *with a class* — an empty row is not a
+    // student, and a family who changes their mind about a second child must
+    // not be left paying $25 for them.
+    await open(page);
+    await page.selectOption('#apply-child-count', '2');
+    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+    await page.check('input[name="child-1-classes"][value="algebra-1:year"]');
+
+    // Their own figure is the class and their fee — the deposit is credited
+    // against the tuition, so the family pays it once.
+    const registration = (await figure(page, 'registration')) / 2;
+    const theirs = await childFigure(page, 1);
+    expect(theirs).toBe((await classPrice(page, 'algebra-1:year')) + registration);
+
+    const both = await grandTotals(page);
+    await page.uncheck('input[name="child-1-classes"][value="algebra-1:year"]');
+    const one = await grandTotals(page);
+
+    // All of it comes off, the fee with it: a row with no class is not a
+    // student, and $25 for a child nobody is enrolling is the bug.
+    expect(both[0]! - one[0]!).toBe(theirs);
+    expect(await childFigure(page, 1)).toBe(0);
+  });
+
+  test('leaves a hidden child’s classes out of what the family owes', async ({ page }) => {
+    // A row the family has hidden posts nothing, so it must cost nothing —
+    // the same reading the server makes of it, one round trip later.
+    await open(page);
+    await page.selectOption('#apply-child-count', '2');
+    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+
+    const alone = await grandTotals(page);
+    await page.check('input[name="child-1-classes"][value="kingdom-math:year"]');
+    expect((await grandTotals(page))[0]).toBeGreaterThan(alone[0]!);
+
+    await page.selectOption('#apply-child-count', '1');
+    expect((await grandTotals(page))[0]).toBe(alone[0]);
+  });
+
+  test('announces the grand total, and does not read the working back', async ({ page }) => {
+    // The fourth line is what the choice cost. The three above it are how it
+    // was arrived at, and re-reading them on every tick is noise.
+    await open(page);
+
+    await expect(page.locator('.totals > li.due[aria-live="polite"]')).toHaveCount(1);
+    await expect(page.locator('.totals[aria-live], .totals > li:not(.due)[aria-live]')).toHaveCount(
+      0,
+    );
+  });
+
   test('opens as a clean slate with no inquiry in the link', async ({ page }) => {
     // AC 1's other half: the prefill is unit-tested; what HTTP has to prove is
     // that arriving without one is the same form, not an error.
@@ -805,6 +950,67 @@ test.describe('the application page without scripting', () => {
 
     expect(await greyed(page)).toBe(false);
     await expect(page.locator('[data-missing-for="faith"]')).toBeHidden();
+  });
+
+  test('is told the same figures, one round trip later (#261)', async ({ page }) => {
+    // ADR-0019's promise to a family with scripting off: the browser's copy of
+    // the arithmetic is an enhancement and never the source, so every figure is
+    // still right on first paint and still right after a POST — later, never
+    // wrong. A check writes nothing, so this is safe against a real deployment.
+    await page.goto(APPLICATION_PATH);
+    expect((await allFigures(page)).every((amount) => amount === 0)).toBe(true);
+
+    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+    // Nothing has moved yet, and that is the correct page: no script has run.
+    expect((await grandTotals(page))[0]).toBe(0);
+
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+    // The round trip is the derivation here, so the figures are only readable
+    // once the page it brings back has arrived. Everything below reads the DOM
+    // once rather than retrying, which is the point — a figure that settles a
+    // moment later is a figure a family can catch stale.
+    await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
+
+    // Every figure has moved off zero — internal agreement alone would be
+    // satisfied by a page that had quietly dropped the class — and the grand
+    // total reads the same wherever it is printed.
+    const figures = await allFigures(page);
+    expect(figures.every((amount) => amount > 0)).toBe(true);
+
+    const grand = await grandTotals(page);
+    expect(new Set(grand).size).toBe(1);
+    expect(grand[0]).toBe(
+      (await figure(page, 'registration')) +
+        (await figure(page, 'deposits')) +
+        (await figure(page, 'tuitionDue')),
+    );
+    expect(grand[0]).toBe(
+      (await classPrice(page, 'algebra-1:year')) + (await figure(page, 'registration')),
+    );
+    expect(await childFigure(page, 0)).toBe(grand[0]);
+  });
+
+  test('prints each child’s figure on the row their classes are on (#261)', async ({ page }) => {
+    // A POST closes the gaps in the children: a family who leaves the first row
+    // blank and fills the second gets one row back, with that child's name, age
+    // and boxes on it. The figure has to travel with them — a row showing one
+    // child's classes beside another child's money is the failure this asserts
+    // against, and it is only reachable through the round trip.
+    await page.goto(APPLICATION_PATH);
+    await page.selectOption('#apply-child-count', '2');
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+
+    await page.fill('#apply-child-1-name', 'Suite Child');
+    await page.fill('#apply-child-1-age', '13');
+    await page.check('input[name="child-1-classes"][value="algebra-1:year"]');
+    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
+
+    for (const row of await page.locator('fieldset[data-child-row]:not([disabled])').all()) {
+      const chosen = await row.locator('input[name$="-classes"]:checked').count();
+      const owed = dollars(await row.locator('[data-child-total]').innerText());
+      expect(chosen > 0).toBe(owed > 0);
+    }
   });
 
   test('leaves the send ungreyed when the classes collide', async ({ page }) => {

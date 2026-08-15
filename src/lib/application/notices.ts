@@ -23,7 +23,6 @@
 
 import { sendAll, type Mail, type Sender } from '../backup/monthly.js';
 import { formatMoney, type MoneySettings } from '../money/settings.js';
-import { unitPrice } from '../money/owed.js';
 import { SCHOOL_NAME } from '../site.js';
 import { AGREEMENT_DOCUMENTS, agreementLabel } from './agreements.js';
 import {
@@ -31,7 +30,7 @@ import {
   FAITH_QUESTIONS,
   FAITH_RESPONDENTS,
   faithAnswer,
-  priceUnit,
+  offeringPrice,
   type ApplicationCost,
   type ApplicationFields,
   type PaymentMethod,
@@ -294,9 +293,7 @@ function chosen(cost: ApplicationCost, settings?: MoneySettings): string[] {
     }
 
     for (const offering of one.offerings) {
-      const price = settings
-        ? ` — ${formatMoney(unitPrice({ course: offering.course, unit: priceUnit(offering.unit) }, settings))}`
-        : '';
+      const price = settings ? ` — ${formatMoney(offeringPrice(offering, settings))}` : '';
       lines.push(`    ${offeringTitle(offering)}${price}`);
     }
   }
