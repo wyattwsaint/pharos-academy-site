@@ -11,36 +11,42 @@ import { CATALOGUE } from '../src/lib/courses/catalogue.js';
  *
  * The computation is proved in `src/lib/calendar/year.test.ts` against the
  * school's own PDFs, and the feed's structure in `ics.test.ts`. What is only
- * true in a browser is here: that the sheet renders the four tracks as four
- * columns, that the page prints as the calendar rather than as a website, and
- * that the subscribe address answers as a calendar rather than as a page.
+ * true in a browser is here: that the page prints as the calendar rather than
+ * as a website, and that the subscribe address answers as a calendar rather
+ * than as a page.
+ *
+ * The two four-column semester sheets this file used to assert against are
+ * deleted (#237, ADR-0018), and with them the tests that read a week number off
+ * one. The screen is the subscribe block and the months, and the months have
+ * their own describe below.
  *
  * Subscribing the feed in a real client is #56's, and no assertion here
  * pretends to cover it.
  */
 
 test.describe('the calendar page', () => {
-  test('shows each track’s own dates, in its own column', async ({ page }) => {
+  test('is the subscribe block and the months, and nothing by day track', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
 
-    const fall = page.locator('[data-section="calendar-fall"]');
-    // Week 10 is the row that proves the tracks are computed apart: 9 November
-    // on Monday and 4 November on Wednesday, both correct.
-    const weekTen = fall.locator('tbody tr', { has: page.locator('th', { hasText: /^10$/ }) });
-    await expect(weekTen).toContainText('9 November 2026');
-    await expect(weekTen).toContainText('4 November 2026');
+    // The sheets are gone, and so are the anchors that addressed them.
+    await expect(page.locator('[data-section="calendar-fall"]')).toHaveCount(0);
+    await expect(page.locator('[data-section="calendar-spring"]')).toHaveCount(0);
+    await expect(page.locator('#fall, #spring')).toHaveCount(0);
 
-    // And the closures are written in where they interrupt.
-    await expect(fall).toContainText('Labor Day');
-    await expect(fall).toContainText('Thanksgiving');
-  });
+    // What is left on the screen is one drawing of the year, still at `#events`.
+    await expect(page.locator('#events')).toHaveAttribute('data-section', 'calendar-months');
 
-  test('renders every one of the year’s dates', async ({ page }) => {
-    await page.goto(CALENDAR_PATH);
-    // The sheet's own cells, not the month grid's below it: both are tables of
-    // dates on this page, and the count that is fixed at 112 is the sheet's.
-    const cells = page.locator('.sheet tbody td time');
-    await expect(cells).toHaveCount(meetingsOf(SEEDED_SCHOOL_YEAR).length);
+    /*
+     * And no week number is printed anywhere on it: a row of the grid is a
+     * calendar week, and the four tracks number it four different ways.
+     *
+     * Asserted as the column that held them rather than as a search for
+     * "week 10" — an offering is called *Letter of the Week* and meets at
+     * 10:00, and a page reads that as a week number when a regular expression
+     * is asked to look.
+     */
+    await expect(page.getByRole('columnheader', { name: 'Week' })).toHaveCount(0);
+    await expect(page.locator('table.sheet')).toHaveCount(0);
   });
 
   test('offers one download and says what a subscribed calendar cannot promise', async ({
@@ -61,11 +67,12 @@ test.describe('the calendar page', () => {
    *
    * The folding is proved as arithmetic in `src/lib/calendar/months.test.ts`.
    * What is only true in a browser is here: that print media swaps the screen's
-   * two halves for the list, and that the list is on the paper at all.
+   * grid for the list, and that the list is on the paper at all.
    *
-   * This replaces the assertion that the semester sheet survived print. It did,
+   * This replaced the assertion that the semester sheet survived print. It did,
    * and that was the bug: a school office pinned up a table of week numbers
-   * with no fundraiser, no picture day and no open house on it.
+   * with no fundraiser, no picture day and no open house on it. The sheet
+   * itself is gone now (#237), so there is nothing left to hide but the grid.
    */
   test('prints as the year’s dated list, not as a website', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
@@ -74,14 +81,12 @@ test.describe('the calendar page', () => {
     await expect(page.locator('.site-header')).toBeHidden();
     await expect(page.locator('.site-footer')).toBeHidden();
     await expect(page.getByTestId('calendar-download')).toBeHidden();
-    // Both drawings of the year on the screen come off: the sheet is week
-    // numbers, and the grid is nine sheets of mostly empty boxes.
+    // The screen's drawing of the year comes off: the grid is nine sheets of
+    // mostly empty boxes.
     await expect(page.locator('.months')).toBeHidden();
-    await expect(page.locator('[data-section="calendar-fall"]')).toBeHidden();
-    await expect(page.locator('[data-section="calendar-spring"]')).toBeHidden();
-    // Which is what takes the week numbers and the offerings off the paper:
-    // they are the sheets' and the grid's, and neither is printed.
-    await expect(page.getByRole('columnheader', { name: 'Week' })).toBeHidden();
+    // Which is what takes the offerings off the paper — they are the grid's,
+    // and it is not printed. The week numbers left the site with the sheets.
+    await expect(page.getByRole('columnheader', { name: 'Week' })).toHaveCount(0);
 
     // And the list is there, month by month, in the two columns it is read in.
     const printed = page.locator('[data-section="calendar-print"]');
@@ -115,7 +120,7 @@ test.describe('the calendar page', () => {
     const election = november.locator('li', { hasText: 'Election Day' });
     await expect(election.locator('.printed-days')).toHaveText('3');
 
-    // No week numbers and no offerings anywhere on the sheet.
+    // No week numbers and no offerings anywhere on the printed list.
     await expect(page.locator('[data-section="calendar-print"]')).not.toContainText('Week');
   });
 });
@@ -123,8 +128,9 @@ test.describe('the calendar page', () => {
 /**
  * The month grid alone.
  *
- * The sheet above it holds a `<time>` for every one of the same dates, so an
- * unscoped date selector matches two cells on this page until #237 deletes it.
+ * Scoped rather than unscoped because the printed list below it is rendered on
+ * every page load and only hidden by print media, so a bare date selector would
+ * match the same date twice.
  */
 const GRID = '[data-section="calendar-months"]';
 
@@ -147,7 +153,7 @@ function cellOn(date: string): MonthCell {
  * The month grid (#186).
  *
  * The view model is proved without a browser in
- * `src/lib/calendar/months.test.ts`, date by date and against the sheet. What is
+ * `src/lib/calendar/months.test.ts`, date by date. What is
  * only true in a browser is here: that the months are drawn, that the page opens
  * on the one it currently is, that a one-off's detail and a date's classes can
  * be opened from a keyboard, and that a phone gets a list rather than seven
@@ -191,7 +197,7 @@ test.describe('the month grid', () => {
     }
 
     // And a Tuesday the Tuesday track meets, which carries no courses at all
-    // and is a school day all the same — the sheet above prints it.
+    // and is a school day all the same.
     await expect(cell('2026-11-10')).not.toContainText('No school');
   });
 

@@ -14,7 +14,7 @@ import { schoolWallClock } from './year.js';
  * every one of them. The meeting dates are computed from eight numbers on the
  * admin's School Year screen (`year.ts`) and the four tracks do not align;
  * restating them from a Google recurrence would put a second, disagreeing
- * source of truth on the same page as the sheet. The Tuesday series is the
+ * source of truth beside the first. The Tuesday series is the
  * proof — it is in Google and the Tuesday track is routinely empty.
  *
  * What is read is the **one-offs**: fundraisers, board meetings, parent

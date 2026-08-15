@@ -1,5 +1,4 @@
 import { CALENDAR_PATH } from '../current-families/section.js';
-import { fullDateLabel } from './year.js';
 
 /**
  * Where the calendar lives, and what the school has to tell families about it
@@ -46,15 +45,13 @@ export const SUBSCRIPTION_CAVEAT =
   'changes at short notice the school will still text you. What this calendar is for is the ' +
   'shape of the year.';
 
-/** "Fall Semester" / "Spring Semester", as the school's own sheets head them. */
+/**
+ * "Fall Semester" / "Spring Semester", as the school's own sheets head them.
+ *
+ * One reader left: the admin School Year screen, which heads a fieldset and its
+ * four-column preview with it. The public page that shared it lost its semester
+ * sections in #237.
+ */
 export function semesterHeading(semester: 'fall' | 'spring'): string {
   return semester === 'fall' ? 'Fall Semester' : 'Spring Semester';
 }
-
-/**
- * "31 August 2026" — a meeting date, as the sheet prints it.
- *
- * The same format an event's date is printed in, and the same function: one
- * date format on the calendar, in one place (`calendar/year.ts`).
- */
-export { fullDateLabel as meetingDateLabel };

@@ -88,15 +88,18 @@ test.describe('the School Year screen', () => {
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
     await expect(page.locator('#fall\\.Tuesday\\.firstClassDate')).toHaveValue('');
 
-    // And the public sheet has an empty Tuesday column rather than three
-    // columns shifted left.
+    /*
+     * And the public calendar loses the Tuesdays rather than shifting the other
+     * tracks onto them. Read off the month grid, because the four-column sheet
+     * that used to be the other half of that page is deleted (#237): a Tuesday
+     * in term time that nobody meets on is marked as a day off, and the Monday
+     * that opens the same week is untouched.
+     */
     await page.goto(CALENDAR_PATH);
-    const weekOne = page
-      .locator('[data-section="calendar-fall"] tbody tr')
-      .filter({ has: page.locator('th', { hasText: /^1$/ }) })
-      .first();
-    await expect(weekOne).toContainText('31 August 2026');
-    await expect(weekOne).not.toContainText('1 September 2026');
+    const cell = (date: string) =>
+      page.locator(`[data-section="calendar-months"] td:has(time[datetime="${date}"])`);
+    await expect(cell('2026-09-01')).toContainText('No school');
+    await expect(cell('2026-08-31')).not.toContainText('No school');
 
     /*
      * Put the Tuesday track back, because the suite's database is one database

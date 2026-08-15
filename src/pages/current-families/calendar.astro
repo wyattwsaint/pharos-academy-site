@@ -4,34 +4,34 @@ import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import { eventDateLabel, eventTimeLabel, upcomingEvents } from '../../lib/calendar/event.js';
 import { getSchoolYear, listPublishedEvents } from '../../lib/calendar/store.js';
 import { eventJsonLd } from '../../lib/calendar/structured-data.js';
-import {
-  CALENDAR_FEED_PATH,
-  meetingDateLabel,
-  semesterHeading,
-  SUBSCRIPTION_CAVEAT,
-} from '../../lib/calendar/views.js';
+import { CALENDAR_FEED_PATH, SUBSCRIPTION_CAVEAT } from '../../lib/calendar/views.js';
 import { monthGrid, printedYear, WEEKDAY_COLUMNS } from '../../lib/calendar/months.js';
-import { previewRows, schoolToday, SEMESTERS, type SchoolYear } from '../../lib/calendar/year.js';
-import { DAY_TRACKS } from '../../lib/courses/schedule.js';
+import { schoolToday, type SchoolYear } from '../../lib/calendar/year.js';
 import { listCourses } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
 import { SITE_URL } from '../../lib/site.js';
 
 /**
- * The school year, as the sheet a family already recognises (#23).
+ * The school year, as a calendar (#23, #186, #237).
  *
- * This page retires five hand-made PDFs, and it does it by looking like them:
- * a week per row, four columns, the closures written in where they interrupt.
- * What is different is that nothing here is typed — every date is computed from
- * the eight numbers and the closure list on the admin's School Year screen, so
- * the four tracks cannot drift apart the way the PDFs already have.
+ * One page and one drawing of the year on the screen: the subscribe block, and
+ * the months. It used to be two — a four-column **day track** sheet above the
+ * grid, carried over from the five hand-made PDFs this page retired. The sheet
+ * is deleted (ADR-0018): it answered "on which dates does my *track* meet" to a
+ * parent who asked about a *course*, and it never named one. That question is
+ * answered on the course page now (#233), where the course has a name.
  *
- * **The tracks are four columns and not one.** A flat week number would be
- * wrong for three families in four: week 10 is 9 November on Monday and
- * 4 November on Wednesday, because each track skips only its own holidays.
+ * **Week numbers left the public site with it, and are not given a new home
+ * here.** A row of this grid is a calendar week and the four tracks number it
+ * four different ways, so there is no honest place to print one. The subscribed
+ * feed keeps them, because a feed entry names its track and so exactly one
+ * numbering applies.
+ *
+ * Nothing here is typed. Every date is computed from the eight numbers and the
+ * closure list on the admin's School Year screen.
  *
  * One download, and it is the same bytes the subscribe link serves. Printing is
- * the other half, and what it puts on paper is neither of the two things on the
+ * the other half, and what it puts on paper is neither of the things on the
  * screen: a school office gets the year as a dated list (#236), which is the
  * sheet it already maintains by hand, and the print rules at the bottom of this
  * file are why it comes out as that rather than as a website with a navigation
@@ -65,25 +65,16 @@ const events = upcomingEvents(published, new Date());
 const courses = await listCourses(db);
 
 const description =
-  'Every class date for the Pharos Academy school year, by day track, with the days the school ' +
-  'is closed and the year’s one-off events. Subscribe to it or print it.';
-
-/** Both semesters, each with its rows already computed. Empty if there is no year. */
-const semesters = year
-  ? SEMESTERS.map((semester) => ({
-      semester,
-      heading: semesterHeading(semester),
-      rows: previewRows(year, semester),
-    })).filter((one) => one.rows.length > 0)
-  : [];
+  'The Pharos Academy school year, month by month — the year’s one-off events on their dates, ' +
+  'the days the school is closed, and what meets on each class day. Subscribe to it or print it.';
 
 /*
- * The same year again, as a calendar (#186).
+ * The year, as a calendar (#186).
  *
- * The sheet answers "every date my track meets", which is the question a family
- * asks in August. This answers "what is happening in October", which is the one
- * they ask in October — and it does it from the same eight numbers, so the two
- * halves of this page cannot disagree about whether the school is open.
+ * "What is happening in October", which is the question a family asks in
+ * October. The dates a particular course meets on — the question they ask in
+ * August — are answered on that course's own page (#233), where they can be
+ * answered by naming the course.
  *
  * A calendar prints what is exceptional and reveals what is routine (ADR-0018),
  * and both halves of that sentence are decided in the view model rather than
@@ -130,7 +121,8 @@ const printedMonths = printedYear(months);
  * The 112 meeting dates are deliberately *not* here. They are one school day
  * repeated, not 112 events a family would want in a search result, and a page
  * carrying a hundred `Event` nodes is what a crawler treats as spam. The dates
- * belong in the sheet and in the subscribed calendar, which is what they are for.
+ * belong on the course page and in the subscribed calendar, which is what they
+ * are for.
  */
 const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SITE_URL }));
 ---
@@ -141,9 +133,9 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       <p class="label">Current Families</p>
       <h1 class="mt-4">The {year?.label ?? ''} Calendar</h1>
       <p class="sub mt-5">
-        Every class date, by day track. The four tracks do not line up — each one skips only its
-        own holidays — so week 10 falls on a different date in each column, and all four are
-        right.
+        The school year, month by month — open houses, concerts and picture days on their dates,
+        the days the school is closed, and what meets on each class day. For every date a
+        particular class meets, see that class’s own page.
       </p>
     </div>
   </section>
@@ -152,9 +144,9 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     <div class="wide">
       <h2>Take It with You</h2>
       <p class="mt-5">
-        One file, generated from the dates below. Open it to add the year to the calendar on your
-        phone or computer, or subscribe to this address so it stays in step when the school
-        changes something.
+        One file, generated from the same dates the months below are drawn from. Open it to add
+        the year to the calendar on your phone or computer, or subscribe to this address so it
+        stays in step when the school changes something.
       </p>
       <p class="mt-6 actions">
         <a class="btn" href={CALENDAR_FEED_PATH} data-testid="calendar-download">
@@ -165,73 +157,6 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       <p class="mt-6 caveat" data-testid="subscription-caveat">{SUBSCRIPTION_CAVEAT}</p>
     </div>
   </section>
-
-  {
-    semesters.map(({ semester, heading, rows }) => (
-      <section class="band" id={semester} data-section={`calendar-${semester}`}>
-        <div class="wide">
-          <h2 id={`${semester}-heading`}>{heading}</h2>
-          {/*
-            A scrollable box with nothing focusable inside it is unreachable
-            from a keyboard, which is a real failure and not a lint: the sheet
-            scrolls sideways on a phone and holds no links at all. So it is a
-            named region and it takes focus, and the name is the semester
-            heading that is already above it.
-          */}
-          <div
-            class="sheet-scroll"
-            role="region"
-            tabindex="0"
-            aria-labelledby={`${semester}-heading`}
-          >
-            <table class="sheet">
-              <caption class="sr-only">
-                {heading} of the {year?.label} school year — one row per week, one column per day
-                track, with the days the school is closed written in between.
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Week</th>
-                  {DAY_TRACKS.map((track) => (
-                    <th scope="col">{track}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) =>
-                  row.kind === 'week' ? (
-                    <tr>
-                      <th scope="row">{row.week}</th>
-                      {DAY_TRACKS.map((track) => (
-                        <td>
-                          {row.cells[track] ? (
-                            <time datetime={row.cells[track]}>
-                              {meetingDateLabel(row.cells[track]!)}
-                            </time>
-                          ) : (
-                            <span class="sr-only">No class on this track</span>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ) : (
-                    <tr class="closed">
-                      <th scope="row">
-                        <span class="sr-only">School closed</span>
-                      </th>
-                      {DAY_TRACKS.map((track) => (
-                        <td>{row.cells[track] ?? ''}</td>
-                      ))}
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-    ))
-  }
 
   {/*
     Still `id="events"`, because this is still where the school's events are
@@ -428,8 +353,8 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     <div class="wide">
       {/*
         No title of its own: the page's own heading band prints above this and
-        already names the year. What that band says about day tracks does not
-        survive to paper, and is hidden below with the sheets it describes.
+        already names the year. What that band says about the grid does not
+        survive to paper, and is hidden below with the grid it describes.
       */}
       <div class="printed-columns">
         {
@@ -505,50 +430,6 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
   }
 
   /*
-    On a phone the sheet scrolls sideways inside its own box rather than
-    squeezing four columns of dates into 390px, exactly as the timetable does.
-    `tabindex` would be added by a script; the container is focusable by being a
-    region with a name instead, so a keyboard can reach the scroll.
-  */
-  .sheet-scroll {
-    margin-top: 1.5rem;
-    overflow-x: auto;
-  }
-
-  .sheet {
-    border-collapse: collapse;
-    width: 100%;
-    min-width: 40rem;
-  }
-
-  .sheet th,
-  .sheet td {
-    text-align: left;
-    padding: 0.55rem 0.75rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-navy) 15%, transparent);
-    white-space: nowrap;
-  }
-
-  .sheet thead th {
-    border-bottom-width: 2px;
-    font-variant-caps: all-small-caps;
-    letter-spacing: 0.06em;
-  }
-
-  .sheet tbody th {
-    width: 4rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* A closed row reads as an interruption, which is what it is. */
-  .sheet tr.closed td {
-    font-variant-caps: all-small-caps;
-    letter-spacing: 0.04em;
-    color: var(--color-ink-2);
-    background: color-mix(in srgb, var(--color-gold-orn) 12%, transparent);
-  }
-
-  /*
     The months, side by side while there is room for them.
 
     Nine of them stacked is a very long page for a year a family reads a month
@@ -596,11 +477,11 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
   }
 
   /*
-    Full-strength ink rather than the muted grey the sheet's dates take, because
-    this band is the quiet one and a closed cell tints it further: grey on grey
-    on gold is where the contrast goes, and the date is the primary thing in the
-    cell anyway. What makes the mark below quieter than the date is its size and
-    its small caps, not a colour that has to survive two backgrounds.
+    Full-strength ink rather than a muted grey, because this band is the quiet
+    one and a closed cell tints it further: grey on grey on gold is where the
+    contrast goes, and the date is the primary thing in the cell anyway. What
+    makes the mark below quieter than the date is its size and its small caps,
+    not a colour that has to survive two backgrounds.
   */
   .num .short {
     font-variant-numeric: tabular-nums;
@@ -617,10 +498,9 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
   }
 
   /*
-    A day off is a property of the cell — a tint and a line, in the same register
-    as the sheet's closed rows above, and deliberately not the register a
-    one-off is in. Nothing here is a control, because there is nothing to open:
-    the whole of what the school has said is the name.
+    A day off is a property of the cell — a tint and a line, and deliberately
+    not the register a one-off is in. Nothing here is a control, because there
+    is nothing to open: the whole of what the school has said is the name.
   */
   .month-grid td.shut {
     background: color-mix(in srgb, var(--color-gold-orn) 12%, transparent);
@@ -879,9 +759,9 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     A school office prints this page to pin the year up, and what it wants
     pinned up is the artefact it already maintains by hand: every date carrying
     something, month by month, two columns down the sheet. So the header, the
-    footer and the buttons come off, and so do the two halves of the screen page
-    — the semester sheets, which are a table of week numbers with no fundraiser
-    on it, and the month grid, which is nine sheets of mostly empty boxes.
+    footer and the buttons come off, and so does the month grid, which is nine
+    sheets of mostly empty boxes. The two semester sheets used to come off here
+    too; they are deleted (#237).
 
     Everything here is print-only: nothing in this block can change what the
     page looks like on a screen.
@@ -890,11 +770,9 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     .actions,
     .caveat,
     .months,
-    [data-section='calendar-fall'],
-    [data-section='calendar-spring'],
     /*
-      The page's standfirst goes with them: it describes four columns of class
-      dates, and on paper there are none to describe.
+      The page's standfirst goes with them: it describes a month grid and what
+      can be opened on it, and on paper there is neither.
     */
     [data-section='calendar-header'] .sub {
       display: none;

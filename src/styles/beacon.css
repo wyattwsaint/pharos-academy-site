@@ -1759,7 +1759,7 @@ html.nav-menu-open body {
   Printing (#23).
 
   The calendar page is the one page anybody prints — a school office pins the
-  year's sheet up — and what comes off a printer should be the calendar, not a
+  year up — and what comes off a printer should be the calendar, not a
   website. The site's own chrome comes off here, once, rather than in that
   page's own styles, because the header and the footer are the layout's and a
   scoped rule cannot reach them. Everything in this block is print-only and
