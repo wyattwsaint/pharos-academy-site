@@ -372,6 +372,21 @@ test.describe('a confirmation screen', () => {
      * no add-and-remove pair the way the event confirmation does: an
      * announcement editor with a row in it already exists.
      */
+    /*
+     * #267. Reached from inside a Publishing section, like the policy's, and
+     * measured on the class the throwaway database retires — asking is not
+     * deleting, so nothing is written and the class the retired-section specs
+     * read is still there afterwards.
+     */
+    test(`deleting a class has zero axe violations at ${width}px`, async ({ page }) => {
+      await openAt(page, `/admin/courses/${SUITE_RETIRED_COURSE}`, width);
+
+      await page.getByTestId('delete').click();
+      await expect(page.getByTestId('confirm')).toContainText('Delete Suite Retired Class?');
+
+      await expectNoViolations(page);
+    });
+
     test(`deleting an announcement has zero axe violations at ${width}px`, async ({ page }) => {
       await openAt(page, SEEDED_ANNOUNCEMENT, width);
 

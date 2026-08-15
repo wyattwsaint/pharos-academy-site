@@ -389,3 +389,108 @@ test.describe('the retired section', () => {
     );
   });
 });
+
+/**
+ * Deleting a class (#267, ADR-0021).
+ *
+ * The one thing here that only a browser can show is the **round trip**: a
+ * screen rather than a `confirm()`, a first press that writes nothing, a
+ * decline that leaves the class exactly where it was, and a second press that
+ * takes it off four surfaces at once. The wording of that screen — including
+ * the applied-for sentence, which is the reason this delete waited for #259 —
+ * is proved at the seam in `src/lib/admin/courses.test.ts`, and that no
+ * application row moves is proved against real tables in
+ * `src/lib/courses/store.test.ts`.
+ *
+ * **On a class of its own, added and then taken away.** No seeded class can be
+ * borrowed for this: the public suite reads the same throwaway database at the
+ * same time, and the ones it names have to survive the run. The class is placed
+ * where the unstaffed fixture is and for the same two reasons — Thursday at
+ * 11:20 is an hour the school already meets at, so the editor's time list is
+ * unchanged, and no spec measures Thursday's lanes.
+ *
+ * Serial, because the two tests are one sequence: the first asks and backs out,
+ * the second deletes.
+ */
+test.describe('deleting a class', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  const TITLE = 'Suite Doomed Class';
+  const SLUG = 'suite-doomed-class';
+
+  test('adds the class the delete takes away, and it reaches the public pages', async ({
+    page,
+  }) => {
+    await page.goto('/admin/courses/new');
+
+    await page.locator('#title').fill(TITLE);
+    await page
+      .locator('#description')
+      .fill('Added by the suite so that a delete has something to take away.');
+    await page.locator('input[name="stages"][value="Elementary (Grammar Stage)"]').check();
+    await page.locator('input[name="days"][value="Thursday"]').check();
+    // A slot the school already meets at, picked rather than typed, so this
+    // adds no new time to the editor's list while it exists.
+    await page.locator('#time').selectOption('11:20-12:20');
+    await page.locator('input[name="enrolment"][value="year"]').check();
+    await page.locator('input[name="enrolmentUnits"][value="year"]').check();
+    await page.locator('#weeks').fill('10');
+    await page.locator('#ageLabel').fill('Ages 6-10');
+    await page.locator('#rateTier').selectOption('standard');
+    await page.locator('#prerequisites').fill('None');
+    // Staffed, by whoever the list offers first. Not because this class needs a
+    // teacher, but because the unstaffed fixture (#257) is asserted to be the
+    // *only* class without one, and a second one alive for the length of this
+    // sequence would fail that spec from a distance.
+    await page.locator('#instructorSlug').selectOption({ index: 1 });
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByTestId('save-banner')).toBeVisible();
+    expect((await page.goto(`/classes/${SLUG}`))?.status()).toBe(200);
+  });
+
+  test('asks before deleting, and takes no for an answer', async ({ page }) => {
+    await page.goto(`/admin/courses/${SLUG}`);
+
+    await page.getByTestId('delete').click();
+
+    // A screen, not a dialog: it is in the page, and it says all three things.
+    const confirm = page.getByTestId('confirm');
+    await expect(confirm).toContainText(`Delete ${TITLE}?`);
+    await expect(page.getByTestId('deletion-goes')).toContainText('timetable');
+    await expect(page.getByTestId('deletion-applied')).toContainText('No family has applied');
+    await expect(page.getByTestId('deletion-undo')).toContainText('no undo');
+
+    // Asking is not deleting, and the form is not there to be half-pressed.
+    await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0);
+
+    await page.getByRole('link', { name: 'Go back without deleting' }).click();
+    await expect(page.getByTestId('confirm')).toHaveCount(0);
+    await expect(page.locator('#title')).toHaveValue(TITLE);
+  });
+
+  test('deletes it, and takes it off every surface it was on', async ({ page }) => {
+    await page.goto(`/admin/courses/${SLUG}`);
+
+    await page.getByTestId('delete').click();
+    await page.getByRole('button', { name: `Yes, delete ${TITLE}` }).click();
+
+    // It lands on the list, which says what went and whether the live site
+    // caught up — the deleted screen is not there to say it on.
+    await expect(page).toHaveURL(/\/admin\/courses\?/);
+    const banner = page.getByTestId('classes-banner');
+    await expect(banner).toContainText(`${TITLE} is deleted`);
+    await expect(banner).toContainText('still names it, marked as no longer offered');
+    await expect(page.locator(`a[href="/admin/courses/${SLUG}"]`)).toHaveCount(0);
+
+    // The catalogue, the timetable and the application, all after the
+    // republish the confirming press ran.
+    for (const path of ['/classes', '/classes/by-day', '/classes/descriptions', '/admissions/apply']) {
+      await page.goto(path);
+      await expect(page.getByText(TITLE)).toHaveCount(0);
+    }
+
+    // And its own page, which is the one a retired class would have kept.
+    expect((await page.goto(`/classes/${SLUG}`))?.status()).toBe(404);
+  });
+});

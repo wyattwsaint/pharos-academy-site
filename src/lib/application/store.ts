@@ -10,7 +10,7 @@ import {
 import { decodeAgreements, encodeAgreements, type Agreements } from './agreements.js';
 import type { ApplicationChild, ApplicationFields, FaithAnswer, FaithAnswers } from './application.js';
 import { captureOfferingTitles, decodeOfferingTitles, type ChosenBy } from './chosen-classes.js';
-import type { Offering } from './offerings.js';
+import { splitOfferingKey, type Offering } from './offerings.js';
 import {
   APPLICATION_STATES,
   RECORDED_PAYMENT_STATUSES,
@@ -309,6 +309,44 @@ export async function getApplication(db: Db, id: string): Promise<ApplicationRec
     .orderBy(asc(applicationChildren.position));
 
   return { ...toRecord(row), children: children.map(toChild) };
+}
+
+/**
+ * How many applications named a course, in any unit and in any state (#267).
+ *
+ * The one question the course delete's confirmation asks, and it is asked of
+ * **every** application rather than of the ones that count in the tally: a
+ * withdrawn application is still a record of what that family sent, and the
+ * sentence the confirmation is about to print — that their applications keep
+ * the record of what they chose — is true of all of them.
+ *
+ * Applications rather than children, because that is what the school would say
+ * out loud, and because two children of one family are one family's decision to
+ * apply.
+ *
+ * **The match is made here rather than in SQL**, and the two columns this reads
+ * are the whole of what it reads. An offering key is `<slug>:<unit>` inside a
+ * text array, so a database-side match would be a `like` against a pattern
+ * assembled from a slug — and `splitOfferingKey` is the one reader of that
+ * shape everything else in the application already goes through. A pattern that
+ * agreed with it today is a second parser waiting to disagree with it later.
+ */
+export async function countApplicationsForCourse(db: Db, courseSlug: string): Promise<number> {
+  const rows = await db
+    .select({
+      applicationId: applicationChildren.applicationId,
+      offeringKeys: applicationChildren.offeringKeys,
+    })
+    .from(applicationChildren);
+
+  const named = new Set<string>();
+  for (const row of rows) {
+    const chose = row.offeringKeys.some(
+      (key) => splitOfferingKey(key)?.courseSlug === courseSlug,
+    );
+    if (chose) named.add(row.applicationId);
+  }
+  return named.size;
 }
 
 /** A child row as the record reads it, the frozen titles decoded. */

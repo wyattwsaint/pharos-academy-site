@@ -13,6 +13,7 @@ import { catalogueCourses, chosenClasses } from './chosen-classes.js';
 import { CHEQUE_GRACE_DAYS, paymentStatusNow } from './lifecycle.js';
 import { offeringsOf } from './offerings.js';
 import {
+  countApplicationsForCourse,
   createApplication,
   getApplication,
   listApplications,
@@ -365,5 +366,51 @@ describe('applied and paid', () => {
     await expect(
       recordApplicationDelivery(db, 'not-a-uuid', { notified: true, confirmed: true }),
     ).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * How many applications named a class (#267).
+ *
+ * The one number the course delete's confirmation turns on, so what it counts
+ * is worth pinning: applications rather than children, every unit of the class,
+ * and every state — a withdrawn application is still a record of what that
+ * family sent, and the sentence it is about to appear in is true of it.
+ */
+describe('counting the applications that named a class', () => {
+  it('counts nothing for a class nobody asked for', async () => {
+    await createApplication(db, fields(), { statementVersion: statementVersion() });
+
+    expect(await countApplicationsForCourse(db, 'backyard-botany')).toBe(0);
+  });
+
+  it('counts a family once however many children of theirs chose it', async () => {
+    await createApplication(
+      db,
+      fields({
+        children: [
+          { name: 'Obi', age: '9', offeringKeys: ['algebra-1:year'] },
+          { name: 'Ada', age: '13', offeringKeys: ['algebra-1:fall'] },
+        ],
+      }),
+      { statementVersion: statementVersion() },
+    );
+
+    // One family's decision to apply, and two units of one class — the office
+    // is being told how many applications it is about to keep, not how many
+    // checkboxes were ticked.
+    expect(await countApplicationsForCourse(db, 'algebra-1')).toBe(1);
+  });
+
+  it('counts each application that named it, whatever became of it', async () => {
+    const withdrawn = await createApplication(db, fields(), {
+      statementVersion: statementVersion(),
+    });
+    await createApplication(db, fields({ familyName: 'Okonkwo' }), {
+      statementVersion: statementVersion(),
+    });
+    await moveApplication(db, withdrawn, 'withdraw');
+
+    expect(await countApplicationsForCourse(db, 'algebra-1')).toBe(2);
   });
 });

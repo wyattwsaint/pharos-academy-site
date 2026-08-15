@@ -113,10 +113,11 @@ export function personDeletionOutcome(
 /**
  * "&lt;what went&gt; is deleted. &lt;what that did.&gt; &lt;how the republish went.&gt;"
  *
- * The assembly, once, for the two deletes that report a consequence — the same
+ * The assembly, once, for the three deletes that report a consequence — the same
  * move `removalOutcome` makes for the two that report a place (#258). What
- * varies between a policy and a person is the middle sentence and nothing else,
- * so the middle sentence is the parameter and the rest cannot drift: "deleted"
+ * varies between a policy, a person and a course is the middle sentence and
+ * nothing else, so the middle sentence is the parameter and the rest cannot
+ * drift: "deleted"
  * means the same word on both screens, the republish line is the one every
  * screen says, and the spacing is decided in one place rather than in two
  * template literals that have to agree.
@@ -137,6 +138,27 @@ function deletionOutcome(
     ok: republish?.ok ?? true,
     message: `${deleted} is deleted. ${consequence}${republish ? ` ${republish.message}` : ''}`,
   };
+}
+
+/**
+ * What `?deleted=` on the Classes list means (#267).
+ *
+ * The fourth of these, and a fourth consequence, because a fourth kind of thing
+ * has gone. What a deleted class does **not** come off is any application that
+ * named it — the half nobody would guess, and the half that made this delete
+ * buildable at all (#259, ADR-0021). Where it does come off is the class lists
+ * and the timetable, and the office reads that on the list it has just landed
+ * on, so the sentence spends its words on the half that is not in front of it.
+ */
+export function courseDeletionOutcome(
+  deleted: string | null,
+  published: string | null,
+): Banner | null {
+  return deletionOutcome(
+    deleted,
+    'Every application that asked for it still names it, marked as no longer offered.',
+    published,
+  );
 }
 
 export function republishOutcome(published: string | null): Banner | null {

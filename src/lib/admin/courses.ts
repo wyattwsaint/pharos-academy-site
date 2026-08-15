@@ -185,6 +185,78 @@ export const RATE_LABELS: Record<RateTier, string> = {
   highSchoolCredit: 'High school credit',
 };
 
+/**
+ * What the screen says before a course is deleted (#267, ADR-0021).
+ *
+ * The wording is here rather than in the page for the reason `policyDeletion`'s
+ * is: it is the whole safety net. There is no undo, no soft delete and no trash
+ * view, and the only thing between a stray press and a class that has to be
+ * typed in again — description, fees, prerequisites and all — is these three
+ * sentences.
+ *
+ * **The applied-for case is the sentence that matters**, and it is the reason
+ * this delete could not be built until #259 was. A class families have applied
+ * for reads as though deleting it would take their choices with it, and it does
+ * not: an application names its classes out of what it captured at submission,
+ * so their record keeps the class, named, marked as no longer offered, and
+ * still counted in the class tally. The office is told that rather than left to
+ * guess it, because the guess is what would stop a true press.
+ *
+ * **What it does not say is "you cannot".** The delete is never refused for
+ * being applied for — one season of applications would otherwise freeze the
+ * catalogue permanently — so the applied-for sentence is information, never a
+ * warning about a press that is about to fail.
+ *
+ * Retiring is offered as the other thing this office might have meant, on the
+ * screen that offers both, because a class the school is simply not running
+ * this year is exactly what the delete is *not* for (#263).
+ */
+export type CourseDeletion = {
+  heading: string;
+  confirmLabel: string;
+  declineLabel: string;
+  /** What deleting it takes away. */
+  goes: string;
+  /** What the families who applied for it keep — or that nobody has. */
+  applied: string;
+  /** That the press is final, and what the other press was. */
+  undo: string;
+};
+
+export function courseDeletion(title: string, applications: number): CourseDeletion {
+  return {
+    heading: `Delete ${title}?`,
+    confirmLabel: `Yes, delete ${title}`,
+    declineLabel: 'Go back without deleting',
+    goes: `${title} comes off the class lists, off the timetable and off the application, and its own page stops answering.`,
+    applied: appliedSentence(title, applications),
+    undo: 'There is no undo. Putting it back means typing the whole class in again — retire it instead if the school means to run it another year.',
+  };
+}
+
+/**
+ * The three cases, written out as three sentences.
+ *
+ * Assembled from fragments they would read as assembly — "1 family has" against
+ * "3 families have" is an agreement in three places inside one template — and
+ * the sentence somebody is relying on before an irreversible press is the last
+ * one to write that way.
+ *
+ * The nobody case is not a footnote. A class typed in by mistake, or one the
+ * school decided against before anybody saw it, is what this delete is mostly
+ * for, and saying that nothing is riding on it is what makes it obviously safe
+ * to press.
+ */
+function appliedSentence(title: string, applications: number): string {
+  if (applications === 0) {
+    return 'No family has applied for this class, so nothing anybody has sent mentions it.';
+  }
+  if (applications === 1) {
+    return `One application has asked for this class. Deleting it changes nothing about that application: it still says the family chose ${title}, marked as no longer offered, and the class is still counted in the tally you decide on.`;
+  }
+  return `${applications} applications have asked for this class. Deleting it changes none of them: each still says the family chose ${title}, marked as no longer offered, and the class is still counted in the tally you decide on.`;
+}
+
 /** An empty form: what `/admin/courses/new` opens on. */
 export function emptyFields(): CourseFields {
   return {

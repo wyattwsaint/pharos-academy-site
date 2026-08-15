@@ -3,12 +3,15 @@ export const prerender = false;
 
 import AdminBanner from '../../../components/AdminBanner.astro';
 import AdminButton from '../../../components/AdminButton.astro';
+import AdminConfirm from '../../../components/AdminConfirm.astro';
 import AdminField from '../../../components/AdminField.astro';
 import AdminPublishing from '../../../components/AdminPublishing.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import type { Banner } from '../../../lib/admin/banner.js';
+import { isConfirmed } from '../../../lib/admin/confirmation.js';
 import { courseFormView } from '../../../lib/admin/course-form.js';
 import {
+  courseDeletion,
   CUSTOM_TIME,
   emptyFields,
   fieldsOf,
@@ -30,13 +33,20 @@ import {
 } from '../../../lib/admin/revalidate.js';
 import { formatDay, formatStamp } from '../../../lib/admin/formatting.js';
 import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
+import { countApplicationsForCourse } from '../../../lib/application/store.js';
 import { fullDateLabel, type SchoolYear } from '../../../lib/calendar/year.js';
 import { getSchoolYear } from '../../../lib/calendar/store.js';
 import { ENROLMENT_UNITS, RATE_TIERS, STAGES } from '../../../lib/courses/course.js';
 import { priceLine } from '../../../lib/courses/pricing.js';
 import { contactHours, timeLabel, type DayTrack } from '../../../lib/courses/schedule.js';
 import { meetingSlots, runningTracks, type ClashWarning } from '../../../lib/courses/slots.js';
-import { createCourse, getCourse, listCourses, saveCourse } from '../../../lib/courses/store.js';
+import {
+  createCourse,
+  deleteCourse,
+  getCourse,
+  listRunningCourses,
+  saveCourse,
+} from '../../../lib/courses/store.js';
 import { getDb } from '../../../lib/db/client.js';
 import { getMoneySettings } from '../../../lib/money/store.js';
 import { slugify } from '../../../lib/people/person.js';
@@ -71,6 +81,17 @@ import { listEveryPerson } from '../../../lib/people/store.js';
  * #61) — `courseFormView` answers all three, and reading them from the store
  * was the same mistake three times over: nothing shown until a save had already
  * happened.
+ *
+ * **The class can be deleted, and its applications cannot** (#267, ADR-0021).
+ * The delete is unconditional — never refused for having been applied for,
+ * because one application season would otherwise freeze the catalogue for good
+ * — and what makes that safe is that an application names its classes out of
+ * what it captured at submission (#259), so nothing here can reach a family's
+ * record. It confirms first, the way every destructive action in this admin
+ * does: the first press replaces the form with a screen naming what goes, who
+ * has applied and what they keep, and only the second press deletes. Confirming
+ * republishes and leaves for the Classes list, because this screen is what has
+ * just stopped existing.
  *
  * The fields, buttons, banner and Publishing section this screen used to spell
  * out for itself now come from the shared components (#195). It is the same
@@ -145,8 +166,18 @@ const instructorSlugs = people.map((person) => person.slug);
  * course is not in it yet, and on the edit form the row still holds the times
  * it had when Jill opened the screen — and `clashWarnings` drops the
  * candidate's own slug regardless.
+ *
+ * `listRunningCourses` rather than `listCourses`, because a catalogue can now be
+ * emptied entirely (#267) and this screen is where the next class is typed in.
+ * The rows are the same ones — the store applies one filter for both — and what
+ * is left off is the empty-catalogue guard, which reads no rows as an unmigrated
+ * database. That is right for a page a parent opens, and would make the add form
+ * unreachable exactly when it is needed most.
+ *
+ * `listPeople` below still carries that guard, and this ticket does not move it:
+ * the staff list is #262's to reason about, not a course delete's.
  */
-const courses = await listCourses(db);
+const courses = await listRunningCourses(db);
 
 let values: CourseFields = course ? fieldsOf(course) : emptyFields();
 let errors: CourseErrors = {};
@@ -157,62 +188,118 @@ let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republi
  * parser and the view reads for itself.
  */
 let fields: CourseFormFields | null = null;
+/** True only on the confirmation screen, which replaces the form. */
+let confirmingDeletion = false;
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
+
   /*
-   * Two buttons post to this address, and Retire is read first (#263).
+   * Three buttons post to this address now, and Delete is read before either
+   * of the others (#267).
    *
-   * It is not a field of the course form and never goes through the parser: a
-   * retirement is one column and a stamp, where a save is the whole row, and
-   * folding them together would mean a class could be brought back by a save
-   * that only fixed a typo. `parseRetirement` answers null for the Save form,
-   * which is what falls through to the parser below.
+   * Nothing is parsed on the way: the delete form carries no course fields, so
+   * handing it to `parseCourse` would refuse the class for having an empty
+   * title nobody touched. The first press only asks — it writes nothing at all
+   * — and the second, carrying the same hidden field plus `confirm`, is the
+   * one that deletes.
    */
-  const pressed = course
-    ? await pressRetirement({
-        db,
-        subject: COURSE_RETIREMENT,
-        form,
-        slug: course.slug,
-        actorName: actor.name,
-        url: Astro.url,
-      })
-    : null;
+  const deleting = form.get('delete') !== null && course !== undefined;
 
-  if (pressed) {
-    banner = pressed.banner;
-    // Absent when the write was refused, which leaves the screen showing the
-    // class exactly as it was — which is what happened to it.
-    if (pressed.record) {
-      course = pressed.record;
-      values = fieldsOf(course);
-    }
+  if (deleting && !isConfirmed(form)) {
+    confirmingDeletion = true;
+  } else if (deleting && course) {
+    const deleted = course.title;
+    await deleteCourse(db, course.slug);
+    const result = await revalidateAll({
+      origin: revalidationOrigin(Astro.url),
+      bypassToken: isrBypassToken(),
+    });
+    /*
+     * The answer travels in the query string, the way the policy delete's does
+     * (#260): this screen is a 404 from here on, and the Classes list is where
+     * the deletion is visible. In the URL rather than rendered there, so a
+     * refresh of the list repeats nothing.
+     */
+    const back = new URL('/admin/courses', Astro.url.origin);
+    back.searchParams.set('deleted', deleted);
+    back.searchParams.set('republished', result.ok ? 'live' : 'stale');
+    return Astro.redirect(`${back.pathname}${back.search}`, 303);
   } else {
-    const parsed = parseCourse(form, { year, instructorSlugs });
-    values = parsed.values;
-    errors = parsed.errors;
-    fields = parsed.fields;
+    /*
+     * Retire is read next (#263).
+     *
+     * It is not a field of the course form and never goes through the parser: a
+     * retirement is one column and a stamp, where a save is the whole row, and
+     * folding them together would mean a class could be brought back by a save
+     * that only fixed a typo. `parseRetirement` answers null for the Save form,
+     * which is what falls through to the parser below.
+     */
+    const pressed = course
+      ? await pressRetirement({
+          db,
+          subject: COURSE_RETIREMENT,
+          form,
+          slug: course.slug,
+          actorName: actor.name,
+          url: Astro.url,
+        })
+      : null;
 
-    if (Object.keys(errors).length > 0) {
-      banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
-    } else {
-      try {
-        course = course
-          ? await saveCourse(db, course.slug, parsed.edit, actor.name)
-          : await createCourse(db, slugFor(parsed.edit.title), parsed.edit, actor.name);
+    if (pressed) {
+      banner = pressed.banner;
+      // Absent when the write was refused, which leaves the screen showing the
+      // class exactly as it was — which is what happened to it.
+      if (pressed.record) {
+        course = pressed.record;
         values = fieldsOf(course);
-        const result = await revalidateAll({
-          origin: revalidationOrigin(Astro.url),
-          bypassToken: isrBypassToken(),
-        });
-        banner = { ok: result.ok, message: describeRevalidation(result) };
-      } catch (error) {
-        banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
+      }
+    } else {
+      const parsed = parseCourse(form, { year, instructorSlugs });
+      values = parsed.values;
+      errors = parsed.errors;
+      fields = parsed.fields;
+
+      if (Object.keys(errors).length > 0) {
+        banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+      } else {
+        try {
+          course = course
+            ? await saveCourse(db, course.slug, parsed.edit, actor.name)
+            : await createCourse(db, slugFor(parsed.edit.title), parsed.edit, actor.name);
+          values = fieldsOf(course);
+          const result = await revalidateAll({
+            origin: revalidationOrigin(Astro.url),
+            bypassToken: isrBypassToken(),
+          });
+          banner = { ok: result.ok, message: describeRevalidation(result) };
+        } catch (error) {
+          banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
+        }
       }
     }
   }
 }
+
+/**
+ * How many applications named this class, and the sentences that turn on it.
+ *
+ * Read for the edit screen rather than only for the confirmation, because the
+ * paragraph beside the Delete button says the same thing before the press as
+ * the confirmation says during it — the office should not have to press a
+ * destructive button to find out what it costs. It is never refused for that
+ * number either: one season of applications would otherwise freeze the
+ * catalogue for good, and what keeps that safe is that an application names its
+ * classes out of what it captured at submission (#259).
+ *
+ * The Delete button sits in the Publishing section beneath Retire, and that
+ * order is deliberate: the two presses read as alternatives, which is what they
+ * are, and the one with a way back is offered first. The paragraph beside it is
+ * the confirmation's own three sentences, not a fourth copy of them — a screen
+ * that said this in its own words is a screen where the words drift.
+ */
+const appliedFor = course ? await countApplicationsForCourse(db, course.slug) : 0;
+const deletion = course ? courseDeletion(course.title, appliedFor) : null;
 
 /*
  * After an add succeeds this screen becomes that course's edit screen, so a
@@ -436,7 +523,34 @@ function warningLine(warning: ClashWarning): string {
   {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner" retry />}
 
   {
-    view.warnings.length > 0 && (
+    confirmingDeletion && course && deletion && (
+      <AdminConfirm
+        heading={deletion.heading}
+        action={action}
+        confirmLabel={deletion.confirmLabel}
+        destructive
+        declineHref={action}
+        declineLabel={deletion.declineLabel}
+      >
+        <Fragment slot="fields">
+          <input type="hidden" name="delete" value="1" />
+        </Fragment>
+
+        <p class="mt-3" data-testid="deletion-goes">
+          {deletion.goes}
+        </p>
+        <p class="mt-3" data-testid="deletion-applied">
+          {deletion.applied}
+        </p>
+        <p class="mt-3" data-testid="deletion-undo">
+          {deletion.undo}
+        </p>
+      </AdminConfirm>
+    )
+  }
+
+  {
+    !confirmingDeletion && view.warnings.length > 0 && (
       <div
         role="status"
         data-testid="clash-warnings"
@@ -456,7 +570,15 @@ function warningLine(warning: ClashWarning): string {
     )
   }
 
-  <form method="post" action={action} class="mt-8 flex flex-col gap-6">
+  {
+    /*
+      The form, and the two sections under it, are gone while the confirmation
+      is up — as they are on the policy editor, and for the same reason: the
+      screen is asking one question, and a Save button beside it is a second
+      thing to press about a class that is about to stop existing.
+    */
+    !confirmingDeletion && (
+      <form method="post" action={action} class="mt-8 flex flex-col gap-6">
     {
       FIELDS.map((field) => (
         <AdminField
@@ -675,7 +797,9 @@ function warningLine(warning: ClashWarning): string {
     </div>
 
     <AdminButton class="self-start">Save</AdminButton>
-  </form>
+      </form>
+    )
+  }
 
   {
     /*
@@ -686,7 +810,7 @@ function warningLine(warning: ClashWarning): string {
       One press, no confirmation. Nothing is lost, the class keeps its address,
       and the way back is the same button saying the opposite (#263).
     */
-    course && (
+    course && !confirmingDeletion && (
       <section class="mt-10 border-t border-navy/15 pt-6" data-testid="retirement">
         <h2 class="text-xl font-semibold text-navy">
           {course.retiredAt ? 'Retired' : 'Running'}
@@ -715,11 +839,21 @@ function warningLine(warning: ClashWarning): string {
   }
 
   {
-    stamp && (
+    stamp && deletion && !confirmingDeletion && (
       <AdminPublishing stamp={stamp}>
         <p class="mt-2">
           Saving republishes the whole site, because a class is on four surfaces at once.
         </p>
+
+        <form method="post" action={action} class="mt-6">
+          <p class="text-sm" data-testid="delete-blurb">
+            Never running this class, or typed in by mistake? {deletion.goes} {deletion.applied}{' '}
+            {deletion.undo} You will be asked to confirm first.
+          </p>
+          <AdminButton variant="destructive" name="delete" value="1" class="mt-3" testId="delete">
+            Delete this class
+          </AdminButton>
+        </form>
       </AdminPublishing>
     )
   }
