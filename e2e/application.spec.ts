@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { APPLICATION_PATH, FAITH_QUESTIONS, faithKey } from '../src/lib/application/application.js';
 import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
@@ -141,8 +141,8 @@ async function answerFaith(page: Page, answer: 'yes' | 'no' = 'yes') {
   }
 }
 
-/** Answer both published agreements. Any answer will do — that is the point. */
-async function answerAgreements(page: Page, answer = 'neither') {
+/** Answer both published agreements. Either answer will do — that is the point. */
+async function answerAgreements(page: Page, answer = 'yes') {
   for (const slug of ['code-of-conduct', 'handbook']) {
     await page.check(`[data-agreement="${slug}"] input[value="${answer}"]`);
   }
@@ -196,27 +196,30 @@ test.describe('the application page', () => {
     }
   });
 
-  test('asks who agrees to the Code of Conduct and the Handbook, and blocks nothing', async ({
-    page,
-  }) => {
-    // #71 AC 1, 2 and 4, as a family meets them: three answers in the school's
-    // own words, a link to the *fixed* address of each document, and a form
-    // that stays sendable whatever is picked.
+  test('asks one Yes-or-No question per document, and blocks nothing', async ({ page }) => {
+    // #71 AC 1, 2 and 4 as #255 asks them: one question per document, two
+    // answers and no third, a link to the *fixed* address of each, and a form
+    // that stays sendable whichever is picked.
     await open(page);
 
     for (const slug of ['code-of-conduct', 'handbook']) {
       const question = page.locator(`[data-agreement="${slug}"]`);
       await expect(question).toHaveCount(1);
       await expect(question.locator(`a[href="/policies/${slug}.pdf"]`)).toBeVisible();
+      await expect(question).toContainText('Does your family agree to the Pharos Academy');
 
-      for (const label of ['Student agrees', 'Parent agrees', 'Neither agrees', 'Not answered']) {
-        await expect(question.getByRole('radio', { name: label })).toBeVisible();
+      await expect(question.getByRole('radio')).toHaveCount(2);
+      for (const label of ['Yes', 'No']) {
+        await expect(question.getByRole('radio', { name: label, exact: true })).toBeVisible();
       }
+      // The third radio ADR-0020 removed: an untouched question is already
+      // unanswered, and nothing offers a family a way to un-answer one.
+      await expect(question.getByRole('radio', { name: 'Not answered' })).toHaveCount(0);
     }
 
-    // "Neither agrees" answers the question, and answering is all #85 asks:
-    // the requirement leaves the still-needed list rather than becoming one.
-    await answerAgreements(page);
+    // "No" answers the question, and answering is all #85 asks: the requirement
+    // leaves the still-needed list rather than becoming one.
+    await answerAgreements(page, 'no');
     await expect(stillNeeded(page, 'agreements')).toBeHidden();
   });
 
@@ -289,6 +292,43 @@ test.describe('the application page', () => {
     await expect(page.locator('#apply-email-error')).toBeVisible();
     await expect(page.locator('#apply-email')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#apply-email')).toBeFocused();
+  });
+
+  test('says what is still needed in the colour it says everything else in', async ({ page }) => {
+    // #254. The list is the page telling a family something is outstanding, and
+    // every other outstanding thing on the page is red — so the intro, the
+    // items and the rule down their left are read off the field error sentence
+    // rather than off a colour written down here, which would pass while the
+    // two drifted apart.
+    await open(page);
+
+    await fillSendable(page, 'email');
+    await clickSend(page);
+
+    const colourOf = (locator: Locator) =>
+      locator.evaluate((element) => getComputedStyle(element).color);
+
+    // Stated, so that everything below is a comparison rather than two things
+    // agreeing on the colour they both inherited. The ratio this red holds on
+    // the grounds it is painted on is measured in `src/styles/tokens.test.ts`.
+    const red = await colourOf(page.locator('#apply-email-error'));
+    expect(red).toBe('rgb(140, 43, 25)');
+
+    expect(await colourOf(page.locator('[data-missing-intro]'))).toBe(red);
+
+    const item = stillNeeded(page, 'email');
+    await expect(item).toBeVisible();
+    expect(await colourOf(item)).toBe(red);
+    expect(await colourOf(item.locator('a'))).toBe(red);
+
+    const rule = await item.evaluate((element) => getComputedStyle(element).borderLeftColor);
+    expect(rule).toBe(red);
+
+    // The quiet sentence that replaces the list is not an error, and does not
+    // borrow the colour of one.
+    await fillSendable(page);
+    await expect(page.locator('[data-missing-intro]')).toBeHidden();
+    expect(await colourOf(page.locator('[data-missing-done]'))).not.toBe(red);
   });
 
   test('checks a field when the family leaves it, and clears it as they fix it', async ({
@@ -480,7 +520,7 @@ test.describe('the application page', () => {
     await open(page);
 
     await fillSendable(page, 'agreements');
-    await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
+    await page.check('[data-agreement="code-of-conduct"] input[value="yes"]');
 
     await clickSend(page);
 
@@ -723,6 +763,23 @@ test.describe('the application page', () => {
     // The claim, not the word: "email" may legitimately appear on this page.
     expect(await confirmation.innerText()).not.toMatch(/(on its way to|we have emailed|sent you)/i);
   });
+
+  test('sends an application that answers No to both documents (#255)', async ({ page }) => {
+    test.skip(!MAY_SUBMIT, 'a real send writes an application row');
+    await open(page);
+
+    await fillSendable(page);
+    await answerAgreements(page, 'no');
+
+    // A "no" routes to a conversation, and routing is not delaying: the send is
+    // open before the click and the row exists after it (ADR-0009).
+    expect(await greyed(page)).toBe(false);
+    await clickSend(page);
+
+    const outcome = page.locator('[data-outcome="received"]');
+    await expect(outcome).toBeVisible();
+    await expect(outcome).toContainText(new RegExp(`Reference ${REFERENCE_SHAPE}\\.`));
+  });
 });
 
 /**
@@ -831,7 +888,7 @@ test.describe('the application page without scripting', () => {
     await page.goto(APPLICATION_PATH);
 
     await fillSendable(page, 'agreements');
-    await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
+    await page.check('[data-agreement="code-of-conduct"] input[value="yes"]');
     await clickSend(page);
 
     await expect(page.locator('[data-outcome="failed"]')).toBeVisible();

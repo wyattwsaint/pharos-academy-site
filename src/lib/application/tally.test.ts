@@ -25,14 +25,17 @@ function application(over: Partial<TalliedApplication> = {}): TalliedApplication
     familyName: 'Okonkwo',
     receivedAt: AUGUST,
     state: 'submitted',
-    children: [{ name: 'Ada', offeringKeys: ['algebra-1:year'] }],
+    children: [{ name: 'Ada', offeringKeys: ['algebra-1:year'], offeringTitles: TITLES }],
     ...over,
   };
 }
 
+/** What an application submitted today captures — the class, as it was shown. */
+const TITLES = { 'algebra-1:year': 'Algebra 1' };
+
 /** The seats on one course, whatever else is in the tally. */
 const seatsOn = (tally: ReturnType<typeof classTally>, slug: string) =>
-  tally.find((entry) => entry.course.slug === slug)?.seats ?? [];
+  tally.find((entry) => entry.courseSlug === slug)?.seats ?? [];
 
 describe('the class tally', () => {
   it('counts one seat per child per class', () => {
@@ -151,16 +154,105 @@ describe('the class tally', () => {
       OFFERINGS,
     );
 
-    expect(tally.map((entry) => entry.course.slug)).toEqual(['algebra-1']);
+    expect(tally.map((entry) => entry.courseSlug)).toEqual(['algebra-1']);
   });
 
-  it('ignores a key that names a class the school is no longer enrolling', () => {
+  it('ignores a key that is not a class at all', () => {
     const tally = classTally(
-      [application({ children: [{ name: 'Ada', offeringKeys: ['not-a-class:year'] }] })],
+      [application({ children: [{ name: 'Ada', offeringKeys: ['garbled'] }] })],
       OFFERINGS,
     );
 
     expect(tally).toEqual([]);
+  });
+
+  it('still counts a class the catalogue no longer has (#259)', () => {
+    // The number Jill decided something on must not move because the school
+    // removed or renamed the course afterwards. It is counted, named out of
+    // what the application captured, and marked as gone.
+    const tally = classTally(
+      [
+        application({
+          children: [
+            {
+              name: 'Ada',
+              offeringKeys: ['algebra-1:year'],
+              offeringTitles: { 'algebra-1:year': 'Algebra 1' },
+            },
+          ],
+        }),
+      ],
+      [],
+    );
+
+    expect(tally).toHaveLength(1);
+    expect(tally[0]!.seats).toHaveLength(1);
+    expect(tally[0]!.title).toBe('Algebra 1');
+    expect(tally[0]!.offered).toBe(false);
+    expect(tallyLines(tally)[0]).toBe('Algebra 1 (no longer offered): 1 (1 full year)');
+  });
+
+  it('deduplicates a removed class by the same rule as any other', () => {
+    const twice = [
+      application({ id: 'first', receivedAt: AUGUST }),
+      application({ id: 'second', receivedAt: SEPTEMBER }),
+    ];
+
+    const tally = classTally(twice, []);
+
+    expect(seatsOn(tally, 'algebra-1')).toHaveLength(1);
+    expect(seatsOn(tally, 'algebra-1')[0]!.resubmitted).toBe(true);
+  });
+
+  it('names a removed class by its slug when nothing was captured', () => {
+    // A row written before #259. The slug is stable, which is the property that
+    // matters; the live catalogue is exactly what must not be consulted.
+    const tally = classTally(
+      [application({ children: [{ name: 'Ada', offeringKeys: ['algebra-1:year'] }] })],
+      [],
+    );
+
+    expect(tally[0]!.title).toBe('algebra-1');
+  });
+
+  it('names a class as the application captured it, not as the catalogue renamed it', () => {
+    const renamed = offeringsOf([{ ...ALGEBRA, title: 'Algebra I (Renamed)' }]);
+    const tally = classTally(
+      [
+        application({
+          children: [
+            {
+              name: 'Ada',
+              offeringKeys: ['algebra-1:year'],
+              offeringTitles: { 'algebra-1:year': 'Algebra 1' },
+            },
+          ],
+        }),
+      ],
+      renamed,
+    );
+
+    expect(tally[0]!.title).toBe('Algebra 1');
+    expect(tally[0]!.offered).toBe(true);
+  });
+
+  it('lists the classes the catalogue still has first', () => {
+    const tally = classTally(
+      [
+        application({
+          children: [
+            {
+              name: 'Ada',
+              offeringKeys: ['gone:year', 'algebra-1:year'],
+              offeringTitles: { 'gone:year': 'Woodwork' },
+            },
+          ],
+        }),
+      ],
+      OFFERINGS,
+    );
+
+    expect(tally.map((entry) => entry.courseSlug)).toEqual(['algebra-1', 'gone']);
   });
 
   it('keeps two unnamed children on one application apart', () => {

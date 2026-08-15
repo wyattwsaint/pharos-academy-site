@@ -62,6 +62,18 @@
   --color-ink-2: #5c6b76;
 
   /*
+   * Outstanding: this is not done yet. Every field's error sentence, on all
+   * three forms, and the list of what is still needed before an application
+   * can be sent are the same message at two sizes, so they are the same
+   * colour — a token because three files had copied the hex out and the third
+   * to be retouched would have been the one that drifted.
+   *
+   * Not the only red in the stylesheets: #a3341f still carries the borders on
+   * a failed save and on a timetable clash, which are a different sentence.
+   */
+  --color-error: #8c2b19;
+
+  /*
    * The ceremonial parts are serif and the working parts are sans: headings,
    * eyebrows, the verse and the footer take Instrument Serif; body paragraphs,
    * the timetable, prices, the nav and the form stay Public Sans. Fraunces is

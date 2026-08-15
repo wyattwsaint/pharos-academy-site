@@ -219,14 +219,17 @@ export function parseApplication(
  * reason a family can answer "No" to every article and still send their
  * application.
  *
- * **The two agreements are deliberately not read here** (#71). "Neither agrees"
- * is an answer the school's own form has always allowed, and flagging it would
- * put the routine case in the same queue as an objection to article 9 — which
- * is how a flag stops meaning anything. Reversing that is this function, one
- * line, once Jill says so.
+ * **A "no" to an agreement flags** (#255, ADR-0020) — the one line the old note
+ * here anticipated. The three-way answer did not: "Neither agrees" was as often
+ * a family declining to nominate a person as a refusal, and flagging it would
+ * have put the routine case in the same queue as an objection to article 9. A
+ * blunt **No** to a document the school requires is a conversation. The old
+ * answers still on file are not reread as one — this is computed at submission,
+ * so a row written before the change keeps the flag it was given.
  */
 export function isFlagged(values: ApplicationFields): boolean {
   if (values.objections.trim().length > 0) return true;
+  if (Object.values(values.agreements).some((agreement) => agreement.answer === 'no')) return true;
   return Object.values(values.faith).some((answer) => answer === 'no');
 }
 

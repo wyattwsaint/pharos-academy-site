@@ -231,12 +231,10 @@ test.describe('saving school details', () => {
     await page.goto('/admissions/apply');
     const payment = page.locator('[data-section="apply-payment"]');
     await expect(payment.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
-    // One payment for everything (#219). The sentence is asserted whole rather
-    // than in pieces that read the same in both states, because its middle is
-    // the half that moves with the link.
-    await expect(payment).toContainText(
-      'All of it is paid to Pharos Academy in one payment, online, through the church’s giving page — the registration, the deposits and the tuition together.',
-    );
+    // One payment for everything (#219), said once (#254). The paragraph that
+    // used to restate the totals list is gone; the button and the figure beside
+    // it are what the online state says now, and the state is read off those.
+    await expect(payment).not.toContainText('All of it is paid to Pharos Academy');
 
     // The giving page carries no amount, so the figure beside the button and
     // the "enter it yourself" line both have to agree with the totals list.
@@ -291,8 +289,8 @@ test.describe('saving school details', () => {
       await page.fill('#apply-child-0-name', 'Method Child');
       await page.fill('#apply-child-0-age', '13');
       await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
-      await page.check('[data-agreement="handbook"] input[value="neither"]');
-      await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
+      await page.check('[data-agreement="handbook"] input[value="yes"]');
+      await page.check('[data-agreement="code-of-conduct"] input[value="yes"]');
 
       // The method is the one thing still missing, and either answer opens
       // the gate — choosing check delays nothing (AC 5).
@@ -886,12 +884,12 @@ test.describe('policies', () => {
     expect(prior.headers()['cache-control']).toContain('immutable');
   });
 
-  // The address is on printed paper, so nothing here may take it away. Delete
-  // is not merely unimplemented — it must not appear.
-  test('offers no way to delete a policy or take its document down', async ({ page }) => {
+  // There is no way to take a *document* down, and there never will be: the
+  // versioned address is on printed paper and in a family's record. Replacing
+  // the current file is the only thing this screen does to a document.
+  test('offers no way to take a document down', async ({ page }) => {
     await signIn(page, `/admin/policies/${SLUG}`);
 
-    await expect(page.getByRole('button', { name: /delete/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /remove/i })).toHaveCount(0);
   });
 
@@ -916,6 +914,73 @@ test.describe('policies', () => {
     // And the document families are being served is untouched.
     const response = await request.get(PATH);
     expect(Buffer.from(await response.body()).equals(SECOND)).toBe(true);
+  });
+
+  /*
+   * The delete, and the promise that makes it safe (#260, ADR-0021).
+   *
+   * Last in the file, because it takes away the policy every test above works
+   * on. What only a browser can show is the round trip — a screen rather than a
+   * `confirm()`, a first press that writes nothing, and a decline that leaves
+   * the policy exactly where it was. What it shows that nothing else can is the
+   * two versioned addresses answering *after* the row that used to own them is
+   * gone, with the same bytes the tests above uploaded.
+   */
+  test('asks before deleting a policy, and takes no for an answer', async ({ page }) => {
+    await signIn(page, `/admin/policies/${SLUG}`);
+
+    await page.getByRole('button', { name: 'Delete this policy' }).click();
+
+    // A screen, not a dialog: it is in the page, and it says all three things.
+    const confirm = page.getByTestId('confirm');
+    await expect(confirm).toContainText(`Delete ${TITLE}?`);
+    await expect(page.getByTestId('deletion-goes')).toContainText('policies page');
+    await expect(page.getByTestId('deletion-kept')).toContainText('All 2 documents');
+    await expect(page.getByTestId('deletion-kept')).toContainText('already agreed');
+    await expect(page.getByTestId('deletion-undo')).toContainText('no undo');
+
+    // Backing out writes nothing and puts the editor back.
+    await page.getByRole('link', { name: 'Go back without deleting' }).click();
+    await expect(page.getByTestId('confirm')).toHaveCount(0);
+    await expect(page.getByTestId('versions').locator('li')).toHaveCount(2);
+  });
+
+  test('deletes it, and keeps every document families were given', async ({ page, request }) => {
+    await signIn(page, `/admin/policies/${SLUG}`);
+
+    await page.getByRole('button', { name: 'Delete this policy' }).click();
+    await page.getByRole('button', { name: `Yes, delete ${TITLE}` }).click();
+
+    // It lands on the list, which says what went and whether the live site
+    // caught up — the deleted screen is not there to say it on.
+    await expect(page).toHaveURL(/\/admin\/policies\?/);
+    const banner = page.getByTestId('policies-banner');
+    await expect(banner).toContainText(`${TITLE} is deleted.`);
+    await expect(banner).toContainText('still readable');
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+
+    // Gone from the admin, from the public page, and from its own screen.
+    await expect(page.locator(`a[href="/admin/policies/${SLUG}"]`)).toHaveCount(0);
+    await page.goto(POLICIES_PATH);
+    await expect(page.locator(`[id="${SLUG}"]`)).toHaveCount(0);
+    const editor = await page.goto(`/admin/policies/${SLUG}`);
+    expect(editor!.status()).toBe(404);
+
+    // The fixed address goes with the policy — it is the one the policies page
+    // pointed at, and the school has just said it no longer asks for this.
+    expect((await request.get(PATH)).status()).toBe(404);
+
+    // And this is the whole ticket: both versioned addresses still answer, with
+    // the bytes that were uploaded, so an application recording version 1 still
+    // opens the document that family was shown.
+    const first = await request.get(`/policies/${SLUG}/v1.pdf`);
+    expect(first.status()).toBe(200);
+    expect(Buffer.from(await first.body()).equals(FIRST)).toBe(true);
+    expect(first.headers()['cache-control']).toContain('immutable');
+
+    const second = await request.get(`/policies/${SLUG}/v2.pdf`);
+    expect(second.status()).toBe(200);
+    expect(Buffer.from(await second.body()).equals(SECOND)).toBe(true);
   });
 });
 
@@ -1198,8 +1263,8 @@ test.describe('applications', () => {
       offering: string;
       objection?: string;
       /** The two agreements (#71), when the test is about them. */
-      handbook?: 'student' | 'parent' | 'neither';
-      codeOfConduct?: 'student' | 'parent' | 'neither';
+      handbook?: 'yes' | 'no';
+      codeOfConduct?: 'yes' | 'no';
       /** The stated payment method (#219); a check when the test does not care. */
       paying?: 'online' | 'check';
     },
@@ -1215,18 +1280,17 @@ test.describe('applications', () => {
     /*
      * What #85 added to a sendable application: one respondent's whole column of
      * the Statement of Faith grid, and an answer to each published document.
-     * "Neither agrees" is the default here because the gate is about having
-     * answered — a test that had to agree to send would be testing the wrong
-     * thing.
+     * **Yes** is the default here only because a "no" raises the conversation
+     * flag (ADR-0020) and most of these tests are not about the flag. The gate
+     * is about having answered, and `application.spec.ts` holds that a "no"
+     * sends.
      */
     for (const question of FAITH_QUESTIONS) {
       await page.check(`input[name="${faithKey('Father', question.id)}"][value="yes"]`);
     }
+    await page.check(`[data-agreement="handbook"] input[value="${family.handbook ?? 'yes'}"]`);
     await page.check(
-      `[data-agreement="handbook"] input[value="${family.handbook ?? 'neither'}"]`,
-    );
-    await page.check(
-      `[data-agreement="code-of-conduct"] input[value="${family.codeOfConduct ?? 'neither'}"]`,
+      `[data-agreement="code-of-conduct"] input[value="${family.codeOfConduct ?? 'yes'}"]`,
     );
 
     // Which way the money is coming (#219). Conditional because whether the
@@ -1443,25 +1507,23 @@ test.describe('applications', () => {
     await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
   });
 
-  test('reads both agreements by hand, each in the family’s own words (#71 AC 6)', async ({
-    page,
-  }) => {
+  test('reads both agreements by hand, each as a sentence (#71 AC 6, #255)', async ({ page }) => {
     const family = 'Suite Agreements';
     await apply(page, {
       name: family,
       email: 'suite-agreements@example.com',
       child: 'Agreeing Child',
       offering: 'algebra-1:year',
-      handbook: 'neither',
-      codeOfConduct: 'student',
+      handbook: 'no',
+      codeOfConduct: 'yes',
     });
 
     await signIn(page, '/admin/applications');
     const agreements = rowFor(page, family).getByTestId('application-agreements');
 
     /*
-     * Each answer in the family's own words, against the version they were
-     * shown, and the two read independently of one another.
+     * Each answer as a sentence that says which way it points (#255), against
+     * the version they were shown, and the two read independently.
      *
      * #85 closed the case this test used to cover — an application arriving with
      * a published document left blank — because a question the family was asked
@@ -1471,16 +1533,18 @@ test.describe('applications', () => {
      * public form, so asserting it here would be asserting a state the form
      * cannot reach.
      */
-    await expect(agreements.locator('[data-agreement="handbook"]')).toContainText('Neither agrees');
+    await expect(agreements.locator('[data-agreement="handbook"]')).toContainText(
+      'Family does not agree',
+    );
     await expect(agreements.locator('[data-agreement="handbook"]')).toContainText('version');
     await expect(agreements.locator('[data-agreement="code-of-conduct"]')).toContainText(
-      'Student agrees',
+      'Family agrees',
     );
     await expect(agreements.locator('[data-agreement="code-of-conduct"]')).toContainText('version');
 
-    // "Neither agrees" is not a conversation flag, and never was on the live
-    // form either — the application goes through like any other.
-    await expect(rowFor(page, family).getByTestId('application-flag')).toHaveCount(0);
+    // A "no" routes the application to a conversation (ADR-0020) — and routing
+    // is not refusing: it is submitted, like any other.
+    await expect(rowFor(page, family).getByTestId('application-flag')).toHaveCount(1);
     await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
   });
 

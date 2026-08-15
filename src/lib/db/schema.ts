@@ -343,13 +343,20 @@ export const policies = pgTable('policies', {
  * Scale, from the mirror: 18 PDFs at 3.0 MB total, largest 921 KB. A decade of
  * retained versions is roughly 30 MB against Neon Free's 0.5 GB, which is the
  * arithmetic that made keeping everything cheaper than deciding what to prune.
+ *
+ * **`policy_slug` names a policy and does not point at one** (#260, ADR-0021).
+ * It carried a foreign key with `on delete cascade` until 0023 dropped it,
+ * which made the policy row load-bearing for documents that outlive it: an
+ * application records its agreements as text — `handbook=parent@3`, no key of
+ * its own — so a cascade would take away the PDF a family agreed to and leave
+ * the record naming it behind. A version row is the same kind of thing that
+ * agreement cell is, and it goes on resolving at its own permanent address
+ * whether or not any policy still holds the slug.
  */
 export const policyVersions = pgTable(
   'policy_versions',
   {
-    policySlug: text('policy_slug')
-      .notNull()
-      .references(() => policies.slug, { onDelete: 'cascade' }),
+    policySlug: text('policy_slug').notNull(),
     /** 1, 2, 3 … per policy. The number in the versioned URL. */
     version: integer('version').notNull(),
     filename: text('filename').notNull(),
@@ -640,7 +647,7 @@ export const applications = pgTable('applications', {
    */
   faith: text('faith').array().notNull(),
   /**
-   * The Code of Conduct and Handbook agreements as `handbook=parent@3` (#71).
+   * The Code of Conduct and Handbook agreements as `handbook=yes@3` (#71, #255).
    *
    * **A new column on a table ADR-0007 keeps narrow, and it is argued for
    * rather than assumed.** It is not sensitive data about a student: an
@@ -651,10 +658,14 @@ export const applications = pgTable('applications', {
    * is meant to meet that guard and pass it on its merits.
    *
    * One array rather than four columns, for `faith`'s reason: an unanswered
-   * question must stay *absent*, where a null column reads as "neither". The
+   * question must stay *absent*, where a null column reads as a "no". The
    * version rides in the cell so an agreement is always readable against the
    * text that was on screen — a later upload appends a version and cannot
    * change what this row says was agreed.
+   *
+   * The cells hold two vocabularies and are not migrated between them: `yes`
+   * and `no` since ADR-0020, and the `student`, `parent` and `neither` written
+   * before it, which are still read and never rewritten.
    */
   agreements: text('agreements').array().notNull().default([]),
   /** The money terms frozen for this family, when they were recorded. */
@@ -728,6 +739,15 @@ export const applicationChildren = pgTable(
     age: text('age').notNull(),
     /** `<slug>:<unit>` keys. Empty is real — a child chosen for nothing yet. */
     offeringKeys: text('offering_keys').array().notNull(),
+    /**
+     * `<key>=<title>`, frozen at submission and never updated (#259).
+     *
+     * The classes as the family was shown them, so a course renamed or removed
+     * afterwards cannot rewrite what this application says — the same freeze
+     * `agreed_terms` is, for the same reason. Empty is a row written before the
+     * capture existed, and is deliberately not backfilled.
+     */
+    offeringTitles: text('offering_titles').array().notNull().default([]),
   },
   (table) => [primaryKey({ columns: [table.applicationId, table.position] })],
 );

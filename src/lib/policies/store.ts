@@ -123,6 +123,30 @@ export async function savePolicy(
   return toPolicy(row);
 }
 
+/**
+ * Delete a policy, and no document (#260).
+ *
+ * One statement against one table, and the whole point is what it does **not**
+ * touch. `policy_versions` lost its cascade in migration 0023, so every version
+ * this policy ever had stays exactly where it is: still readable by
+ * `getPolicyFile` at `/policies/<slug>/v<n>.pdf`, still the answer to what a
+ * family who enrolled in August was given, still named by the `handbook=parent@3`
+ * on their application — which is text and was never going to be updated by a
+ * delete here (ADR-0021).
+ *
+ * What does go is the fixed address: `getPolicyFile` resolves the current
+ * version through the policy row, so `/policies/<slug>.pdf` answers 404 once
+ * the row is gone. That is the correct half — the fixed address is the one the
+ * policies page points at, and the school has just said it no longer asks
+ * families to read this.
+ *
+ * Silent on a slug that is not there, like the other stores' deletes: the row
+ * is gone either way, and the screen that called this already has the policy.
+ */
+export async function deletePolicy(db: Db, slug: string): Promise<void> {
+  await db.delete(policiesTable).where(eq(policiesTable.slug, slug));
+}
+
 /** A file and what it is called. */
 export type PolicyFile = {
   filename: string;

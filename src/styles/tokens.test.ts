@@ -66,6 +66,44 @@ describe('a cream label on a navy ground', () => {
   });
 });
 
+/**
+ * The red that says something is outstanding.
+ *
+ * #254 gave the apply page's still-needed list the same red as the field
+ * errors beside it, which is only honest if the red is readable — and the list
+ * sits on cream while the error sentences also appear on the parchment bands,
+ * so both grounds have to hold it.
+ *
+ * A token rather than the hex literal it used to be. Three files held the same
+ * colour by coincidence, and a ratio asserted against one of them measures the
+ * copy nobody edited — so the ratio is taken off the token and the grep is
+ * what keeps the copies from coming back.
+ */
+const PAINTS_THE_ERROR_RED = [
+  'src/pages/admissions/apply.astro',
+  'src/pages/about/support.astro',
+  'src/components/InquiryForm.astro',
+];
+
+describe('the outstanding red', () => {
+  it('is readable on both light grounds it is painted on', () => {
+    const error = token('color-error');
+    // Stated, so that the two ratios below are measurements rather than
+    // whatever the regex last happened to find.
+    expect(error).toBe('#8C2B19');
+    expect(contrast(error, token('color-cream'))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(error, token('color-parchment'))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('is asked for by name everywhere it is painted', () => {
+    for (const path of PAINTS_THE_ERROR_RED) {
+      const source = readFileSync(path, 'utf8');
+      expect(source, path).toContain('var(--color-error)');
+      expect(source.toLowerCase(), path).not.toContain('#8c2b19');
+    }
+  });
+});
+
 /** Every admin screen and every shared admin component. */
 function adminSources(): string[] {
   const roots = ['src/pages/admin', 'src/components'];

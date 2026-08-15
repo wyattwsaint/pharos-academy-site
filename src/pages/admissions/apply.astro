@@ -89,7 +89,8 @@ import { listPolicies } from '../../lib/policies/store.js';
  * to, a child with a name and an age, a class, one full column of the Statement
  * of Faith grid by any one respondent, and an answer to each document the
  * school has actually published. What was answered is never the gate's business
- * — "No" passes, "Neither agrees" passes, an objection passes and still routes
+ * — "No" passes, to an article and to a document alike, and an objection
+ * passes and still routes
  * the application to a conversation rather than to a refusal. The ADR holds the
  * reasoning, and holds what would count as reversing it.
  *
@@ -265,6 +266,10 @@ if (Astro.request.method === 'POST') {
         // does, the unstated fallback reads as a check and the office watches
         // the post, which is what it did before anybody was asked (#219).
         paymentMode: values.paymentMethod ? paymentModeOf(values.paymentMethod) : undefined,
+        // The catalogue this page drew the checkboxes from, so the titles
+        // frozen onto the row are the ones this family was actually shown
+        // (#259). Nothing updates them afterwards.
+        offerings,
       });
     } catch (cause) {
       // The operator's copy. The family is told plainly, and given the address
@@ -455,9 +460,14 @@ const focus: ErrorField | null = rejected ? firstError(errors, childNeeds.index)
 
 /**
  * Which document a refused send should land on — the first one nobody has
- * answered, matching `FOCUS.agreements`. "Not answered" posts an empty value,
- * so an explicit "Not answered" and an untouched question are the same thing
- * here, exactly as the rules read them.
+ * answered, matching `FOCUS.agreements`. Since #255 there is no radio that
+ * un-answers one, so this can only ever be a question nobody has touched.
+ *
+ * Focus lands on the group's first radio, which is now **Yes**. Focus is not a
+ * choice — an unselected radio group takes focus without selecting anything,
+ * and nothing is posted until a family presses one — so this puts them at the
+ * question rather than on an answer, exactly as it did when the first radio
+ * read "Student agrees".
  */
 const agreementNeeds = Math.max(
   askable.findIndex((document) => !agreementAnswer(values.agreements, document.slug)),
@@ -474,7 +484,11 @@ const NEEDED: { field: ErrorField; href: string; label: string }[] = [
     label: 'Each child’s name and their age',
   },
   { field: 'classes', href: '#apply-classes', label: 'At least one class, for one child' },
-  { field: 'agreements', href: '#apply-agreements', label: 'Who agrees to each of the documents' },
+  {
+    field: 'agreements',
+    href: '#apply-agreements',
+    label: 'Whether your family agrees to each of the documents',
+  },
   /*
    * Last, because the question is last on the page (#219 AC 8). It appears in
    * the list from the first paint like every other line — the list is what a
@@ -954,19 +968,21 @@ const description =
 
           Since #85 an *asked* question has to be answered before the
           application can be sent — and that is a requirement to answer, never a
-          requirement to agree. All three choices pass, "Neither agrees"
-          included. A document the school has not published produces no question
-          and no requirement, so the gate can never be about something a family
-          was not shown.
+          requirement to agree. **No** passes, and sends (ADR-0020). A document
+          the school has not published produces no question and no requirement,
+          so the gate can never be about something a family was not shown.
+
+          Two radios and no "Not answered" (#255): an untouched question is
+          already unanswered, and the third radio only let a family take an
+          answer back. The gate's "still needed" entry is therefore unreachable
+          once a question has been answered once, which is the deliberate cost.
         */}
         {askable.length > 0 && (
           <section class="band" id="agreements" data-section="apply-agreements">
             <div class="wide">
               <h2>{stage('agreements')}</h2>
               <p class="sub mt-4">
-                Two documents families sign. Read them here — they open in full — and tell us who
-                agrees. We need an answer to each, and any of them will do: "Neither agrees" is a
-                real answer rather than a problem, and none of them stops your application.
+                Read each one, then tell us whether you agree. Either answer sends your application.
               </p>
 
               <div class="faith mt-7" id="apply-agreements" data-agreements>
@@ -978,27 +994,25 @@ const description =
                       version published today.
                     </p>
                     <div class="mt-4">
-                      {[...AGREEMENT_CHOICES, { value: '', label: 'Not answered' } as const].map(
-                        (choice, choiceAt) => (
-                          <label class="check">
-                            <input
-                              type="radio"
-                              name={agreementKey(document.slug)}
-                              value={choice.value}
-                              checked={
-                                agreementAnswer(values.agreements, document.slug) === choice.value
-                              }
-                              aria-describedby={
-                                errors.agreements ? 'apply-agreements-error' : undefined
-                              }
-                              autofocus={
-                                focus === 'agreements' && at === agreementNeeds && choiceAt === 0
-                              }
-                            />
-                            <span>{choice.label}</span>
-                          </label>
-                        ),
-                      )}
+                      {AGREEMENT_CHOICES.map((choice, choiceAt) => (
+                        <label class="check">
+                          <input
+                            type="radio"
+                            name={agreementKey(document.slug)}
+                            value={choice.value}
+                            checked={
+                              agreementAnswer(values.agreements, document.slug) === choice.value
+                            }
+                            aria-describedby={
+                              errors.agreements ? 'apply-agreements-error' : undefined
+                            }
+                            autofocus={
+                              focus === 'agreements' && at === agreementNeeds && choiceAt === 0
+                            }
+                          />
+                          <span>{choice.label}</span>
+                        </label>
+                      ))}
                     </div>
                   </fieldset>
                 ))}
@@ -1014,11 +1028,14 @@ const description =
         <section class="band band-quiet" id="payment" data-section="apply-payment">
           <div class="wide">
             <h2>{stage('payment')}</h2>
-            <p class="sub mt-4">
-              Every figure here comes from the school's current fee settings, and it changes when
-              they do.
-            </p>
 
+            {/*
+              No sub-heading (#254). The figures are read off the school's fee
+              settings and change when those do, which is true of every number
+              on the site and is the plumbing rather than the answer — a family
+              came here to find out what they owe, and the list below says so
+              without being introduced.
+            */}
             <ul class="totals mt-7">
               <li>
                 <span class="amount">{formatMoney(cost.total.registration)}</span>
@@ -1063,11 +1080,13 @@ const description =
             */}
             {payOnline ? (
               <Fragment>
-                <p class="mt-7">
-                  All of it is paid to Pharos Academy in one payment, online, through the church’s
-                  giving page — the registration, the deposits and the tuition together.
-                </p>
-                <p class="pay mt-6">
+                {/*
+                  The button says it (#254). "All of it, in one payment, online"
+                  is the last line of the totals list and then the label on the
+                  button with the total beside it; a paragraph between the two
+                  saying it a third time is the page distrusting its own layout.
+                */}
+                <p class="pay mt-7">
                   <a class="btn solid" href={details.payOnlineUrl} rel="external" data-pay-online>
                     Pay online
                   </a>
@@ -1903,7 +1922,7 @@ const description =
 
   .error {
     margin-top: 0.35rem;
-    color: #8c2b19;
+    color: var(--color-error);
     font-weight: 500;
   }
 
@@ -1923,9 +1942,25 @@ const description =
     cursor: not-allowed;
   }
 
+  /*
+   * Outstanding, and dressed as it (#254).
+   *
+   * The list is the page telling a family something is not done, which is what
+   * every field error on this page says in the same breath — so it says it in
+   * the same red rather than in quiet prose that reads as a note. Only the
+   * intro and the items: the sentence that replaces them once nothing is
+   * outstanding is not an error and stays the quiet colour, and an item that
+   * is answered stops being red by ceasing to be shown.
+   */
   .missing {
     max-width: 46rem;
     color: var(--color-ink-2);
+  }
+
+  .missing [data-missing-intro],
+  .missing li,
+  .missing li a {
+    color: var(--color-error);
   }
 
   .missing ul {
@@ -1938,7 +1973,7 @@ const description =
   }
 
   .missing li {
-    border-left: 3px solid var(--color-gold-orn);
+    border-left: 3px solid var(--color-error);
     padding-left: 1rem;
   }
 </style>
