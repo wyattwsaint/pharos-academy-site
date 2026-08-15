@@ -33,9 +33,6 @@ import { POLICIES_PATH } from '../src/lib/policies/views.js';
 
 const TAGS = AXE_TAGS;
 
-/** The admin screens, and the widths #18 names. Same bar as the public site. */
-const ADMIN_WIDTHS = [390, 1440];
-
 test.describe('the guard', () => {
   test('bounces an anonymous visitor to the login page, and back afterwards', async ({ page }) => {
     await page.goto('/admin/users');
@@ -1530,67 +1527,7 @@ test.describe('applications', () => {
   });
 });
 
-test.describe('accessibility', () => {
-  for (const path of [
-    '/admin/login',
-    '/admin/money',
-    '/admin/school-details',
-    '/admin/users',
-    '/admin/people',
-    '/admin/people/jill-kilker',
-    '/admin/people/new',
-    '/admin/announcements',
-    '/admin/announcements/new',
-    '/admin/policies',
-    '/admin/policies/handbook',
-    '/admin/policies/new',
-    '/admin/backup',
-    // #23. The School Year screen is the densest form on the site — eight date
-    // and week pairs, a repeating closure row and a table redrawn by script —
-    // and the preview is the only region here whose content changes without a
-    // navigation.
-    '/admin/school-year',
-    '/admin/events',
-    '/admin/events/new',
-    // #24. The course editor is the School Year screen's rival for density —
-    // three groups of checkboxes, four selects and a computed price that is
-    // read-only text rather than a disabled input, which is the part a
-    // screen reader has to be told correctly.
-    '/admin/courses',
-    '/admin/courses/algebra-1',
-    '/admin/courses/new',
-    // #25. A list of what families typed, with a warning line on any inquiry
-    // the school was not emailed about — and the one admin screen whose content
-    // comes from the public site rather than from an admin form.
-    '/admin/inquiries',
-    // #32. Two rows of buttons under every application — the application's own
-    // state and the money's — which is the screen's densest interactive region
-    // and the one where a screen reader has to be able to tell them apart.
-    '/admin/applications',
-  ]) {
-    for (const width of ADMIN_WIDTHS) {
-      test(`${path} has zero axe violations at ${width}px`, async ({ page }) => {
-        if (path !== '/admin/login') await signIn(page, path);
-
-        await page.setViewportSize({ width, height: 900 });
-        await page.goto(path);
-
-        const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
-
-        expect(violations.map(describeViolation)).toEqual([]);
-      });
-    }
-  }
-
-});
-
-/** A violation rendered so a CI failure names the rule and the element. */
-function describeViolation(violation: {
-  id: string;
-  impact?: string | null;
-  nodes: { target: unknown[] }[];
-}) {
-  return `${violation.id} (${violation.impact ?? 'unknown'}): ${violation.nodes
-    .map((node) => node.target.join(' '))
-    .join(', ')}`;
-}
+// The axe pass over the signed-in admin lives in `admin-accessibility.spec.ts`
+// (#202) — every screen, each editor's refused state and the confirmation
+// screens, plus the keyboard pass. It was moved out of this file when it grew
+// past a closing block into a suite of its own.

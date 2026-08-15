@@ -157,6 +157,7 @@ async function seedSuiteAdmin(db: Db, admin: { username: string; password: strin
   const { createUser } = await import('../admin/users.js');
   await createUser(db, { ...admin, displayName: 'Suite Admin' });
   await createUser(db, SUITE_SPARE_ACCOUNT);
+  await createUser(db, SUITE_KEPT_ACCOUNT);
 }
 
 /**
@@ -174,6 +175,24 @@ const SUITE_SPARE_ACCOUNT = {
   username: 'suite-spare',
   displayName: 'Suite Spare',
   password: 'a-long-enough-spare-passphrase',
+};
+
+/**
+ * A third account, which exists so that the delete *confirmation* can be
+ * measured (#202).
+ *
+ * Suite Spare cannot serve: the spec that deletes it removes it for the rest of
+ * the run, so an axe spec aimed at the confirmation screen would pass or vanish
+ * depending on which worker got there first. This one is never deleted — the
+ * axe specs reach its confirmation and then decline — so the screen is always
+ * there to measure.
+ *
+ * Its password is never typed either; nothing signs in as it.
+ */
+const SUITE_KEPT_ACCOUNT = {
+  username: 'suite-kept',
+  displayName: 'Suite Kept',
+  password: 'a-long-enough-kept-passphrase',
 };
 
 /**
