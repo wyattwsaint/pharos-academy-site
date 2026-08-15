@@ -14,7 +14,10 @@
 
 import type { Course } from '../courses/course.js';
 import { coursePrice } from '../courses/pricing.js';
+import { amountOwedFor, type AmountOwed } from './live.js';
 import type { MoneySettings } from './settings.js';
+
+export type { AmountOwed };
 
 /** One selection on an application: a course and how much of it is being bought. */
 export type Selection = {
@@ -26,21 +29,6 @@ export type Selection = {
   unit: 'year' | 'semester' | 'flat';
 };
 
-export type AmountOwed = {
-  /** The registration fee, once per student per year however many classes. */
-  registration: number;
-  /** The deposits — one per class, holding the seats. */
-  deposits: number;
-  /** What the classes cost before any deposit is taken off. */
-  tuition: number;
-  /** What the deposits take off the tuition. Zero when they are not credited. */
-  creditedAgainstTuition: number;
-  /** Tuition less any credit: the tuition the family actually owes. */
-  tuitionDue: number;
-  /** Everything the family pays across the year, counted once. */
-  total: number;
-};
-
 /**
  * The whole of what an application costs, in the figures a family asks for.
  *
@@ -49,33 +37,21 @@ export type AmountOwed = {
  * a cheque as the fallback for the whole of it rather than for a part. So
  * `total` is not a summary a surface may skip past — it is the figure a family
  * types into the giving page, and the itemisation above it is what explains
- * that number. It never double-counts a credited deposit, which is the
- * arithmetic the flag actually changes.
+ * that number.
+ *
+ * This resolves each selection against the rate card and hands the prices to
+ * `live.ts`, which does the arithmetic. The split is the whole point: the
+ * browser cannot have the rate card, but it can have the prices, and there is
+ * one set of sums for both (ADR-0019).
  */
 export function amountOwed(
   selections: readonly Selection[],
   settings: MoneySettings,
 ): AmountOwed {
-  const tuition = selections.reduce((sum, selection) => sum + unitPrice(selection, settings), 0);
-  const deposits = settings.classDeposit * selections.length;
-
-  // Never more than the tuition. A family selecting a $90 block does not end up
-  // owing minus ten dollars in tuition.
-  const creditedAgainstTuition = settings.depositCreditedAgainstTuition
-    ? Math.min(deposits, tuition)
-    : 0;
-
-  const registration = selections.length > 0 ? settings.registrationFee : 0;
-  const tuitionDue = tuition - creditedAgainstTuition;
-
-  return {
-    registration,
-    deposits,
-    tuition,
-    creditedAgainstTuition,
-    tuitionDue,
-    total: registration + deposits + tuitionDue,
-  };
+  return amountOwedFor(
+    selections.map((selection) => unitPrice(selection, settings)),
+    settings,
+  );
 }
 
 /** What one selection costs at these rates. */
