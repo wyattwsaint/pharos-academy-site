@@ -223,7 +223,11 @@ describe('what the screen says before deleting a policy', () => {
  * does to the address afterwards.
  */
 describe('what the screen asks when an address already has documents', () => {
-  const ADDRESSES = { existing: '/policies/handbook.pdf', fresh: '/policies/handbook-2.pdf' };
+  const ADDRESSES = {
+    existing: '/policies/handbook.pdf',
+    fresh: '/policies/handbook-2.pdf',
+    oldest: '/policies/handbook/v1.pdf',
+  };
 
   function kept(versions: number[]): { version: number; uploadedAt: Date }[] {
     return versions.map((version) => ({
@@ -251,11 +255,26 @@ describe('what the screen asks when an address already has documents', () => {
     expect(asked.documents).toContain('between 1 March 2026 and 3 March 2026');
   });
 
+  /*
+   * The address the documents are readable at is the versioned one, and while
+   * the slug is orphaned the short one resolves nothing at all — it is read
+   * through a policy row that is not there. Promising "still readable" beside
+   * the address that 404s would be the one misleading sentence on the screen.
+   */
+  it('points "still readable" at the versioned address, not the short one', () => {
+    const asked = policyInheritance('Handbook', kept([1, 2, 3]), ADDRESSES);
+
+    expect(asked.documents).toContain('readable at its own versioned address');
+    expect(asked.documents).toContain('/policies/handbook/v1.pdf');
+    expect(asked.documents).toContain('answers nothing until a policy holds it again');
+  });
+
   it('counts one document as one, in words that read like a sentence', () => {
     const asked = policyInheritance('Handbook', kept([1]), ADDRESSES);
 
     expect(asked.documents).toContain('One document was uploaded');
     expect(asked.documents).toContain('on 1 March 2026');
+    expect(asked.documents).toContain('/policies/handbook/v1.pdf');
     expect(asked.documents).not.toContain('documents');
   });
 

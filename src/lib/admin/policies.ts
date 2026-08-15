@@ -224,6 +224,14 @@ function keptSentence(versions: number): string {
  * what makes the question answerable: "three documents, uploaded between March
  * and August" is recognisably the Handbook to the person who uploaded them, and
  * recognisably nothing to do with a new form that happens to be called one.
+ *
+ * **Three addresses, and the difference between them is the point.** The short
+ * one is where the returning policy would live and is answering nothing at all
+ * while the slug is orphaned — `getPolicyFile` resolves it through a policy row
+ * that is not there. The versioned one is where the kept documents actually are,
+ * which is what "still readable" is a claim about (ADR-0005). Saying "these are
+ * readable at /policies/handbook.pdf" would be pointing at the one address in
+ * the exchange that 404s.
  */
 export type PolicyInheritance = {
   heading: string;
@@ -259,18 +267,18 @@ export const NOT_PUBLISHED_YET =
 export function policyInheritance(
   title: string,
   kept: readonly KeptDocument[],
-  addresses: { existing: string; fresh: string },
+  addresses: { existing: string; fresh: string; oldest: string },
 ): PolicyInheritance {
   const next = Math.max(...kept.map((document) => document.version)) + 1;
 
   return {
     heading: 'That Address Already Has Documents',
-    documents: documentsSentence(kept, addresses.existing),
+    documents: documentsSentence(kept, addresses),
     choice: `If this is ${title} coming back, continue that history: the policy returns to ${addresses.existing}, and the next document uploaded to it is version ${next} rather than version 1, so no version number ever means two different documents. If it is a different document that happens to be called the same thing, give it ${addresses.fresh} instead and the kept documents stay exactly where they are.`,
     continueLabel: `Continue the history at ${addresses.existing}`,
     freshLabel: `Use ${addresses.fresh} instead`,
-    continued: `Created at ${addresses.existing}, continuing the history that was already there — the next document uploaded is version ${next}. ${NOT_PUBLISHED_YET}`,
-    separate: `Created at ${addresses.fresh}, with a history of its own. The documents kept at ${addresses.existing} were left exactly as they were. ${NOT_PUBLISHED_YET}`,
+    continued: `Created at ${addresses.existing}, the address it always had, continuing the history that was already there — the next document uploaded is version ${next}. ${NOT_PUBLISHED_YET}`,
+    separate: `Created at ${addresses.fresh}, with a history of its own. The documents kept under ${addresses.existing} were left exactly as they were. ${NOT_PUBLISHED_YET}`,
   };
 }
 
@@ -282,21 +290,21 @@ export function policyInheritance(
  * permanent addresses a document gets, and a plural agreement threaded through
  * a template is the wrong way to write the sentence that decision rests on.
  */
-function documentsSentence(kept: readonly KeptDocument[], address: string): string {
-  const dates = kept.map((document) => document.uploadedAt.getTime()).sort((a, b) => a - b);
-  const oldest = dateLabel(dates[0]!);
-  const newest = dateLabel(dates[dates.length - 1]!);
+function documentsSentence(
+  kept: readonly KeptDocument[],
+  addresses: { existing: string; oldest: string },
+): string {
+  const dates = [...kept]
+    .map((document) => document.uploadedAt)
+    .sort((one, other) => one.getTime() - other.getTime());
+  const oldest = updatedOnLabel(dates[0]!);
+  const newest = updatedOnLabel(dates[dates.length - 1]!);
 
   if (kept.length === 1) {
-    return `One document was uploaded to ${address}, on ${oldest}, by a policy that has since been deleted. It is still readable at its own permanent address, and an application that recorded an agreement still names it.`;
+    return `One document was uploaded under ${addresses.existing}, on ${oldest}, by a policy that has since been deleted. It is still readable at its own versioned address, ${addresses.oldest}, and an application that recorded an agreement still names it. The short address itself answers nothing until a policy holds it again.`;
   }
   const when = oldest === newest ? `all on ${oldest}` : `between ${oldest} and ${newest}`;
-  return `${kept.length} documents were uploaded to ${address}, ${when}, by a policy that has since been deleted. Each is still readable at its own permanent address, and an application that recorded an agreement still names one of them.`;
-}
-
-/** The upload date as the school writes it — the policies page's own format. */
-function dateLabel(time: number): string {
-  return updatedOnLabel(new Date(time));
+  return `${kept.length} documents were uploaded under ${addresses.existing}, ${when}, by a policy that has since been deleted. Each is still readable at its own versioned address — the oldest at ${addresses.oldest} — and an application that recorded an agreement still names one of them. The short address itself answers nothing until a policy holds it again.`;
 }
 
 /** The list position, as a number, or the reason it is not one. */

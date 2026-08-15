@@ -1419,8 +1419,10 @@ test.describe('policies', () => {
     // A screen in the page, naming what it found and offering two addresses.
     await expect(page.getByTestId('inheritance')).toBeVisible();
     const documents = page.getByTestId('inheritance-documents');
-    await expect(documents).toContainText('documents were uploaded to');
+    await expect(documents).toContainText('documents were uploaded under');
     await expect(documents).toContainText(PATH);
+    // And it points "still readable" at the address that actually answers.
+    await expect(documents).toContainText(`/policies/${SLUG}/v1.pdf`);
     await expect(page.getByTestId('inheritance-choice')).toContainText(TITLE);
     // Two actions, and neither of them is a decline.
     await expect(page.getByRole('button', { name: /^Continue the history at/ })).toBeVisible();
@@ -1430,6 +1432,33 @@ test.describe('policies', () => {
     // second attempt is asked the same question rather than refused.
     const editor = await page.goto(`/admin/policies/${SLUG}`);
     expect(editor!.status()).toBe(404);
+  });
+
+  /**
+   * The same question with scripts off (#268).
+   *
+   * The reason it is a screen and not a `confirm()`, and the reason both
+   * answers are buttons in a form: nothing on it is JavaScript, so a browser
+   * running none has to be able to read the question and answer it. This one
+   * only asks — pressing neither button writes nothing — so it leaves the
+   * orphaned address exactly as it found it, for the two tests below.
+   */
+  test('asks with scripts off, because nothing on the screen is script', async ({ browser }) => {
+    const unscripted = await browser.newContext({ javaScriptEnabled: false });
+    const page = await unscripted.newPage();
+
+    await signIn(page, '/admin/policies/new');
+    await page.getByLabel(LABELS.title).fill(TITLE);
+    await page.getByLabel(LABELS.position).fill('9');
+    await page.getByRole('button', { name: 'Create' }).click();
+
+    await expect(page.getByTestId('inheritance')).toContainText(
+      'That Address Already Has Documents',
+    );
+    await expect(page.getByRole('button', { name: /^Continue the history at/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Use \/policies\// })).toBeVisible();
+
+    await unscripted.close();
   });
 
   test('mints a distinct address for a document that only shares the name', async ({
@@ -1491,6 +1520,11 @@ test.describe('policies', () => {
     await expect(banner).toContainText('not on the policies page yet');
     await expect(page.getByTestId('versions').locator('li')).toHaveCount(kept);
     await expect(page.getByTestId('versions')).not.toContainText('this is the current one');
+
+    // In the admin, and *not* on the policies page: the row is back, and a
+    // policy is published by its file rather than by its row.
+    await page.goto('/admin/policies');
+    await expect(page.locator(`a[href="/admin/policies/${SLUG}"]`)).toBeVisible();
     await page.goto(POLICIES_PATH);
     await expect(page.locator(`[id="${SLUG}"]`)).toHaveCount(0);
 

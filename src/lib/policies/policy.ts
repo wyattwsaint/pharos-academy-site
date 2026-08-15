@@ -150,6 +150,9 @@ export const SEEDED_POLICIES: readonly SeedPolicy[] = [
   },
 ] as const;
 
+/** The longest a slug may be. Both minters below are held to it. */
+const MAX_SLUG = 60;
+
 /**
  * The address of a policy, minted from its title.
  *
@@ -164,7 +167,7 @@ export function policySlug(title: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 60)
+    .slice(0, MAX_SLUG)
     .replace(/-+$/, '');
 
   if (!slug) {
@@ -172,9 +175,6 @@ export function policySlug(title: string): string {
   }
   return slug;
 }
-
-/** The longest a slug may be, matching the slice `policySlug` applies. */
-const MAX_SLUG = 60;
 
 /**
  * A second address for a title whose first one is already spoken for (#268).

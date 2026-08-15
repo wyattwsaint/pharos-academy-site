@@ -228,22 +228,35 @@ if (Astro.request.method === 'POST') {
         const minted = policySlug(values.title);
         const kept = await listPolicyVersions(db, minted);
         const orphaned = kept.length > 0 && (await getPolicy(db, minted)) === undefined;
-        /*
-         * Read once, before anything is written. Asking the database again
-         * after the create would mint a *third* address to report, because the
-         * second one is spoken for by then.
-         */
-        const addresses = orphaned ? await addressesFor(minted) : null;
-        const answer = orphaned ? readInheritance(form) : undefined;
+        const answer = readInheritance(form);
 
-        if (addresses && !answer) {
-          asking = policyInheritance(values.title, kept, addresses);
+        /*
+         * Built once, from one read, and used for both the question and the
+         * sentence that reports the answer. Asking the database again after the
+         * create would offer a *third* address, because the second one is
+         * spoken for by then.
+         *
+         * `answer === 'fresh'` is enough on its own, without `orphaned`. If
+         * another admin claimed this address between the two presses, the slug
+         * is no longer orphaned — but the school has already said this document
+         * is not the one whose history is there, and that answer is still the
+         * right one. Honouring it puts the document beside the address rather
+         * than refusing it for a collision it already declined.
+         */
+        const addresses =
+          kept.length > 0 && (orphaned || answer === 'fresh')
+            ? await addressesFor(minted, kept)
+            : null;
+        const outcome = addresses ? policyInheritance(values.title, kept, addresses) : null;
+
+        if (orphaned && !answer) {
+          asking = outcome;
         } else {
-          const separate = answer === 'fresh';
+          const separate = answer === 'fresh' && addresses !== null;
           policy = await createPolicy(
             db,
             {
-              slug: separate && addresses ? addresses.freshSlug : minted,
+              slug: separate ? addresses!.freshSlug : minted,
               title: values.title,
               position: positionNumber(values.position),
               signed: values.signed,
@@ -251,7 +264,6 @@ if (Astro.request.method === 'POST') {
             actor.name,
           );
           values = fieldsOf(policy);
-          const outcome = addresses ? policyInheritance(values.title, kept, addresses) : null;
           banner = {
             ok: true,
             message: !outcome
@@ -321,12 +333,26 @@ function readInheritance(form: FormData): 'continue' | 'fresh' | undefined {
   return form.get('inherit') !== null ? 'continue' : undefined;
 }
 
-/** The address the title minted, and the distinct one on offer beside it. */
+/**
+ * The three addresses the question is about.
+ *
+ * `existing` is where a continuing policy would live and is answering nothing
+ * while the slug is orphaned; `oldest` is where the earliest kept document
+ * actually is, which is the address "still readable" refers to; `fresh` is the
+ * distinct one on offer beside them.
+ */
 async function addressesFor(
   minted: string,
-): Promise<{ existing: string; fresh: string; freshSlug: string }> {
+  kept: readonly PolicyVersion[],
+): Promise<{ existing: string; fresh: string; oldest: string; freshSlug: string }> {
   const freshSlug = distinctPolicySlug(minted, await occupiedPolicySlugs(db));
-  return { existing: policyPath(minted), fresh: policyPath(freshSlug), freshSlug };
+  const earliest = kept[kept.length - 1]!;
+  return {
+    existing: policyPath(minted),
+    fresh: policyPath(freshSlug),
+    oldest: policyVersionPath(minted, earliest.version),
+    freshSlug,
+  };
 }
 
 ---
