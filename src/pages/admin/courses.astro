@@ -25,9 +25,14 @@ import { getMoneySettings } from '../../lib/money/store.js';
  * reads here is what a parent reads there, rather than a second summary that
  * could disagree.
  *
- * There is no delete, for the reason People has none: a class a family has
- * already applied to is a row other rows point at, and a button the database
- * would refuse is a button that lies.
+ * There is still no delete here, and the reason is no longer the one People
+ * used to share. People has a delete now (#262), because nothing a family sent
+ * names a person. A **course** is named by what a family sent: an application
+ * records the classes a child was enrolled in, so removing one edits a record
+ * that is not the school's to edit. ADR-0021 gates it on the Applications
+ * screen and the class tally first being able to read an offering key the
+ * catalogue no longer has — naming it, marking it as no longer offered, and
+ * still counting it.
  *
  * What there is instead is **Retire** (#263), and the retired classes are on
  * this screen rather than behind a filter. A screen that hid them is a screen
