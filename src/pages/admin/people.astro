@@ -15,11 +15,11 @@ import { listPeopleForAdmin } from '../../lib/people/store.js';
  * is the store's, which is the staff page's, so what Jill sees here is what a
  * parent sees there.
  *
- * There is no delete. Removing somebody who teaches would leave their
- * courses pointing at a row that is gone — the foreign key refuses it, and a
- * screen offering a button the database will not honour is a screen that lies.
- * Somebody who has left is a job for whoever installed the site, as accounts
- * are.
+ * There is no delete **here yet**. ADR-0021 reverses the stance that there
+ * never would be, and #257 has already cleared the obstacle by making
+ * `instructor_slug` nullable — so what is left is the screen, on its own
+ * ticket. What this one no longer does is *promise* there will never be one:
+ * that sentence was withdrawn with the decision behind it (#258).
  */
 const db = await getDb();
 const actor = Astro.locals.actor!;
@@ -42,8 +42,8 @@ const people = await listPeopleForAdmin(db);
     people.length === 0 ? (
       <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-people">
         Nobody is listed yet. The staff page and the name printed on every class are read from this
-        list, so both are waiting on it. Nobody has been removed — there is no delete here — so an
-        empty list means the school's people have not been entered.
+        list, so both are waiting on it — an empty list means the school's people have not been
+        entered.
       </p>
     ) : (
       <ul class="mt-8 flex flex-col gap-6">

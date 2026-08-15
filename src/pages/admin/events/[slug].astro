@@ -46,11 +46,14 @@ import { getDb } from '../../../lib/db/client.js';
  * **This was the one screen with a delete**, and the reason was the feed: a
  * cancelled concert left on a subscribed calendar is a family driving to a
  * school that is dark. It is not the only one any more — the school's own
- * content is freely removable (ADR-0021), and a policy is deleted from its own
- * screen the same way — so the two sentences here that said nothing else in the
- * admin deletes anything are gone with the decision that made them false.
+ * content is freely removable (ADR-0021), and a policy and an announcement are
+ * each deleted from their own screen the same way — so the two sentences here
+ * that said nothing else in the admin deletes anything are gone with the
+ * decision that made them false.
  *
- * It **confirms first** (#200), the way Money confirms: the first press replaces the form with a screen naming the event
+ * It **confirms first** (#200), the way every delete in this admin now does and
+ * the way Money confirms: the first press replaces the form with a screen
+ * naming the event
  * and its date and saying again what a subscribed phone will do, and only the
  * second press — the same form plus `confirm` — removes it.
  *
@@ -227,7 +230,7 @@ function fieldsOf(row: CalendarEvent): EventFields {
           sometimes a day or two — so a family who has written it down may turn up anyway. If it
           is close, text them as well.
         </p>
-        <p class="mt-3">Putting it back means typing it in again.</p>
+        <p class="mt-3">There is no undo. Putting it back means typing it in again.</p>
       </AdminConfirm>
     ) : (
       <form method="post" action={action} class="mt-8 flex flex-col gap-6">

@@ -232,10 +232,11 @@ export async function saveEvent(
 /**
  * Take an event off the calendar.
  *
- * The one delete on the site, and it is here because an event is the one record
- * that can become *false* rather than merely old. A cancelled concert left on a
- * subscribed feed is a family driving to a school that is dark; an announcement
- * that has aged out is only history, which is why nothing deletes one.
+ * It was the first delete on the site, and it is here because an event can
+ * become *false* rather than merely old: a cancelled concert left on a
+ * subscribed feed is a family driving to a school that is dark. An announcement
+ * that has aged out is still only history — but one that has become false is
+ * deleted too now (#258), and by the same argument.
  */
 export async function deleteEvent(db: Db, slug: string): Promise<void> {
   await db.delete(calendarEvents).where(eq(calendarEvents.slug, slug));

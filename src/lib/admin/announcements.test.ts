@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { MAX_ATTACHMENT_BYTES, parseAnnouncement } from './announcements.js';
+import {
+  MAX_ATTACHMENT_BYTES,
+  parseAnnouncement,
+  parseAnnouncementRemoval,
+  whatDeletingTakes,
+} from './announcements.js';
 
 /**
  * The announcement form, read (#27).
@@ -150,5 +155,52 @@ describe('the attachment', () => {
       form({ removeAttachment: 'on', attachment: pdf('replacement.pdf') }),
     );
     expect(parsed.attachment?.filename).toBe('replacement.pdf');
+  });
+});
+
+/**
+ * Deleting one (#258).
+ *
+ * The branch that matters is the first press against the second: a post that
+ * says `delete` and nothing else is a *question*, and only the same post
+ * carrying `confirm` back may act. Read here rather than on the screen, so the
+ * screen cannot skip the question by spelling the test differently.
+ */
+describe('a post that mentions deleting', () => {
+  /** A delete form carries no fields of its own — the intent, and later the confirm. */
+  function deleteForm(overrides: Record<string, string> = {}): FormData {
+    const data = new FormData();
+    data.set('delete', '1');
+    for (const [name, value] of Object.entries(overrides)) data.set(name, value);
+    return data;
+  }
+
+  it('asks first', () => {
+    expect(parseAnnouncementRemoval(deleteForm())).toBe('confirm-delete');
+  });
+
+  it('acts only when the confirmation comes back with it', () => {
+    expect(parseAnnouncementRemoval(deleteForm({ confirm: 'yes' }))).toBe('delete');
+  });
+
+  it('is not read into an ordinary save, confirmed or not', () => {
+    expect(parseAnnouncementRemoval(form())).toBeNull();
+    expect(parseAnnouncementRemoval(form({ confirm: 'yes' }))).toBeNull();
+  });
+});
+
+describe('what the confirmation says goes', () => {
+  it('names the announcement and the news page', () => {
+    expect(whatDeletingTakes({ headline: 'Texas Roadhouse night', attachmentFilename: null })).toBe(
+      'Deleting it takes Texas Roadhouse night off the news page.',
+    );
+  });
+
+  it('names the attached PDF, because that goes too and cannot be typed back in', () => {
+    expect(
+      whatDeletingTakes({ headline: 'Board update', attachmentFilename: 'board-update.pdf' }),
+    ).toBe(
+      'Deleting it takes Board update off the news page, and the PDF attached to it — board-update.pdf — goes with it.',
+    );
   });
 });

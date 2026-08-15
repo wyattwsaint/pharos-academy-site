@@ -34,14 +34,14 @@ describe('what ?republished= means', () => {
 
 describe('what ?removed= means (#200)', () => {
   it('names the one-off and says the live calendar caught up', () => {
-    expect(removalOutcome('Fall open house', 'live')).toEqual({
+    expect(removalOutcome('Fall open house', 'live', 'calendar')).toEqual({
       ok: true,
       message: 'Fall open house is off the calendar. Republished — the live site is up to date.',
     });
   });
 
   it('does not claim the live site caught up when it did not', () => {
-    expect(removalOutcome('Fall open house', 'stale')).toEqual({
+    expect(removalOutcome('Fall open house', 'stale', 'calendar')).toEqual({
       ok: false,
       message:
         "Fall open house is off the calendar. Republishing didn't reach the live site — Retry.",
@@ -49,15 +49,38 @@ describe('what ?removed= means (#200)', () => {
   });
 
   it('still reports the removal when the URL says nothing about republishing', () => {
-    expect(removalOutcome('Fall open house', null)).toEqual({
+    expect(removalOutcome('Fall open house', null, 'calendar')).toEqual({
       ok: true,
       message: 'Fall open house is off the calendar.',
     });
   });
 
   it('says nothing at all when the list was merely opened', () => {
-    expect(removalOutcome(null, null)).toBeNull();
-    expect(removalOutcome(null, 'live')).toBeNull();
+    expect(removalOutcome(null, null, 'calendar')).toBeNull();
+    expect(removalOutcome(null, 'live', 'calendar')).toBeNull();
+  });
+
+  /**
+   * The announcements list reports its delete in the same words (#258).
+   *
+   * The place is the only thing that differs, and it comes from a closed list
+   * rather than from the URL — so the two screens cannot drift into describing
+   * one kind of event two ways.
+   */
+  it('says the same about a deleted announcement, and says where', () => {
+    expect(removalOutcome('Texas Roadhouse night', 'live', 'news')).toEqual({
+      ok: true,
+      message:
+        'Texas Roadhouse night is off the news page. Republished — the live site is up to date.',
+    });
+  });
+
+  it('does not claim the news page caught up when it did not', () => {
+    expect(removalOutcome('Texas Roadhouse night', 'stale', 'news')).toEqual({
+      ok: false,
+      message:
+        "Texas Roadhouse night is off the news page. Republishing didn't reach the live site — Retry.",
+    });
   });
 });
 

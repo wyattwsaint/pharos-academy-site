@@ -1,4 +1,5 @@
 import type { Attachment } from '../announcements/store.js';
+import { isConfirmed } from './confirmation.js';
 import { isPdf, MAX_UPLOAD_BYTES, megabytes, plainFilename } from './pdf-upload.js';
 
 /**
@@ -89,6 +90,45 @@ export async function parseAnnouncement(form: FormData): Promise<ParsedAnnouncem
   const parsed: ParsedAnnouncement = { values, errors };
   if ('attachment' in upload) parsed.attachment = upload.attachment;
   return parsed;
+}
+
+/** The field that says a post is about deleting the announcement, not saving it. */
+export const DELETE_FIELD = 'delete';
+
+/**
+ * What a post that carries `delete` is asking for (#258).
+ *
+ * The same two-step every destructive action in the admin takes, read the way
+ * `parseUserAction` reads it: an unconfirmed delete is a *question*, and it is a
+ * value of its own rather than a boolean beside the intent, so the screen cannot
+ * spell the branch differently from the module that decides it.
+ *
+ * `null` is an ordinary save, which is every post that never mentions deleting.
+ */
+export type AnnouncementRemoval = 'confirm-delete' | 'delete';
+
+export function parseAnnouncementRemoval(form: FormData): AnnouncementRemoval | null {
+  if (form.get(DELETE_FIELD) === null) return null;
+  return isConfirmed(form) ? 'delete' : 'confirm-delete';
+}
+
+/**
+ * What confirming takes away, in the school's words (#258).
+ *
+ * Here rather than in the markup because the PDF makes it conditional, and a
+ * sentence that is right in one branch and wrong in the other is the kind of
+ * copy that ships wrong. The attachment is named: "the PDF goes too" is a fact
+ * about this announcement that the school cannot see from the confirmation
+ * screen otherwise, and it is the half that cannot be typed back in.
+ */
+export function whatDeletingTakes(announcement: {
+  headline: string;
+  attachmentFilename: string | null;
+}): string {
+  const off = `Deleting it takes ${announcement.headline} off the news page`;
+  return announcement.attachmentFilename
+    ? `${off}, and the PDF attached to it — ${announcement.attachmentFilename} — goes with it.`
+    : `${off}.`;
 }
 
 /**

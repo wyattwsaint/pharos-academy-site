@@ -3,12 +3,16 @@ export const prerender = false;
 
 import AdminBanner from '../../../components/AdminBanner.astro';
 import AdminButton from '../../../components/AdminButton.astro';
+import AdminConfirm from '../../../components/AdminConfirm.astro';
 import AdminField from '../../../components/AdminField.astro';
 import AdminPublishing from '../../../components/AdminPublishing.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import {
+  DELETE_FIELD,
   LABELS,
   parseAnnouncement,
+  parseAnnouncementRemoval,
+  whatDeletingTakes,
   type AnnouncementErrors,
   type AnnouncementFields,
 } from '../../../lib/admin/announcements.js';
@@ -25,11 +29,12 @@ import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
 import { announcementSlug, type Announcement } from '../../../lib/announcements/announcement.js';
 import {
   createAnnouncement,
+  deleteAnnouncement,
   getAnnouncement,
   saveAnnouncement,
   type AnnouncementEdit,
 } from '../../../lib/announcements/store.js';
-import { attachmentPath } from '../../../lib/announcements/views.js';
+import { attachmentPath, postedOnLabel } from '../../../lib/announcements/views.js';
 import { getDb } from '../../../lib/db/client.js';
 
 /**
@@ -56,6 +61,13 @@ import { getDb } from '../../../lib/db/client.js';
  * minted once from the date it was first posted and then stays put, because it
  * is a URL somebody may already have followed — a link Jill sent in July does
  * not stop working because she corrected the date in August.
+ *
+ * **This screen deletes** (#258). An announcement that has become false — a
+ * fundraiser the school withdrew — is telling families about something that is
+ * not happening, and no staleness rule catches it, because the date here is the
+ * day it was posted rather than the day of the event. So it confirms on a screen
+ * naming the announcement and its PDF, and only the second post carries it out.
+ * Nothing is checked first: nothing in the schema points at an announcement.
  *
  * The field, button, banner and Publishing markup this screen used to spell out
  * for itself now comes from the shared components (#194). The PDF is the one
@@ -99,40 +111,74 @@ const EMPTY: AnnouncementFields = {
 let values: AnnouncementFields = announcement ? fieldsOf(announcement) : EMPTY;
 let errors: AnnouncementErrors = {};
 let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republished'));
+/** True only on the confirmation screen, which replaces the form. */
+let confirmingDeletion = false;
 
 if (Astro.request.method === 'POST') {
-  const parsed = await parseAnnouncement(await Astro.request.formData());
-  values = parsed.values;
-  errors = parsed.errors;
+  const form = await Astro.request.formData();
+  /*
+   * A delete form carries only its intent, so it is read before the fields are:
+   * parsing it as a save would refuse an announcement nobody asked to edit and
+   * answer a question about deleting with a complaint about a headline.
+   */
+  const removal = announcement ? parseAnnouncementRemoval(form) : null;
 
-  if (Object.keys(errors).length > 0) {
-    banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
-  } else {
+  if (removal === 'confirm-delete') {
+    confirmingDeletion = true;
+    // Repeated rather than implied by `removal`: `announcement` is reassigned by
+    // the save below, so its type does not narrow across the branch.
+  } else if (removal === 'delete' && announcement) {
+    const deleted = announcement.headline;
+    await deleteAnnouncement(db, announcement.slug);
+    const result = await revalidateAll({
+      origin: revalidationOrigin(Astro.url),
+      bypassToken: isrBypassToken(),
+    });
     /*
-     * `attachment` is copied across only when the form actually spoke about the
-     * file. Absent means "leave it alone", which is what a save that only fixed
-     * a headline means, and spreading a plain `undefined` in would clear the
-     * PDF on every such save.
+     * The answer travels in the query string, as the one-off's does (#200):
+     * this screen is the announcement's own and there is no announcement left
+     * for it to be, so the list is where the outcome is read. The headline goes
+     * with it because nothing can look it up again; the republish answer goes
+     * as a code, and the list picks every word of the banner from a closed list.
      */
-    const edit: AnnouncementEdit = { ...values };
-    if ('attachment' in parsed) edit.attachment = parsed.attachment;
+    const back = new URL('/admin/announcements', Astro.url.origin);
+    back.searchParams.set('removed', deleted);
+    back.searchParams.set('republished', result.ok ? 'live' : 'stale');
+    return Astro.redirect(`${back.pathname}${back.search}`, 303);
+  } else {
+    const parsed = await parseAnnouncement(form);
+    values = parsed.values;
+    errors = parsed.errors;
 
-    try {
-      announcement = announcement
-        ? await saveAnnouncement(db, announcement.slug, edit, actor.name)
-        : await createAnnouncement(
-            db,
-            { slug: announcementSlug(values.postedOn, values.headline), ...edit },
-            actor.name,
-          );
-      values = fieldsOf(announcement);
-      const result = await revalidateAll({
-        origin: revalidationOrigin(Astro.url),
-        bypassToken: isrBypassToken(),
-      });
-      banner = { ok: result.ok, message: describeRevalidation(result) };
-    } catch (error) {
-      banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
+    if (Object.keys(errors).length > 0) {
+      banner = { ok: false, message: 'Nothing was saved — the fields below need fixing first.' };
+    } else {
+      /*
+       * `attachment` is copied across only when the form actually spoke about
+       * the file. Absent means "leave it alone", which is what a save that only
+       * fixed a headline means, and spreading a plain `undefined` in would clear
+       * the PDF on every such save.
+       */
+      const edit: AnnouncementEdit = { ...values };
+      if ('attachment' in parsed) edit.attachment = parsed.attachment;
+
+      try {
+        announcement = announcement
+          ? await saveAnnouncement(db, announcement.slug, edit, actor.name)
+          : await createAnnouncement(
+              db,
+              { slug: announcementSlug(values.postedOn, values.headline), ...edit },
+              actor.name,
+            );
+        values = fieldsOf(announcement);
+        const result = await revalidateAll({
+          origin: revalidationOrigin(Astro.url),
+          bypassToken: isrBypassToken(),
+        });
+        banner = { ok: result.ok, message: describeRevalidation(result) };
+      } catch (error) {
+        banner = { ok: false, message: saveErrorMessage(error, SAVE_ERROR) };
+      }
     }
   }
 }
@@ -210,71 +256,93 @@ function fieldsOf(row: Announcement): AnnouncementFields {
 
   {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="save-banner" retry />}
 
-  <form method="post" action={action} enctype="multipart/form-data" class="mt-8 flex flex-col gap-6">
-    {
-      FIELDS.map((field) => (
-        <AdminField
-          name={field.name}
-          type={field.type}
-          label={LABELS[field.name]}
-          value={values[field.name] ?? ''}
-          hint={field.hint}
-          error={errors[field.name]}
-          optional={field.optional}
-          rows={field.rows}
-        />
-      ))
-    }
-
-    <div class="flex flex-col gap-2">
-      <AdminField
-        name="attachment"
-        type="file"
-        label={LABELS.attachment}
-        accept="application/pdf"
-        error={errors.attachment}
-        optional
+  {
+    confirmingDeletion && announcement ? (
+      <AdminConfirm
+        heading="Delete This Announcement?"
+        action={action}
+        confirmLabel="Yes, delete this announcement"
+        destructive
+        declineHref={action}
+        declineLabel="Go back without deleting"
       >
-        <Fragment slot="hint">
-          Optional, and a PDF — the board update, a flyer. Choosing one here replaces whatever is
-          attached now.
-          {
-            attached && (
-              <>
-                {' '}
-                Right now that is{' '}
-                <a
-                  href={attachmentPath(announcement!.slug)}
-                  class="underline underline-offset-4"
-                  data-testid="current-attachment"
-                >{attached}</a>.
-              </>
-            )
-          }
+        <Fragment slot="fields">
+          <input type="hidden" name={DELETE_FIELD} value="1" />
         </Fragment>
-      </AdminField>
 
-      {
-        /*
-          Only offered when there is something to remove, and kept in the
-          upload's own group so it reads as an option on the PDF rather than as
-          a field of its own. A checkbox that took down a file that was not
-          there would be a control with no effect, which is the kind of thing
-          somebody ticks to find out what it does.
-        */
-      }
-      {
-        attached && (
-          <AdminField name="removeAttachment" type="checkbox" label="Remove the attached PDF" />
-        )
-      }
-    </div>
+        <p class="mt-3">
+          <strong>{announcement.headline}</strong>, posted on{' '}
+          {postedOnLabel(announcement.postedOn)}.
+        </p>
+        <p class="mt-3">{whatDeletingTakes(announcement)}</p>
+        <p class="mt-3">
+          There is no undo. Nothing keeps a copy, and putting it back means typing it in again.
+          Delete it only if what it says has become untrue — an old announcement is a true thing
+          about the day it was posted, and the news page is where a family looks for it.
+        </p>
+      </AdminConfirm>
+    ) : (
+      <form method="post" action={action} enctype="multipart/form-data" class="mt-8 flex flex-col gap-6">
+        {FIELDS.map((field) => (
+          <AdminField
+            name={field.name}
+            type={field.type}
+            label={LABELS[field.name]}
+            value={values[field.name] ?? ''}
+            hint={field.hint}
+            error={errors[field.name]}
+            optional={field.optional}
+            rows={field.rows}
+          />
+        ))}
 
-    <AdminButton class="self-start">Save</AdminButton>
-  </form>
+        <div class="flex flex-col gap-2">
+          <AdminField
+            name="attachment"
+            type="file"
+            label={LABELS.attachment}
+            accept="application/pdf"
+            error={errors.attachment}
+            optional
+          >
+            <Fragment slot="hint">
+              Optional, and a PDF — the board update, a flyer. Choosing one here replaces whatever
+              is attached now.
+              {attached && (
+                <>
+                  {' '}
+                  Right now that is{' '}
+                  <a
+                    href={attachmentPath(announcement!.slug)}
+                    class="underline underline-offset-4"
+                    data-testid="current-attachment"
+                  >{attached}</a>.
+                </>
+              )}
+            </Fragment>
+          </AdminField>
+
+          {
+            /*
+              Only offered when there is something to remove, and kept in the
+              upload's own group so it reads as an option on the PDF rather than
+              as a field of its own. A checkbox that took down a file that was
+              not there would be a control with no effect, which is the kind of
+              thing somebody ticks to find out what it does.
+            */
+          }
+          {attached && (
+            <AdminField name="removeAttachment" type="checkbox" label="Remove the attached PDF" />
+          )}
+        </div>
+
+        <AdminButton class="self-start">Save</AdminButton>
+      </form>
+    )
+  }
 
   {
-    stamp && (
+    stamp && !confirmingDeletion && (
       <AdminPublishing stamp={stamp}>
         <p class="mt-2" data-testid="homepage-state">
           On the news page, for good — nothing here ages off a page.
@@ -283,6 +351,24 @@ function fieldsOf(row: Announcement): AnnouncementFields {
           Saving republishes the whole site, because the news page is not the only page that prints
           what the school has said.
         </p>
+
+        {/*
+          The delete, in the section that already explains what this screen does
+          to the live site — because that is what deleting does too, only more
+          so. It is the school's own content and nothing points at it, so
+          nothing here checks anything before asking (#258).
+        */}
+        <form method="post" action={action} class="mt-6">
+          <p class="text-sm">
+            Has it become untrue? An announcement for an event the school withdrew is telling
+            families about something that is not happening, and deleting it is how that stops. One
+            that has merely aged out is history — leave it where it is. You will be asked to
+            confirm first.
+          </p>
+          <AdminButton variant="destructive" name={DELETE_FIELD} value="1" class="mt-3">
+            Delete this announcement
+          </AdminButton>
+        </form>
       </AdminPublishing>
     )
   }

@@ -159,6 +159,28 @@ export async function createAnnouncement(
 }
 
 /**
+ * Take an announcement off the site (#258).
+ *
+ * Unconditional, and deliberately so: nothing in the schema points at an
+ * announcement, so there is no reference to check and nothing to refuse. The
+ * safety net is the confirmation screen, not a rule here.
+ *
+ * The PDF goes with it without a second statement, because the file is columns
+ * on this row rather than something the row points at — which is the whole of
+ * why announcements are the delete that could be built first.
+ *
+ * No floor. The last announcement may go, and the list says what an empty one
+ * means; a school between terms with nothing to announce is an ordinary state.
+ *
+ * A slug with nothing behind it is not an error, like `deleteEvent`: the second
+ * press of a back button is asking for a state the site is already in, and the
+ * list it lands on reports that state truthfully either way.
+ */
+export async function deleteAnnouncement(db: Db, slug: string): Promise<void> {
+  await db.delete(announcementsTable).where(eq(announcementsTable.slug, slug));
+}
+
+/**
  * The edit as columns — with the file included only when the caller mentioned
  * it, so an untouched attachment is untouched.
  */

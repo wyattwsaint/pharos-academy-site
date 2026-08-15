@@ -1034,6 +1034,13 @@ in a URL is a message anybody can rewrite, so the code names a fact the store
 already wrote and the screen decides the wording from it, refusing any part that
 is not in the closed lists (#201).
 
+**A deleted row is the one thing the code cannot name.** Removing a
+[one-off](#one-off) and deleting a [policy](#policy) or an
+[announcement](#announcement) each redirect to a list that can no longer look the
+row up, so its name travels beside the code as text. That is data and not a message: the list still chooses every word around
+it from its own closed lists, so a rewritten URL can put a wrong noun in the
+banner but never a claim the site did not make.
+
 Where a **return path** names a screen, an outcome code names what happened, and
 on Applications the two halves travel together: the code says what moved, the
 `at` parameter and the fragment say which row it moved on, and the banner renders

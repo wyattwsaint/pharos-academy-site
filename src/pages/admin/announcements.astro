@@ -1,11 +1,13 @@
 ---
 export const prerender = false;
 
+import AdminBanner from '../../components/AdminBanner.astro';
 import AdminButton from '../../components/AdminButton.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { listAnnouncements } from '../../lib/announcements/store.js';
 import { postedOnLabel } from '../../lib/announcements/views.js';
 import { formatStamp } from '../../lib/admin/formatting.js';
+import { removalOutcome } from '../../lib/admin/republish-outcome.js';
 import { getDb } from '../../lib/db/client.js';
 import { NEWS_PATH } from '../../lib/announcements/views.js';
 
@@ -20,14 +22,24 @@ import { NEWS_PATH } from '../../lib/announcements/views.js';
  * screen to report, and a six-week note here would describe a rule with no
  * visible effect.
  *
- * There is no delete. An announcement is a record of what the school said, and
- * an old one sitting further down the news page is what a delete button would
- * actually be for.
+ * The delete is on the announcement's own screen, and this is where it lands
+ * (#258): the row is gone by the time anybody reads this, so what went is named
+ * from the query string rather than looked up, and whether the live site agrees
+ * is said in the same words every other screen says it in.
  */
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
 const announcements = await listAnnouncements(db);
+/**
+ * What a delete that redirected here has to say for itself. Nothing on this
+ * screen acts, so this is the only banner it can carry.
+ */
+const banner = removalOutcome(
+  Astro.url.searchParams.get('removed'),
+  Astro.url.searchParams.get('republished'),
+  'news',
+);
 ---
 
 <AdminLayout title="Announcements" actor={actor}>
@@ -39,6 +51,12 @@ const announcements = await listAnnouncements(db);
     >, newest first, and stays there.
   </p>
 
+  {
+    banner && (
+      <AdminBanner ok={banner.ok} message={banner.message} testId="announcements-banner" retry />
+    )
+  }
+
   <p class="mt-8">
     <AdminButton href="/admin/announcements/new">Post an announcement</AdminButton>
   </p>
@@ -46,10 +64,9 @@ const announcements = await listAnnouncements(db);
   {
     announcements.length === 0 ? (
       <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-announcements">
-        Nothing has been announced yet. The first announcement posted here goes to the top of the
-        news page the moment it is saved, and stays there. Nothing has been taken down — an
-        announcement is never deleted — so an empty list is a school that has not said anything
-        here yet.
+        Nothing to show. The first announcement posted here goes to the top of the news page the
+        moment it is saved, and stays there — nothing ages off. An empty list is either a school
+        that has not said anything here yet, or one that has taken down the little it had.
       </p>
     ) : (
       <ul class="mt-8 flex flex-col gap-6">
@@ -78,7 +95,8 @@ const announcements = await listAnnouncements(db);
   }
 
   <p class="mt-10 border-t border-navy/15 pt-6">
-    Nothing is ever deleted here. An old announcement stays on the news page, which is where a
-    family looks for what was said last term.
+    An old announcement is not deleted. It stays on the news page, which is where a family looks
+    for what was said last term. Delete is for the one that has become <em>untrue</em> — a
+    fundraiser the school withdrew — and it is on the announcement’s own screen.
   </p>
 </AdminLayout>
