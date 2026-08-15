@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { APPLICATION_PATH, FAITH_QUESTIONS, faithKey } from '../src/lib/application/application.js';
 import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
@@ -289,6 +289,41 @@ test.describe('the application page', () => {
     await expect(page.locator('#apply-email-error')).toBeVisible();
     await expect(page.locator('#apply-email')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#apply-email')).toBeFocused();
+  });
+
+  test('says what is still needed in the colour it says everything else in', async ({ page }) => {
+    // #254. The list is the page telling a family something is outstanding, and
+    // every other outstanding thing on the page is red — so the intro, the
+    // items and the rule down their left are read off the field error sentence
+    // rather than off a colour written down here, which would pass while the
+    // two drifted apart.
+    await open(page);
+
+    await fillSendable(page, 'email');
+    await clickSend(page);
+
+    const red = await page
+      .locator('#apply-email-error')
+      .evaluate((element) => getComputedStyle(element).color);
+
+    const paint = (locator: Locator) =>
+      locator.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { color: style.color, border: style.borderLeftColor };
+      });
+
+    expect(await paint(page.locator('[data-missing-intro]'))).toMatchObject({ color: red });
+
+    const item = stillNeeded(page, 'email');
+    await expect(item).toBeVisible();
+    expect(await paint(item)).toEqual({ color: red, border: red });
+    expect(await paint(item.locator('a'))).toMatchObject({ color: red });
+
+    // The quiet sentence that replaces the list is not an error, and does not
+    // borrow the colour of one.
+    await fillSendable(page);
+    await expect(page.locator('[data-missing-intro]')).toBeHidden();
+    expect(await paint(page.locator('[data-missing-done]'))).not.toMatchObject({ color: red });
   });
 
   test('checks a field when the family leaves it, and clears it as they fix it', async ({

@@ -66,6 +66,33 @@ describe('a cream label on a navy ground', () => {
   });
 });
 
+/**
+ * The red that says something is outstanding.
+ *
+ * #254 gave the apply page's still-needed list the same red as the field
+ * errors beside it, which is only honest if the red is readable — and the list
+ * sits on cream while the error sentences also appear on the parchment bands,
+ * so both grounds have to hold it.
+ *
+ * A token rather than the hex literal it used to be. Two rules a page apart
+ * were the same colour by coincidence, and a ratio asserted against a literal
+ * measures the copy nobody edited.
+ */
+describe('the outstanding red', () => {
+  it('is readable on both light grounds it is painted on', () => {
+    const error = token('color-error');
+    expect(error).toBe('#8C2B19');
+    expect(contrast(error, token('color-cream'))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(error, token('color-parchment'))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('is named once by the page that paints it, as the token', () => {
+    const apply = readFileSync('src/pages/admissions/apply.astro', 'utf8');
+    expect(apply).toContain('var(--color-error)');
+    expect(apply).not.toContain('#8c2b19');
+  });
+});
+
 /** Every admin screen and every shared admin component. */
 function adminSources(): string[] {
   const roots = ['src/pages/admin', 'src/components'];

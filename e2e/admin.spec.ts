@@ -231,12 +231,10 @@ test.describe('saving school details', () => {
     await page.goto('/admissions/apply');
     const payment = page.locator('[data-section="apply-payment"]');
     await expect(payment.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
-    // One payment for everything (#219). The sentence is asserted whole rather
-    // than in pieces that read the same in both states, because its middle is
-    // the half that moves with the link.
-    await expect(payment).toContainText(
-      'All of it is paid to Pharos Academy in one payment, online, through the church’s giving page — the registration, the deposits and the tuition together.',
-    );
+    // One payment for everything (#219), said once (#254). The paragraph that
+    // used to restate the totals list is gone; the button and the figure beside
+    // it are what the online state says now, and the state is read off those.
+    await expect(payment).not.toContainText('All of it is paid to Pharos Academy');
 
     // The giving page carries no amount, so the figure beside the button and
     // the "enter it yourself" line both have to agree with the totals list.

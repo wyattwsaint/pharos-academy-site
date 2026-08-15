@@ -62,6 +62,15 @@
   --color-ink-2: #5c6b76;
 
   /*
+   * Outstanding. The one red on the site, and it says a single thing: this is
+   * not done yet. A field's error sentence and the list of what is still
+   * needed before an application can be sent are the same message at two
+   * sizes, so they are the same colour — and the colour is a token because a
+   * page that copied the hex out would drift the moment either was retouched.
+   */
+  --color-error: #8c2b19;
+
+  /*
    * The ceremonial parts are serif and the working parts are sans: headings,
    * eyebrows, the verse and the footer take Instrument Serif; body paragraphs,
    * the timetable, prices, the nav and the form stay Public Sans. Fraunces is

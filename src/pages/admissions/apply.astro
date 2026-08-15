@@ -1014,11 +1014,14 @@ const description =
         <section class="band band-quiet" id="payment" data-section="apply-payment">
           <div class="wide">
             <h2>{stage('payment')}</h2>
-            <p class="sub mt-4">
-              Every figure here comes from the school's current fee settings, and it changes when
-              they do.
-            </p>
 
+            {/*
+              No sub-heading (#254). The figures are read off the school's fee
+              settings and change when those do, which is true of every number
+              on the site and is the plumbing rather than the answer — a family
+              came here to find out what they owe, and the list below says so
+              without being introduced.
+            */}
             <ul class="totals mt-7">
               <li>
                 <span class="amount">{formatMoney(cost.total.registration)}</span>
@@ -1063,11 +1066,13 @@ const description =
             */}
             {payOnline ? (
               <Fragment>
-                <p class="mt-7">
-                  All of it is paid to Pharos Academy in one payment, online, through the church’s
-                  giving page — the registration, the deposits and the tuition together.
-                </p>
-                <p class="pay mt-6">
+                {/*
+                  The button says it (#254). "All of it, in one payment, online"
+                  is the last line of the totals list and then the label on the
+                  button with the total beside it; a paragraph between the two
+                  saying it a third time is the page distrusting its own layout.
+                */}
+                <p class="pay mt-7">
                   <a class="btn solid" href={details.payOnlineUrl} rel="external" data-pay-online>
                     Pay online
                   </a>
@@ -1903,7 +1908,7 @@ const description =
 
   .error {
     margin-top: 0.35rem;
-    color: #8c2b19;
+    color: var(--color-error);
     font-weight: 500;
   }
 
@@ -1923,9 +1928,25 @@ const description =
     cursor: not-allowed;
   }
 
+  /*
+   * Outstanding, and dressed as it (#254).
+   *
+   * The list is the page telling a family something is not done, which is what
+   * every field error on this page says in the same breath — so it says it in
+   * the same red rather than in quiet prose that reads as a note. Only the
+   * intro and the items: the sentence that replaces them once nothing is
+   * outstanding is not an error and stays the quiet colour, and an item that
+   * is answered stops being red by ceasing to be shown.
+   */
   .missing {
     max-width: 46rem;
     color: var(--color-ink-2);
+  }
+
+  .missing [data-missing-intro],
+  .missing li,
+  .missing li a {
+    color: var(--color-error);
   }
 
   .missing ul {
@@ -1938,7 +1959,7 @@ const description =
   }
 
   .missing li {
-    border-left: 3px solid var(--color-gold-orn);
+    border-left: 3px solid var(--color-error);
     padding-left: 1rem;
   }
 </style>
