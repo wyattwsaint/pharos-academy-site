@@ -644,6 +644,12 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     is what the title is qualified by, and a cell of two equal lines reads as two
     one-offs. A one-off with no start time has no line here at all — an absent
     time is a real state, and a dash standing in for it would invent a gap.
+
+    **Quieter by size and small caps, and not by colour.** The muted ink measures
+    3.9:1 on the trigger's gold and axe fails it, which is the same trap the date
+    number two rules up already names: grey on grey on gold is where the contrast
+    goes. Inheriting the trigger's navy is 8.7:1 and the hierarchy is unchanged,
+    because it was never the colour doing the work.
   */
   .one-off-time {
     display: block;
@@ -651,18 +657,12 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     line-height: 1.2;
     font-variant-caps: all-small-caps;
     letter-spacing: 0.04em;
-    color: var(--color-ink-2);
   }
 
   .one-off-trigger:hover,
   .one-off[data-open] .one-off-trigger {
     background: color-mix(in srgb, var(--color-gold-orn) 32%, transparent);
     color: var(--color-gold-ink);
-  }
-
-  .one-off-trigger:hover .one-off-time,
-  .one-off[data-open] .one-off-time {
-    color: inherit;
   }
 
   .one-off-panel {
