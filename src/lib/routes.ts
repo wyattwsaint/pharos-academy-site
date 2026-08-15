@@ -68,7 +68,7 @@ function publicRoutes(classSlugs: readonly string[]): PublicRoute[] {
      *
      * These are the addresses Jill sends when she means one class, so they have
      * to be in the sitemap and in whole-site republishing both. Generated,
-     * because a hand-kept second list of nineteen slugs would be a sitemap
+     * because a hand-kept second list of class slugs would be a sitemap
      * advertising a 404 within a term.
      *
      * Which slugs is the whole question. `PUBLIC_ROUTES` uses the seed, because
@@ -238,7 +238,7 @@ function publicRoutes(classSlugs: readonly string[]): PublicRoute[] {
 
 /**
  * The enumerated public routes as the **build** knows them — the seeded
- * catalogue's nineteen classes.
+ * catalogue's classes.
  *
  * This is the right list for anything that runs without a database: the ISR
  * exclusions in `astro.config.mjs`, the build-output assertion, the redirect

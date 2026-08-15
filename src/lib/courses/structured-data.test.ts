@@ -199,7 +199,7 @@ describe('a list view’s structured data', () => {
 
   it('is a list of the classes’ own pages, in the page’s order', () => {
     expect(list['@type']).toBe('ItemList');
-    expect(list.numberOfItems).toBe(CATALOGUE.length);
+    expect(list.itemListElement).toHaveLength(CATALOGUE.length);
     expect(list.itemListElement[0]).toEqual({
       '@type': 'ListItem',
       position: 1,
@@ -211,7 +211,7 @@ describe('a list view’s structured data', () => {
   /*
    * By Age shows a class under every band its range touches, so the same course
    * arrives more than once. A list that repeated it would claim two classes where
-   * the school has one — and the count in the page's own heading would disagree.
+   * the school has one, and a crawler counting the list would read that claim.
    */
   it('lists a class once even when the page shows it in three places', () => {
     const repeated = courseListJsonLd(
@@ -219,7 +219,7 @@ describe('a list view’s structured data', () => {
       '/classes',
       SITE,
     ) as Record<string, any>;
-    expect(repeated.numberOfItems).toBe(2);
+    expect(repeated.itemListElement).toHaveLength(2);
     expect(repeated.itemListElement.map((item: { position: number }) => item.position)).toEqual([
       1, 2,
     ]);

@@ -6,8 +6,8 @@
  * photograph. Pastor George Jensen is the reason. He is the school's chaplain
  * *and* teaches Algebra 1, so a separate `instructors` table would hold a
  * second copy of him that drifts the first time his name is corrected in one
- * place and not the other. Eight instructors teach the nineteen courses and one
- * of them teaches eight; a second list would drift immediately.
+ * place and not the other. Eight instructors teach the catalogue between them
+ * and one of them teaches eight courses; a second list would drift immediately.
  *
  * Being an instructor is therefore **not a column**. It is a fact about the
  * catalogue: a person is an instructor exactly when some course names them

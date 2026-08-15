@@ -5,8 +5,8 @@ import { publicRoutesFor, type PublicRoute } from './routes.js';
 /**
  * The public route list as it stands **now**, class routes included (#24).
  *
- * `PUBLIC_ROUTES` is a build-time constant, so its class routes are the
- * nineteen the migration seeds. The course editor writes rows, not seed
+ * `PUBLIC_ROUTES` is a build-time constant, so its class routes are the ones
+ * the migration seeds. The course editor writes rows, not seed
  * entries, so the two lists part company the first time Jill adds a class —
  * and the surfaces that part company with her are exactly the ones that must
  * not: the sitemap advertises a catalogue missing her new class, `llms.txt`

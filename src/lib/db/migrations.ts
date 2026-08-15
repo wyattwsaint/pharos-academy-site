@@ -1077,11 +1077,11 @@ function nameToSlugPairs(people: readonly SeedPerson[]): string {
  *
  * Generated from `CATALOGUE` rather than written out as SQL: the seed is
  * authored TypeScript that the tests check against the capture of the live
- * site, and a hand-written copy of it in this file would be a nineteen-course
+ * site, and a hand-written copy of it in this file would be a whole-catalogue
  * transcription nobody would ever diff again.
  *
- * One statement rather than nineteen because this runs against a fresh
- * in-process PGlite for **every** integration test — nineteen round trips per
+ * One statement rather than one per course because this runs against a fresh
+ * in-process PGlite for **every** integration test — a round trip per course per
  * test is a slow suite bought for nothing.
  *
  * `on conflict do nothing`, like every other statement here, so re-running the

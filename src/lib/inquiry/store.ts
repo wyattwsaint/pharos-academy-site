@@ -74,8 +74,8 @@ export async function recordInquiryDelivery(
  *
  * Newest first because this list is read to answer today's families, not to
  * study last term's — the opposite of the announcements list, which is a
- * chronology. There is no paging and no search: nineteen classes' worth of
- * school produces a list Jill can read.
+ * chronology. There is no paging and no search: a school this size produces a
+ * list Jill can read.
  */
 export async function listInquiries(db: Db): Promise<InquiryRow[]> {
   return db.select().from(inquiries).orderBy(desc(inquiries.receivedAt));

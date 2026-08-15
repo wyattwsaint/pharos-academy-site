@@ -6,8 +6,8 @@ import { absoluteUrl } from './routes.js';
  *
  * The site's nav is four items wide and two levels deep, and the second level is
  * where nearly everything lives: the Statement of Faith is under About, the
- * calendar and the policies are under Current Families, nineteen classes are
- * under Classes. A crawler that cannot see that shows all of them as siblings of
+ * calendar and the policies are under Current Families, every class is under
+ * Classes. A crawler that cannot see that shows all of them as siblings of
  * the homepage, which is how a search result for the handbook arrives with no
  * indication that it belongs to the school's Current Families section at all.
  *

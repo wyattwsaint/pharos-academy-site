@@ -1,10 +1,10 @@
 /**
  * What a class costs, computed — never a stored, typed number (#22).
  *
- * The school charges by the hour at two rates, and every one of the nineteen
- * published costs on the live site is already exactly contact hours × rate.
+ * The school charges by the hour at two rates, and every published cost on the
+ * live site is already exactly contact hours × rate.
  * That consistency is what makes computing the figure safe rather than clever:
- * `pricing.test.ts` recomputes all nineteen and compares them against the
+ * `pricing.test.ts` recomputes every one and compares them against the
  * figures in `docs/mirror/data/courses.json`, so the day a price stops agreeing
  * with the formula is the day the suite says so.
  *

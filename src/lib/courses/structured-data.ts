@@ -20,8 +20,8 @@ import { classPath } from './views.js';
  *
  * **Not one value here is typed.** Every field is the same call the visible page
  * makes — `ageLine`, `durationLabel`, `coursePrice`, `contactHours` — for the
- * reason the school node reads the details row: nineteen classes with a
- * hand-written copy of their own price in the markup is exactly the drift that
+ * reason the school node reads the details row: a catalogue of classes each
+ * with a hand-written copy of its own price in the markup is the drift that
  * left the live site's nine artefacts disagreeing about ages, days and texts.
  * The markup and the page cannot say different things because there is one
  * source for both, and `structured-data.test.ts` recomputes it.
@@ -46,11 +46,10 @@ export type CourseJsonLdInput = {
 /**
  * The classes a list view shows, as a list of the pages that describe them.
  *
- * The three list views publish the same nineteen classes three ways, and none of
- * them is where a class is *described* — that is its own page, and repeating a
- * full `Course` node nineteen times on three surfaces would be four copies of
- * every class in the markup, which is the duplication this whole area exists to
- * end. What a list page can say truthfully is: here are the classes, in this
+ * The three list views publish the same catalogue three ways, and none of them
+ * is where a class is *described* — that is its own page, and repeating a full
+ * `Course` node once per class on three surfaces would be four copies of every
+ * class in the markup, which is the duplication this whole area exists to end. What a list page can say truthfully is: here are the classes, in this
  * order, each at its own address.
  *
  * Deduplicated by slug, because By Age genuinely shows a class more than once —
@@ -75,8 +74,13 @@ export function courseListJsonLd(
   return {
     '@type': 'ItemList',
     '@id': `${absoluteUrl(site, listPath)}#classes`,
-    // The count the page's own heading states, from the same list (#138).
-    numberOfItems: items.length,
+    /*
+     * No `numberOfItems` (#247). It is schema.org's own property and it was
+     * honestly derived, but it is still the site stating how many classes the
+     * school runs, which is the one thing the pages above it stopped doing.
+     * Nothing is lost by dropping it: `itemListElement` carries every class, so
+     * a crawler that wants the count has the list to count.
+     */
     itemListElement: items,
   };
 }

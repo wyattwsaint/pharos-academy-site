@@ -62,7 +62,9 @@ const VOCABULARY: Record<string, readonly string[]> = {
   AdministrativeArea: ['name'],
   WebPage: ['url'],
   BreadcrumbList: ['itemListElement'],
-  ItemList: ['name', 'numberOfItems', 'itemListElement'],
+  // No `numberOfItems`: the site states no class count (#247), and an allowlist
+  // that still permitted it would let one back in without a word being said.
+  ItemList: ['name', 'itemListElement'],
   // `item` names a thing; `url` points at the page for it. A breadcrumb uses the
   // first, a list of classes the second.
   ListItem: ['position', 'name', 'item', 'url'],
