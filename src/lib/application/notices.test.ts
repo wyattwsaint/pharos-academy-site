@@ -163,6 +163,35 @@ describe('the school’s copy', () => {
     expect(mail.text).not.toContain('Legal guardian');
   });
 
+  it('reads each agreement as a sentence, never as a bare Yes or No (#255)', () => {
+    const mail = applicationNotification(
+      submission({
+        values: fields({
+          agreements: {
+            'code-of-conduct': { answer: 'yes', version: 2 },
+            handbook: { answer: 'no', version: 5 },
+          },
+        }),
+      }),
+      { to: 'jill@example.com', from: 'site@example.com', payOnlineAt: '' },
+    );
+
+    expect(mail.text).toContain('Code of Conduct: Family agrees (version 2)');
+    expect(mail.text).toContain('Handbook: Family does not agree (version 5)');
+  });
+
+  it('says nothing about the agreements when the school published neither', () => {
+    const mail = applicationNotification(submission(), {
+      to: 'jill@example.com',
+      from: 'site@example.com',
+      payOnlineAt: '',
+    });
+
+    // An unasked question printed as "not answered" reads as a family who
+    // skipped something.
+    expect(mail.text).not.toContain('THE TWO AGREEMENTS');
+  });
+
   it('raises the conversation flag where it will be read (AC 5)', () => {
     const flagged = submission({
       values: fields({ objections: 'Article 9, on baptism.' }),

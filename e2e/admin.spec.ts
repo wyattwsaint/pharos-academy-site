@@ -289,8 +289,8 @@ test.describe('saving school details', () => {
       await page.fill('#apply-child-0-name', 'Method Child');
       await page.fill('#apply-child-0-age', '13');
       await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
-      await page.check('[data-agreement="handbook"] input[value="neither"]');
-      await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
+      await page.check('[data-agreement="handbook"] input[value="yes"]');
+      await page.check('[data-agreement="code-of-conduct"] input[value="yes"]');
 
       // The method is the one thing still missing, and either answer opens
       // the gate — choosing check delays nothing (AC 5).
@@ -1196,8 +1196,8 @@ test.describe('applications', () => {
       offering: string;
       objection?: string;
       /** The two agreements (#71), when the test is about them. */
-      handbook?: 'student' | 'parent' | 'neither';
-      codeOfConduct?: 'student' | 'parent' | 'neither';
+      handbook?: 'yes' | 'no';
+      codeOfConduct?: 'yes' | 'no';
       /** The stated payment method (#219); a check when the test does not care. */
       paying?: 'online' | 'check';
     },
@@ -1213,18 +1213,17 @@ test.describe('applications', () => {
     /*
      * What #85 added to a sendable application: one respondent's whole column of
      * the Statement of Faith grid, and an answer to each published document.
-     * "Neither agrees" is the default here because the gate is about having
-     * answered — a test that had to agree to send would be testing the wrong
-     * thing.
+     * **Yes** is the default here only because a "no" raises the conversation
+     * flag (ADR-0020) and most of these tests are not about the flag. The gate
+     * is about having answered, and `application.spec.ts` holds that a "no"
+     * sends.
      */
     for (const question of FAITH_QUESTIONS) {
       await page.check(`input[name="${faithKey('Father', question.id)}"][value="yes"]`);
     }
+    await page.check(`[data-agreement="handbook"] input[value="${family.handbook ?? 'yes'}"]`);
     await page.check(
-      `[data-agreement="handbook"] input[value="${family.handbook ?? 'neither'}"]`,
-    );
-    await page.check(
-      `[data-agreement="code-of-conduct"] input[value="${family.codeOfConduct ?? 'neither'}"]`,
+      `[data-agreement="code-of-conduct"] input[value="${family.codeOfConduct ?? 'yes'}"]`,
     );
 
     // Which way the money is coming (#219). Conditional because whether the
@@ -1441,25 +1440,23 @@ test.describe('applications', () => {
     await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
   });
 
-  test('reads both agreements by hand, each in the family’s own words (#71 AC 6)', async ({
-    page,
-  }) => {
+  test('reads both agreements by hand, each as a sentence (#71 AC 6, #255)', async ({ page }) => {
     const family = 'Suite Agreements';
     await apply(page, {
       name: family,
       email: 'suite-agreements@example.com',
       child: 'Agreeing Child',
       offering: 'algebra-1:year',
-      handbook: 'neither',
-      codeOfConduct: 'student',
+      handbook: 'no',
+      codeOfConduct: 'yes',
     });
 
     await signIn(page, '/admin/applications');
     const agreements = rowFor(page, family).getByTestId('application-agreements');
 
     /*
-     * Each answer in the family's own words, against the version they were
-     * shown, and the two read independently of one another.
+     * Each answer as a sentence that says which way it points (#255), against
+     * the version they were shown, and the two read independently.
      *
      * #85 closed the case this test used to cover — an application arriving with
      * a published document left blank — because a question the family was asked
@@ -1469,16 +1466,18 @@ test.describe('applications', () => {
      * public form, so asserting it here would be asserting a state the form
      * cannot reach.
      */
-    await expect(agreements.locator('[data-agreement="handbook"]')).toContainText('Neither agrees');
+    await expect(agreements.locator('[data-agreement="handbook"]')).toContainText(
+      'Family does not agree',
+    );
     await expect(agreements.locator('[data-agreement="handbook"]')).toContainText('version');
     await expect(agreements.locator('[data-agreement="code-of-conduct"]')).toContainText(
-      'Student agrees',
+      'Family agrees',
     );
     await expect(agreements.locator('[data-agreement="code-of-conduct"]')).toContainText('version');
 
-    // "Neither agrees" is not a conversation flag, and never was on the live
-    // form either — the application goes through like any other.
-    await expect(rowFor(page, family).getByTestId('application-flag')).toHaveCount(0);
+    // A "no" routes the application to a conversation (ADR-0020) — and routing
+    // is not refusing: it is submitted, like any other.
+    await expect(rowFor(page, family).getByTestId('application-flag')).toHaveCount(1);
     await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
   });
 

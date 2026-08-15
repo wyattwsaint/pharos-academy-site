@@ -108,6 +108,9 @@ accident.
 - The flag keeps meaning what it meant. `isFlagged` is untouched: it still flags on any "No"
   and on any objection, and still does not consult the agreements. The gate did not fill that
   queue with routine cases.
+  **Superseded by [ADR-0020](0020-yes-or-no-replaces-who-agrees.md):** `isFlagged` now reads the
+  agreements, and a **No** to a document flags. The gate above is untouched by that — flagging
+  is not refusing, and a **No** still sends.
 - A policy the school has not published produces no question and therefore no requirement. The
   gate always matches the form the family was shown.
 

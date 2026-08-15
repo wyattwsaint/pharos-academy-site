@@ -141,8 +141,8 @@ async function answerFaith(page: Page, answer: 'yes' | 'no' = 'yes') {
   }
 }
 
-/** Answer both published agreements. Any answer will do — that is the point. */
-async function answerAgreements(page: Page, answer = 'neither') {
+/** Answer both published agreements. Either answer will do — that is the point. */
+async function answerAgreements(page: Page, answer = 'yes') {
   for (const slug of ['code-of-conduct', 'handbook']) {
     await page.check(`[data-agreement="${slug}"] input[value="${answer}"]`);
   }
@@ -196,27 +196,30 @@ test.describe('the application page', () => {
     }
   });
 
-  test('asks who agrees to the Code of Conduct and the Handbook, and blocks nothing', async ({
-    page,
-  }) => {
-    // #71 AC 1, 2 and 4, as a family meets them: three answers in the school's
-    // own words, a link to the *fixed* address of each document, and a form
-    // that stays sendable whatever is picked.
+  test('asks one Yes-or-No question per document, and blocks nothing', async ({ page }) => {
+    // #71 AC 1, 2 and 4 as #255 asks them: one question per document, two
+    // answers and no third, a link to the *fixed* address of each, and a form
+    // that stays sendable whichever is picked.
     await open(page);
 
     for (const slug of ['code-of-conduct', 'handbook']) {
       const question = page.locator(`[data-agreement="${slug}"]`);
       await expect(question).toHaveCount(1);
       await expect(question.locator(`a[href="/policies/${slug}.pdf"]`)).toBeVisible();
+      await expect(question).toContainText('Does your family agree to the Pharos Academy');
 
-      for (const label of ['Student agrees', 'Parent agrees', 'Neither agrees', 'Not answered']) {
-        await expect(question.getByRole('radio', { name: label })).toBeVisible();
+      await expect(question.getByRole('radio')).toHaveCount(2);
+      for (const label of ['Yes', 'No']) {
+        await expect(question.getByRole('radio', { name: label, exact: true })).toBeVisible();
       }
+      // The third radio ADR-0020 removed: an untouched question is already
+      // unanswered, and nothing offers a family a way to un-answer one.
+      await expect(question.getByRole('radio', { name: 'Not answered' })).toHaveCount(0);
     }
 
-    // "Neither agrees" answers the question, and answering is all #85 asks:
-    // the requirement leaves the still-needed list rather than becoming one.
-    await answerAgreements(page);
+    // "No" answers the question, and answering is all #85 asks: the requirement
+    // leaves the still-needed list rather than becoming one.
+    await answerAgreements(page, 'no');
     await expect(stillNeeded(page, 'agreements')).toBeHidden();
   });
 
@@ -517,7 +520,7 @@ test.describe('the application page', () => {
     await open(page);
 
     await fillSendable(page, 'agreements');
-    await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
+    await page.check('[data-agreement="code-of-conduct"] input[value="yes"]');
 
     await clickSend(page);
 
@@ -760,6 +763,23 @@ test.describe('the application page', () => {
     // The claim, not the word: "email" may legitimately appear on this page.
     expect(await confirmation.innerText()).not.toMatch(/(on its way to|we have emailed|sent you)/i);
   });
+
+  test('sends an application that answers No to both documents (#255)', async ({ page }) => {
+    test.skip(!MAY_SUBMIT, 'a real send writes an application row');
+    await open(page);
+
+    await fillSendable(page);
+    await answerAgreements(page, 'no');
+
+    // A "no" routes to a conversation, and routing is not delaying: the send is
+    // open before the click and the row exists after it (ADR-0009).
+    expect(await greyed(page)).toBe(false);
+    await clickSend(page);
+
+    const outcome = page.locator('[data-outcome="received"]');
+    await expect(outcome).toBeVisible();
+    await expect(outcome).toContainText(new RegExp(`Reference ${REFERENCE_SHAPE}\\.`));
+  });
 });
 
 /**
@@ -868,7 +888,7 @@ test.describe('the application page without scripting', () => {
     await page.goto(APPLICATION_PATH);
 
     await fillSendable(page, 'agreements');
-    await page.check('[data-agreement="code-of-conduct"] input[value="neither"]');
+    await page.check('[data-agreement="code-of-conduct"] input[value="yes"]');
     await clickSend(page);
 
     await expect(page.locator('[data-outcome="failed"]')).toBeVisible();

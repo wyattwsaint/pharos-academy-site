@@ -309,8 +309,13 @@ Not: "enrolment numbers" (a seat in the tally is not an enrolment), "roll",
 ### conversation flag
 
 The mark an application carries when somebody answered "no" to one of the three
-Statement of Faith questions, or wrote something in the objections field. It
-routes the application to a conversation.
+Statement of Faith questions, answered **No** to one of the two
+[agreements](#agreement) (ADR-0020), or wrote something in the objections field.
+It routes the application to a conversation.
+
+**It is decided at submission and never recomputed.** A row written before an
+answer changed what the flag reads keeps the flag it was given — the three
+answers ADR-0020 retired are not reread as refusals.
 
 **It is not a rejection, and nothing in the codebase may make it one.** The flag
 is recorded at submission, printed above the family's name in the school's
@@ -774,11 +779,15 @@ one), "attachment" (that is an [announcement](#announcement)'s optional PDF),
 
 ### agreement
 
-A family's answer to "who agrees to this document?", asked on the
+A family's answer to "does your family agree to this document?", asked on the
 [application](#conversation-flag) about the two [policies](#policy) families
-sign — the Code of Conduct and the Handbook. Three answers, in the school's own
-words from its live form: **Student agrees**, **Parent agrees**, **Neither
-agrees**.
+sign — the Code of Conduct and the Handbook. Two answers: **Yes** and **No**
+(ADR-0020).
+
+The three answers it used to offer — **Student agrees**, **Parent agrees**,
+**Neither agrees** — were the school's own words from its live form, kept while
+nobody had asked otherwise. Applications recorded before the change keep them,
+and are read back as "Agreed" and "Did not agree"; nothing rewrites them.
 
 **It is asked once, of the family.** The live form asks once, and an application
 carrying three children still records one answer per document. The singular word
@@ -795,10 +804,11 @@ now only possible for a document that was never published.
 reinterpret what a family agreed to. The link a family reads goes to the policy's
 fixed address; only the record keeps the number.
 
-**No answer to it blocks a submission, and none of them raises the
-[conversation flag](#conversation-flag).** "Neither agrees" is an ordinary
-answer and goes through like any other. Whether it should route to a
-conversation is the school's call, not the site's (#71).
+**No answer to it blocks a submission.** **No** sends like any other answer —
+and it raises the [conversation flag](#conversation-flag), because a family
+saying they do not agree to a document the school requires is a conversation
+(ADR-0020). "Neither agrees" did not raise it: under three answers it was as
+often a family declining to nominate a person as a refusal.
 
 Not: "signature" (nothing is signed here — the paper at enrolment is), "consent",
 "acceptance".
@@ -812,8 +822,9 @@ column** of the Statement of Faith grid by any one respondent, and an
 complete, **Send the application** is greyed and a list beside it names what is
 still needed.
 
-**Complete means answered, never agreed** (#85, ADR-0009). "No" is complete.
-"Neither agrees" is complete. An objection is complete, and still raises the
+**Complete means answered, never agreed** (#85, ADR-0009). "No" is complete —
+to a faith question and to an [agreement](#agreement) alike. An objection is
+complete, and still raises the
 [conversation flag](#conversation-flag). Nothing about what a family thinks can
 make their application incomplete, and a request to change that is a different
 decision with its own ADR.
