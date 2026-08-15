@@ -71,20 +71,6 @@ test.describe('the calendar page', () => {
 });
 
 /**
- * The month grid (#186).
- *
- * The view model is proved without a browser in
- * `src/lib/calendar/months.test.ts`, date by date and against the sheet. What is
- * only true in a browser is here: that the months are drawn, that the page opens
- * on the one it currently is, that a one-off's detail and a date's classes can
- * be opened from a keyboard, and that a phone gets a list rather than seven
- * columns it cannot read.
- *
- * That a **past** one-off is drawn is proved in `admin-calendar.spec.ts`, which
- * can make one; which one-offs the site holds today is no longer knowable from
- * the repository (#153).
- */
-/**
  * The month grid alone.
  *
  * The sheet above it holds a `<time>` for every one of the same dates, so an
@@ -107,6 +93,20 @@ function cellOn(date: string): MonthCell {
   return cell;
 }
 
+/**
+ * The month grid (#186).
+ *
+ * The view model is proved without a browser in
+ * `src/lib/calendar/months.test.ts`, date by date and against the sheet. What is
+ * only true in a browser is here: that the months are drawn, that the page opens
+ * on the one it currently is, that a one-off's detail and a date's classes can
+ * be opened from a keyboard, and that a phone gets a list rather than seven
+ * columns it cannot read.
+ *
+ * That a **past** one-off is drawn is proved in `admin-calendar.spec.ts`, which
+ * can make one; which one-offs the site holds today is no longer knowable from
+ * the repository (#153).
+ */
 test.describe('the month grid', () => {
   test('draws every month the year touches, and opens on the current one', async ({ page }) => {
     await page.goto(CALENDAR_PATH);
@@ -115,7 +115,7 @@ test.describe('the month grid', () => {
     const drawn = await months.evaluateAll((nodes) =>
       nodes.map((node) => (node as HTMLElement).dataset.month!),
     );
-    const expected = monthGrid(SEEDED_SCHOOL_YEAR, []).map((month) => month.id);
+    const expected = monthGrid(SEEDED_SCHOOL_YEAR, [], []).map((month) => month.id);
     // A floor rather than an exact list: a one-off outside the term dates pulls
     // the span out to it, and the one-offs are not knowable from here.
     for (const month of expected) expect(drawn, month).toContain(month);
@@ -283,6 +283,31 @@ test.describe('the month grid', () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+  });
+
+  test.describe('with no JavaScript', () => {
+    test.use({ javaScriptEnabled: false });
+
+    test('still draws the whole year, with only the class panels unavailable', async ({ page }) => {
+      await page.goto(CALENDAR_PATH);
+
+      // Every month the year touches, drawn on the server — the page's main
+      // content may not depend on a script.
+      for (const month of monthGrid(SEEDED_SCHOOL_YEAR, [], []).map((one) => one.id)) {
+        await expect(page.locator(`${GRID} [data-month="${month}"]`), month).toBeVisible();
+      }
+      // And the marks with them, which are printed rather than revealed.
+      await expect(page.locator(`${GRID} td:has(time[datetime="2026-11-03"])`)).toContainText(
+        'No school — Election Day',
+      );
+
+      // The one thing that is gone: the panel, because opening it is what a
+      // script is for. The count itself is still readable, and it is the fact.
+      const trigger = page.locator(`${GRID} td:has(time[datetime="2026-11-04"]) .classes-trigger`);
+      await expect(trigger).toContainText(cellOn('2026-11-04').classLabel!);
+      await trigger.click();
+      await expect(page.locator('#classes-2026-11-04')).toBeHidden();
+    });
   });
 
   test('has no events list left on it', async ({ page }) => {

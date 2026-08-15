@@ -148,7 +148,7 @@ export const WEEKDAY_COLUMNS = [
 export function monthGrid(
   year: SchoolYear,
   events: readonly CalendarEvent[],
-  courses: readonly Course[] = [],
+  courses: readonly Course[],
 ): MonthBlock[] {
   const meetings = meetingsOf(year);
   const dates = [
@@ -166,10 +166,10 @@ export function monthGrid(
     held.set(event.heldOn, [...(held.get(event.heldOn) ?? []), event]);
   }
 
-  const meeting = meetingsByDate(year, courses);
+  const taught = coursesByDate(year, courses);
 
   const cellOf = (date: string): MonthCell => {
-    const slots = slotsOf(meeting.get(date) ?? []);
+    const slots = slotsOf(taught.get(date) ?? []);
     const count = slots.reduce((total, slot) => total + slot.offerings.length, 0);
     return {
       date,
@@ -209,7 +209,7 @@ export function monthGrid(
  * a course drawn nowhere by accident — the dates it would be drawn on are the
  * dates it has not got, and the clash check refuses to guess at them too.
  */
-function meetingsByDate(year: SchoolYear, courses: readonly Course[]): Map<string, Course[]> {
+function coursesByDate(year: SchoolYear, courses: readonly Course[]): Map<string, Course[]> {
   const byDate = new Map<string, Course[]>();
   for (const course of courses) {
     const dates = new Set<string>();

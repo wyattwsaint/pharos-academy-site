@@ -47,7 +47,7 @@ function event(heldOn: string, title: string): CalendarEvent {
 
 describe('the months it draws', () => {
   it('spans every month the year touches, and none outside it', () => {
-    const blocks = monthGrid(SEEDED_SCHOOL_YEAR, []);
+    const blocks = monthGrid(SEEDED_SCHOOL_YEAR, [], []);
 
     // The Monday track opens on 31 August 2026 and the spring's last meeting is
     // 12 April 2027, so those are the two ends and everything between is drawn.
@@ -66,13 +66,14 @@ describe('the months it draws', () => {
   });
 
   it('draws a month between the ends even when it holds nothing', () => {
-    const blocks = monthGrid(SEEDED_SCHOOL_YEAR, []);
+    const blocks = monthGrid(SEEDED_SCHOOL_YEAR, [], []);
     const july = monthGrid(
       {
         ...SEEDED_SCHOOL_YEAR,
         terms: SEEDED_SCHOOL_YEAR.terms.filter((term) => term.semester === 'fall'),
       },
       [event('2027-07-04', 'Independence Day picnic')],
+      [],
     );
 
     // The fall alone runs to December; a July one-off pulls the span out to it,
@@ -82,7 +83,7 @@ describe('the months it draws', () => {
   });
 
   it('lays each month out in whole weeks, Monday first', () => {
-    const november = monthGrid(SEEDED_SCHOOL_YEAR, []).find((block) => block.id === '2026-11')!;
+    const november = monthGrid(SEEDED_SCHOOL_YEAR, [], []).find((block) => block.id === '2026-11')!;
 
     for (const week of november.weeks) expect(week).toHaveLength(7);
     // 1 November 2026 is a Sunday: six blanks, then the 1st in the last column.
@@ -95,7 +96,7 @@ describe('the months it draws', () => {
 describe('the one-offs on it', () => {
   it('draws every one the site holds, the ones that have been and gone included', () => {
     const events = [event('2026-09-18', 'Fall open house'), event('2027-03-04', 'Picture day')];
-    const cells = datedCells(monthGrid(SEEDED_SCHOOL_YEAR, events));
+    const cells = datedCells(monthGrid(SEEDED_SCHOOL_YEAR, events, []));
 
     expect(cells.get('2026-09-18')?.events.map((one) => one.title)).toEqual(['Fall open house']);
     expect(cells.get('2027-03-04')?.events.map((one) => one.title)).toEqual(['Picture day']);
@@ -103,7 +104,7 @@ describe('the one-offs on it', () => {
 
   it('keeps two one-offs on one date as two, in the order it was given them', () => {
     const events = [event('2026-10-17', 'Open house'), event('2026-10-17', 'Bake sale')];
-    const cells = datedCells(monthGrid(SEEDED_SCHOOL_YEAR, events));
+    const cells = datedCells(monthGrid(SEEDED_SCHOOL_YEAR, events, []));
 
     expect(cells.get('2026-10-17')?.events.map((one) => one.title)).toEqual([
       'Open house',
@@ -113,7 +114,7 @@ describe('the one-offs on it', () => {
 });
 
 describe('the days the school is shut', () => {
-  const cells = datedCells(monthGrid(SEEDED_SCHOOL_YEAR, []));
+  const cells = datedCells(monthGrid(SEEDED_SCHOOL_YEAR, [], []));
 
   it('marks a closed weekday inside a semester, and names it', () => {
     // Thanksgiving off three tracks, plus the Tuesday the school's own sheets
@@ -138,7 +139,7 @@ describe('the days the school is shut', () => {
         term.track === 'Monday' && term.semester === 'fall' ? { ...term, weeks: 12 } : term,
       ),
     };
-    const shortCells = datedCells(monthGrid(short, []));
+    const shortCells = datedCells(monthGrid(short, [], []));
 
     expect(shortCells.get('2026-12-07')).toMatchObject({ noSchool: true, closure: null });
     expect(shortCells.get('2026-12-14')).toMatchObject({ noSchool: true, closure: null });
@@ -307,7 +308,7 @@ describe('the classes a date reveals', () => {
   it('reveals nothing when it is given no catalogue', () => {
     // The page passes the courses; a caller that does not gets a grid with no
     // controls on it rather than a grid that has invented a timetable.
-    for (const cell of datedCells(monthGrid(SEEDED_SCHOOL_YEAR, [])).values()) {
+    for (const cell of datedCells(monthGrid(SEEDED_SCHOOL_YEAR, [], [])).values()) {
       expect(cell.slots, cell.date).toEqual([]);
       expect(cell.classLabel, cell.date).toBeNull();
     }
@@ -317,6 +318,6 @@ describe('the classes a date reveals', () => {
 describe('a year with nothing in it', () => {
   it('draws no months at all', () => {
     const empty: SchoolYear = { ...SEEDED_SCHOOL_YEAR, terms: [], closures: [] };
-    expect(monthGrid(empty, [])).toEqual([]);
+    expect(monthGrid(empty, [], [])).toEqual([]);
   });
 });

@@ -567,25 +567,61 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     letter-spacing: 0.03em;
   }
 
-  /* A one-off is the one thing on the grid that opens, so it is a real button. */
-  .one-off {
+  /*
+    The two things a cell opens: a one-off, and the classes that meet that day.
+
+    Their *shape* is one thing and is written once — a full-width button with a
+    rule down its left edge, and a panel that floats over the grid rather than
+    expanding inside its cell, because a cell that grew would push a whole week
+    of dates down the page under the pointer that opened it. What differs is
+    register, and only register is written twice below.
+  */
+  .one-off,
+  .classes {
     position: relative;
     margin-top: 0.25rem;
   }
 
-  .one-off-title {
+  .one-off-title,
+  .classes-trigger {
     display: block;
     width: 100%;
     padding: 0.2rem 0.3rem;
     border: 0;
-    border-left: 2px solid var(--color-gold-orn);
-    background: color-mix(in srgb, var(--color-gold-orn) 18%, transparent);
+    border-left-width: 2px;
+    border-left-style: solid;
     font: inherit;
-    font-size: 0.8rem;
     line-height: 1.25;
     text-align: left;
-    color: var(--color-navy);
     cursor: pointer;
+  }
+
+  .one-off-panel,
+  .classes-panel {
+    display: none;
+    position: absolute;
+    z-index: 2;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    width: max-content;
+    padding: 0.7rem 0.85rem;
+    background: var(--color-cream);
+    border: 1px solid var(--color-rule);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--color-navy) 18%, transparent);
+    font-size: 0.85rem;
+  }
+
+  .one-off[data-open] .one-off-panel,
+  .classes[data-open] .classes-panel {
+    display: block;
+  }
+
+  /* A one-off is news, so it takes the gold and the emphasis that goes with it. */
+  .one-off-title {
+    border-left-color: var(--color-gold-orn);
+    background: color-mix(in srgb, var(--color-gold-orn) 18%, transparent);
+    font-size: 0.8rem;
+    color: var(--color-navy);
   }
 
   .one-off-title:hover,
@@ -594,30 +630,10 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     color: var(--color-gold-ink);
   }
 
-  /*
-    The detail floats over the grid rather than expanding inside its cell: a cell
-    that grew would push a whole week of dates down the page under the pointer
-    that opened it.
-  */
   .one-off-panel {
-    display: none;
-    position: absolute;
-    z-index: 2;
-    top: calc(100% + 0.25rem);
-    left: 0;
-    width: max-content;
     max-width: 15rem;
-    padding: 0.7rem 0.85rem;
-    background: var(--color-cream);
-    border: 1px solid var(--color-rule);
-    box-shadow: 0 6px 18px color-mix(in srgb, var(--color-navy) 18%, transparent);
-    font-size: 0.85rem;
     line-height: 1.5;
     color: var(--color-ink-2);
-  }
-
-  .one-off[data-open] .one-off-panel {
-    display: block;
   }
 
   .one-off-panel .when {
@@ -630,33 +646,20 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
   }
 
   /*
-    The classes on a date, in a register of their own.
+    A class is routine, so it is a rule and a count in the quiet ink.
 
-    Deliberately not the one-off's gold: a one-off is news and a class is
-    routine, and if the two looked alike the thing that happens once a year
-    would compete with the thing that happens every week. So this is a rule and
-    a count in the quiet ink, and the gold above it keeps its emphasis.
+    Deliberately not the one-off's gold: if the two looked alike, the thing that
+    happens once a year would compete with the thing that happens every week.
   */
-  .classes {
-    position: relative;
-    margin-top: 0.25rem;
-  }
-
   .classes-trigger {
-    display: block;
-    width: 100%;
-    padding: 0.15rem 0.3rem;
-    border: 0;
-    border-left: 2px solid color-mix(in srgb, var(--color-navy) 30%, transparent);
+    padding-top: 0.15rem;
+    padding-bottom: 0.15rem;
+    border-left-color: color-mix(in srgb, var(--color-navy) 30%, transparent);
     background: none;
-    font: inherit;
     font-size: 0.75rem;
-    line-height: 1.25;
     font-variant-caps: all-small-caps;
     letter-spacing: 0.04em;
-    text-align: left;
     color: var(--color-ink-2);
-    cursor: pointer;
   }
 
   .classes-trigger:hover,
@@ -665,26 +668,9 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     color: var(--color-navy);
   }
 
-  /* Floating for the same reason the one-off's does: a cell that grew would
-     push a whole week of dates down the page under the pointer that opened it. */
   .classes-panel {
-    display: none;
-    position: absolute;
-    z-index: 2;
-    top: calc(100% + 0.25rem);
-    left: 0;
-    width: max-content;
     max-width: 17rem;
-    padding: 0.7rem 0.85rem;
-    background: var(--color-cream);
-    border: 1px solid var(--color-rule);
-    box-shadow: 0 6px 18px color-mix(in srgb, var(--color-navy) 18%, transparent);
-    font-size: 0.85rem;
     line-height: 1.4;
-  }
-
-  .classes[data-open] .classes-panel {
-    display: block;
   }
 
   .slot + .slot {
