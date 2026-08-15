@@ -1,14 +1,17 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 
-import { amountOwedFor, type LiveMoneySettings } from './live.js';
+import { amountOwedForPrices, type LiveMoneySettings } from './live.js';
 
 /**
  * The one implementation of what a family owes (#253, ADR-0019).
  *
  * Tested here on bare numbers rather than through the catalogue, because that
  * is what the browser will hand it: prices read off checkboxes, and three
- * settings. `owed.ts` proves the same sums come out when the prices come from
- * the rate card instead.
+ * settings. `settings.test.ts` covers the same sums the other way round, with
+ * the prices resolved from the rate card through `amountOwed`.
  */
 
 const settings = (overrides: Partial<LiveMoneySettings> = {}): LiveMoneySettings => ({
@@ -21,7 +24,7 @@ const settings = (overrides: Partial<LiveMoneySettings> = {}): LiveMoneySettings
 describe('what a family owes', () => {
   it('credits the deposits against the tuition', () => {
     // #18 §11's own example: three year-long classes at $420.
-    const owed = amountOwedFor([420, 420, 420], settings());
+    const owed = amountOwedForPrices([420, 420, 420], settings());
 
     expect(owed.tuition).toBe(1260);
     expect(owed.deposits).toBe(300);
@@ -34,7 +37,7 @@ describe('what a family owes', () => {
   it('never credits more than the tuition', () => {
     // A $90 block against a $100 deposit. The family does not end up owing
     // minus ten dollars in tuition, and the total is still what they pay.
-    const owed = amountOwedFor([90], settings());
+    const owed = amountOwedForPrices([90], settings());
 
     expect(owed.creditedAgainstTuition).toBe(90);
     expect(owed.tuitionDue).toBe(0);
@@ -43,12 +46,12 @@ describe('what a family owes', () => {
   });
 
   it('charges the registration fee once, however many classes', () => {
-    expect(amountOwedFor([420], settings()).registration).toBe(25);
-    expect(amountOwedFor([420, 420, 420], settings()).registration).toBe(25);
+    expect(amountOwedForPrices([420], settings()).registration).toBe(25);
+    expect(amountOwedForPrices([420, 420, 420], settings()).registration).toBe(25);
   });
 
   it('charges nothing at all for an empty selection', () => {
-    expect(amountOwedFor([], settings())).toEqual({
+    expect(amountOwedForPrices([], settings())).toEqual({
       registration: 0,
       deposits: 0,
       tuition: 0,
@@ -59,7 +62,10 @@ describe('what a family owes', () => {
   });
 
   it('puts the deposits on top when the credit is off', () => {
-    const onTop = amountOwedFor([420, 420, 420], settings({ depositCreditedAgainstTuition: false }));
+    const onTop = amountOwedForPrices(
+      [420, 420, 420],
+      settings({ depositCreditedAgainstTuition: false }),
+    );
 
     expect(onTop.creditedAgainstTuition).toBe(0);
     expect(onTop.tuitionDue).toBe(1260);
@@ -76,13 +82,19 @@ describe('what a family owes', () => {
  * numbers. Types are erased before a bundler sees them, so they do not count.
  */
 describe('the arithmetic is a leaf', () => {
-  it('imports nothing but types', async () => {
-    const { readFileSync } = await import('node:fs');
-    const { fileURLToPath } = await import('node:url');
+  it('imports nothing but types', () => {
     const source = readFileSync(fileURLToPath(new URL('./live.ts', import.meta.url)), 'utf8');
 
-    const valueImports = [...source.matchAll(/^import\s+(?!type\b)[\s\S]*?from\s+'([^']+)';/gm)];
+    // Every form that loads a module at run time, not just the one this file
+    // happens to use today: a bare side-effect import, a double-quoted
+    // specifier and a dynamic `import()` each ship exactly as much as a named
+    // import, and a guard blind to them would go quiet on the change it exists
+    // to catch. There is no graph to walk past this file — the lists below come
+    // out empty, or it is not a leaf.
+    const statements = [...source.matchAll(/^import\b.*$/gm)].map(([line]) => line.trim());
+    const valueImports = statements.filter((line) => !line.startsWith('import type'));
+    const atRunTime = [...source.matchAll(/\bimport\s*\(|\brequire\s*\(/g)].map(([call]) => call);
 
-    expect(valueImports.map(([, specifier]) => specifier)).toEqual([]);
+    expect([...valueImports, ...atRunTime]).toEqual([]);
   });
 });

@@ -3,9 +3,9 @@
  *
  * The one implementation of the arithmetic. `owed.ts` resolves a selection
  * against the rate card and hands the prices here; the Apply page's browser
- * script reads them off the checkboxes and hands them here too. Two
+ * script will read them off the checkboxes and hand them here too. Two
  * implementations of "what a family owes" is the failure ADR-0019 is most
- * concerned with, so there is one, and it is tested once.
+ * concerned with, so there is one, and both sides call it.
  *
  * This module is a **leaf**: it imports nothing but types, which are erased
  * before a bundler sees them. That is what lets the browser have the totals
@@ -19,10 +19,9 @@ import type { MoneySettings } from './settings.js';
 /**
  * The three settings the arithmetic needs, and no others.
  *
- * A subset rather than the whole of `MoneySettings` because this is also the
- * shape the page hands the browser as `data-money`: the refund terms and the
- * notification addresses are not the browser's business, and naming the three
- * here is what keeps them out of it.
+ * A subset rather than the whole of `MoneySettings` because the refund terms
+ * and the notification addresses have nothing to do with adding up what a
+ * family owes, and a caller holding only these three can still total.
  */
 export type LiveMoneySettings = Pick<
   MoneySettings,
@@ -52,13 +51,12 @@ export type AmountOwed = {
  * count of the list is the count of the deposits, and a page passing a single
  * summed number would get that wrong.
  *
- * All of it is owed to the school (ADR-0013) and all of it is paid the same way
- * (ADR-0017): one lump sum, upfront. So `total` is not a summary a surface may
- * skip past — it is the figure a family types into the giving page, and the
- * itemisation above it is what explains that number. It never double-counts a
- * credited deposit, which is the arithmetic the flag actually changes.
+ * `total` never double-counts a credited deposit, which is the arithmetic the
+ * deposit flag actually changes. What that figure means to a family, and why it
+ * is one lump sum rather than an instalment, is `amountOwed`'s comment in
+ * `owed.ts`.
  */
-export function amountOwedFor(
+export function amountOwedForPrices(
   prices: readonly number[],
   settings: LiveMoneySettings,
 ): AmountOwed {

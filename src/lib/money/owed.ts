@@ -14,7 +14,7 @@
 
 import type { Course } from '../courses/course.js';
 import { coursePrice } from '../courses/pricing.js';
-import { amountOwedFor, type AmountOwed } from './live.js';
+import { amountOwedForPrices, type AmountOwed } from './live.js';
 import type { MoneySettings } from './settings.js';
 
 export type { AmountOwed };
@@ -48,7 +48,7 @@ export function amountOwed(
   selections: readonly Selection[],
   settings: MoneySettings,
 ): AmountOwed {
-  return amountOwedFor(
+  return amountOwedForPrices(
     selections.map((selection) => unitPrice(selection, settings)),
     settings,
   );
