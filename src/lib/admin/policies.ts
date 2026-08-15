@@ -181,16 +181,27 @@ export function policyDeletion(title: string, versions: number): PolicyDeletion 
     confirmLabel: `Yes, delete ${title}`,
     declineLabel: 'Go back without deleting',
     goes: `${title} comes off the policies page and out of this admin, and the short address the policies page links stops working.`,
-    kept:
-      versions === 0
-        ? 'No document has ever been uploaded to it, so there is nothing to keep and nothing else goes with it.'
-        : `${
-            versions === 1 ? 'The one document' : `All ${versions} documents`
-          } already uploaded ${versions === 1 ? 'is' : 'are'} kept. ${
-            versions === 1 ? 'It stays' : 'Each stays'
-          } readable at the permanent address it was given, so a family who has already agreed to one of them can still open exactly the document they were shown.`,
+    kept: keptSentence(versions),
     undo: 'There is no undo. Putting it back means typing it in again.',
   };
+}
+
+/**
+ * The three cases, written out as three sentences.
+ *
+ * Assembled from fragments they would read as assembly — "the one document is"
+ * against "all 3 documents are" is a plural agreement in four places inside one
+ * template, and the sentence a person is relying on before an irreversible
+ * press is the last one to write that way.
+ */
+function keptSentence(versions: number): string {
+  if (versions === 0) {
+    return 'No document has ever been uploaded to it, so there is nothing to keep and nothing else goes with it.';
+  }
+  if (versions === 1) {
+    return 'The one document already uploaded is kept. It stays readable at the permanent address it was given, so a family who has already agreed to it can still open exactly what they were shown.';
+  }
+  return `All ${versions} documents already uploaded are kept. Each stays readable at the permanent address it was given, so a family who has already agreed to one of them can still open exactly what they were shown.`;
 }
 
 /** The list position, as a number, or the reason it is not one. */

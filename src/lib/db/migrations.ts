@@ -896,6 +896,9 @@ export const MIGRATIONS: readonly Migration[] = [
      * Dropped by lookup rather than by name because the constraint was created
      * unnamed, so its name is whatever Postgres minted — and the loop makes the
      * statement a no-op on a second run and on a database that never had it.
+     * Narrowed to keys pointing at `policies` rather than to every foreign key
+     * on the table: there is only one today, and a migration that says "drop
+     * whatever is there" would quietly take a later one with it.
      */
     id: '0024-a-policys-documents-survive-the-policy',
     statements: [
@@ -911,6 +914,7 @@ export const MIGRATIONS: readonly Migration[] = [
             where con.contype = 'f'
               and rel.relname = 'policy_versions'
               and nsp.nspname = current_schema()
+              and con.confrelid = to_regclass('policies')
          loop
            execute format('alter table policy_versions drop constraint %I', orphaning);
          end loop;

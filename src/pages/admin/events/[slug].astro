@@ -43,12 +43,14 @@ import { getDb } from '../../../lib/db/client.js';
  * the publishing story are identical and a second nearly-identical page is how
  * the two drift.
  *
- * **This is the one screen with a delete**, and the reason is the feed. An
- * announcement that has aged out is history and stays; a cancelled concert left
- * on a subscribed calendar is a family driving to a school that is dark.
+ * **This was the one screen with a delete**, and the reason was the feed: a
+ * cancelled concert left on a subscribed calendar is a family driving to a
+ * school that is dark. It is not the only one any more — the school's own
+ * content is freely removable (ADR-0021), and a policy is deleted from its own
+ * screen the same way — so the two sentences here that said nothing else in the
+ * admin deletes anything are gone with the decision that made them false.
  *
- * Because it is the one delete, it **confirms first** (#200), the way Money
- * confirms: the first press replaces the form with a screen naming the event
+ * It **confirms first** (#200), the way Money confirms: the first press replaces the form with a screen naming the event
  * and its date and saying again what a subscribed phone will do, and only the
  * second press — the same form plus `confirm` — removes it.
  *
@@ -225,9 +227,7 @@ function fieldsOf(row: CalendarEvent): EventFields {
           sometimes a day or two — so a family who has written it down may turn up anyway. If it
           is close, text them as well.
         </p>
-        <p class="mt-3">
-          Putting it back means typing it in again. Nothing else in the admin deletes anything.
-        </p>
+        <p class="mt-3">Putting it back means typing it in again.</p>
       </AdminConfirm>
     ) : (
       <form method="post" action={action} class="mt-8 flex flex-col gap-6">
@@ -259,8 +259,7 @@ function fieldsOf(row: CalendarEvent): EventFields {
         <form method="post" action={action} class="mt-6">
           <p class="text-sm">
             Canceled? Take it off, and it disappears from the calendar and from every subscribed
-            phone at their next check. You will be asked to confirm first. Nothing else here
-            deletes anything.
+            phone at their next check. You will be asked to confirm first.
           </p>
           <AdminButton variant="destructive" name="remove" value="1" class="mt-3">
             Take this off the calendar

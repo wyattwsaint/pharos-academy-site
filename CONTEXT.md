@@ -415,9 +415,10 @@ the class pages and the Admissions page in the same republish. A test walks the
 public templates and fails on a dollar figure written as a literal.
 
 Saving it asks for an **explicit confirmation naming the change and its effect
-on every family** — the only save on the site that confirms, though the two
-things that take something away now confirm the same way (deleting an account,
-removing a [one-off](#one-off)) — and an identical save is refused rather than
+on every family** — the only save on the site that confirms, though everything
+that takes something away now confirms the same way (deleting an account,
+removing a [one-off](#one-off), deleting a [policy](#policy)) — and an
+identical save is refused rather than
 **stamped**, because the stamp is the only control on the money once
 permissions are flat.
 
