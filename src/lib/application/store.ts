@@ -1,9 +1,16 @@
 import { asc, desc, eq, inArray } from 'drizzle-orm';
 
 import type { Db } from '../db/client.js';
-import { applicationChildren, applications, type ApplicationRow } from '../db/schema.js';
+import {
+  applicationChildren,
+  applications,
+  type ApplicationChildRow,
+  type ApplicationRow,
+} from '../db/schema.js';
 import { decodeAgreements, encodeAgreements, type Agreements } from './agreements.js';
 import type { ApplicationChild, ApplicationFields, FaithAnswer, FaithAnswers } from './application.js';
+import { captureOfferingTitles, decodeOfferingTitles } from './chosen-classes.js';
+import type { Offering } from './offerings.js';
 import {
   APPLICATION_STATES,
   RECORDED_PAYMENT_STATUSES,
@@ -40,6 +47,20 @@ import {
  * asked for. An application is answered in a conversation, not by editing it.
  */
 
+/**
+ * A child on a recorded application: what the family typed, plus the classes
+ * as they were **named at submission** (#259).
+ *
+ * The titles are a decoded `key → title` lookup rather than a list, because
+ * that is how every reader wants them, and they are on the record rather than
+ * on `ApplicationChild` because the form never posts them: they are a fact the
+ * submit knew and the family did not type.
+ */
+export type RecordedChild = ApplicationChild & {
+  /** Empty for a row written before the capture existed. Not backfilled. */
+  offeringTitles: Record<string, string>;
+};
+
 /** What was recorded, as the admin and the confirmation read it back. */
 export type ApplicationRecord = {
   id: string;
@@ -52,7 +73,7 @@ export type ApplicationRecord = {
   faith: FaithAnswers;
   /** The two agreements and the policy version each was given against (#71). */
   agreements: Agreements;
-  children: ApplicationChild[];
+  children: RecordedChild[];
   agreedTermsId: string | null;
   /** Where the application itself is (#32). Never moved by the payment. */
   state: ApplicationState;
@@ -90,6 +111,15 @@ export type SubmissionFacts = {
    * is what it did before anybody was asked.
    */
   paymentMode?: PaymentMode;
+  /**
+   * The catalogue as the family's picker drew it, for the title capture (#259).
+   *
+   * Passed in rather than read here, so the titles frozen onto the row are the
+   * ones the page actually rendered the checkboxes from — a second read could
+   * land on the other side of a republish and freeze a title nobody was shown.
+   * Omitted captures nothing, and the reader falls back to the slug.
+   */
+  offerings?: readonly Offering[];
 };
 
 /** Write the application down. Answers with the row's id, which is the receipt. */
@@ -132,6 +162,10 @@ export async function createApplication(
         name: child.name,
         age: child.age,
         offeringKeys: child.offeringKeys,
+        // Written here and by nothing else, ever (#259). No update in this
+        // module touches this table at all, which is what makes "written once"
+        // a property of the code rather than a promise about it.
+        offeringTitles: captureOfferingTitles(facts.offerings ?? [], child.offeringKeys),
       })),
     );
   }
@@ -164,9 +198,7 @@ export async function listApplications(db: Db): Promise<ApplicationRecord[]> {
 
   return rows.map((row) => ({
     ...toRecord(row),
-    children: children
-      .filter((child) => child.applicationId === row.id)
-      .map((child) => ({ name: child.name, age: child.age, offeringKeys: child.offeringKeys })),
+    children: children.filter((child) => child.applicationId === row.id).map(toChild),
   }));
 }
 
@@ -275,13 +307,16 @@ export async function getApplication(db: Db, id: string): Promise<ApplicationRec
     .where(eq(applicationChildren.applicationId, id))
     .orderBy(asc(applicationChildren.position));
 
+  return { ...toRecord(row), children: children.map(toChild) };
+}
+
+/** A child row as the record reads it, the frozen titles decoded. */
+function toChild(row: ApplicationChildRow): RecordedChild {
   return {
-    ...toRecord(row),
-    children: children.map((child) => ({
-      name: child.name,
-      age: child.age,
-      offeringKeys: child.offeringKeys,
-    })),
+    name: row.name,
+    age: row.age,
+    offeringKeys: row.offeringKeys,
+    offeringTitles: decodeOfferingTitles(row.offeringTitles),
   };
 }
 

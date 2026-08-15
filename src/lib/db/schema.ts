@@ -728,6 +728,15 @@ export const applicationChildren = pgTable(
     age: text('age').notNull(),
     /** `<slug>:<unit>` keys. Empty is real — a child chosen for nothing yet. */
     offeringKeys: text('offering_keys').array().notNull(),
+    /**
+     * `<key>=<title>`, frozen at submission and never updated (#259).
+     *
+     * The classes as the family was shown them, so a course renamed or removed
+     * afterwards cannot rewrite what this application says — the same freeze
+     * `agreed_terms` is, for the same reason. Empty is a row written before the
+     * capture existed, and is deliberately not backfilled.
+     */
+    offeringTitles: text('offering_titles').array().notNull().default([]),
   },
   (table) => [primaryKey({ columns: [table.applicationId, table.position] })],
 );

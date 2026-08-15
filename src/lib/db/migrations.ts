@@ -850,6 +850,25 @@ export const MIGRATIONS: readonly Migration[] = [
       `alter table school_details add column if not exists pay_online_url text not null default ''`,
     ],
   },
+  {
+    /*
+     * What the family was shown, frozen onto the application (#259).
+     *
+     * The Applications screen and the class tally read a child's classes out of
+     * the live catalogue, so a course renamed changed a submitted application
+     * and a course removed made one vanish out of it. This column is the freeze
+     * that ends that: written once at submit, never updated.
+     *
+     * Existing rows default to empty and are **not** backfilled — there is no
+     * honest title to recover for them, and the reader falls back to the slug
+     * out of the key.
+     */
+    id: '0023-application-offering-titles',
+    statements: [
+      `alter table application_children
+         add column if not exists offering_titles text[] not null default array[]::text[]`,
+    ],
+  },
 ];
 
 /**
