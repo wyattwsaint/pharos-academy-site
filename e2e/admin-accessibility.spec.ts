@@ -13,8 +13,8 @@ import { SUITE_ADMIN, SUITE_KEPT, signIn } from './suite-admin.js';
  * The adoption tickets (#194–#201) fixed the admin's accessibility wiring
  * structurally, by making every labeled control come from one component. This
  * suite is what stops it rotting again: every signed-in admin screen measured
- * by axe, each editor measured a second time **with its form refused**, and the
- * three confirmation screens measured as well.
+ * by axe, each editor measured a second time **with its form refused**, and
+ * every confirmation screen measured as well.
  *
  * Refused states are here because that is where axe finds real violations. A
  * form at rest has no `aria-invalid`, no `aria-describedby` pointing at a
@@ -287,8 +287,8 @@ test.describe('the login screen', () => {
  * Each is a whole screen rather than a dialog, reached by a POST and rendered
  * in place of what asked for it — so none of them is measured by the screen
  * list above, and each is the last thing a person reads before an irreversible
- * click. Money's and the account delete are here; the event removal needs a
- * saved event and is measured with it below.
+ * click. Money's, the account delete and the announcement delete are here; the
+ * event removal needs a saved event and is measured with it below.
  */
 test.describe('a confirmation screen', () => {
   for (const width of ADMIN_WIDTHS) {
@@ -319,6 +319,21 @@ test.describe('a confirmation screen', () => {
       await expectNoViolations(page);
     });
 
+    /*
+     * Deleting an announcement (#258), measured on the seeded one — asking is
+     * not deleting, so nothing is written and the announcement is still there
+     * for the next width and for the screen list above. That is why this needs
+     * no add-and-remove pair the way the event confirmation does: an
+     * announcement editor with a row in it already exists.
+     */
+    test(`deleting an announcement has zero axe violations at ${width}px`, async ({ page }) => {
+      await openAt(page, SEEDED_ANNOUNCEMENT, width);
+
+      await page.getByRole('button', { name: 'Delete this announcement' }).click();
+      await expect(page.getByTestId('confirm')).toContainText('There is no undo.');
+
+      await expectNoViolations(page);
+    });
   }
 });
 

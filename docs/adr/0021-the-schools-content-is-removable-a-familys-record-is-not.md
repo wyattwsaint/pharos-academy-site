@@ -1,6 +1,8 @@
 # ADR-0021 — The school's own content is removable; a record of what a family sent is not
 
-**Status:** accepted, not yet built
+**Status:** accepted; being built — the announcement delete landed with
+[#258](https://github.com/wyattwsaint/pharos-academy-site/issues/258), and
+person, course and policy delete and retirement have not
 **Date:** 2026-08-15
 **Context:** [#252](https://github.com/wyattwsaint/pharos-academy-site/issues/252),
 recorded by [#256](https://github.com/wyattwsaint/pharos-academy-site/issues/256);

@@ -13,7 +13,8 @@ import {
   faithKey,
 } from '../src/lib/application/application.js';
 import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
-import { NEWS_PATH } from '../src/lib/announcements/views.js';
+import { announcementSlug } from '../src/lib/announcements/announcement.js';
+import { attachmentPath, NEWS_PATH } from '../src/lib/announcements/views.js';
 import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
 import { POLICIES_PATH } from '../src/lib/policies/views.js';
@@ -757,6 +758,103 @@ test.describe('announcements', () => {
     await expect(page.getByRole('heading', { name: fresh })).toBeVisible();
     await page.goto('/');
     await expect(page.locator('[data-section="announcements"]')).toHaveCount(0);
+  });
+
+  /**
+   * The one that has become false, deleted (#258).
+   *
+   * Follows the one-off's spec in `admin-calendar.spec.ts`, because it is the
+   * same round trip: the first press asks, declining changes nothing, and only
+   * the second press acts. The wording and the confirm-versus-do branch are
+   * proved in vitest; what only a browser shows is that the question is a
+   * **screen** rather than a dialog, that the decline really does leave the
+   * announcement where it was, and that confirming lands on the list with the
+   * news page already agreeing.
+   *
+   * Posted with a PDF, because that is the half that cannot be typed back in:
+   * the confirmation has to name it, and the address it was served at has to
+   * stop answering.
+   */
+  test('asks before deleting an announcement, and takes no for an answer', async ({
+    page,
+    request,
+  }) => {
+    const headline = 'Suite notice, withdrawn';
+    const postedOn = today();
+    const editor = `/admin/announcements/${announcementSlug(postedOn, headline)}`;
+    await post(page, { headline, body: 'A fundraiser the school withdrew.', postedOn, file: true });
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+
+    // The first press asks, on a screen, naming the announcement and the PDF
+    // that goes with it — and saying there is nothing to undo it with.
+    await page.getByRole('button', { name: 'Delete this announcement' }).click();
+    const confirm = page.getByTestId('confirm');
+    await expect(confirm).toContainText(headline);
+    await expect(confirm).toContainText('suite-notice.pdf');
+    await expect(confirm).toContainText('There is no undo.');
+    await expect(page).toHaveURL(new RegExp(`${editor}$`));
+
+    // Declining leaves it on the site and on this screen, fields and all.
+    await page.getByRole('link', { name: 'Go back without deleting' }).click();
+    await expect(page.getByTestId('confirm')).toHaveCount(0);
+    await expect(page.getByLabel('Headline')).toHaveValue(headline);
+
+    await page.goto(NEWS_PATH);
+    await expect(page.getByRole('heading', { name: headline })).toBeVisible();
+
+    // Confirming deletes it and lands on the list, which names what went and
+    // says whether the live site caught up.
+    await page.goto(editor);
+    await page.getByRole('button', { name: 'Delete this announcement' }).click();
+    await page.getByRole('button', { name: 'Yes, delete this announcement' }).click();
+    await expect(page).toHaveURL(/\/admin\/announcements\?/);
+
+    const banner = page.getByTestId('announcements-banner');
+    await expect(banner).toContainText(`${headline} is off the news page.`);
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+
+    // Gone from the list. The banner still names it, which is the point of the
+    // banner, so this asks the list rather than the whole page.
+    await expect(page.getByRole('link', { name: headline })).toHaveCount(0);
+
+    // Gone from the news page, and the PDF with it.
+    await page.goto(NEWS_PATH);
+    await expect(page.getByRole('heading', { name: headline })).toHaveCount(0);
+    expect((await request.get(attachmentPath(announcementSlug(postedOn, headline)))).status()).toBe(
+      404,
+    );
+
+    // And the editor is nobody's screen now. Driven through the signed-in page
+    // rather than a bare request, which would be bounced to the login form and
+    // answer 200 to a question about the announcement.
+    expect((await page.goto(editor))?.status()).toBe(404);
+  });
+
+  /**
+   * The same round trip with scripts off (#258).
+   *
+   * The reason the confirmation is a screen and not `confirm()`: nothing here
+   * is JavaScript, so the whole two-post sequence has to work in a browser that
+   * runs none. Its own announcement, because it deletes what it posts.
+   */
+  test('confirms and deletes with scripts off', async ({ browser }) => {
+    const unscripted = await browser.newContext({ javaScriptEnabled: false });
+    const page = await unscripted.newPage();
+
+    const headline = 'Suite notice, unscripted';
+    await post(page, { headline, body: 'Posted and deleted without a line of script.' });
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+
+    await page.getByRole('button', { name: 'Delete this announcement' }).click();
+    await expect(page.getByTestId('confirm')).toContainText(headline);
+
+    await page.getByRole('button', { name: 'Yes, delete this announcement' }).click();
+    await expect(page).toHaveURL(/\/admin\/announcements\?/);
+    await expect(page.getByTestId('announcements-banner')).toContainText(
+      `${headline} is off the news page.`,
+    );
+
+    await unscripted.close();
   });
 });
 

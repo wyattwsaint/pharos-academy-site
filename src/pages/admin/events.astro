@@ -49,6 +49,7 @@ const lastRead = synced.reduce<Date | null>(
 const banner = removalOutcome(
   Astro.url.searchParams.get('removed'),
   Astro.url.searchParams.get('republished'),
+  'calendar',
 );
 ---
 

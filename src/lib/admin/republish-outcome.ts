@@ -14,7 +14,24 @@ import type { Banner } from './banner.js';
  * rather than a complaint about the URL, which is not a thing the office did.
  */
 /**
- * What `?removed=` on the Events list means (#200 AC 2).
+ * Where a removal took something out of — the closed list of them (#200, #258).
+ *
+ * **Not carried in the URL.** The list a delete lands on knows which list it is,
+ * so it names its own place from this list rather than being told; what travels
+ * is the name of what went, which is data the store held a moment ago, and the
+ * republish code. So the URL contributes one noun to the banner and no claim at
+ * all: every word around it is chosen here.
+ */
+const REMOVED_FROM = {
+  calendar: 'the calendar',
+  news: 'the news page',
+} as const;
+
+/** A place on the list above, named by its key — the phrase itself is not sayable. */
+export type RemovedFrom = keyof typeof REMOVED_FROM;
+
+/**
+ * What `?removed=` on a list that a delete redirected to means (#200 AC 2).
  *
  * Removing a one-off redirects to the list, which is the screen that shows the
  * removal happened — but "it is gone from a list" is not the same as "the live
@@ -22,13 +39,22 @@ import type { Banner } from './banner.js';
  * same query string and is said in the same words every other screen says it
  * in. A refresh cannot re-fire either half: the delete already happened and the
  * URL only reports it.
+ *
+ * Deleting an announcement lands the same way (#258), which is why `from` is a
+ * parameter rather than a second copy of this function: the two screens report
+ * one kind of thing, and a screen that phrased it differently would be reporting
+ * a different kind of thing.
  */
-export function removalOutcome(removed: string | null, published: string | null): Banner | null {
+export function removalOutcome(
+  removed: string | null,
+  published: string | null,
+  from: RemovedFrom,
+): Banner | null {
   if (removed === null) return null;
   const republish = republishOutcome(published);
   return {
     ok: republish?.ok ?? true,
-    message: `${removed} is off the calendar.${republish ? ` ${republish.message}` : ''}`,
+    message: `${removed} is off ${REMOVED_FROM[from]}.${republish ? ` ${republish.message}` : ''}`,
   };
 }
 

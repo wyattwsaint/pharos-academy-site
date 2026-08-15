@@ -8,9 +8,12 @@ import { DEV_SERVER_ENV, LOCAL_DEV_SERVER, SUITE_ADMIN_ENV, local } from './play
  * Policies are reachable at all (#197).
  *
  * The migrations seed a full catalogue, staff list, announcement history and
- * policy set, and none of those screens offers a delete — so against the
- * ordinary suite database the four lists are never empty, and their empty
- * states would ship untested. `E2E_EMPTY_LISTS` makes the suite server delete
+ * policy set, so against the ordinary suite database the four lists are never
+ * empty and their empty states would ship untested. Announcements gained a
+ * delete in #258 and the rest follow, but emptying a list through the admin is
+ * a republish per row and one screen's fixture would be another's missing
+ * seed — so the lists are still emptied here, at the database, rather than by
+ * driving the button. `E2E_EMPTY_LISTS` makes the suite server delete
  * the seeded content after migrating (`src/lib/db/client.ts`), which only
  * happens in suite mode, and suite mode already refuses to run on a deployment.
  *

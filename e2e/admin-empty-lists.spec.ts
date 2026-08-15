@@ -9,7 +9,8 @@ import { signIn } from './suite-admin.js';
  *
  * Runs from `playwright.empty-lists.config.ts` alone: its dev server sets
  * `E2E_EMPTY_LISTS`, which is the only way People, Classes, Announcements and
- * Policies can be empty — the migrations seed all four and no screen deletes.
+ * Policies can be empty in a suite run — the migrations seed all four, and
+ * emptying one through the admin would be a republish per row.
  * The main suite's server is fully seeded, so this spec would fail there, which
  * is why the `admin` project's testMatch does not name it.
  *

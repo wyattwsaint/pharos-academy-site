@@ -6,6 +6,7 @@ import { createEphemeralDatabase, runMigrations, type Db } from '../db/client.js
 import { SEEDED_ANNOUNCEMENTS } from './announcement.js';
 import {
   createAnnouncement,
+  deleteAnnouncement,
   getAnnouncement,
   getAttachment,
   listAnnouncements,
@@ -296,6 +297,65 @@ describe('the attached PDF', () => {
 
     expect(posted.attachmentFilename).toBe('handbook.pdf');
     expect((await getAttachment(db, posted.slug))?.bytes.equals(bytes)).toBe(true);
+  });
+});
+
+/**
+ * Deleting one (#258).
+ *
+ * The one that has become false, which is the case the whole feature exists
+ * for. What is proved here is that it takes its file with it and that nothing
+ * stops it — including it being the last one there is.
+ */
+describe('deleting an announcement', () => {
+  const SLUG = '2026-07-01-school-board-update-july-2026';
+
+  it('takes it off the list and out of every reader', async () => {
+    await deleteAnnouncement(db, SLUG);
+
+    expect(await getAnnouncement(db, SLUG)).toBeUndefined();
+    expect((await listAnnouncements(db)).map((a) => a.slug)).not.toContain(SLUG);
+  });
+
+  it('takes the attached PDF with it, rather than leaving it served', async () => {
+    await saveAnnouncement(
+      db,
+      SLUG,
+      {
+        ...fieldsOfSeed(SLUG),
+        attachment: { filename: 'board-update.pdf', bytes: await boardUpdatePdf() },
+      },
+      'Jill Kilker',
+    );
+    expect(await getAttachment(db, SLUG)).toBeDefined();
+
+    await deleteAnnouncement(db, SLUG);
+
+    expect(await getAttachment(db, SLUG)).toBeUndefined();
+  });
+
+  it('leaves every other announcement exactly as it was', async () => {
+    const before = (await listAnnouncements(db)).filter((a) => a.slug !== SLUG);
+
+    await deleteAnnouncement(db, SLUG);
+
+    expect(await listAnnouncements(db)).toEqual(before);
+  });
+
+  // No floor: a school between terms may have nothing announced, and the list
+  // says what that means rather than being kept one row deep to avoid saying it.
+  it('can empty the list entirely', async () => {
+    for (const seeded of SEEDED_ANNOUNCEMENTS) {
+      await deleteAnnouncement(db, seeded.slug);
+    }
+
+    expect(await listAnnouncements(db)).toEqual([]);
+  });
+
+  // The second press of a back button, which asks for a state the site is in.
+  it('is not an error when there was nothing there', async () => {
+    await expect(deleteAnnouncement(db, 'never-announced-anything-like-this')).resolves
+      .toBeUndefined();
   });
 });
 
