@@ -431,6 +431,16 @@ the Statement of Faith body — stays in git as `.astro` and is *not* in the
 editable set. There is **no second seam inside the editable set**: everything in
 that list is equally theirs.
 
+**What is in the set can be removed as well as changed**, where it is a record
+rather than a settings screen. Editable means the school owns it, and owning it
+includes taking it out: a course, a person, an announcement and a policy can each
+be deleted from the admin, and any of those lists may be emptied entirely if that
+is the truth. School details and money settings are single rows the school edits
+and nobody deletes. What cannot be removed at all is on the other
+side of the seam — an application, an inquiry and [agreed terms](#agreed-terms)
+are records of what a family sent, not the school's content, and were never in
+this list (ADR-0021).
+
 Anything not on the list is not editable, and adding to it is a decision, not an
 implementation detail.
 
@@ -464,6 +474,36 @@ title, test name, type and identifier: a `person` is what the code has, and
 being an instructor is still a fact about the catalogue rather than a status on
 the row.
 
+### retired
+
+A **course** or a **person** the school is not currently running or listing, but
+expects back. It records **when** the school stopped, because "when did we stop
+running this?" is a question the office asks.
+
+A retired course comes off the catalogue's age-band listings and off the
+timetable, and is **not among the offerings a family can apply for** — the school
+is not running it, so nobody may ask for it. Its **class page still resolves** and
+says the school is not currently running it, because the address is on a printed
+flyer the school handed out and a link the school gave must not lead to nothing.
+It goes on naming who taught it: a retired course is the record of a past class.
+A retired person comes off the staff page, and a course still running does not
+name them.
+
+**It is reversible in one press and asks no confirmation**, because nothing is
+lost. Retired courses and people sit in a section beneath the live ones in the
+admin rather than hidden, so that nobody re-creates something the school already
+has.
+
+**It is the low-stakes move, not the escape hatch.** Retiring is for a class that
+is not running this year and a person on sabbatical; deleting is for a class the
+school decided not to run and a person typed in twice. Nothing here is
+retireable-but-not-deletable — anything that can be retired can also be deleted,
+and the choice is about whether the school expects it back.
+
+Not: "archived" (nothing is moved anywhere — the row is where it was), "hidden"
+(a retired thing is visible in the admin and its class page is public),
+"inactive", "deleted" (which is final and confirms first).
+
 ### announcement
 
 A headline, a short body, an optional link and an optional PDF, posted on a
@@ -482,8 +522,13 @@ A stale notice is a true thing about July, and the news page carries it; a
 notice for an event the school withdrew — the Texas Roadhouse night #146
 replaced — says something untrue about next week, and no staleness rule catches
 it, because its date is the day it was posted rather than the day of the event.
-That deletion is a migration, not a button: it is rare enough to be argued in
-writing each time.
+That deletion is a **button in the admin**, and the school presses it: an
+announcement is the school's own content, and a notice telling families about an
+event that is not happening is the case where waiting for a developer costs the
+most. It confirms first, like every delete here, and nothing blocks it.
+
+There is no retired state for an announcement. Aged out is history and stays;
+false is deleted.
 
 **Current** means posted within the last six weeks. It is a property of an
 announcement, not of a page: the home page carried the current ones until #109
@@ -553,13 +598,17 @@ and drops the morning after, because a fundraiser is at its most useful on the
 morning it happens. The subscribed calendar is deliberately unfiltered: it is the
 record of the year, and the phone reading it decides what to draw.
 
-It is also the one record on this site that is **deleted rather than kept**: a
-cancelled concert left on a subscribed feed is a family driving to a school that
-is dark. Because it is the one delete, removing it **confirms first**, on a
+It is **deleted rather than kept**: a cancelled concert left on a subscribed feed
+is a family driving to a school that is dark. It was once the only piece of the
+school's own content that was, and it is not any more — a course, a person, an
+announcement and a policy are all removable too. What has not changed is **why
+removing it confirms first**: the press is final, there is no undo, and a
+subscribed phone acts on it without anybody here seeing. So it confirms on a
 screen naming the one-off and its date and saying again what a subscribed phone
-will do — the same round trip [money settings](#money-settings) uses. Confirming
-lands back on the list, which names what went and whether the
-[republish](#republish) reached the live site.
+will do — the same round trip [money settings](#money-settings) uses, and the one
+every other delete on the site now follows. Confirming lands back on the list,
+which names what went and whether the [republish](#republish) reached the live
+site.
 
 Not: "event" on its own (which also names an application's lifecycle events),
 "closure" (a day the school is shut, which belongs to the year), "announcement".
@@ -670,6 +719,16 @@ or deletes one. Each has its own permanent address, linked from the admin rather
 than from the policies page, because "what did the family who enrolled in August
 sign?" is the school's question and not a parent's. The two kinds of address want
 opposite caching, which is why there are two of them (ADR-0005).
+
+**The row can be deleted; its versions survive it.** A policy the school no
+longer asks families to read comes off the policies page and out of the admin,
+and every document already uploaded stays readable at the permanent address it
+was given — including the ones families have already agreed to, whose
+[agreement](#agreement) records name a version by number and must go on
+resolving. The confirmation names what is kept as well as what goes, because
+"delete" would otherwise read as though the documents went with it (ADR-0021). A
+policy with no document yet deletes with nothing left behind, which is the
+mistake case it is mostly for.
 
 The **updated date** is stamped from the upload and is typeable nowhere: there is
 no date control on either policy form, so the published date cannot disagree with
