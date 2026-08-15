@@ -230,8 +230,8 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       <h2>Month by month</h2>
       <p class="sub mt-5">
         The same year, drawn as a calendar. Open houses, concerts and picture days sit on their
-        dates — from the school’s own calendar and from the office, without distinction — and a
-        weekday in term time with no classes on it says so.
+        dates with their times — from the school’s own calendar and from the office, without
+        distinction — and a weekday in term time with no classes on it says so.
       </p>
 
       {
@@ -299,13 +299,18 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
                               {cell.events.map((event) => (
                                 <div class="one-off" data-disclosure-cell>
                                   <button
-                                    class="one-off-title"
+                                    class="one-off-trigger"
                                     type="button"
                                     data-disclosure-trigger
                                     aria-expanded="false"
                                     aria-controls={`one-off-${event.slug}`}
                                   >
-                                    {event.title}
+                                    <span class="one-off-name">{event.title}</span>
+                                    {event.startTime && (
+                                      <time class="one-off-time" datetime={event.startTime}>
+                                        {eventTimeLabel(event.startTime)}
+                                      </time>
+                                    )}
                                   </button>
                                   <div
                                     class="one-off-panel"
@@ -316,9 +321,6 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
                                       <time datetime={event.heldOn}>
                                         {eventDateLabel(event.heldOn)}
                                       </time>
-                                      {event.startTime && (
-                                        <span> · {eventTimeLabel(event.startTime)}</span>
-                                      )}
                                     </p>
                                     {event.place && <p class="where">{event.place}</p>}
                                     {event.note && <p class="mt-2">{event.note}</p>}
@@ -560,13 +562,22 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     letter-spacing: 0.03em;
   }
 
-  /* A one-off is the one thing on the grid that opens, so it is a real button. */
+  /*
+    A one-off is the one thing on the grid that opens, so it is a real button.
+
+    What it prints is the title and the time together (#234): "Fall Open House"
+    alone does not say whether a family is coming at ten in the morning or at
+    half past six, which is most of what they came to the month for. The time
+    sits on its own line rather than after a separator, because a grid cell is
+    four or five characters wide and a title that wraps mid-word to make room
+    for "6.30pm" is worse than either fact on its own.
+  */
   .one-off {
     position: relative;
     margin-top: 0.25rem;
   }
 
-  .one-off-title {
+  .one-off-trigger {
     display: block;
     width: 100%;
     padding: 0.2rem 0.3rem;
@@ -581,10 +592,34 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
     cursor: pointer;
   }
 
-  .one-off-title:hover,
-  .one-off[data-open] .one-off-title {
+  .one-off-name {
+    display: block;
+  }
+
+  /*
+    Quieter than the title, in the same register the closure mark uses: the time
+    is what the title is qualified by, and a cell of two equal lines reads as two
+    one-offs. A one-off with no start time has no line here at all — an absent
+    time is a real state, and a dash standing in for it would invent a gap.
+  */
+  .one-off-time {
+    display: block;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.04em;
+    color: var(--color-ink-2);
+  }
+
+  .one-off-trigger:hover,
+  .one-off[data-open] .one-off-trigger {
     background: color-mix(in srgb, var(--color-gold-orn) 32%, transparent);
     color: var(--color-gold-ink);
+  }
+
+  .one-off-trigger:hover .one-off-time,
+  .one-off[data-open] .one-off-time {
+    color: inherit;
   }
 
   /*
@@ -669,7 +704,7 @@ const jsonLd = events.map((event) => eventJsonLd({ event, site: Astro.site ?? SI
       letter-spacing: 0.05em;
     }
 
-    .one-off-title {
+    .one-off-trigger {
       font-size: 0.95rem;
     }
 

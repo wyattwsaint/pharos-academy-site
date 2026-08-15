@@ -364,12 +364,11 @@ function closureLines(cells: readonly MonthCell[]): UnwrittenLine[] {
 /**
  * The one-offs, each its own line, in the order the date holds them.
  *
- * Title, time and place. The time is the rule #234 states — a one-off prints
- * its title and its time everywhere it appears — arriving here first: the grid
- * still hides its times behind the disclosure until that lands, and paper
- * cannot wait for it, because a pinned-up sheet that says "Fall Open House" and
- * not whether it is an evening is the whole complaint. An absent time stays a
- * real state rather than a gap to apologise for.
+ * Title, time and place — the rule #234 sets on the grid, which paper keeps
+ * rather than restates: a one-off prints its title and its time everywhere it
+ * appears, and an absent time is a real state rather than a gap to apologise
+ * for. A pinned-up sheet saying "Fall Open House" and not whether it is an
+ * evening is the same complaint the cell answered.
  *
  * The place comes with them because a printed sheet has no panel to put it in
  * and a family reading it is not standing at the school.
