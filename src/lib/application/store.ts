@@ -9,7 +9,7 @@ import {
 } from '../db/schema.js';
 import { decodeAgreements, encodeAgreements, type Agreements } from './agreements.js';
 import type { ApplicationChild, ApplicationFields, FaithAnswer, FaithAnswers } from './application.js';
-import { captureOfferingTitles, decodeOfferingTitles } from './chosen-classes.js';
+import { captureOfferingTitles, decodeOfferingTitles, type ChosenBy } from './chosen-classes.js';
 import type { Offering } from './offerings.js';
 import {
   APPLICATION_STATES,
@@ -56,10 +56,11 @@ import {
  * on `ApplicationChild` because the form never posts them: they are a fact the
  * submit knew and the family did not type.
  */
-export type RecordedChild = ApplicationChild & {
-  /** Empty for a row written before the capture existed. Not backfilled. */
-  offeringTitles: Record<string, string>;
-};
+export type RecordedChild = ApplicationChild &
+  ChosenBy & {
+    /** Empty for a row written before the capture existed. Not backfilled. */
+    offeringTitles: Record<string, string>;
+  };
 
 /** What was recorded, as the admin and the confirmation read it back. */
 export type ApplicationRecord = {

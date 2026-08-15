@@ -298,13 +298,40 @@ number that would otherwise look wrong.
 **Blocking a second application on the email address is wrong**: two households
 share one, and re-applying is a real thing to do.
 
-Nothing about it is stored — no `supersedes` column, no pointer written at
-submission. It is recomputed from the applications each time, so a correction is
-a correction rather than a migration, and the record of what each family sent
-stays exactly what they sent.
+**No seat is stored** — no `supersedes` column, no pointer written at
+submission. The count is recomputed from the applications each time, so a
+correction is a correction rather than a migration, and the record of what each
+family sent stays exactly what they sent. What *is* stored is the
+[captured class title](#captured-class-title) each application carries, which is
+how the tally names a class rather than what it counts.
+
+A class the school has since removed from the catalogue is **still counted**,
+named from that capture and marked as no longer offered. Dropping it would move
+a number the school has already decided something on.
 
 Not: "enrolment numbers" (a seat in the tally is not an enrolment), "roll",
 "class list".
+
+### captured class title
+
+The title of each [offering](#offering) a child selected, written onto the
+**application** at the moment it is submitted and never updated afterwards.
+
+It exists because an application is the record of what a family sent. Resolving
+a class against the live catalogue when the screen is read means a course
+renamed changes what an old application says, and a course removed makes a class
+silently vanish out of one — loss the office cannot even see happen.
+
+It is a **freeze, not a foreign key**, and the same construction as
+[agreed terms](#agreed-terms) for the same reason: record what the family was
+shown rather than looking it up later against something that moves. Nothing
+keeps it in step with the catalogue, and nothing may.
+
+Applications submitted before the capture existed hold none, and fall back to
+the slug out of the offering key. That fallback is deliberate and is **not
+backfilled** — there is no honest title to recover for them.
+
+Not: "course title" (which is the catalogue's, and moves).
 
 ### conversation flag
 

@@ -32,11 +32,24 @@
  * *still* offered, which is a fact about today and belongs to today.
  */
 
-import { ENROLMENT_UNITS, type EnrolmentUnit } from '../courses/course.js';
-import { findOffering, offeringKey, unitLabel, type Offering } from './offerings.js';
+import type { EnrolmentUnit } from '../courses/course.js';
+import { classAndUnit, findOffering, splitOfferingKey, type Offering } from './offerings.js';
 
-/** How the screen says a class the catalogue no longer has. */
+/** How both admin screens say a class the catalogue no longer has. */
 export const NO_LONGER_OFFERED = 'no longer offered';
+
+/**
+ * What a child chose, and what the application knows of it.
+ *
+ * The two readers of a submitted application — the Applications screen and the
+ * **class tally** — both want this and nothing else, so it is one type rather
+ * than the same three fields written out at each of them.
+ */
+export type ChosenBy = {
+  offeringKeys: readonly string[];
+  /** Frozen at submission. Absent on a row written before the capture existed. */
+  offeringTitles?: Readonly<Record<string, string>>;
+};
 
 /** One class on one child, as the application recorded it. */
 export type ChosenClass = {
@@ -46,9 +59,22 @@ export type ChosenClass = {
   unit: EnrolmentUnit;
   /** Captured at submission, or the slug for a row written before capture. */
   title: string;
-  /** Whether the catalogue still sells this offering. A fact about today. */
+  /**
+   * Whether the **course** is still in the catalogue. A fact about today.
+   *
+   * Asked of the course rather than of the exact offering, and asked that way
+   * by both readers, so the two cannot disagree about one class. A school that
+   * stopped selling the fall of a class it still runs has not removed the
+   * class, and telling the office it did would be the same kind of lie as
+   * dropping it: "no longer offered" is for a class that is gone.
+   */
   offered: boolean;
 };
+
+/** Every course the catalogue still has, by slug. The one rule both readers ask. */
+export function catalogueCourses(offerings: readonly Offering[]): Set<string> {
+  return new Set(offerings.map((offering) => offering.course.slug));
+}
 
 /**
  * The titles to freeze onto a child, as `<key>=<title>` pairs.
@@ -72,7 +98,7 @@ export function captureOfferingTitles(
 
   for (const key of keys) {
     if (seen.has(key)) continue;
-    const offering = offerings.find((candidate) => offeringKey(candidate) === key);
+    const offering = findOffering(offerings, key);
     if (!offering) continue;
     seen.add(key);
     captured.push(`${key}=${offering.course.title}`);
@@ -94,32 +120,18 @@ export function decodeOfferingTitles(pairs: readonly string[]): Record<string, s
 }
 
 /**
- * A posted key read back into its two halves, or null if it is not one.
+ * What one child of one application chose, in the order the form posted it.
  *
- * The unit is the part after the **last** colon, because a slug is the half a
- * hand-typed key gets wrong and splitting on the first colon would hand a
- * mangled slug back as though it were real. A key naming no known unit is not a
- * class at all — it is a garbled field — and is dropped rather than counted.
+ * Takes the catalogue as the slugs already gathered out of it rather than as
+ * the offerings, because both callers hold that set anyway — the tally for its
+ * own ordering, the screen for every child on the page — and rebuilding it per
+ * child would be the same set built once a row.
  */
-export function parseOfferingKey(key: string): { courseSlug: string; unit: EnrolmentUnit } | null {
-  const at = key.lastIndexOf(':');
-  if (at < 1) return null;
-
-  const unit = key.slice(at + 1);
-  if (!ENROLMENT_UNITS.includes(unit as EnrolmentUnit)) return null;
-
-  return { courseSlug: key.slice(0, at), unit: unit as EnrolmentUnit };
-}
-
-/** What one child of one application chose, in the order the form posted it. */
-export function chosenClasses(
-  child: { offeringKeys: readonly string[]; offeringTitles?: Readonly<Record<string, string>> },
-  offerings: readonly Offering[],
-): ChosenClass[] {
+export function chosenClasses(child: ChosenBy, courses: ReadonlySet<string>): ChosenClass[] {
   const titles = child.offeringTitles ?? {};
 
   return child.offeringKeys.flatMap((key) => {
-    const parsed = parseOfferingKey(key);
+    const parsed = splitOfferingKey(key);
     if (!parsed) return [];
 
     return [
@@ -128,7 +140,7 @@ export function chosenClasses(
         courseSlug: parsed.courseSlug,
         unit: parsed.unit,
         title: titles[key] ?? parsed.courseSlug,
-        offered: findOffering(offerings, key) !== null,
+        offered: courses.has(parsed.courseSlug),
       },
     ];
   });
@@ -142,6 +154,6 @@ export function chosenClasses(
  * never omitted, and never marked without being named.
  */
 export function chosenClassLabel(chosen: ChosenClass): string {
-  const name = `${chosen.title} (${unitLabel(chosen.unit).toLowerCase()})`;
+  const name = classAndUnit(chosen.title, chosen.unit);
   return chosen.offered ? name : `${name} — ${NO_LONGER_OFFERED}`;
 }

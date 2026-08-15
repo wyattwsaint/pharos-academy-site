@@ -9,7 +9,7 @@ import {
   statementVersion,
   type ApplicationFields,
 } from './application.js';
-import { chosenClasses } from './chosen-classes.js';
+import { catalogueCourses, chosenClasses } from './chosen-classes.js';
 import { CHEQUE_GRACE_DAYS, paymentStatusNow } from './lifecycle.js';
 import { offeringsOf } from './offerings.js';
 import {
@@ -177,7 +177,7 @@ describe('the classes an application was submitted with', () => {
     offeringsOf([{ ...ALGEBRA, title, enrolmentUnits: ['year'] }]);
 
   const classesOf = async (id: string, offerings: ReturnType<typeof catalogue>) =>
-    chosenClasses((await getApplication(db, id))!.children[0]!, offerings);
+    chosenClasses((await getApplication(db, id))!.children[0]!, catalogueCourses(offerings));
 
   it('captures the title of each class the child chose', async () => {
     const id = await createApplication(db, fields(), {

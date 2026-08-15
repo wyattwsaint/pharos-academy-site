@@ -23,7 +23,12 @@
  */
 
 import type { EnrolmentUnit } from '../courses/course.js';
-import { chosenClasses, NO_LONGER_OFFERED } from './chosen-classes.js';
+import {
+  catalogueCourses,
+  chosenClasses,
+  NO_LONGER_OFFERED,
+  type ChosenBy,
+} from './chosen-classes.js';
 import { countsInTally, type ApplicationState } from './lifecycle.js';
 import { unitLabel, type Offering } from './offerings.js';
 
@@ -39,12 +44,7 @@ export type TalliedApplication = {
   familyName: string;
   receivedAt: Date;
   state: ApplicationState;
-  children: readonly {
-    name: string;
-    offeringKeys: readonly string[];
-    /** Frozen at submission (#259). Absent on a row written before capture. */
-    offeringTitles?: Readonly<Record<string, string>>;
-  }[];
+  children: readonly (ChosenBy & { name: string })[];
 };
 
 /** One child in one class, however many applications said so. */
@@ -69,7 +69,11 @@ export type TallyEntry = {
    * rename must not change a number the school already decided on.
    */
   title: string;
-  /** Whether the catalogue still has it. A fact about today, not about the row. */
+  /**
+   * Whether the catalogue still has the course. A fact about today, not about
+   * the row — and the same question the Applications screen asks of the same
+   * class, so the two surfaces cannot describe one class two ways.
+   */
   offered: boolean;
   seats: TallySeat[];
 };
@@ -94,6 +98,8 @@ export function classTally(
   const seats = new Map<string, TallySeat & { courseSlug: string }>();
   /** How each class was named, by the newest application that named it. */
   const named = new Map<string, string>();
+  /** The one rule about what the catalogue still has — `chosenClasses`'s own. */
+  const catalogue = catalogueCourses(offerings);
 
   const newestFirst = [...applications]
     .filter((application) => countsInTally(application.state))
@@ -101,7 +107,7 @@ export function classTally(
 
   for (const application of newestFirst) {
     application.children.forEach((child, position) => {
-      for (const chosen of chosenClasses(child, offerings)) {
+      for (const chosen of chosenClasses(child, catalogue)) {
         if (!named.has(chosen.courseSlug)) named.set(chosen.courseSlug, chosen.title);
 
         const id = seatKey(application.familyName, child.name, position, chosen.courseSlug);
@@ -123,13 +129,6 @@ export function classTally(
       }
     });
   }
-
-  /*
-   * Whether the class is still in the catalogue is asked of the **course**, not
-   * of the exact offering: a school that stopped selling the fall of a class it
-   * still runs has not removed the class, and the tally is a list of classes.
-   */
-  const catalogue = new Set(offerings.map((offering) => offering.course.slug));
 
   const entries: TallyEntry[] = [];
   const entryFor = (slug: string) => {
