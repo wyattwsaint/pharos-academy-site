@@ -129,6 +129,28 @@ describe('editing a course', () => {
     ).rejects.toThrow(/underwater-basket-weaving/);
   });
 
+  it('lets a class give its instructor up and take one back', async () => {
+    // #257, both directions, because the staffing question is asked twice: a
+    // class typed in before it is staffed, and a class whose instructor
+    // leaves. Null goes down and comes back as null, never as an empty string.
+    const unstaffed = await saveCourse(
+      db,
+      'backyard-botany',
+      { ...editOf((await getCourse(db, 'backyard-botany'))!), instructorSlug: null },
+      'Jill Kilker',
+    );
+    expect(unstaffed.instructorSlug).toBeNull();
+    expect((await getCourse(db, 'backyard-botany'))?.instructorSlug).toBeNull();
+
+    const staffed = await saveCourse(
+      db,
+      'backyard-botany',
+      { ...editOf(unstaffed), instructorSlug: 'mandy-saint' },
+      'Jill Kilker',
+    );
+    expect(staffed.instructorSlug).toBe('mandy-saint');
+  });
+
   it('refuses a course purchasable as nothing at all', async () => {
     // The check constraint, proved from the store side: an empty tick list is
     // a class nobody could ever apply for, and the row will not hold one.
@@ -152,6 +174,22 @@ describe('adding a course', () => {
     const course = await getCourse(db, 'winter-birds');
     expect(course?.lastEditedBy).toBe('Jill Kilker');
     expect((await listCourses(db)).map((entry) => entry.slug)).toContain('winter-birds');
+  });
+
+  it('takes a class the school has scheduled and not staffed', async () => {
+    // #257. The school puts a class on the schedule before it decides who
+    // teaches it, so the column takes a null and hands one back — never an
+    // empty string standing in for a person nobody has picked.
+    const donor = (await getCourse(db, 'backyard-botany'))!;
+    const created = await createCourse(
+      db,
+      'winter-birds',
+      { ...editOf(donor), title: 'Winter Birds', instructorSlug: null },
+      'Jill Kilker',
+    );
+
+    expect(created.instructorSlug).toBeNull();
+    expect((await getCourse(db, 'winter-birds'))?.instructorSlug).toBeNull();
   });
 
   it('refuses an instructor who is not on the one list of people', async () => {

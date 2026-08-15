@@ -157,8 +157,16 @@ describe('when a class runs', () => {
     expect(instance.courseMode).toBe('blended');
   });
 
-  it('claims no instructor when the page could not resolve one', () => {
-    expect(nodeFor('algebra-1', null).hasCourseInstance.instructor).toBeUndefined();
+  it('omits the instructor entirely for a class the school has not staffed', () => {
+    /*
+     * #257. The page asks `instructorOf` once and hands the answer here, so
+     * "no instructor" reaches this as null — and the key is *absent*, not an
+     * empty `Person` and not an empty name. A crawler that found either would
+     * be holding an assertion that a teacher exists, which is exactly the
+     * claim the page declines to make.
+     */
+    const instance = nodeFor('algebra-1', null).hasCourseInstance;
+    expect(instance).not.toHaveProperty('instructor');
   });
 });
 

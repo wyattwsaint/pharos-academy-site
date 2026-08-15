@@ -212,10 +212,14 @@ export const courses = pgTable('courses', {
    * A foreign key rather than text, so the catalogue cannot name somebody who
    * is not in the one list, and correcting a name on the staff page corrects it
    * on every class page and in the timetable at the same moment.
+   *
+   * **Nullable, and null is a real state** (#257). The school puts a class on
+   * the schedule before it decides who teaches it, so a course with nobody
+   * named is a class it intends to run and has not staffed — the same kind of
+   * fact as a person with no `bio` and no `photo`. Every surface renders the
+   * absence rather than inventing a name.
    */
-  instructorSlug: text('instructor_slug')
-    .notNull()
-    .references(() => people.slug),
+  instructorSlug: text('instructor_slug').references(() => people.slug),
   /** The stamp: who saved this course last, and when. Overwritten, never appended. */
   lastEditedBy: text('last_edited_by'),
   lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),

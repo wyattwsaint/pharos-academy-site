@@ -97,10 +97,13 @@ describe('the course form', () => {
       'ageLabel',
       'rateTier',
       'prerequisites',
-      'instructorSlug',
     ] as const) {
       expect(parsed.errors[field], field).toBeTruthy();
     }
+    // Every field but one. The instructor is the field an empty form may leave
+    // empty (#257): a class the school means to run and has not staffed is a
+    // real answer, so there is nothing to complain about.
+    expect(parsed.errors.instructorSlug).toBeUndefined();
   });
 
   it('reads a picked slot as its two ends', () => {
@@ -224,6 +227,15 @@ describe('the course form', () => {
   it('refuses an instructor who is not on the people list', () => {
     const parsed = parseCourse(postedCourse({ instructorSlug: 'nobody' }), CONTEXT);
     expect(parsed.errors.instructorSlug).toMatch(/people list/);
+  });
+
+  it('saves a class nobody has been assigned to yet', () => {
+    // #257. Nothing picked is an answer — the class is scheduled and not
+    // staffed — and it is stored as null rather than as the empty string the
+    // select posts, so every surface asks one question and gets one answer.
+    const parsed = parseCourse(postedCourse({ instructorSlug: '' }), CONTEXT);
+    expect(parsed.errors).toEqual({});
+    expect(parsed.edit.instructorSlug).toBeNull();
   });
 
   /*

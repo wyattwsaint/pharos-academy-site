@@ -49,9 +49,21 @@ mean different things in the same column.
   there is one name.
 - **There is no second list to keep in sync**, so "no separate instructor entity" is a
   property of the schema rather than a discipline somebody has to maintain.
-- **The foreign key makes a course with no real instructor impossible.** `instructorOf`
-  throws rather than printing an empty instructor line, and the database refuses to delete
-  somebody nineteen courses point at — which is why the admin offers no delete.
+- **The foreign key makes a course naming somebody who is not on the list impossible.**
+  `instructorOf` throws rather than printing a name it could not resolve, and the database
+  refuses to delete somebody nineteen courses point at — which is why the admin offers no
+  delete.
+
+  **Narrowed by [#257](https://github.com/wyattwsaint/pharos-academy-site/issues/257)
+  (2026-08-15).** This bullet used to read "a course with no real instructor impossible",
+  and `instructor_slug` was `not null`. It is now nullable: the school puts a class on the
+  schedule before it decides who teaches it, and under the old column such a class could
+  not be typed into the admin at all. Nothing above changes — there is still one list, an
+  instructor is still derived from the catalogue, and a course still cannot name somebody
+  who is not a person. What changes is that it may name **nobody**, which every surface
+  renders as an absence (CONTEXT.md, "unstaffed course") rather than as a gap to fill. The
+  reversal is deliberate and is the same stance this ADR already takes on a missing bio and
+  a missing photograph.
 - **Editing a person republishes the whole site.** A name is printed on the staff page, on
   each class that person teaches and in the timetable, so `/admin/people/<slug>` calls
   `revalidateAll` and reports the answer, exactly as school details does (#18 §3).

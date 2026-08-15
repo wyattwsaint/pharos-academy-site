@@ -7,6 +7,7 @@ import { coursePrice, priceSummary } from '../src/lib/courses/pricing.js';
 import { SEEDED_MONEY_SETTINGS } from '../src/lib/money/settings.js';
 import { contactHours } from '../src/lib/courses/schedule.js';
 import { seededName } from '../src/lib/people/person.js';
+import { ensureUnstaffedCourse, UNSTAFFED } from './unstaffed-course.js';
 
 /**
  * #22's acceptance criteria, in a browser.
@@ -198,7 +199,14 @@ test.describe('the age axis', () => {
     const shown = await page.locator('.classcard[data-course]').evaluateAll((nodes) =>
       nodes.map((node) => node.getAttribute('data-course')),
     );
-    expect(new Set(shown).size).toBe(CATALOGUE.length);
+    // Every seeded class is reachable, which is the claim. Not "exactly these
+    // and no others": the admin adds courses, and this suite adds one itself
+    // (`unstaffed-course.ts`), so a total would be an assertion about the run
+    // rather than about the page.
+    const shownOnce = new Set(shown);
+    for (const course of CATALOGUE) {
+      expect(shownOnce, course.title).toContain(course.slug);
+    }
   });
 });
 
@@ -258,7 +266,7 @@ test.describe('a class’s own page', () => {
     await expect(facts).toContainText('Elementary Algebra');
     await expect(facts).toContainText('Proficiency in core arithmetic skills');
     // The name comes from the one list of people (#26), not from the course.
-    await expect(facts).toContainText(seededName(course.instructorSlug));
+    await expect(facts).toContainText(seededName(course.instructorSlug!));
     await expect(facts).toContainText(`${contactHours(course)} hours`);
     await expect(facts).toContainText('$50 for test scoring');
     await expect(facts).toContainText('$420/semester, $840/year ($15/hour)');
@@ -359,6 +367,69 @@ test.describe('a class’s own page', () => {
     await page.goto('/classes/descriptions');
     await page.locator('.coursefull[data-course="kingdom-math"] a.btn').click();
     await expect(page.locator('h1')).toContainText('Kingdom Math');
+  });
+});
+
+/**
+ * A class the school has scheduled and not staffed (#257).
+ *
+ * The absence is rendered rather than filled: no instructor line, and — the
+ * part that is easy to get wrong — no label with nothing beside it, no dash and
+ * no "TBA". A parent reading it learns the class runs, which is the true thing
+ * the school knows about it today.
+ *
+ * The course is added through the admin, because no seeded one is unstaffed and
+ * this ticket changes no data. That is why these skip against a deployment.
+ */
+test.describe('a class with no instructor', () => {
+  test.skip(!!process.env.PLAYWRIGHT_BASE_URL, 'adds a course to the database');
+
+  test('names nobody on its own page, and leaves no empty row where a name goes', async ({
+    page,
+  }) => {
+    await page.goto(await ensureUnstaffedCourse(page));
+
+    const facts = page.locator('.coursefacts');
+    await expect(facts).toBeVisible();
+    // Not "Instructor: —". The row is simply not there, the way an unfilled
+    // required text is not there.
+    await expect(facts.locator('dt', { hasText: /^Instructor$/ })).toHaveCount(0);
+    // And no row anywhere on the list is a label with nothing under it.
+    const emptyValues = await facts
+      .locator('dd')
+      .evaluateAll((cells) => cells.filter((cell) => (cell.textContent ?? '').trim() === '').length);
+    expect(emptyValues).toBe(0);
+    // The class itself is still fully described — this is a staffing gap, not
+    // a broken page.
+    await expect(facts).toContainText('Meets');
+    await expect(page.locator('h1')).toHaveText(UNSTAFFED.title);
+  });
+
+  test('names nobody in the full descriptions either', async ({ page }) => {
+    await ensureUnstaffedCourse(page);
+    await page.goto('/classes/descriptions');
+
+    const entry = page.locator(`.coursefull[data-course="${UNSTAFFED.slug}"]`);
+    await expect(entry).toBeVisible();
+    await expect(entry.locator('dt', { hasText: /^Instructor$/ })).toHaveCount(0);
+    // The surfaces agree, which is #22's whole claim: a class named on one and
+    // unnamed on the other would be the drift this catalogue exists to end.
+    // Everything else about it is still printed here.
+    expect(await entry.locator('.coursefacts dd').count()).toBeGreaterThan(0);
+  });
+
+  test('carries no who-teaches-it line in the timetable', async ({ page }) => {
+    await ensureUnstaffedCourse(page);
+    await page.goto('/classes/by-day');
+
+    const slot = page.locator(`[data-day="${UNSTAFFED.day}"] [data-course="${UNSTAFFED.slug}"]`);
+    await expect(slot).toBeVisible();
+    await expect(slot.locator('.slot-who')).toHaveCount(0);
+    // Beside a staffed class in the same column, which is what makes the
+    // absence a rendering decision rather than a missing component.
+    await expect(
+      page.locator(`[data-day="${UNSTAFFED.day}"] [data-course="backyard-botany"] .slot-who`),
+    ).toHaveCount(1);
   });
 });
 

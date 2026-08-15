@@ -71,7 +71,7 @@ describe('the catalogue, after the migration', () => {
   it('points every course at a person rather than at a typed name', async () => {
     const directory = bySlug(await listPeople(db));
     for (const course of await listCourses(db)) {
-      expect(instructorOf(directory, course).name, course.title).toBeTruthy();
+      expect(instructorOf(directory, course)?.name, course.title).toBeTruthy();
     }
   });
 
@@ -79,8 +79,8 @@ describe('the catalogue, after the migration', () => {
     const directory = bySlug(await listPeople(db));
     const courses = await listCourses(db);
     const algebra = courses.find((course) => course.slug === 'algebra-1')!;
-    expect(instructorOf(directory, algebra).name).toBe('Pastor George Jensen');
-    expect(instructorOf(directory, algebra).role).toBe('Chaplain & Spiritual Advisor');
+    expect(instructorOf(directory, algebra)?.name).toBe('Pastor George Jensen');
+    expect(instructorOf(directory, algebra)?.role).toBe('Chaplain & Spiritual Advisor');
   });
 
   it('is idempotent — re-running the migrations changes nothing', async () => {
@@ -126,7 +126,7 @@ describe('editing a person', () => {
     const hers = (await listCourses(db)).filter((course) => course.instructorSlug === 'mandy-saint');
     expect(hers).toHaveLength(8);
     for (const course of hers) {
-      expect(instructorOf(directory, course).name).toBe('Dr. Mandy Saint');
+      expect(instructorOf(directory, course)?.name).toBe('Dr. Mandy Saint');
     }
   });
 

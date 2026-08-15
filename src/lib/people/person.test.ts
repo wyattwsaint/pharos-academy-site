@@ -48,7 +48,11 @@ describe('one list, not two', () => {
     // than aspirational.
     const directory = bySlug(seeded);
     for (const course of CATALOGUE) {
-      expect(directory.has(course.instructorSlug), course.title).toBe(true);
+      // Every seeded course names somebody. A course may name nobody (#257),
+      // but that is a class the school has not staffed yet and none of these
+      // is one — so an unnamed seed is a fault rather than a skipped case.
+      expect(course.instructorSlug, course.title).not.toBeNull();
+      expect(directory.has(course.instructorSlug!), course.title).toBe(true);
     }
   });
 
@@ -71,7 +75,7 @@ describe('one list, not two', () => {
       const published = MIRROR_COURSES.find(
         (mirrored) => sameText(mirrored.title) === sameText(course.title),
       );
-      expect(directory.get(course.instructorSlug)?.name, course.title).toBe(published?.instructor);
+      expect(directory.get(course.instructorSlug!)?.name, course.title).toBe(published?.instructor);
     }
   });
 
@@ -172,10 +176,21 @@ describe('leadership', () => {
 describe('resolving a course to its instructor', () => {
   it('gives the person the catalogue names', () => {
     const algebra = CATALOGUE.find((course) => course.slug === 'algebra-1')!;
-    expect(instructorOf(bySlug(seeded), algebra).name).toBe('Pastor George Jensen');
+    expect(instructorOf(bySlug(seeded), algebra)?.name).toBe('Pastor George Jensen');
   });
 
-  it('refuses rather than printing a class with no instructor', () => {
+  it('gives nobody for a class the school has scheduled and not staffed', () => {
+    // #257. The one place the site decides whether a class names anybody, and
+    // it says no rather than throwing: an unstaffed class is a real state the
+    // pages render as an absence, not a broken row.
+    const unstaffed = { ...CATALOGUE[0]!, instructorSlug: null };
+    expect(instructorOf(bySlug(seeded), unstaffed)).toBeNull();
+  });
+
+  it('refuses a course naming somebody who is not on the list', () => {
+    // Still loud, and for the original reason: the column is a foreign key, so
+    // this can only mean the page was handed a partial list of people — a name
+    // silently dropped is worse than a failure.
     const orphan = { ...CATALOGUE[0]!, instructorSlug: 'nobody' };
     expect(() => instructorOf(bySlug(seeded), orphan)).toThrow(/nobody/);
   });
