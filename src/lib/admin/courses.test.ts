@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { SEEDED_SCHOOL_YEAR, type SchoolYear } from '../calendar/year.js';
 import { ENROLMENT_UNITS, RATE_TIERS } from '../courses/course.js';
-import { parseCourse, RATE_LABELS, UNIT_LABELS, type CourseContext } from './courses.js';
+import {
+  courseDeletion,
+  parseCourse,
+  RATE_LABELS,
+  UNIT_LABELS,
+  type CourseContext,
+} from './courses.js';
 
 /**
  * The course form (#24).
@@ -246,5 +252,85 @@ describe('the course form', () => {
   it('has a human label for every enrolment unit and every rate', () => {
     for (const unit of ENROLMENT_UNITS) expect(UNIT_LABELS[unit]).toBeTruthy();
     for (const tier of RATE_TIERS) expect(RATE_LABELS[tier]).toBeTruthy();
+  });
+});
+
+/**
+ * What the screen says before a class is deleted (#267, ADR-0021).
+ *
+ * Asserted here rather than through a browser because these sentences *are* the
+ * safety net: there is no undo, and the office decides on nothing else. The
+ * browser proves the round trip; this proves the words, including the case the
+ * whole ticket turned on — a class families have already applied for.
+ */
+describe('the course deletion confirmation', () => {
+  it('names the class in the question and in the button that answers it', () => {
+    const deletion = courseDeletion('Backyard Botany', 0);
+
+    expect(deletion.heading).toBe('Delete Backyard Botany?');
+    expect(deletion.confirmLabel).toBe('Yes, delete Backyard Botany');
+    // The way out says what it does, so neither control is read as the other.
+    expect(deletion.declineLabel).toBe('Go back without deleting');
+  });
+
+  it('names the four surfaces the class comes off', () => {
+    const { goes } = courseDeletion('Backyard Botany', 0);
+
+    expect(goes).toContain('Backyard Botany');
+    expect(goes).toContain('class lists');
+    expect(goes).toContain('timetable');
+    expect(goes).toContain('application');
+    expect(goes).toContain('own page');
+  });
+
+  it('says there is no undo, and points at the press that has one', () => {
+    // Retire is the thing the office may actually have meant — a class the
+    // school is not running *this* year — so the irreversible screen names it.
+    const { undo } = courseDeletion('Backyard Botany', 0);
+
+    expect(undo).toContain('no undo');
+    expect(undo).toContain('retire it instead');
+  });
+
+  it('says plainly that nobody has applied, which is the ordinary case', () => {
+    // A class typed in by mistake, or one the school decided against before
+    // anybody saw it. Nothing is riding on the press, and saying so is what
+    // makes it obviously safe.
+    expect(courseDeletion('Backyard Botany', 0).applied).toBe(
+      'No family has applied for this class, so nothing anybody has sent mentions it.',
+    );
+  });
+
+  it('says one application in the singular, all the way through the sentence', () => {
+    // Written out whole rather than assembled, like `keptSentence` next door:
+    // the subject is not the only word a count changes, and "one application …
+    // changes none of them" is what assembling it produces.
+    const { applied } = courseDeletion('Backyard Botany', 1);
+
+    expect(applied).toContain('One application has');
+    expect(applied).toContain('changes nothing about that application');
+    expect(applied).not.toContain('none of them');
+    expect(applied).toContain('Backyard Botany');
+    expect(applied).toContain('no longer offered');
+    expect(applied).toContain('tally');
+  });
+
+  it('counts them in the plural, and keeps the same promise', () => {
+    const { applied } = courseDeletion('Backyard Botany', 3);
+
+    expect(applied).toContain('3 applications have');
+    expect(applied).toContain('changes none of them');
+    expect(applied).toContain('tally');
+  });
+
+  it('never says the delete could be refused', () => {
+    // The delete is unconditional (ADR-0021): after one application season a
+    // refusal would mean no class could ever be deleted again. A confirmation
+    // that warned of one would be describing a screen that does not exist.
+    for (const applications of [0, 1, 5]) {
+      const deletion = courseDeletion('Backyard Botany', applications);
+      const words = `${deletion.goes} ${deletion.applied} ${deletion.undo}`;
+      expect(words).not.toMatch(/cannot be deleted|will be refused|not allowed/i);
+    }
   });
 });

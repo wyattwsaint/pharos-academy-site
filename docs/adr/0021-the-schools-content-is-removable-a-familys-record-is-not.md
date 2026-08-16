@@ -3,10 +3,14 @@
 **Status:** accepted; being built — the policy delete
 ([#260](https://github.com/wyattwsaint/pharos-academy-site/issues/260)), the
 announcement delete
-([#258](https://github.com/wyattwsaint/pharos-academy-site/issues/258)) and the
+([#258](https://github.com/wyattwsaint/pharos-academy-site/issues/258)), the
 person delete
-([#262](https://github.com/wyattwsaint/pharos-academy-site/issues/262)) have
-landed; course delete and retirement have not
+([#262](https://github.com/wyattwsaint/pharos-academy-site/issues/262)),
+retirement
+([#263](https://github.com/wyattwsaint/pharos-academy-site/issues/263)) and the
+course delete
+([#267](https://github.com/wyattwsaint/pharos-academy-site/issues/267)) have all
+landed
 **Date:** 2026-08-15
 **Context:** [#252](https://github.com/wyattwsaint/pharos-academy-site/issues/252),
 recorded by [#256](https://github.com/wyattwsaint/pharos-academy-site/issues/256);
@@ -91,7 +95,9 @@ From the second half, three consequences that look unrelated and are not:
 
 - **An application is never deleted**, and neither is an inquiry or a row of
   agreed terms. They are not the school's content.
-- **A course delete is gated** on the Applications screen and the
+- **A course delete was gated** — the gate is open, and the delete landed with
+  [#267](https://github.com/wyattwsaint/pharos-academy-site/issues/267) — on the
+  Applications screen and the
   [class tally](../../CONTEXT.md#class-tally) first being able to read an
   [offering](../../CONTEXT.md#offering) key the catalogue no longer has — naming
   it, marking it as no longer offered, and still counting it. Until they can, a

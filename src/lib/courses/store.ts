@@ -32,13 +32,31 @@ export async function listCourses(db: Db): Promise<Course[]> {
     throw new Error('The course catalog is empty — run `npm run db:migrate`.');
   }
   /*
-   * The retired ones come out here and nowhere else (#263).
-   *
-   * After the guard, deliberately: "no rows at all" is a database the migration
-   * has never been run against, and "every row retired" is a decision the
-   * school made. Filtering first would turn the last retire into an outage.
+   * The retired ones come out after the guard, deliberately (#263): "no rows at
+   * all" is a database the migration has never been run against, and "every row
+   * retired" is a decision the school made. Filtering first would turn the last
+   * retire into an outage.
    */
-  return rows.filter((course) => course.retiredAt === null);
+  return running(rows);
+}
+
+/**
+ * The classes the school is running, with the guard left off (#267).
+ *
+ * The same list `listCourses` publishes and the same filter — written once, so
+ * the two cannot part company — minus the empty-catalogue guard, for the one
+ * reader that must survive an empty catalogue: the course editor, which is the
+ * screen the next class is typed in on. A catalogue can be emptied entirely now
+ * that a class can be deleted, and a guard meant to catch an unmigrated database
+ * would make the add form unreachable exactly when it is needed.
+ */
+export async function listRunningCourses(db: Db): Promise<Course[]> {
+  return running(await listEveryCourse(db));
+}
+
+/** Retired means off every published surface (#263). One rule, one place. */
+function running(courses: readonly Course[]): Course[] {
+  return courses.filter((course) => course.retiredAt === null);
 }
 
 /**
@@ -120,6 +138,29 @@ export async function createCourse(
 
   if (!row) throw new Error(`Could not add a course with the slug "${slug}".`);
   return toCourse(row);
+}
+
+/**
+ * Delete a course, and no application (#267, ADR-0021).
+ *
+ * One statement against one table, and — as with `deletePolicy` — the whole
+ * point is what it does **not** touch. An application names its classes as
+ * `<slug>:<unit>` text with a captured title beside it (#259) and no foreign
+ * key, so a family's submitted record cannot be altered by anything here: the
+ * Applications screen and the **class tally** still name the class, out of what
+ * the family was shown, and mark it as no longer offered. That is what makes an
+ * unconditional delete safe, and it is why this waited for the capture.
+ *
+ * **Never refused for being applied for.** A refusal would mean that after one
+ * application season no course could be deleted again, which is exactly the
+ * board a new school in flux has to be able to clear. What the office is owed
+ * instead is the truth before it presses, which the confirmation gives it.
+ *
+ * Silent on a slug that is not there, like the other stores' deletes: the row
+ * is gone either way, and the screen that called this already has the course.
+ */
+export async function deleteCourse(db: Db, slug: string): Promise<void> {
+  await db.delete(coursesTable).where(eq(coursesTable.slug, slug));
 }
 
 /**

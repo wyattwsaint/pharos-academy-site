@@ -1102,9 +1102,9 @@ is not in the closed lists (#201).
 
 **A deleted row is the one thing the code cannot name.** Removing a
 [one-off](#one-off) and deleting a [policy](#policy), an
-[announcement](#announcement) or a [person](#person) each redirect to a list that
-can no longer look the row up, so its name travels beside the code as text. That
-is data and not a message: the list still chooses every word around
+[announcement](#announcement), a [person](#person) or a course each redirect to a
+list that can no longer look the row up, so its name travels beside the code as
+text. That is data and not a message: the list still chooses every word around
 it from its own closed lists, so a rewritten URL can put a wrong noun in the
 banner but never a claim the site did not make.
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  courseDeletionOutcome,
   personDeletionOutcome,
   policyDeletionOutcome,
   removalOutcome,
@@ -148,5 +149,38 @@ describe('what ?deleted= means on People (#262)', () => {
   it('says nothing at all when the list was merely opened', () => {
     expect(personDeletionOutcome(null, null)).toBeNull();
     expect(personDeletionOutcome(null, 'live')).toBeNull();
+  });
+});
+
+describe('what ?deleted= means on the Classes list (#267)', () => {
+  it('names the class, says the applications keep it, and reports the republish', () => {
+    expect(courseDeletionOutcome('Backyard Botany', 'live')).toEqual({
+      ok: true,
+      message:
+        'Backyard Botany is deleted. Every application that asked for it still names it, marked as no longer offered. Republished — the live site is up to date.',
+    });
+  });
+
+  // The delete happened either way, so the banner still reports it — but it is
+  // not allowed to imply that a parent reading the class lists has caught up.
+  it('does not claim the live site caught up when it did not', () => {
+    expect(courseDeletionOutcome('Backyard Botany', 'stale')).toEqual({
+      ok: false,
+      message:
+        "Backyard Botany is deleted. Every application that asked for it still names it, marked as no longer offered. Republishing didn't reach the live site — Retry.",
+    });
+  });
+
+  it('still reports the deletion when the URL says nothing about republishing', () => {
+    expect(courseDeletionOutcome('Backyard Botany', null)).toEqual({
+      ok: true,
+      message:
+        'Backyard Botany is deleted. Every application that asked for it still names it, marked as no longer offered.',
+    });
+  });
+
+  it('says nothing at all when the list was merely opened', () => {
+    expect(courseDeletionOutcome(null, null)).toBeNull();
+    expect(courseDeletionOutcome(null, 'live')).toBeNull();
   });
 });

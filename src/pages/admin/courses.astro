@@ -7,6 +7,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import type { Banner } from '../../lib/admin/banner.js';
 import { UNIT_LABELS } from '../../lib/admin/courses.js';
 import { formatDay, formatStamp } from '../../lib/admin/formatting.js';
+import { courseDeletionOutcome } from '../../lib/admin/republish-outcome.js';
 import { COURSE_RETIREMENT, pressRetirement, RETIRE_VALUES } from '../../lib/admin/retirement.js';
 import { durationLabel, type Course } from '../../lib/courses/course.js';
 import { priceSummary } from '../../lib/courses/pricing.js';
@@ -25,16 +26,15 @@ import { getMoneySettings } from '../../lib/money/store.js';
  * reads here is what a parent reads there, rather than a second summary that
  * could disagree.
  *
- * There is still no delete here, and the reason is no longer the one People
- * used to share. People has a delete now (#262), because nothing a family sent
- * names a person. A **course** is named by what a family sent: an application
- * records the classes a child was enrolled in, so removing one edits a record
- * that is not the school's to edit. ADR-0021 gates it on the Applications
- * screen and the class tally first being able to read an offering key the
- * catalogue no longer has — naming it, marking it as no longer offered, and
- * still counting it.
+ * **The delete lands here** (#267). It happens on the class's own screen, which
+ * stops existing the moment it succeeds, so the outcome travels in the query
+ * string and is said on this list. This screen used to say a course was the one
+ * thing that could not be deleted, because a class a family had applied for was
+ * a row other rows pointed at; they never pointed at it — an application names
+ * its classes out of what it captured at submission (#259), so the gate ADR-0021
+ * put on the readers is open and the delete is unconditional.
  *
- * What there is instead is **Retire** (#263), and the retired classes are on
+ * The other press is **Retire** (#263), and the retired classes are on
  * this screen rather than behind a filter. A screen that hid them is a screen
  * where the office re-creates a class it already has, and then has two — so
  * they sit in their own section beneath the live ones, each with the date the
@@ -47,7 +47,19 @@ import { getMoneySettings } from '../../lib/money/store.js';
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
-let banner: Banner | null = null;
+/**
+ * What a delete that redirected here has to say for itself (#267).
+ *
+ * The delete happens on the class's own screen, which stops existing the moment
+ * it succeeds, so the outcome travels in the query string and is said on this
+ * list: what went, and whether the live site caught up. A Retire pressed on
+ * this screen answers in the same banner below, because the two are one
+ * question — what just happened to a class.
+ */
+let banner: Banner | null = courseDeletionOutcome(
+  Astro.url.searchParams.get('deleted'),
+  Astro.url.searchParams.get('republished'),
+);
 
 if (Astro.request.method === 'POST') {
   // The only thing this screen posts is a Retire, so a form it cannot read is
@@ -89,7 +101,7 @@ const summaryOf = (course: Course) =>
     own page — all four from this one row.
   </p>
 
-  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="retire-banner" retry />}
+  {banner && <AdminBanner ok={banner.ok} message={banner.message} testId="classes-banner" retry />}
 
   <p class="mt-8">
     <AdminButton href="/admin/courses/new">Add a course</AdminButton>

@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { catalogueCourses, chosenClasses } from '../application/chosen-classes.js';
+import { offeringsOf } from '../application/offerings.js';
+import { createApplication, listApplications } from '../application/store.js';
+import { classTally } from '../application/tally.js';
 import { createEphemeralDatabase, runMigrations, type Db } from '../db/client.js';
-import { courses as coursesTable } from '../db/schema.js';
+import { applicationChildren, courses as coursesTable } from '../db/schema.js';
 import { CATALOGUE } from './catalogue.js';
 import type { Course } from './course.js';
 import {
   createCourse,
+  deleteCourse,
   getCourse,
   listCourses,
   listEveryCourse,
@@ -319,5 +324,91 @@ describe('retiring a course', () => {
     );
 
     expect(saved.retiredAt).toEqual(at);
+  });
+});
+
+/**
+ * Deleting a class, and what it must not touch (#267, ADR-0021).
+ *
+ * The row going is the easy half and is asserted first. The half this ticket is
+ * actually about is below it: a family applied for the class, the school
+ * deletes it, and **every column of that application is exactly what it was** —
+ * because an application names its classes as captured text rather than as a
+ * pointer (#259). That is what makes an unconditional delete safe, so it is
+ * proved against real tables rather than reasoned about.
+ */
+describe('deleting a course', () => {
+  /** One application, for the class the tests below delete out from under it. */
+  async function applyForAlgebra(): Promise<void> {
+    await createApplication(
+      db,
+      {
+        familyName: 'Marsh',
+        email: 'ruth@example.com',
+        children: [{ name: 'Obi', age: '9', offeringKeys: ['algebra-1:year'] }],
+        faith: {},
+        objections: '',
+        agreements: {},
+        paymentMethod: 'check',
+      },
+      { statementVersion: 'sof-test', offerings: offeringsOf(await listCourses(db)) },
+    );
+  }
+
+  it('takes it out of both lists and stops answering at its address', async () => {
+    await deleteCourse(db, 'backyard-botany');
+
+    expect((await listCourses(db)).map((course) => course.slug)).not.toContain('backyard-botany');
+    expect((await listEveryCourse(db)).map((course) => course.slug)).not.toContain(
+      'backyard-botany',
+    );
+    expect(await getCourse(db, 'backyard-botany')).toBeUndefined();
+  });
+
+  it('empties the catalogue when every class goes, rather than refusing the last one', async () => {
+    // The school's own list is allowed to be empty: that is the state the admin
+    // Classes screen has an empty state for, and a new school clearing the
+    // board is the case this delete exists for.
+    for (const course of await listEveryCourse(db)) {
+      await deleteCourse(db, course.slug);
+    }
+    expect(await listEveryCourse(db)).toEqual([]);
+  });
+
+  it('is silent about a class that is not there', async () => {
+    // The row is gone either way, and the screen that called this already had
+    // the course. Nothing here is a refusal.
+    await expect(deleteCourse(db, 'underwater-basket-weaving')).resolves.toBeUndefined();
+  });
+
+  it('modifies no application row, and is not refused for having been applied for', async () => {
+    await applyForAlgebra();
+    const children = await db.select().from(applicationChildren);
+    const applications = await listApplications(db);
+
+    await deleteCourse(db, 'algebra-1');
+
+    expect(await db.select().from(applicationChildren)).toEqual(children);
+    expect(await listApplications(db)).toEqual(applications);
+  });
+
+  it('leaves the deleted class named, marked and counted on the application', async () => {
+    // The two readers of a submitted application, after the class it names has
+    // gone: it is named as the family was shown it, marked as no longer
+    // offered, and still counted in the tally the school decides on.
+    await applyForAlgebra();
+    await deleteCourse(db, 'algebra-1');
+
+    const applications = await listApplications(db);
+    const live = offeringsOf(await listCourses(db));
+    const [chosen] = chosenClasses(applications[0]!.children[0]!, catalogueCourses(live));
+
+    expect(chosen!.title).toBe('Algebra 1');
+    expect(chosen!.offered).toBe(false);
+
+    const [entry] = classTally(applications, live);
+    expect(entry!.courseSlug).toBe('algebra-1');
+    expect(entry!.offered).toBe(false);
+    expect(entry!.seats).toHaveLength(1);
   });
 });
