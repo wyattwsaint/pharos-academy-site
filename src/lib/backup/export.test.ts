@@ -12,7 +12,7 @@ import * as schema from '../db/schema.js';
 import { createApplication } from '../application/store.js';
 import { createInquiry } from '../inquiry/store.js';
 import { getMoneySettings, recordAgreedTerms } from '../money/store.js';
-import { replacePolicyFile } from '../policies/store.js';
+import { deletePolicy, replacePolicyFile } from '../policies/store.js';
 import {
   EXCLUDED_TABLES,
   EXPORTED_TABLES,
@@ -64,6 +64,10 @@ describe('the ZIP', () => {
     expect(readme).toMatch(/content\//);
     expect(readme).toMatch(/files\//);
     expect(readme).toMatch(/JSON/);
+    // And what a retired entry is (#269), in the same voice: the reader who
+    // meets one is a board member wondering why a policy is in here twice over
+    // — once as a name and once as documents nothing on the site links to.
+    expect(readme).toMatch(/no longer part of the school/i);
   });
 
   it('carries a manifest that names every file actually in the archive', async () => {
@@ -172,6 +176,74 @@ describe('the files', () => {
     expect(Buffer.from(files[exported!.attachment!]).equals(pdf)).toBe(true);
   });
 
+  /*
+   * The deleted policy's documents, arriving named (#269).
+   *
+   * A version row outlives its policy on purpose (#260) and names a slug and
+   * nothing else. Without the retired entry the archive carries two PDFs in a
+   * folder that nothing else in it mentions — a board member opening the ZIP
+   * finds files and no way to tell what they are or who agreed to them.
+   */
+  it('names a deleted policy, so its kept documents have a parent', async () => {
+    const pdf = await readFile('docs/mirror/pdf/policy-handbook.pdf');
+    await replacePolicyFile(db, 'handbook', { filename: 'handbook.pdf', bytes: pdf }, 'Jill');
+    await deletePolicy(db, 'handbook', new Date('2026-08-15T14:00:00Z'));
+
+    const files = await open();
+
+    const policies = json(files, 'content/policies.json') as {
+      slug: string;
+      title: string;
+      retired?: boolean;
+      retiredAt?: string;
+      versions: { version: number; file: string }[];
+    }[];
+    const handbook = policies.find((policy) => policy.slug === 'handbook');
+    expect(handbook?.title).toBe('Handbook');
+    expect(handbook?.retired).toBe(true);
+    expect(handbook?.retiredAt).toBe('2026-08-15T14:00:00.000Z');
+    expect(files[handbook!.versions[0].file]).toBeDefined();
+    expect(Buffer.from(files[handbook!.versions[0].file]).equals(pdf)).toBe(true);
+  });
+
+  // The criterion behind the entry, stated as the property rather than as the
+  // one case: no file under `files/policies/` belongs to a folder the JSON does
+  // not name, however it came to be there.
+  it('leaves no policy document in the ZIP that the JSON does not name', async () => {
+    const pdf = await readFile('docs/mirror/pdf/policy-handbook.pdf');
+    await replacePolicyFile(db, 'handbook', { filename: 'handbook.pdf', bytes: pdf }, 'Jill');
+    await replacePolicyFile(db, 'code-of-conduct', { filename: 'conduct.pdf', bytes: pdf }, 'Jill');
+    await deletePolicy(db, 'handbook');
+
+    const files = await open();
+
+    const named = new Set(
+      (json(files, 'content/policies.json') as { versions: { file: string }[] }[]).flatMap(
+        (policy) => policy.versions.map((version) => version.file),
+      ),
+    );
+    for (const path of Object.keys(files).filter((path) => path.startsWith('files/policies/'))) {
+      expect(named, path).toContain(path);
+    }
+  });
+
+  // A live policy's entry is what it was: no `retired` key to explain, and
+  // nothing about the deleted one leaking into it.
+  it('leaves a live policy’s entry unchanged', async () => {
+    const pdf = await readFile('docs/mirror/pdf/policy-handbook.pdf');
+    await replacePolicyFile(db, 'handbook', { filename: 'handbook.pdf', bytes: pdf }, 'Jill');
+    await replacePolicyFile(db, 'code-of-conduct', { filename: 'conduct.pdf', bytes: pdf }, 'Jill');
+    const before = json(await open(), 'content/policies.json') as { slug: string }[];
+
+    await deletePolicy(db, 'code-of-conduct');
+    const after = json(await open(), 'content/policies.json') as { slug: string }[];
+
+    const live = (entries: { slug: string }[]) =>
+      entries.find((entry) => entry.slug === 'handbook');
+    expect(live(after)).toEqual(live(before));
+    expect(Object.keys(live(after)!)).not.toContain('retired');
+  });
+
   it('does not invent a file for a policy that has none', async () => {
     const files = await open();
 
@@ -229,6 +301,11 @@ describe('coverage of the editable set', () => {
     // tell an exported table from a forgotten one.
     const pdf = await readFile('docs/mirror/pdf/policy-handbook.pdf');
     await replacePolicyFile(db, 'handbook', { filename: 'handbook.pdf', bytes: pdf }, 'Jill');
+    // And one policy deleted after an upload (#269), for the same reason once
+    // more: nothing is retired on a fresh database, which is a real state and
+    // cannot tell a retired name that is exported from one that was forgotten.
+    await replacePolicyFile(db, 'code-of-conduct', { filename: 'conduct.pdf', bytes: pdf }, 'Jill');
+    await deletePolicy(db, 'code-of-conduct');
     // And one family's frozen terms, for the same reason: `agreed_terms` is
     // empty until somebody applies (#18 §11), which is a real state and a
     // useless one for telling an exported table from a forgotten one.

@@ -409,6 +409,34 @@ export const policyVersions = pgTable(
 );
 
 /**
+ * The name of a policy the school deleted, kept for its documents (#269).
+ *
+ * Two facts and a date, and nothing else: deleting a policy is meant to take
+ * the policy away. What it cannot take away is the versions, which outlive it
+ * deliberately (#260) — and a document in the export whose title and slug are
+ * gone is a PDF a board member opens with no way to tell what it is.
+ *
+ * So the title and slug are copied here at the moment of the delete, by the
+ * delete itself, while the row is still there to read them from. Not a full
+ * copy of the row: the description, the position and the tick describe a policy
+ * the school is publishing, and it is not publishing this one.
+ *
+ * A row here is **inert while a policy holds the slug**. It is written before
+ * the delete rather than after, so a failure between the two leaves a record
+ * naming a live policy rather than an orphan with no name; every read joins
+ * against `policies` and ignores a slug that is still taken, which also means a
+ * slug re-created later needs nothing cleaned up.
+ */
+export const retiredPolicies = pgTable('retired_policies', {
+  /** The slug the policy had. Still the folder its documents are under. */
+  slug: text('slug').primaryKey(),
+  /** The title it had at the moment it was deleted. */
+  title: text('title').notNull(),
+  /** When the school stopped asking families to read it. */
+  retiredAt: timestamp('retired_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * Every number about money the school controls — one row, forever (#29).
  *
  * A separate table from `school_details` rather than seven more columns on it,
@@ -809,3 +837,4 @@ export type PersonRow = typeof people.$inferSelect;
 export type AnnouncementRow = typeof announcements.$inferSelect;
 export type PolicyRow = typeof policies.$inferSelect;
 export type PolicyVersionRow = typeof policyVersions.$inferSelect;
+export type RetiredPolicyRow = typeof retiredPolicies.$inferSelect;

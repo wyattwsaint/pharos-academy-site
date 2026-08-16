@@ -1,8 +1,19 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 
 import type { Db } from '../db/client.js';
-import { policies as policiesTable, policyVersions, type PolicyRow } from '../db/schema.js';
-import type { Policy, PolicyDraft, PolicyEdit, PolicyVersion } from './policy.js';
+import {
+  policies as policiesTable,
+  policyVersions,
+  retiredPolicies,
+  type PolicyRow,
+} from '../db/schema.js';
+import type {
+  Policy,
+  PolicyDraft,
+  PolicyEdit,
+  PolicyVersion,
+  RetiredPolicy,
+} from './policy.js';
 
 /**
  * The one list of policies, read and written (#28).
@@ -150,8 +161,32 @@ export async function savePolicy(
  *
  * Silent on a slug that is not there, like the other stores' deletes: the row
  * is gone either way, and the screen that called this already has the policy.
+ *
+ * **The name is copied out first** (#269). The versions that survive name a
+ * slug and nothing else, so the export would otherwise ship PDFs belonging to a
+ * policy nothing in the archive can name. The copy is a single statement that
+ * reads the title from the row it is about to delete — no title parameter, so
+ * no caller can record a name the policy did not have — and it happens only
+ * when there is a version to orphan, which keeps "a policy with no document
+ * deletes with nothing left behind" (#260) literally true.
+ *
+ * Before rather than after, because the two statements cannot be one: neon-http
+ * has no interactive transaction. A failure in the gap then leaves a retired
+ * name for a policy that is still there, which `listRetiredPolicies` ignores —
+ * where the other order would leave an orphan with no name, which is the state
+ * this ticket exists to remove.
  */
-export async function deletePolicy(db: Db, slug: string): Promise<void> {
+export async function deletePolicy(db: Db, slug: string, now = new Date()): Promise<void> {
+  await db.execute(sql`
+    insert into ${retiredPolicies} (${sql.raw('slug, title, retired_at')})
+      select ${policiesTable.slug}, ${policiesTable.title}, ${now}
+        from ${policiesTable}
+       where ${eq(policiesTable.slug, slug)}
+         and exists (select 1 from ${policyVersions}
+                      where ${eq(policyVersions.policySlug, slug)})
+    on conflict (slug) do update
+       set title = excluded.title, retired_at = excluded.retired_at`);
+
   await db.delete(policiesTable).where(eq(policiesTable.slug, slug));
 }
 
@@ -174,6 +209,33 @@ export async function occupiedPolicySlugs(db: Db): Promise<string[]> {
     .union(db.selectDistinct({ slug: policyVersions.policySlug }).from(policyVersions));
 
   return rows.map((row) => row.slug);
+}
+
+/**
+ * The policies that were deleted and left documents behind.
+ *
+ * Filtered against the live table rather than trusted on its own, which is what
+ * makes the write order above safe and what makes a re-created slug need no
+ * cleanup: a name here for a slug something still holds is not a retired
+ * policy, it is a record of a delete that did not finish.
+ *
+ * Oldest first, and by slug where two share an instant, for the reason
+ * `listPolicies` has a tiebreaker: an export whose files reorder themselves
+ * between two runs is a diff nobody can read.
+ */
+export async function listRetiredPolicies(db: Db): Promise<RetiredPolicy[]> {
+  return db
+    .select({
+      slug: retiredPolicies.slug,
+      title: retiredPolicies.title,
+      retiredAt: retiredPolicies.retiredAt,
+    })
+    .from(retiredPolicies)
+    .where(
+      sql`not exists (select 1 from ${policiesTable}
+                       where ${policiesTable.slug} = ${retiredPolicies.slug})`,
+    )
+    .orderBy(asc(retiredPolicies.retiredAt), asc(retiredPolicies.slug));
 }
 
 /** A file and what it is called. */

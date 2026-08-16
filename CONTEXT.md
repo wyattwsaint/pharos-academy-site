@@ -896,6 +896,18 @@ arrived and offers the two answers — continue that history, or take a distinct
 address beside it. A re-added policy is off the policies page until it is
 uploaded to, like any other, because a policy is published by its file.
 
+**A deleted policy that left documents keeps its name.** The delete copies the
+title and slug out first, and the [export](#export) lists it after the live
+policies, marked as no longer part of the policy set, with its kept documents
+under it — so no PDF in the archive belongs to a policy nothing in the archive
+names (#269). It is a name and a date and nothing else: the description, the
+position and the tick describe a policy the school is publishing, and a deleted
+one is on no page of the site. Nothing but the export reads the record, and it
+goes quiet of its own accord when the policy comes back to the slug (ADR-0022).
+The word the archive uses for it is *retired*, which is not the site's
+[retired](#retired) — a course or a person the school expects back, listed in
+the admin and reversible in one press.
+
 The **updated date** is stamped from the upload and is typeable nowhere: there is
 no date control on either policy form, so the published date cannot disagree with
 the document. It is not the [stamp](#stamp) — correcting a description in August
@@ -1146,6 +1158,12 @@ An export is **restorable without Postgres on purpose**. A `pg_dump` is smaller
 and a better restore, and is worth nothing to a board with no developer: the
 nightly dump answers "can this database be brought back", and the export answers
 "can the school get its content back without asking anyone".
+
+Every document in it is **attributable to a named policy**, live or deleted. A
+[policy](#policy)'s versions outlive the policy row, so the export lists a
+deleted policy's title and slug as a **retired entry** after the live ones, with
+its kept documents under it and the README saying what that means. A file with
+no parent is a worse answer than the question deserves.
 
 It carries content and not accounts. Logins and live sessions are excluded, each
 with its reason written beside it in `src/lib/backup/export.ts`, and a table

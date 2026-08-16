@@ -70,6 +70,20 @@ export type PolicyVersion = {
   size: number;
 };
 
+/**
+ * A policy the school deleted, named so its kept documents have a parent (#269).
+ *
+ * The whole of what survives a delete besides the files: what it was called,
+ * where its documents are, and when the school stopped asking for it. Nothing
+ * reads this on the site — a retired policy is not published, which is what
+ * deleting it meant — and the export is its only reader today.
+ */
+export type RetiredPolicy = {
+  slug: string;
+  title: string;
+  retiredAt: Date;
+};
+
 /** The three things the create form asks for, and the whole of what it asks. */
 export type PolicyDraft = {
   title: string;
