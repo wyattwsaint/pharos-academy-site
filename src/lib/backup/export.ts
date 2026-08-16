@@ -7,7 +7,12 @@ import { listEveryCourse } from '../courses/store.js';
 import { listInquiries } from '../inquiry/store.js';
 import { getMoneySettings, listAgreedTerms } from '../money/store.js';
 import { listEveryPerson } from '../people/store.js';
-import { getPolicyFile, listPolicies, listPolicyVersions } from '../policies/store.js';
+import {
+  getPolicyFile,
+  listPolicies,
+  listPolicyVersions,
+  listRetiredPolicies,
+} from '../policies/store.js';
 import { SCHOOL_NAME } from '../site.js';
 import { zip, type ZipEntry } from './zip.js';
 
@@ -53,6 +58,7 @@ export const EXPORTED_TABLES = [
   'announcements',
   'policies',
   'policy_versions',
+  'retired_policies',
   'money_settings',
   'agreed_terms',
   'school_year',
@@ -81,6 +87,8 @@ export const EXPORTED_TABLE_LABELS: Record<(typeof EXPORTED_TABLES)[number], str
   announcements: 'Every announcement, and any PDF posted with one',
   policies: 'Every policy, with its description and its position on the page',
   policy_versions: 'Every policy document — including the ones that have been replaced',
+  retired_policies:
+    'The name of every policy the school has deleted, so the documents it kept are still attributable to it',
   money_settings: 'The rates, fees, instalment dates and refund terms the school charges today',
   agreed_terms: 'What each family agreed to pay when they applied, frozen at that date',
   school_year: 'Which school year the site is publishing',
@@ -164,9 +172,21 @@ export async function buildExport(db: Db, at = new Date()): Promise<BackupArchiv
     rows: announcements.length,
   });
 
-  const { policies, versionCount } = await exportPolicies(db, files);
+  const { policies, versionCount, retiredCount } = await exportPolicies(db, files);
   files.push(jsonEntry('content/policies.json', policies));
-  tables.push({ table: 'policies', file: 'content/policies.json', rows: policies.length });
+  tables.push({
+    table: 'policies',
+    file: 'content/policies.json',
+    rows: policies.length - retiredCount,
+  });
+  // The retired names are counted as their own table against the same file, so
+  // an export that dropped them fails the coverage test rather than quietly
+  // shipping the documents of a policy it cannot name (#269).
+  tables.push({
+    table: 'retired_policies',
+    file: 'content/policies.json',
+    rows: retiredCount,
+  });
   // The versions are rows of their own table and are listed as such, so the
   // coverage test cannot be satisfied by a policies file that dropped them.
   tables.push({
@@ -327,21 +347,31 @@ async function exportAnnouncements(db: Db, files: ZipEntry[]) {
  * Not just the current file. "Prior versions are retained" (#28) is the answer
  * to "what did the family who enrolled in August actually sign?", and a backup
  * holding only the newest PDF answers that question wrongly and confidently.
+ *
+ * **The deleted ones are here too** (#269), after the live ones, as a name and
+ * their documents and nothing else. Deleting a policy keeps its versions on
+ * purpose (#260), and a version names a slug rather than pointing at a row — so
+ * an export built from the policies alone would carry PDFs under a folder
+ * nothing in the archive mentions. A retired entry is short because the school
+ * is not publishing this policy: the description, the position and the "parents
+ * sign this" tick describe a policy on the page, and this one is off it.
+ *
+ * Live entries are untouched by this. They have no `retired` key to explain
+ * away, so a reader who never deletes a policy never meets the idea at all.
  */
 async function exportPolicies(db: Db, files: ZipEntry[]) {
-  const rows = await listPolicies(db);
   const exported = [];
   let versionCount = 0;
 
-  for (const row of rows) {
+  const versionsOf = async (slug: string) => {
     const versions = [];
 
     // Oldest first, so the JSON reads in the order the versions happened.
-    for (const version of (await listPolicyVersions(db, row.slug)).reverse()) {
-      const file = await getPolicyFile(db, row.slug, version.version);
+    for (const version of (await listPolicyVersions(db, slug)).reverse()) {
+      const file = await getPolicyFile(db, slug, version.version);
       if (!file) continue;
 
-      const path = `files/policies/${row.slug}/v${version.version}-${safeName(file.filename)}`;
+      const path = `files/policies/${slug}/v${version.version}-${safeName(file.filename)}`;
       files.push({ path, bytes: file.bytes });
       versions.push({
         version: version.version,
@@ -353,10 +383,29 @@ async function exportPolicies(db: Db, files: ZipEntry[]) {
       versionCount += 1;
     }
 
-    exported.push({ ...row, versions });
+    return versions;
+  };
+
+  for (const row of await listPolicies(db)) {
+    exported.push({ ...row, versions: await versionsOf(row.slug) });
   }
 
-  return { policies: exported, versionCount };
+  const retired = await listRetiredPolicies(db);
+  for (const row of retired) {
+    exported.push({
+      slug: row.slug,
+      title: row.title,
+      retired: true,
+      retiredAt: row.retiredAt,
+      // Said in the entry as well as in the README, because the reader who
+      // opens `policies.json` first should not have to go and find out why a
+      // policy in this file is on no page of the school's site.
+      note: 'Deleted — no longer part of the school’s policy set. Its documents are kept below because families agreed to them.',
+      versions: await versionsOf(row.slug),
+    });
+  }
+
+  return { policies: exported, versionCount, retiredCount: retired.length };
 }
 
 /** JSON a person can read: two-space indent, and a trailing newline. */
@@ -406,6 +455,14 @@ WHAT IS IN IT
                   display it tidily if you drag the file into a window.
   files/          The documents themselves, as ordinary PDFs, in folders named
                   after what they belong to. Double-click any of them.
+
+A POLICY MARKED "RETIRED"
+  If the school has deleted a policy, its name is still listed in
+  content/policies.json, marked as retired and no longer part of the school's
+  policy set. The documents that were uploaded to it are still in files/, and
+  that is why the name is kept: families agreed to those documents, and a PDF
+  in a folder nothing names is a file nobody can identify. A retired policy is
+  on no page of the website.
 
 WHAT IS NOT IN IT
   Admin usernames and passwords. Those are accounts rather than content, and

@@ -11,6 +11,7 @@ import {
   getPolicyFile,
   listPolicies,
   listPolicyVersions,
+  listRetiredPolicies,
   occupiedPolicySlugs,
   replacePolicyFile,
   savePolicy,
@@ -358,6 +359,61 @@ describe('deleting a policy', () => {
 
     expect(await getPolicy(db, 'photography-consent')).toBeUndefined();
     expect(await listPolicyVersions(db, 'photography-consent')).toEqual([]);
+  });
+
+  /*
+   * The name, kept for the documents that outlive the row (#269).
+   *
+   * Everything above proves the documents survive; this proves they are still
+   * attributable afterwards. A version row names a slug and nothing else, so
+   * without this the archive carries PDFs under a folder whose title went with
+   * the policy — files with no parent, which is the one thing the export is
+   * not allowed to hand a board member.
+   */
+  it('keeps the title and slug of a policy whose documents outlive it', async () => {
+    await handbookWithTwoVersions();
+
+    await deletePolicy(db, 'handbook', new Date('2026-08-15T14:00:00Z'));
+
+    const retired = await listRetiredPolicies(db);
+    expect(retired.map((policy) => policy.slug)).toEqual(['handbook']);
+    expect(retired[0].title).toBe('Handbook');
+    expect(retired[0].retiredAt).toEqual(new Date('2026-08-15T14:00:00Z'));
+  });
+
+  // The mistake case again, from the other side: nothing was orphaned, so there
+  // is nothing to name, and "leaves nothing behind" stays literally true.
+  it('records no retired name for a policy that had no document', async () => {
+    await createPolicy(
+      db,
+      { slug: 'photography-consent', title: 'Photography Consent', position: 5, signed: false },
+      'Jill Kilker',
+    );
+
+    await deletePolicy(db, 'photography-consent');
+
+    expect(await listRetiredPolicies(db)).toEqual([]);
+  });
+
+  /*
+   * A retired name is inert while a policy holds the slug.
+   *
+   * The record is written before the delete, so that a failure between the two
+   * leaves a name for a live policy rather than an orphan with no name. Which
+   * of those is harmless depends entirely on this read, and this is it — and it
+   * is also what lets the slug be created again later with nothing cleaned up.
+   */
+  it('does not report a slug that a policy holds again', async () => {
+    await handbookWithTwoVersions();
+    await deletePolicy(db, 'handbook');
+
+    await createPolicy(
+      db,
+      { slug: 'handbook', title: 'Handbook', position: 1, signed: true },
+      'Jill Kilker',
+    );
+
+    expect(await listRetiredPolicies(db)).toEqual([]);
   });
 
   // Every policy, gone. A school between years is entitled to say so, and the

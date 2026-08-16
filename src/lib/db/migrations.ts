@@ -987,6 +987,37 @@ export const MIGRATIONS: readonly Migration[] = [
          add column if not exists giving_link_template text not null default ''`,
     ],
   },
+  {
+    /*
+     * The name of a deleted policy, so its documents are not orphans (#269).
+     *
+     * 0024 made a policy's versions outlive the policy, which is the behaviour
+     * the school needs and which leaves the export shipping PDFs under a slug
+     * nothing in the archive names. This table holds the two facts that make
+     * them attributable — the title and the slug — written by the delete.
+     *
+     * The second statement is for the policies already deleted between 0024 and
+     * this: their titles went with their rows and cannot be recovered, so the
+     * slug stands in for one. A made-up sentence would be worse than a slug,
+     * and no name at all is what this ticket exists to stop. It touches only
+     * slugs that have versions and have no policy, so it is a no-op on every
+     * database where nobody has deleted a policy yet — which is all of them
+     * unless somebody has.
+     */
+    id: '0028-the-export-names-a-deleted-policy',
+    statements: [
+      `create table if not exists retired_policies (
+         slug text primary key,
+         title text not null,
+         retired_at timestamptz not null default now()
+       )`,
+      `insert into retired_policies (slug, title)
+         select distinct v.policy_slug, v.policy_slug
+           from policy_versions v
+          where not exists (select 1 from policies p where p.slug = v.policy_slug)
+       on conflict (slug) do nothing`,
+    ],
+  },
 ];
 
 /**
