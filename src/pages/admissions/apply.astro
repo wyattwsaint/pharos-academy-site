@@ -77,13 +77,17 @@ import { listPolicies } from '../../lib/policies/store.js';
  * pre-filled from *one family's* inquiry: a cached copy would show the next
  * family the last one's name and email.
  *
- * **Two buttons, not one.** "Check these choices" re-renders the warnings and
- * the totals and writes nothing; "Send the application" writes the row. A
- * clash is a warning and never a block (#31 AC 3–5), so the family has to be
- * able to see it *before* they commit — a page that only ever warns on the way
- * out is a page that tells a family about a $280 clash after they have
- * posted the cheque. Only Send is gated: **Check** is never greyed, because a
- * family who cannot yet send is exactly the family who wants to look.
+ * **One button, not two** (#264). "Send the application" is the only button on
+ * the page: the totals follow the family as they choose (ADR-0019), so a
+ * preview button would submit, save nothing, and answer a question the page now
+ * answers continuously. A clash is a warning and never a block (#31 AC 3–5),
+ * and the warnings render on every paint from whatever has been posted, because
+ * the timetable is deliberately kept off the wire and the clash rule cannot
+ * follow the totals into the browser. Any POST that is not a send is still a
+ * check: it re-renders the totals, the clash warnings and the greyed send and
+ * writes no row. That branch stays, and so does a button that reaches it —
+ * inside `<noscript>`, where it is the only preview a family without scripting
+ * has. Deleting either would take a working fallback away with the button.
  *
  * **The application gates on having answered, never on having agreed** (#85,
  * **ADR-0009**). "Send the application" is greyed until the form is complete,
@@ -131,8 +135,8 @@ import { listPolicies } from '../../lib/policies/store.js';
  * spare ones are `hidden` *and* `disabled`, so they neither clutter the page nor
  * post. The picker is the only script this page ships, and it is an enhancement
  * rather than a dependency: with scripting off every row is visible and the
- * count still changes — one "Check these choices" behind, because `child-count`
- * round-trips through the POST like everything else here.
+ * count still changes — one POST behind, because `child-count` round-trips
+ * through the form like everything else here.
  *
  * **The children's sensitive data does not enter this form** (#31 AC 9). Name,
  * age and the classes, and nothing else — no date of birth, no home address,
@@ -1329,14 +1333,38 @@ const description =
           <div class="wide">
             <h2>{stage('confirmation')}</h2>
             <p class="sub mt-4">
-              Check what you have chosen first if you would like to — it saves nothing and sends
-              nothing. When you send it, we will read it and be in touch.
+              The totals above follow what you choose, so they are already what you would post. When
+              you send this, we will read it and be in touch.
             </p>
 
+            {/*
+              The round trip a family without scripting still has (#264).
+
+              Nothing follows their choices in that browser, so the POST is the
+              only way to see the totals and the clash warnings before they
+              commit — and `intent=check` writes no row, which is why it is the
+              one they get. A family *with* scripting has no such button and
+              needs none: the figures moved when they ticked the box. It is
+              first in the form, so with scripting off the Enter key still
+              previews rather than sends, exactly as it did when the button was
+              on the page for everyone. With scripting on the default submit is
+              Send — and implicit submission clicks it, so the greyed gate below
+              answers the Enter key exactly as it answers a pointer.
+            */}
+            <noscript>
+              <p class="mt-7">
+                Your browser is not running this page’s scripts, so the totals above are the ones we
+                worked out last time. Bring them up to date whenever you like — it saves nothing and
+                sends nothing.
+              </p>
+              <p class="mt-7">
+                <button class="btn" type="submit" name="intent" value="check">
+                  Update the totals
+                </button>
+              </p>
+            </noscript>
+
             <p class="mt-7">
-              <button class="btn" type="submit" name="intent" value="check">
-                Check these choices
-              </button>{' '}
               {/*
                 Greyed with `aria-disabled`, never with `disabled` (#85). It
                 stays in the tab order and it stays activatable, because a

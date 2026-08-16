@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { APPLICATION_PATH, FAITH_QUESTIONS, faithKey } from '../src/lib/application/application.js';
 import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
+import { previewTotals } from './preview.js';
 
 /**
  * The application, over real HTTP (#31, #85).
@@ -20,10 +21,15 @@ import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
  * and a server could silently disagree, so anything asserted with scripting on
  * has a counterpart in the scripting-off block at the bottom of this file.
  *
- * "Check these choices" posts with `intent=check`, which re-renders the
- * warnings and the totals and **writes nothing** — so every check-flow test
- * here is safe against a real deployment, junk-row free. Only the tests that
- * click "Send the application" with a valid form are local-only.
+ * **The preview button is gone from the scripting-on page** (#264). The totals
+ * follow the family as they choose, so the round trip that used to re-render
+ * them is now only offered where nothing follows anything: "Update the totals"
+ * lives in `<noscript>`. It posts with `intent=check`, which re-renders the
+ * warnings and the totals and **writes nothing** — so every check-flow test in
+ * the scripting-off block is safe against a real deployment, junk-row free.
+ * With scripting on, a clash is read where a browser can read it: the warnings
+ * the server rendered, and the totals that moved without a POST. Only the tests
+ * that click "Send the application" with a valid form are local-only.
  */
 
 /**
@@ -115,11 +121,15 @@ async function greyed(page: Page): Promise<boolean> {
  */
 const clickSend = (page: Page) => sendButton(page).click({ force: true });
 
-/** Press Check, and wait for the page it brings back to be enhanced again. */
-async function clickCheck(page: Page) {
-  await page.getByRole('button', { name: 'Check these choices' }).click();
-  await page.locator('form[data-enhanced]').waitFor();
-}
+/**
+ * Ask the server for a preview — the `<noscript>` button, and so the
+ * scripting-off block only (#264).
+ *
+ * It posts `intent=check`, which re-renders the totals, the clash warnings and
+ * the greyed send and writes no row.
+ */
+const clickCheck = (page: Page) =>
+  page.getByRole('button', { name: 'Update the totals' }).click();
 
 /**
  * Leave a field, the way a family does — by going to the next one.
@@ -281,7 +291,7 @@ test.describe('the application page', () => {
     await open(page);
 
     await expect(page.locator('button[type="submit"][disabled]')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Check these choices' })).toBeEnabled();
+    await expect(sendButton(page)).toBeVisible();
     await expect(page.locator('fieldset[data-child-row]:visible')).toHaveCount(1);
     await expect(page.locator('#apply-child-0-name')).toBeEditable();
     await expect(page.locator('input[name="child-0-classes"]').first()).toBeVisible();
@@ -340,6 +350,26 @@ test.describe('the application page', () => {
     await expect(page.locator('#apply-email-error')).toBeVisible();
     await expect(page.locator('#apply-email')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#apply-email')).toBeFocused();
+  });
+
+  test('answers the Enter key the way it answers the greyed button', async ({ page }) => {
+    // #264. With the preview button gone the form's default submit is Send, so
+    // Enter in a text field now asks to send where it used to ask for a
+    // preview. Implicit submission clicks the default button, so the greyed
+    // gate catches it — asserted rather than assumed, because a gate that held
+    // for a pointer and not for a keyboard would post a form the page has just
+    // called incomplete, for the users least able to work around it.
+    await open(page);
+
+    await page.fill('#apply-family-name', 'Suite Family');
+    await page.locator('#apply-family-name').press('Enter');
+
+    // No round trip — the page a family is on is the page they were on.
+    await expect(page.locator('[data-outcome]')).toHaveCount(0);
+    await expect(page.locator('#apply-family-name')).toHaveValue('Suite Family');
+    // And they are put on the first thing that needs them, which on this form
+    // is the Statement of Faith grid, above everything else.
+    await expect(page.locator('[data-faith-grid] input').first()).toBeFocused();
   });
 
   test('says what is still needed in the colour it says everything else in', async ({ page }) => {
@@ -602,35 +632,6 @@ test.describe('the application page', () => {
     await expect(page.locator(FORBIDDEN_FIELDS)).toHaveCount(0);
   });
 
-  test('warns about the Algebra 1 and Latin collision before anything is sent', async ({
-    page,
-  }) => {
-    // AC 3, as a family experiences it: tick the pair, ask for a check, and be
-    // told about the collision while the check is still in the drawer. A
-    // check writes nothing, so this runs against a real deployment too.
-    await open(page);
-
-    await tickClashingPair(page);
-    await clickCheck(page);
-
-    await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
-    await expect(page.locator('[data-clashes]')).not.toHaveAttribute('data-clashes', '0');
-    const clash = page.locator('li[data-severity="clash"]').first();
-    await expect(clash).toBeVisible();
-    await expect(clash).toContainText('Algebra 1');
-    await expect(clash).toContainText('Beginner Latin');
-
-    // A warning and never a block: no submit is disabled, and a collision is
-    // not one of the things the still-needed list can name (#85).
-    await expect(page.locator('button[type="submit"][disabled]')).toHaveCount(0);
-    await expect(stillNeeded(page, 'classes')).toBeHidden();
-    // And what was ticked is still ticked — a check that clears the form would
-    // cost a family their whole selection for having asked a question.
-    await expect(
-      page.locator('input[name="child-0-classes"][value="algebra-1:year"]'),
-    ).toBeChecked();
-  });
-
   test('leaves the send ungreyed when the classes collide', async ({ page }) => {
     // #89 AC 8, and the line #85 draws between the two things this page says
     // about a selection. Completeness is about questions answered; a collision
@@ -649,41 +650,6 @@ test.describe('the application page', () => {
     // is never told to go and fix something the page has already said they may
     // keep. Counterpart below, scripting off, where the warning is on screen.
     await expect(stillNeeded(page, 'classes')).toBeHidden();
-  });
-
-  test('says nothing when two children hold that slot between them', async ({ page }) => {
-    // AC 5, the sibling case. Two children in two rooms at 11:20 on a Monday is
-    // not a collision, and a family of two told it was would be talked out of a
-    // choice that was right all along.
-    await open(page);
-
-    await page.selectOption('#apply-child-count', '2');
-    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
-    await page.check('input[name="child-1-classes"][value="beginner-latin-grades-5-6:year"]');
-    await clickCheck(page);
-
-    await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
-    await expect(page.locator('[data-clashes]')).toHaveAttribute('data-clashes', '0');
-    await expect(page.locator('li[data-severity]')).toHaveCount(0);
-  });
-
-  test('names the child a warning belongs to when both have one', async ({ page }) => {
-    await open(page);
-
-    await page.selectOption('#apply-child-count', '2');
-    await page.fill('input[name="child-0-name"]', 'Ada');
-    await page.fill('input[name="child-1-name"]', 'Obi');
-    for (const index of [0, 1]) {
-      await page.check(`input[name="child-${index}-classes"][value="algebra-1:year"]`);
-      await page.check(
-        `input[name="child-${index}-classes"][value="beginner-latin-grades-5-6:year"]`,
-      );
-    }
-    await clickCheck(page);
-
-    await expect(page.locator('[data-child-clashes]')).toHaveCount(2);
-    await expect(page.locator('[data-child-clashes="0"]')).toContainText('Ada');
-    await expect(page.locator('[data-child-clashes="1"]')).toContainText('Obi');
   });
 
   test('shows the number of children the family picks, and sends only those', async ({ page }) => {
@@ -707,42 +673,47 @@ test.describe('the application page', () => {
         `input[name="child-${index}-classes"][value="beginner-latin-grades-5-6:year"]`,
       );
     }
-    await clickCheck(page);
-
-    // Three children went, three came back, and the picker survived the POST.
-    await expect(page.locator('[data-child-clashes]')).toHaveCount(3);
-    await expect(page.locator('#apply-child-count')).toHaveValue('3');
+    // Three rows, and none of them held back from the POST.
+    await expect(page.locator('fieldset[data-child-row]:not([disabled])')).toHaveCount(3);
 
     // Down to two: the third row is disabled as well as hidden, so it posts
     // nothing — a child the family is no longer applying for does not arrive
     // with a timetable collision the school would then ask them about.
     await page.selectOption('#apply-child-count', '2');
     await expect(page.locator('fieldset[data-child-row]:visible')).toHaveCount(2);
-    await clickCheck(page);
+    await expect(page.locator('fieldset[data-child-row]:not([disabled])')).toHaveCount(2);
+
+    // And the POST proves it rather than the attribute: two children come back,
+    // and the third one's name comes back empty. The preview button is gone
+    // from this page (#264), so the request is made the way `previewTotals`
+    // makes it — the same `intent=check`, which writes no row.
+    await previewTotals(page);
 
     await expect(page.locator('[data-child-clashes]')).toHaveCount(2);
     await expect(page.locator('#apply-child-count')).toHaveValue('2');
     await expect(page.locator('input[name="child-2-name"]')).toHaveValue('');
   });
 
-  test('a check previews the totals and the collisions, and reports no missing fields', async ({
+  test('previews the totals with no button pressed, and reports no missing fields', async ({
     page,
   }) => {
-    // The check is "did I pick two classes that collide", not "you forgot your
-    // name" — an empty check must come back clean, not covered in errors. It is
-    // a preview and never a step: passing it is not a thing #85 can require,
-    // and failing to press it is not a thing #85 can hold against a family.
+    // What the preview button used to be asked for, now answered by the page
+    // itself (#264, ADR-0019): a family half way through has the totals of what
+    // they have chosen so far, and is told nothing about the questions they
+    // have not reached. Nothing was submitted, so nothing may be reported —
+    // there is no press that could report it and none that #85 could require.
     await open(page);
 
     await tickClashingPair(page);
-    await clickCheck(page);
 
-    await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
-    await expect(page.locator('[data-outcome="failed"]')).toHaveCount(0);
-    await expect(page.locator('.error:visible')).toHaveCount(0);
-    // The preview it exists for: the totals and the collision, both still there.
-    await expect(page.locator('li[data-severity="clash"]').first()).toBeVisible();
     await expect(page.locator('.totals')).toBeVisible();
+    expect((await allFigures(page)).every((amount) => amount > 0)).toBe(true);
+    await expect(page.locator('[data-outcome="failed"]')).toHaveCount(0);
+    await expect(page.locator('[data-outcome="checked"]')).toHaveCount(0);
+    await expect(page.locator('.error:visible')).toHaveCount(0);
+    // And no button to press: the form's only submit is the one that sends.
+    await expect(page.locator('form button[type="submit"]')).toHaveCount(1);
+    await expect(sendButton(page)).toBeVisible();
   });
 
   test('never needs a check pressed, before or after a change of mind', async ({ page }) => {
@@ -946,7 +917,7 @@ test.describe('the application page without scripting', () => {
     await fillSendable(page);
     // Nothing re-derives in the page, so the round trip is the derivation. A
     // check writes nothing, which is why it is the one used here.
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
 
     expect(await greyed(page)).toBe(false);
     await expect(page.locator('[data-missing-for="faith"]')).toBeHidden();
@@ -964,7 +935,7 @@ test.describe('the application page without scripting', () => {
     // Nothing has moved yet, and that is the correct page: no script has run.
     expect((await grandTotals(page))[0]).toBe(0);
 
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
     // The round trip is the derivation here, so the figures are only readable
     // once the page it brings back has arrived. Everything below reads the DOM
     // once rather than retrying, which is the point — a figure that settles a
@@ -998,12 +969,12 @@ test.describe('the application page without scripting', () => {
     // against, and it is only reachable through the round trip.
     await page.goto(APPLICATION_PATH);
     await page.selectOption('#apply-child-count', '2');
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
 
     await page.fill('#apply-child-1-name', 'Suite Child');
     await page.fill('#apply-child-1-age', '13');
     await page.check('input[name="child-1-classes"][value="algebra-1:year"]');
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
     await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
 
     for (const row of await page.locator('fieldset[data-child-row]:not([disabled])').all()) {
@@ -1024,11 +995,113 @@ test.describe('the application page without scripting', () => {
 
     await fillSendable(page);
     await tickClashingPair(page);
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
 
     await expect(page.locator('li[data-severity="clash"]').first()).toBeVisible();
     expect(await greyed(page)).toBe(false);
     await expect(stillNeeded(page, 'classes')).toBeHidden();
+  });
+
+  test('warns about the Algebra 1 and Latin collision before anything is sent', async ({
+    page,
+  }) => {
+    // AC 3, as a family without scripting experiences it: tick the pair, ask
+    // for the totals, and be told about the collision while the check is still
+    // in the drawer. The clash rule needs the timetable, which is deliberately
+    // kept out of the bundle (#261), so the round trip is where a warning can
+    // arrive before a send — and it writes nothing, so this runs against a real
+    // deployment too.
+    await page.goto(APPLICATION_PATH);
+
+    await tickClashingPair(page);
+    await clickCheck(page);
+
+    await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
+    await expect(page.locator('[data-clashes]')).not.toHaveAttribute('data-clashes', '0');
+    const clash = page.locator('li[data-severity="clash"]').first();
+    await expect(clash).toBeVisible();
+    await expect(clash).toContainText('Algebra 1');
+    await expect(clash).toContainText('Beginner Latin');
+
+    // A warning and never a block: no submit is disabled, and a collision is
+    // not one of the things the still-needed list can name (#85).
+    await expect(page.locator('button[type="submit"][disabled]')).toHaveCount(0);
+    await expect(stillNeeded(page, 'classes')).toBeHidden();
+    // And what was ticked is still ticked — a preview that cleared the form
+    // would cost a family their whole selection for having asked a question.
+    await expect(
+      page.locator('input[name="child-0-classes"][value="algebra-1:year"]'),
+    ).toBeChecked();
+  });
+
+  test('says nothing when two children hold that slot between them', async ({ page }) => {
+    // AC 5, the sibling case. Two children in two rooms at 11:20 on a Monday is
+    // not a collision, and a family of two told it was would be talked out of a
+    // choice that was right all along.
+    await page.goto(APPLICATION_PATH);
+
+    // No script, so the second row arrives by round trip — and the round trip
+    // that opens it writes nothing.
+    await page.selectOption('#apply-child-count', '2');
+    await clickCheck(page);
+
+    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+    await page.check('input[name="child-1-classes"][value="beginner-latin-grades-5-6:year"]');
+    await clickCheck(page);
+
+    await expect(page.locator('[data-outcome="checked"]')).toBeVisible();
+    await expect(page.locator('[data-clashes]')).toHaveAttribute('data-clashes', '0');
+    await expect(page.locator('li[data-severity]')).toHaveCount(0);
+  });
+
+  test('names the child a warning belongs to when both have one', async ({ page }) => {
+    await page.goto(APPLICATION_PATH);
+
+    // The second row arrives by round trip, and that round trip writes nothing.
+    await page.selectOption('#apply-child-count', '2');
+    await clickCheck(page);
+
+    await page.fill('input[name="child-0-name"]', 'Ada');
+    await page.fill('input[name="child-1-name"]', 'Obi');
+    for (const index of [0, 1]) {
+      await page.check(`input[name="child-${index}-classes"][value="algebra-1:year"]`);
+      await page.check(
+        `input[name="child-${index}-classes"][value="beginner-latin-grades-5-6:year"]`,
+      );
+    }
+    await clickCheck(page);
+
+    await expect(page.locator('[data-child-clashes]')).toHaveCount(2);
+    await expect(page.locator('[data-child-clashes="0"]')).toContainText('Ada');
+    await expect(page.locator('[data-child-clashes="1"]')).toContainText('Obi');
+  });
+
+  test('carries the number of children through the POST', async ({ page }) => {
+    // The browser's half of this is the picker showing and hiding rows; the
+    // server's half is what the POST then carried. Three go, three come back,
+    // and the picker survives the round trip rather than snapping back to one.
+    // Dropping a row is the script's half and is asserted there: with scripting
+    // off no row is ever disabled, and a child already typed in is never
+    // silently removed by a smaller count.
+    await page.goto(APPLICATION_PATH);
+
+    // Two round trips: one to open the rows, one to carry what was typed into
+    // them. Neither writes a row.
+    await page.selectOption('#apply-child-count', '3');
+    await clickCheck(page);
+
+    for (const index of [0, 1, 2]) {
+      await page.fill(`input[name="child-${index}-name"]`, `Child ${index}`);
+      await page.check(`input[name="child-${index}-classes"][value="algebra-1:year"]`);
+      await page.check(
+        `input[name="child-${index}-classes"][value="beginner-latin-grades-5-6:year"]`,
+      );
+    }
+    await clickCheck(page);
+
+    await expect(page.locator('[data-child-clashes]')).toHaveCount(3);
+    await expect(page.locator('#apply-child-count')).toHaveValue('3');
+    await expect(page.locator('input[name="child-2-name"]')).toHaveValue('Child 2');
   });
 
   test('refuses an incomplete send, gives back what was typed, and lands on it', async ({
@@ -1076,7 +1149,7 @@ test.describe('the application page without scripting', () => {
     // nothing, which is why it is the one used to open it.
     await fillSendable(page);
     await page.selectOption('#apply-child-count', '2');
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
 
     await page.fill('#apply-child-1-name', 'Second Child');
     await clickSend(page);
@@ -1116,7 +1189,7 @@ test.describe('the application page without scripting', () => {
     // nothing.
     await fillSendable(page, 'classes');
     await page.selectOption('#apply-child-count', '2');
-    await page.getByRole('button', { name: 'Check these choices' }).click();
+    await clickCheck(page);
 
     await page.fill('#apply-child-1-name', 'Second Child');
     await clickSend(page);
