@@ -227,7 +227,7 @@ describe('renaming a policy', () => {
       db,
       'handbook',
       {
-        title: 'Handbook',
+        title: 'Family Handbook',
         description: 'The renamed one.',
         position: 1,
         signed: true,
@@ -236,7 +236,7 @@ describe('renaming a policy', () => {
     );
 
     const policy = await getPolicy(db, 'handbook');
-    expect(policy!.title).toBe('Handbook');
+    expect(policy!.title).toBe('Family Handbook');
     expect(policy!.slug).toBe('handbook');
   });
 });

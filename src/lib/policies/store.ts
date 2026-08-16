@@ -178,7 +178,7 @@ export async function savePolicy(
  */
 export async function deletePolicy(db: Db, slug: string, now = new Date()): Promise<void> {
   await db.execute(sql`
-    insert into ${retiredPolicies} (${sql.raw('slug, title, retired_at')})
+    insert into ${retiredPolicies} (slug, title, retired_at)
       select ${policiesTable.slug}, ${policiesTable.title}, ${now}
         from ${policiesTable}
        where ${eq(policiesTable.slug, slug)}
