@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { policySlug, publishedPolicies, SEEDED_POLICIES } from './policy.js';
+import { distinctPolicySlug, policySlug, publishedPolicies, SEEDED_POLICIES } from './policy.js';
 import {
   fileSizeLabel,
   parseVersionSegment,
@@ -76,6 +76,37 @@ describe('a policy’s address', () => {
 
   it('refuses a title with nothing addressable in it', () => {
     expect(() => policySlug('!!!')).toThrow(/no letters or numbers/);
+  });
+
+  /*
+   * The second address, minted only after the school has said the returning
+   * title is a different document (#268). What has to be true of it is that it
+   * is distinct from everything spoken for — including a slug that holds no
+   * policy and nothing but kept documents, which is the collision the question
+   * was asked to avoid in the first place.
+   */
+  it('leaves an unclaimed address exactly as the title minted it', () => {
+    expect(distinctPolicySlug('handbook', ['code-of-conduct'])).toBe('handbook');
+    expect(distinctPolicySlug('handbook', [])).toBe('handbook');
+  });
+
+  it('mints a distinct one when the address is already spoken for', () => {
+    expect(distinctPolicySlug('handbook', ['handbook'])).toBe('handbook-2');
+  });
+
+  it('walks past every address that is taken, in either sense', () => {
+    // 'handbook' is a live policy, 'handbook-2' an orphaned history. Landing on
+    // either would recreate the ambiguity this whole exchange exists to settle.
+    expect(distinctPolicySlug('handbook', ['handbook', 'handbook-2'])).toBe('handbook-3');
+  });
+
+  it('keeps the second address inside the length a slug is allowed', () => {
+    const long = policySlug('A'.repeat(80));
+    const second = distinctPolicySlug(long, [long]);
+
+    expect(second.length).toBeLessThanOrEqual(long.length);
+    expect(second.endsWith('-2')).toBe(true);
+    expect(second).not.toBe(long);
   });
 
   it('serves the current document at a path with no version in it', () => {

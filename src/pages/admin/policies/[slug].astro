@@ -7,17 +7,20 @@ import AdminConfirm from '../../../components/AdminConfirm.astro';
 import AdminPublishing from '../../../components/AdminPublishing.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import type { Banner } from '../../../lib/admin/banner.js';
-import { isConfirmed } from '../../../lib/admin/confirmation.js';
+import { CONFIRM_FIELD, isConfirmed } from '../../../lib/admin/confirmation.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
 import { saveErrorMessage } from '../../../lib/admin/save-errors.js';
 import {
   LABELS,
+  NOT_PUBLISHED_YET,
   parsePolicy,
   parsePolicyDraft,
   policyDeletion,
+  policyInheritance,
   positionNumber,
   type PolicyErrors,
   type PolicyFields,
+  type PolicyInheritance,
 } from '../../../lib/admin/policies.js';
 import {
   describeRevalidation,
@@ -27,13 +30,19 @@ import {
 import { formatStamp } from '../../../lib/admin/formatting.js';
 import { republishOutcome } from '../../../lib/admin/republish-outcome.js';
 import { getDb } from '../../../lib/db/client.js';
-import { policySlug, type Policy, type PolicyVersion } from '../../../lib/policies/policy.js';
+import {
+  distinctPolicySlug,
+  policySlug,
+  type Policy,
+  type PolicyVersion,
+} from '../../../lib/policies/policy.js';
 import {
   createPolicy,
   deletePolicy,
   getPolicy,
   listPolicies,
   listPolicyVersions,
+  occupiedPolicySlugs,
   replacePolicyFile,
   savePolicy,
 } from '../../../lib/policies/store.js';
@@ -72,6 +81,16 @@ import {
  * naming what goes *and what is kept*, and only the second press — the same
  * form plus `confirm` — deletes. Confirming republishes and leaves for the list,
  * because this screen is what has just stopped existing.
+ *
+ * **And it can come back** (#268). A deleted policy left its documents behind,
+ * so the address a returning title mints is an address that already has a
+ * version numbering running under it. That is the one thing this screen cannot
+ * work out for itself: re-adding the Handbook and inventing an unrelated
+ * document that happens to mint `handbook` post exactly the same form. So the
+ * create asks — on the same round trip everything else here confirms on, two
+ * named buttons in one form because neither answer is a decline — and the
+ * answer chooses between continuing that history and taking a distinct address
+ * beside it.
  */
 const NEW = 'new';
 
@@ -109,6 +128,8 @@ let errors: PolicyErrors = {};
 let banner: Banner | null = republishOutcome(Astro.url.searchParams.get('republished'));
 /** True only on the confirmation screen, which replaces the form. */
 let confirmingDeletion = false;
+/** The two-choice question, on the one round trip that has to ask it (#268). */
+let asking: PolicyInheritance | null = null;
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
@@ -191,22 +212,67 @@ if (Astro.request.method === 'POST') {
       banner = { ok: false, message: 'Nothing was created — the fields below need fixing first.' };
     } else {
       try {
-        policy = await createPolicy(
-          db,
-          {
-            slug: policySlug(values.title),
-            title: values.title,
-            position: positionNumber(values.position),
-            signed: values.signed,
-          },
-          actor.name,
-        );
-        values = fieldsOf(policy);
-        banner = {
-          ok: true,
-          message:
-            'Created. It is not on the policies page yet — write the line that says what it is, choose the PDF, and save.',
-        };
+        /*
+         * The one thing the site cannot judge for itself (#268).
+         *
+         * The title mints an address, and that address may already have kept
+         * documents under it — a policy #260 deleted, whose versions stayed
+         * behind. A school re-adding the Handbook and a school inventing an
+         * unrelated document that happens to mint `handbook` post the identical
+         * form, and both readings are destructive if guessed wrong. So when the
+         * slug is orphaned, the first press asks; the second carries the answer
+         * back and creates at the address that answer chose.
+         *
+         * `kept` is empty for the ordinary create, and then none of this shows.
+         */
+        const minted = policySlug(values.title);
+        const kept = await listPolicyVersions(db, minted);
+        const orphaned = kept.length > 0 && (await getPolicy(db, minted)) === undefined;
+        const answer = readInheritance(form);
+
+        /*
+         * Built once, from one read, and used for both the question and the
+         * sentence that reports the answer. Asking the database again after the
+         * create would offer a *third* address, because the second one is
+         * spoken for by then.
+         *
+         * `answer === 'fresh'` is enough on its own, without `orphaned`. If
+         * another admin claimed this address between the two presses, the slug
+         * is no longer orphaned — but the school has already said this document
+         * is not the one whose history is there, and that answer is still the
+         * right one. Honouring it puts the document beside the address rather
+         * than refusing it for a collision it already declined.
+         */
+        const addresses =
+          kept.length > 0 && (orphaned || answer === 'fresh')
+            ? await addressesFor(minted, kept)
+            : null;
+        const outcome = addresses ? policyInheritance(values.title, kept, addresses) : null;
+
+        if (orphaned && !answer) {
+          asking = outcome;
+        } else {
+          const separate = answer === 'fresh' && addresses !== null;
+          policy = await createPolicy(
+            db,
+            {
+              slug: separate ? addresses!.freshSlug : minted,
+              title: values.title,
+              position: positionNumber(values.position),
+              signed: values.signed,
+            },
+            actor.name,
+          );
+          values = fieldsOf(policy);
+          banner = {
+            ok: true,
+            message: !outcome
+              ? `Created. ${NOT_PUBLISHED_YET}`
+              : separate
+                ? outcome.separate
+                : outcome.continued,
+          };
+        }
       } catch (error) {
         banner = { ok: false, message: saveErrorMessage(error, CREATE_ERROR) };
       }
@@ -249,6 +315,44 @@ function fieldsOf(row: Policy): PolicyFields {
 
 function detailOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Which of the two choices came back, if either.
+ *
+ * Two named buttons in one form rather than a confirm-and-decline pair, because
+ * neither of these is a decline: both create a policy, at addresses that are
+ * permanent and different. The `confirm` field is here for the reason it is on
+ * every other second press — one reading of "the person has seen what this
+ * does" across the admin — and a post carrying neither button is treated as the
+ * first press and asked again.
+ */
+function readInheritance(form: FormData): 'continue' | 'fresh' | undefined {
+  if (!isConfirmed(form)) return undefined;
+  if (form.get('fresh') !== null) return 'fresh';
+  return form.get('inherit') !== null ? 'continue' : undefined;
+}
+
+/**
+ * The three addresses the question is about.
+ *
+ * `existing` is where a continuing policy would live and is answering nothing
+ * while the slug is orphaned; `oldest` is where the earliest kept document
+ * actually is, which is the address "still readable" refers to; `fresh` is the
+ * distinct one on offer beside them.
+ */
+async function addressesFor(
+  minted: string,
+  kept: readonly PolicyVersion[],
+): Promise<{ existing: string; fresh: string; oldest: string; freshSlug: string }> {
+  const freshSlug = distinctPolicySlug(minted, await occupiedPolicySlugs(db));
+  const earliest = kept[kept.length - 1]!;
+  return {
+    existing: policyPath(minted),
+    fresh: policyPath(freshSlug),
+    oldest: policyVersionPath(minted, earliest.version),
+    freshSlug,
+  };
 }
 
 ---
@@ -299,6 +403,29 @@ function detailOf(error: unknown): string {
           {deletion.undo}
         </p>
       </AdminConfirm>
+    ) : asking ? (
+      <section class="mt-8" data-testid="inheritance">
+        <h2 class="text-2xl font-semibold text-navy">{asking.heading}</h2>
+        <p class="mt-3" data-testid="inheritance-documents">
+          {asking.documents}
+        </p>
+        <p class="mt-3" data-testid="inheritance-choice">
+          {asking.choice}
+        </p>
+
+        <form method="post" action={action} class="mt-8 flex flex-wrap gap-4">
+          <input type="hidden" name="title" value={values.title} />
+          <input type="hidden" name="position" value={values.position} />
+          {values.signed && <input type="hidden" name="signed" value="on" />}
+          <input type="hidden" name={CONFIRM_FIELD} value="yes" />
+          <AdminButton name="inherit" value="1">
+            {asking.continueLabel}
+          </AdminButton>
+          <AdminButton variant="secondary" name="fresh" value="1">
+            {asking.freshLabel}
+          </AdminButton>
+        </form>
+      </section>
     ) : (
       <form method="post" action={action} enctype="multipart/form-data" class="mt-8 flex flex-col gap-6">
     <div class="flex flex-col gap-2">

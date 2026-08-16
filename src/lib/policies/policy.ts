@@ -150,6 +150,9 @@ export const SEEDED_POLICIES: readonly SeedPolicy[] = [
   },
 ] as const;
 
+/** The longest a slug may be. Both minters below are held to it. */
+const MAX_SLUG = 60;
+
 /**
  * The address of a policy, minted from its title.
  *
@@ -164,13 +167,41 @@ export function policySlug(title: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 60)
+    .slice(0, MAX_SLUG)
     .replace(/-+$/, '');
 
   if (!slug) {
     throw new Error('that title has no letters or numbers in it.');
   }
   return slug;
+}
+
+/**
+ * A second address for a title whose first one is already spoken for (#268).
+ *
+ * Only ever reached by a person who has been asked and has answered: the school
+ * typed a title, the site said that address already has documents kept under it,
+ * and the school said this is a different document. So the minted address has to
+ * be *distinct* rather than clever — `handbook-2` is a URL nobody would confuse
+ * with `handbook`, which is the whole requirement, and the title on the page is
+ * still "Handbook" because a slug was never the name.
+ *
+ * `taken` is every slug that is spoken for in either sense — a policy that
+ * exists, or a slug with kept documents under it and no policy. Both have to
+ * count: minting `handbook-2` over another orphaned history would recreate the
+ * exact collision the question was asked to avoid.
+ */
+export function distinctPolicySlug(base: string, taken: Iterable<string>): string {
+  const occupied = new Set(taken);
+  if (!occupied.has(base)) return base;
+
+  // Terminates: `occupied` is finite and every suffix produces a distinct
+  // candidate, so at worst it walks past the ones that exist.
+  for (let suffix = 2; ; suffix += 1) {
+    const tail = `-${suffix}`;
+    const candidate = `${base.slice(0, MAX_SLUG - tail.length).replace(/-+$/, '')}${tail}`;
+    if (!occupied.has(candidate)) return candidate;
+  }
 }
 
 /**

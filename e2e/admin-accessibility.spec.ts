@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+import { LABELS } from '../src/lib/admin/policies.js';
 import { SEEDED_ANNOUNCEMENTS } from '../src/lib/announcements/announcement.js';
 import { eventSlug } from '../src/lib/calendar/event.js';
 import { addDays, schoolToday } from '../src/lib/calendar/year.js';
@@ -8,6 +9,7 @@ import { AXE_TAGS, describeViolation } from './axe.js';
 import {
   SUITE_ADMIN,
   SUITE_KEPT,
+  SUITE_ORPHANED_POLICY,
   SUITE_RETIRED_COURSE,
   SUITE_RETIRED_PERSON,
   signIn,
@@ -361,6 +363,33 @@ test.describe('a confirmation screen', () => {
 
       await page.getByRole('button', { name: 'Delete this policy' }).click();
       await expect(page.getByTestId('confirm')).toContainText('Delete Handbook?');
+
+      await expectNoViolations(page);
+    });
+
+    /*
+     * #268. Not a confirmation at heart but the same shape of screen — a POST
+     * that replaces the form it came from — and the only one whose two controls
+     * are both actions. Neither is a decline, so it is a form with two named
+     * buttons rather than the confirm-and-link pair every screen above uses, and
+     * what axe is here to hold is that two submit buttons in one form are still
+     * distinguishable and still reachable in order.
+     *
+     * Reached by typing the title of a policy the throwaway database deleted
+     * and left documents behind (`SUITE_ORPHANED_POLICY`). Asking is not
+     * creating: neither button is pressed, so nothing is written and the
+     * orphaned history is still there for the next width.
+     */
+    test(`inheriting a policy’s history has zero axe violations at ${width}px`, async ({
+      page,
+    }) => {
+      await openAt(page, '/admin/policies/new', width);
+
+      await page.getByLabel(LABELS.title).fill(SUITE_ORPHANED_POLICY);
+      await page.getByRole('button', { name: 'Create' }).click();
+      await expect(page.getByTestId('inheritance')).toContainText(
+        'That Address Already Has Documents',
+      );
 
       await expectNoViolations(page);
     });

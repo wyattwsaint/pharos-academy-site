@@ -1394,6 +1394,165 @@ test.describe('policies', () => {
     expect(second.status()).toBe(200);
     expect(Buffer.from(await second.body()).equals(SECOND)).toBe(true);
   });
+
+  /*
+   * Re-adding it (#268).
+   *
+   * Only reachable after the test above, which is why these are last: the
+   * question is asked exactly when a title mints an address that has kept
+   * documents and no policy, and the delete is what puts the suite's slug into
+   * that state.
+   *
+   * What only a browser shows is the round trip — a screen rather than a
+   * dialog, a first press that creates nothing, and two buttons that lead to
+   * two different permanent addresses. The wording of that screen, and the
+   * numbering behind it, are proved at their own seams; what is asserted here
+   * is the shape of what the school actually does.
+   */
+  test('asks whether a re-added title is the same policy coming back', async ({ page }) => {
+    await signIn(page, '/admin/policies/new');
+
+    await page.getByLabel(LABELS.title).fill(TITLE);
+    await page.getByLabel(LABELS.position).fill('9');
+    await page.getByRole('button', { name: 'Create' }).click();
+
+    // A screen in the page, naming what it found and offering two addresses.
+    await expect(page.getByTestId('inheritance')).toBeVisible();
+    const documents = page.getByTestId('inheritance-documents');
+    await expect(documents).toContainText('documents were uploaded under');
+    await expect(documents).toContainText(PATH);
+    // And it points "still readable" at the address that actually answers.
+    await expect(documents).toContainText(`/policies/${SLUG}/v1.pdf`);
+    await expect(page.getByTestId('inheritance-choice')).toContainText(TITLE);
+    // Two actions, and neither of them is a decline.
+    await expect(page.getByRole('button', { name: /^Continue the history at/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Use \/policies\// })).toBeVisible();
+
+    // Nothing was created by the asking: the address is still orphaned, so a
+    // second attempt is asked the same question rather than refused.
+    const editor = await page.goto(`/admin/policies/${SLUG}`);
+    expect(editor!.status()).toBe(404);
+  });
+
+  /**
+   * The same question with scripts off (#268).
+   *
+   * The reason it is a screen and not a `confirm()`, and the reason both
+   * answers are buttons in a form: nothing on it is JavaScript, so a browser
+   * running none has to be able to read the question and answer it. This one
+   * only asks — pressing neither button writes nothing — so it leaves the
+   * orphaned address exactly as it found it, for the two tests below.
+   */
+  test('asks with scripts off, because nothing on the screen is script', async ({ browser }) => {
+    const unscripted = await browser.newContext({ javaScriptEnabled: false });
+    const page = await unscripted.newPage();
+
+    await signIn(page, '/admin/policies/new');
+    await page.getByLabel(LABELS.title).fill(TITLE);
+    await page.getByLabel(LABELS.position).fill('9');
+    await page.getByRole('button', { name: 'Create' }).click();
+
+    await expect(page.getByTestId('inheritance')).toContainText(
+      'That Address Already Has Documents',
+    );
+    await expect(page.getByRole('button', { name: /^Continue the history at/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Use \/policies\// })).toBeVisible();
+
+    await unscripted.close();
+  });
+
+  test('mints a distinct address for a document that only shares the name', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page, '/admin/policies/new');
+
+    await page.getByLabel(LABELS.title).fill(TITLE);
+    await page.getByLabel(LABELS.position).fill('9');
+    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByRole('button', { name: /^Use \/policies\// }).click();
+
+    // A different address, and a policy with no history of its own.
+    const banner = page.getByTestId('save-banner');
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+    await expect(banner).toContainText('not on the policies page yet');
+    await expect(page.getByTestId('versions-empty')).toBeVisible();
+    const separate = /\/policies\/(suite-transport-policy-\d+)\.pdf/.exec(
+      (await banner.textContent())!,
+    );
+    expect(separate, 'the banner names the address it created').not.toBeNull();
+
+    // And the kept documents are untouched, still orphaned, still readable.
+    const kept = await request.get(`/policies/${SLUG}/v1.pdf`);
+    expect(kept.status()).toBe(200);
+    expect(Buffer.from(await kept.body()).equals(FIRST)).toBe(true);
+    expect((await request.get(PATH)).status()).toBe(404);
+
+    // Taken away again, so the address is free for the test below and for the
+    // next run: this policy was the wrong answer, deliberately given.
+    await page.goto(`/admin/policies/${separate![1]}`);
+    await page.getByRole('button', { name: 'Delete this policy' }).click();
+    await page.getByRole('button', { name: `Yes, delete ${TITLE}` }).click();
+    await expect(page).toHaveURL(/\/admin\/policies\?/);
+  });
+
+  test('continues the history it left behind, and never repeats a version', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page, '/admin/policies/new');
+
+    await page.getByLabel(LABELS.title).fill(TITLE);
+    await page.getByLabel(LABELS.position).fill('9');
+    await page.getByRole('button', { name: 'Create' }).click();
+
+    const before = await page.getByTestId('inheritance-documents').textContent();
+    const kept = Number(/(\d+) documents/.exec(before!)![1]);
+    expect(kept).toBeGreaterThanOrEqual(2);
+
+    await page.getByRole('button', { name: /^Continue the history at/ }).click();
+
+    // Back at the address it always had, holding the documents it left behind —
+    // and still off the policies page, because a policy is published by its file.
+    const banner = page.getByTestId('save-banner');
+    await expect(banner).toHaveAttribute('data-ok', 'true');
+    await expect(banner).toContainText(PATH);
+    await expect(banner).toContainText('not on the policies page yet');
+    await expect(page.getByTestId('versions').locator('li')).toHaveCount(kept);
+    await expect(page.getByTestId('versions')).not.toContainText('this is the current one');
+
+    // In the admin, and *not* on the policies page: the row is back, and a
+    // policy is published by its file rather than by its row.
+    await page.goto('/admin/policies');
+    await expect(page.locator(`a[href="/admin/policies/${SLUG}"]`)).toBeVisible();
+    await page.goto(POLICIES_PATH);
+    await expect(page.locator(`[id="${SLUG}"]`)).toHaveCount(0);
+
+    // The next upload continues the numbering rather than restarting it.
+    const THIRD = Buffer.from('%PDF-1.7\n1 0 obj\n<<(third)>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
+    await page.goto(`/admin/policies/${SLUG}`);
+    await page.getByLabel(LABELS.description).fill(DESCRIPTION);
+    await upload(page, THIRD, 'transport-v3.pdf');
+
+    const next = kept + 1;
+    await expect(page.getByTestId('versions').locator('li').first()).toContainText(
+      `Version ${next} —`,
+    );
+    const latest = await request.get(`/policies/${SLUG}/v${next}.pdf`);
+    expect(Buffer.from(await latest.body()).equals(THIRD)).toBe(true);
+
+    // And the version an August application recorded still opens the document
+    // that family was shown, rather than anything uploaded since.
+    const agreed = await request.get(`/policies/${SLUG}/v1.pdf`);
+    expect(agreed.status()).toBe(200);
+    expect(Buffer.from(await agreed.body()).equals(FIRST)).toBe(true);
+
+    // Deleted again, so this file's sequence ends where it started: an address
+    // with documents under it and no policy holding it.
+    await page.getByRole('button', { name: 'Delete this policy' }).click();
+    await page.getByRole('button', { name: `Yes, delete ${TITLE}` }).click();
+    await expect(page).toHaveURL(/\/admin\/policies\?/);
+  });
 });
 
 /**

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { parsePolicy, parsePolicyDraft, policyDeletion } from './policies.js';
+import {
+  NOT_PUBLISHED_YET,
+  parsePolicy,
+  parsePolicyDraft,
+  policyDeletion,
+  policyInheritance,
+} from './policies.js';
 
 /**
  * The two policy forms (#28).
@@ -203,5 +209,130 @@ describe('what the screen says before deleting a policy', () => {
       expect(undo).toContain('no undo');
       expect(undo).toContain('typing it in again');
     }
+  });
+});
+
+/**
+ * The question asked when a new policy's address already has documents (#268).
+ *
+ * At this seam because the round trip and the wording are two different claims,
+ * and only one of them needs a browser. What a browser shows is that a screen
+ * appeared and that pressing each button led somewhere different; what only
+ * this can show is that the screen said enough for the answer to be the right
+ * one — how many documents are there, when they arrived, and what each choice
+ * does to the address afterwards.
+ */
+describe('what the screen asks when an address already has documents', () => {
+  const ADDRESSES = {
+    existing: '/policies/handbook.pdf',
+    fresh: '/policies/handbook-2.pdf',
+    oldest: '/policies/handbook/v1.pdf',
+  };
+
+  function kept(versions: number[]): { version: number; uploadedAt: Date }[] {
+    return versions.map((version) => ({
+      version,
+      uploadedAt: new Date(Date.UTC(2026, 2, version)),
+    }));
+  }
+
+  it('offers the two choices, and names the address on each', () => {
+    const asked = policyInheritance('Handbook', kept([1, 2, 3]), ADDRESSES);
+
+    expect(asked.heading).toBe('That Address Already Has Documents');
+    expect(asked.continueLabel).toContain('/policies/handbook.pdf');
+    expect(asked.freshLabel).toContain('/policies/handbook-2.pdf');
+  });
+
+  // The facts that make the question answerable: a school recognises "three
+  // documents, uploaded across the spring" as the Handbook it deleted, and
+  // recognises it as nothing to do with a form it is inventing today.
+  it('counts the documents and says when they were uploaded', () => {
+    const asked = policyInheritance('Handbook', kept([1, 2, 3]), ADDRESSES);
+
+    expect(asked.documents).toContain('3 documents');
+    expect(asked.documents).toContain('/policies/handbook.pdf');
+    expect(asked.documents).toContain('between 1 March 2026 and 3 March 2026');
+  });
+
+  /*
+   * The address the documents are readable at is the versioned one, and while
+   * the slug is orphaned the short one resolves nothing at all — it is read
+   * through a policy row that is not there. Promising "still readable" beside
+   * the address that 404s would be the one misleading sentence on the screen.
+   */
+  it('points "still readable" at the versioned address, not the short one', () => {
+    const asked = policyInheritance('Handbook', kept([1, 2, 3]), ADDRESSES);
+
+    expect(asked.documents).toContain('readable at its own versioned address');
+    expect(asked.documents).toContain('/policies/handbook/v1.pdf');
+    expect(asked.documents).toContain('answers nothing until a policy holds it again');
+  });
+
+  it('counts one document as one, in words that read like a sentence', () => {
+    const asked = policyInheritance('Handbook', kept([1]), ADDRESSES);
+
+    expect(asked.documents).toContain('One document was uploaded');
+    expect(asked.documents).toContain('on 1 March 2026');
+    expect(asked.documents).toContain('/policies/handbook/v1.pdf');
+    expect(asked.documents).not.toContain('documents');
+  });
+
+  it('says so plainly when they all arrived on one day', () => {
+    const sameDay = [
+      { version: 1, uploadedAt: new Date(Date.UTC(2026, 2, 4, 9)) },
+      { version: 2, uploadedAt: new Date(Date.UTC(2026, 2, 4, 16)) },
+    ];
+
+    const asked = policyInheritance('Handbook', sameDay, ADDRESSES);
+
+    expect(asked.documents).toContain('all on 4 March 2026');
+    expect(asked.documents).not.toContain('between');
+  });
+
+  /*
+   * The number is the reason the question is asked at all. Continuing means the
+   * next upload is 4, not 1 — a second document at `/policies/handbook/v1.pdf`
+   * is the one thing a permanent address may never mean.
+   */
+  it('says which version the next upload would be, on the history it found', () => {
+    const asked = policyInheritance('Handbook', kept([1, 2, 3]), ADDRESSES);
+
+    expect(asked.choice).toContain('version 4');
+    expect(asked.choice).toContain('rather than version 1');
+  });
+
+  // The numbering follows the highest surviving version, not the count. The two
+  // agree today and would stop agreeing the moment anything ever removed one.
+  it('counts from the highest version there is, not from how many there are', () => {
+    const asked = policyInheritance('Handbook', kept([3, 7]), ADDRESSES);
+
+    expect(asked.choice).toContain('version 8');
+  });
+
+  it('says what each choice does to the address', () => {
+    const asked = policyInheritance('Handbook', kept([1, 2]), ADDRESSES);
+
+    expect(asked.choice).toContain('Handbook coming back');
+    expect(asked.choice).toContain('/policies/handbook.pdf');
+    expect(asked.choice).toContain('/policies/handbook-2.pdf');
+    expect(asked.choice).toContain('stay exactly where they are');
+  });
+
+  /*
+   * Both outcomes end on the same sentence, because it is true of both: a
+   * policy is published by its file and not by its row, and a school that has
+   * just re-added the Handbook is exactly the person who would assume otherwise.
+   */
+  it('reports either outcome by naming the address it landed on', () => {
+    const asked = policyInheritance('Handbook', kept([1, 2, 3]), ADDRESSES);
+
+    expect(asked.continued).toContain('/policies/handbook.pdf');
+    expect(asked.continued).toContain('version 4');
+    expect(asked.continued).toContain(NOT_PUBLISHED_YET);
+
+    expect(asked.separate).toContain('/policies/handbook-2.pdf');
+    expect(asked.separate).toContain('left exactly as they were');
+    expect(asked.separate).toContain(NOT_PUBLISHED_YET);
   });
 });

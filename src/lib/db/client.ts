@@ -61,6 +61,7 @@ async function open(): Promise<Db> {
       await seedSuitePolicyFiles(db);
       await seedSuiteRetiredCourse(db);
       await seedSuiteRetiredPerson(db);
+      await seedSuiteOrphanedPolicy(db);
     }
     return db;
   }
@@ -316,6 +317,51 @@ async function seedSuiteRetiredPerson(db: Db): Promise<void> {
     'Suite Admin',
   );
   await retirePerson(db, SUITE_RETIRED_PERSON, 'Suite Admin');
+}
+
+/**
+ * The title of a policy that has been deleted and left its documents behind
+ * (#268).
+ *
+ * Written out again in `e2e/suite-admin.ts` for the reason `SUITE_KEPT` and
+ * `SUITE_RETIRED_COURSE` are: `playwright.config.ts` loads that module to build
+ * its environment, and importing this one would drag the driver and every
+ * migration into the config's own graph.
+ */
+export const SUITE_ORPHANED_POLICY = 'Suite Kept Policy';
+
+/**
+ * A slug that holds two documents and no policy, so the question can be
+ * measured (#268).
+ *
+ * The create screen asks it only when a title mints an address that already has
+ * kept documents under it, and that state exists in the database rather than in
+ * a form — so an axe spec cannot reach the screen unless something is there to
+ * be inherited. It could reach it by deleting a seeded policy, but the public
+ * suite pins the policies page at four documents and runs against this same
+ * database at the same time.
+ *
+ * So the suite gets a history of its own: a policy created, uploaded to twice
+ * and then deleted. What is left is invisible everywhere — no row, so nothing
+ * lists it and the policies page is still four — while the two versioned
+ * addresses go on resolving, which is exactly the state the question is about.
+ *
+ * Suite mode only, and suite mode already refuses to run on a deployment.
+ */
+async function seedSuiteOrphanedPolicy(db: Db): Promise<void> {
+  const { policySlug } = await import('../policies/policy.js');
+  const { createPolicy, deletePolicy, replacePolicyFile } = await import('../policies/store.js');
+
+  const slug = policySlug(SUITE_ORPHANED_POLICY);
+  await createPolicy(
+    db,
+    { slug, title: SUITE_ORPHANED_POLICY, position: 9, signed: false },
+    'Suite Admin',
+  );
+  const bytes = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
+  await replacePolicyFile(db, slug, { filename: `${slug}.pdf`, bytes }, 'Suite Admin');
+  await replacePolicyFile(db, slug, { filename: `${slug}-2.pdf`, bytes }, 'Suite Admin');
+  await deletePolicy(db, slug);
 }
 
 /**

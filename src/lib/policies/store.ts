@@ -67,6 +67,14 @@ export async function getPolicy(db: Db, slug: string): Promise<Policy | undefine
  * where a client can create a structurally wrong *thing* rather than merely a
  * wrong value (#18 §10), so it asks for the three facts that are structural and
  * leaves everything correctable to the ordinary edit screen next door.
+ *
+ * **A re-added policy is an ordinary create** (#268). Nothing here looks at the
+ * versions, and nothing needs to: the slug the caller passes is the whole of the
+ * decision, and if kept documents are already sitting under it then this row
+ * inherits them by holding that slug. The row is created with no
+ * `current_version`, so a re-added policy is off the policies page until it is
+ * uploaded to, and the upload takes the next number after the highest surviving
+ * one because `replacePolicyFile` counts the table rather than the row.
  */
 export async function createPolicy(
   db: Db,
@@ -147,6 +155,27 @@ export async function deletePolicy(db: Db, slug: string): Promise<void> {
   await db.delete(policiesTable).where(eq(policiesTable.slug, slug));
 }
 
+/**
+ * Every slug that is spoken for, in either of the two senses (#268).
+ *
+ * A slug is taken when a policy holds it — and also when it holds nothing but
+ * kept documents, because those are permanent addresses with a version
+ * numbering already running under them. The create screen needs both to mint a
+ * second address that collides with neither, and it is one read rather than two
+ * because Neon is over HTTP and this is on the way to a write.
+ *
+ * The union is Postgres's, not JavaScript's: a policy that still has its
+ * versions appears in both halves and comes back once.
+ */
+export async function occupiedPolicySlugs(db: Db): Promise<string[]> {
+  const rows = await db
+    .select({ slug: policiesTable.slug })
+    .from(policiesTable)
+    .union(db.selectDistinct({ slug: policyVersions.policySlug }).from(policyVersions));
+
+  return rows.map((row) => row.slug);
+}
+
 /** A file and what it is called. */
 export type PolicyFile = {
   filename: string;
@@ -168,6 +197,13 @@ export type PolicyFile = {
  * The version number is computed from the table rather than from
  * `current_version`, so a row whose denormalised pointer somehow lagged still
  * cannot collide with a version that exists.
+ *
+ * That is also what makes a re-added policy continue rather than restart
+ * (#268). A policy created back onto a slug that has kept documents has a null
+ * `current_version` and versions 1 to 3 already on the table; counting the table
+ * gives 4. Counting the row would give 1 — a second document at
+ * `/policies/handbook/v1.pdf`, which is the one thing a permanent address may
+ * never mean.
  */
 export async function replacePolicyFile(
   db: Db,
