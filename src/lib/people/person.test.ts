@@ -24,9 +24,10 @@ import {
  * at.
  */
 
-/** The seed as the store hands it back: rows, with an unstamped stamp. */
+/** The seed as the store hands it back: rows, listed, with an unstamped stamp. */
 const seeded: Person[] = PEOPLE.map((person) => ({
   ...person,
+  retiredAt: null,
   lastEditedBy: null,
   lastEditedAt: null,
 }));
@@ -193,6 +194,68 @@ describe('resolving a course to its instructor', () => {
     // silently dropped is worse than a failure.
     const orphan = { ...CATALOGUE[0]!, instructorSlug: 'nobody' };
     expect(() => instructorOf(bySlug(seeded), orphan)).toThrow(/nobody/);
+  });
+});
+
+/**
+ * The four cases, at the one seam that decides them (#266).
+ *
+ * Live and retired course crossed with live and retired person, because the
+ * answer is a fact about the *pair* and not about either one: the same person
+ * is printed on one class and not on the next, and the same class prints a name
+ * or does not depending on whether the school still runs it.
+ *
+ * Proved here rather than through four rendered pages because here is where it
+ * is decided. The class page, the full descriptions, the timetable and the
+ * structured data all read this one answer, so a page and its own JSON-LD
+ * cannot disagree about who teaches a class — which is the guarantee #257
+ * established and this rule has to keep.
+ */
+describe('a course whose instructor has retired', () => {
+  const ALGEBRA = CATALOGUE.find((course) => course.slug === 'algebra-1')!;
+  const RETIRED_ON = new Date('2026-06-30T00:00:00Z');
+
+  /** The seed with one person retired — George, who teaches Algebra 1. */
+  const withGeorgeRetired = bySlug(
+    seeded.map((person) =>
+      person.slug === 'george-jensen' ? { ...person, retiredAt: RETIRED_ON } : person,
+    ),
+  );
+  const listed = bySlug(seeded);
+  const retiredCourse = { ...ALGEBRA, retiredAt: RETIRED_ON };
+
+  it('names them while both are live', () => {
+    expect(instructorOf(listed, ALGEBRA)?.name).toBe('Pastor George Jensen');
+  });
+
+  it('names nobody on a class the school still runs', () => {
+    // The claim a live class makes is about who a parent's child gets, and a
+    // departed name is a wrong answer to it. Rendered as the same absence an
+    // unstaffed class already renders — nothing printed, nothing invented.
+    expect(instructorOf(withGeorgeRetired, ALGEBRA)).toBeNull();
+  });
+
+  it('goes on naming them on a class that is itself retired', () => {
+    // A retired class is the record of what the school ran, and who ran it is
+    // half of that record.
+    expect(instructorOf(withGeorgeRetired, retiredCourse)?.name).toBe('Pastor George Jensen');
+  });
+
+  it('names a listed person on a retired class too', () => {
+    expect(instructorOf(listed, retiredCourse)?.name).toBe('Pastor George Jensen');
+  });
+
+  it('brings the name back on the live class when they are brought back', () => {
+    // The rule is a rendering rule and nothing was stored, so un-retiring is
+    // the whole of the way back — no course is retyped and none was touched.
+    expect(instructorOf(listed, ALGEBRA)?.name).toBe('Pastor George Jensen');
+  });
+
+  it('still refuses a class named for somebody the directory has not got', () => {
+    // The retired case must not be reached by widening the missing case: a
+    // partial list of people is still a fault, where a retired person is data.
+    const orphan = { ...ALGEBRA, instructorSlug: 'nobody' };
+    expect(() => instructorOf(withGeorgeRetired, orphan)).toThrow(/nobody/);
   });
 });
 

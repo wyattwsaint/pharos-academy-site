@@ -515,8 +515,12 @@ would drift the first time it was corrected in one of them.
 **Instructor is not a status a person carries.** It is a fact about the
 catalogue: a person is an instructor exactly when some course names them, so
 assigning a course makes them one on the staff page, the class page and the
-timetable at once. **Leadership** *is* stored, as a rank, because it carries an
-order the staff page renders in that nothing else can derive.
+timetable at once. The one exception is a [retired](#retired) person, and it is
+that same fact working: a course the school still runs stops naming them, while
+a retired course goes on naming them, decided in the one place a class's
+instructor is decided and stored nowhere. **Leadership** *is* stored, as a rank,
+because it carries an order the staff page renders in that nothing else can
+derive.
 
 **A person can be deleted, and the delete is unconditional** (#262, ADR-0021).
 The staff list of a new school is in flux — somebody typed in twice, somebody
@@ -593,6 +597,18 @@ flyer the school handed out and a link the school gave must not lead to nothing.
 It goes on naming who taught it: a retired course is the record of a past class.
 A retired person comes off the staff page, and a course still running does not
 name them.
+
+That last pair is a **rendering** rule and not a stored one, and it has to be:
+being an instructor is not a status a person carries — a person is an instructor
+exactly when a course names them — so there is nothing to write down. It is
+decided in the one place a class's instructor is decided (`instructorOf`), which
+is why the class page, the full descriptions, the timetable and the structured
+data cannot disagree about it. Crossed both ways: a **live** course whose
+instructor is retired names **nobody**, because printing a departed name there is
+a wrong claim about who a parent's child gets; a **retired** course keeps naming
+them, because it is the record of the past. That rule is also what makes
+**retiring a person never refused, whatever they teach** — the school acts on a
+departure the day it happens rather than reassigning four courses first.
 
 **It is reversible in one press and asks no confirmation**, because nothing is
 lost. Retired courses and people sit in a section beneath the live ones in the

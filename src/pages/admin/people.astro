@@ -4,18 +4,19 @@ export const prerender = false;
 import AdminBanner from '../../components/AdminBanner.astro';
 import AdminButton from '../../components/AdminButton.astro';
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { formatStamp } from '../../lib/admin/formatting.js';
+import type { Banner } from '../../lib/admin/banner.js';
+import { formatDay, formatStamp } from '../../lib/admin/formatting.js';
 import { personDeletionOutcome } from '../../lib/admin/republish-outcome.js';
+import { PERSON_RETIREMENT, pressRetirement, RETIRE_VALUES } from '../../lib/admin/retirement.js';
 import { getDb } from '../../lib/db/client.js';
-import { listPeopleForAdmin } from '../../lib/people/store.js';
+import { listEveryPerson } from '../../lib/people/store.js';
 
 /**
  * Everybody the school has, in the order the staff page renders them (#26).
  *
- * A list and nothing else: every edit happens on the person's own screen, so
- * there is one place a name changes and one thing that can go wrong. The order
- * is the store's, which is the staff page's, so what Jill sees here is what a
- * parent sees there.
+ * Every edit happens on the person's own screen, so there is one place a name
+ * changes and one thing that can go wrong. The order is the store's, which is
+ * the staff page's, so what Jill sees here is what a parent sees there.
  *
  * The delete is on the person's own screen, and it is unconditional (#262,
  * ADR-0021). #258 withdrew the promise that there would never be one; this is
@@ -29,16 +30,54 @@ import { listPeopleForAdmin } from '../../lib/people/store.js';
  *
  * What lands back here is the outcome, in the query string, so a refresh
  * repeats nothing.
+ *
+ * Beside it, and deliberately the gentler of the two, is **Retire** (#266). The
+ * distinction is the catalogue's (CONTEXT.md, "retired"): deleting is for a row
+ * typed in twice, retiring is for somebody who has left and whose classes are
+ * the record of what they taught. So retiring asks nothing, keeps every course
+ * pointing where it points, and is one press back — where deleting confirms,
+ * clears those references and is final. The retired people are on
+ * this screen rather than behind a filter — the Classes screen's argument
+ * exactly: a screen that hid them is a screen where the office re-adds somebody
+ * it already has, and then has two of them with one bio between them. They sit
+ * in their own section beneath the listed ones, each with the date the school
+ * stopped listing them, one press from coming back.
+ *
+ * The press answers here rather than through a redirect, for the reason the
+ * editors do: retiring republishes the site, and the republish answer is a fact
+ * the office needs told. A redirect would throw it away. The delete's outcome
+ * arrives the other way, in the query string, because by then its row is gone —
+ * one banner reports whichever of the two just happened.
  */
 const db = await getDb();
 const actor = Astro.locals.actor!;
 
-const people = await listPeopleForAdmin(db);
-
-const banner = personDeletionOutcome(
+let banner: Banner | null = personDeletionOutcome(
   Astro.url.searchParams.get('deleted'),
   Astro.url.searchParams.get('republished'),
 );
+
+if (Astro.request.method === 'POST') {
+  // The only thing this screen posts is a Retire, so a form it cannot read is
+  // not a save to fall through to — it is a button that named nobody.
+  const pressed = await pressRetirement({
+    db,
+    subject: PERSON_RETIREMENT,
+    form: await Astro.request.formData(),
+    actorName: actor.name,
+    url: Astro.url,
+  });
+  banner = pressed?.banner ?? {
+    ok: false,
+    message: 'Nothing changed — that button did not say who.',
+  };
+}
+
+const everybody = await listEveryPerson(db);
+
+/** The two sections, in the order the office reads them: who is here, then who was. */
+const people = everybody.filter((person) => person.retiredAt === null);
+const retired = everybody.filter((person) => person.retiredAt !== null);
 ---
 
 <AdminLayout title="People" actor={actor}>
@@ -55,15 +94,20 @@ const banner = personDeletionOutcome(
   </p>
 
   {
-    people.length === 0 ? (
+    everybody.length === 0 ? (
       <p class="mt-8 border-t border-navy/15 pt-6" data-testid="no-people">
         Nobody is listed yet. The staff page and the name printed on every class are read from this
         list, so both are waiting on it. An empty list is a real state — the school may have
         entered nobody, or deleted everybody — and any class still running is waiting for an
         instructor.
       </p>
+    ) : people.length === 0 ? (
+      <p class="mt-8 border-t border-navy/15 pt-6" data-testid="all-retired">
+        Everybody is retired. The staff page has nobody on it, and no class the school runs names an
+        instructor, until one of the people below is brought back or somebody new is added.
+      </p>
     ) : (
-      <ul class="mt-8 flex flex-col gap-6">
+      <ul class="mt-8 flex flex-col gap-6" data-testid="listed-people">
         {people.map((person) => (
           <li class="border-t border-navy/15 pt-6">
             <h2 class="text-xl font-semibold text-navy">
@@ -84,9 +128,65 @@ const banner = personDeletionOutcome(
             <p class="mt-1 text-sm" data-testid={`stamp-${person.slug}`}>
               {formatStamp(person.lastEditedBy, person.lastEditedAt)}
             </p>
+            <form method="post" class="mt-3">
+              <input type="hidden" name="slug" value={person.slug} />
+              <input type="hidden" name="retire" value={RETIRE_VALUES.retire} />
+              <AdminButton
+                small
+                variant="secondary"
+                pendingLabel="Retiring…"
+                testId={`retire-${person.slug}`}
+              >
+                Retire
+              </AdminButton>
+            </form>
           </li>
         ))}
       </ul>
+    )
+  }
+
+  {
+    retired.length > 0 && (
+      <section class="mt-12" data-testid="retired-people">
+        <h2 class="text-2xl font-semibold text-navy">Retired</h2>
+        <p class="mt-2">
+          People the school is not listing now. They are off the staff page, and the classes the
+          school still runs no longer print their name — a class cannot say a parent's child gets
+          somebody who has left. A class that is itself retired goes on naming who taught it,
+          because that is the record of what the school ran. Nothing has been lost: bringing
+          somebody back restores them to the staff page and to the classes they teach.
+        </p>
+        <ul class="mt-6 flex flex-col gap-6">
+          {retired.map((person) => (
+            <li class="border-t border-navy/15 pt-6">
+              <h3 class="text-xl font-semibold text-navy">
+                <a href={`/admin/people/${person.slug}`} class="underline underline-offset-4">
+                  {person.name}
+                </a>
+              </h3>
+              <p class="mt-1" data-testid={`retired-on-${person.slug}`}>
+                Retired {formatDay(person.retiredAt!)}
+              </p>
+              <p class="mt-1 text-sm">{person.role}</p>
+              <p class="mt-1 text-sm" data-testid={`stamp-${person.slug}`}>
+                {formatStamp(person.lastEditedBy, person.lastEditedAt)}
+              </p>
+              <form method="post" class="mt-3">
+                <input type="hidden" name="slug" value={person.slug} />
+                <input type="hidden" name="retire" value={RETIRE_VALUES.unretire} />
+                <AdminButton
+                  small
+                  pendingLabel="Bringing them back…"
+                  testId={`unretire-${person.slug}`}
+                >
+                  Bring them back
+                </AdminButton>
+              </form>
+            </li>
+          ))}
+        </ul>
+      </section>
     )
   }
 

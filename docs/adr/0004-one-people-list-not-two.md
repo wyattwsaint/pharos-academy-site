@@ -47,6 +47,20 @@ mean different things in the same column.
 - **George Jensen is one row**, appearing in both sections of the staff page. A correction
   to his name reaches the staff page, Algebra 1's page and the timetable together, because
   there is one name.
+
+  **Narrowed by [#266](https://github.com/wyattwsaint/pharos-academy-site/issues/266)
+  (2026-08-15).** Assigning a course still makes somebody an instructor on every surface at
+  once, but a **retired** person is no longer named on every surface that names them: a
+  course the school still runs prints nobody, and a retired course goes on printing them.
+  That is this ADR defending itself rather than contradicting itself — a retired person left
+  named on a live class would be printed on that class while being absent from the staff
+  page it links to, which is exactly the drift merging the two lists was meant to prevent.
+  Because instructor is not a status a person carries, there is nothing to store and nothing
+  to keep in sync: the rule is a rendering rule and lives at `instructorOf`, the one place
+  #257 established for deciding whether a class names anybody, so the class page, the full
+  descriptions, the timetable and the structured data cannot disagree. It is also what lets
+  the school act on a departure the day it happens — retiring a person is never refused,
+  whatever they teach, and no course is reassigned or touched.
 - **There is no second list to keep in sync**, so "no separate instructor entity" is a
   property of the schema rather than a discipline somebody has to maintain.
 - **The foreign key makes a course naming somebody who is not on the list impossible.**

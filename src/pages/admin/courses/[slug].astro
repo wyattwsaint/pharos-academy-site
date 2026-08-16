@@ -21,7 +21,7 @@ import {
   type CourseFormFields,
 } from '../../../lib/admin/courses.js';
 import { isrBypassToken } from '../../../lib/admin/isr-token.js';
-import { pressRetirement, RETIRE_VALUES } from '../../../lib/admin/retirement.js';
+import { COURSE_RETIREMENT, pressRetirement, RETIRE_VALUES } from '../../../lib/admin/retirement.js';
 import { saveErrorMessage } from '../../../lib/admin/save-errors.js';
 import {
   describeRevalidation,
@@ -40,7 +40,7 @@ import { createCourse, getCourse, listCourses, saveCourse } from '../../../lib/c
 import { getDb } from '../../../lib/db/client.js';
 import { getMoneySettings } from '../../../lib/money/store.js';
 import { slugify } from '../../../lib/people/person.js';
-import { listPeople } from '../../../lib/people/store.js';
+import { listEveryPerson } from '../../../lib/people/store.js';
 
 /**
  * One course, added or edited (#24).
@@ -115,7 +115,29 @@ if (!year) {
 }
 
 const settings = await getMoneySettings(db);
-const people = await listPeople(db);
+/*
+ * Who this class can be given to: the people the school lists, plus the one
+ * this class already names if they have since retired (#266).
+ *
+ * The second half is not a nicety. A `select` whose options omit the value it
+ * was given posts the *first* option instead, so a course naming somebody who
+ * has left would be silently reassigned to whoever sorts first the next time
+ * anybody fixed a typo in its description. Keeping them in the list, marked,
+ * means the office decides who takes the class over rather than the browser.
+ *
+ * Nobody retired is offered for a class that does not already name them: they
+ * are not somebody the school can hand a class to, and a live class naming them
+ * would print no instructor at all.
+ */
+/*
+ * Filtered out of the whole list rather than fetched as two, so the order is
+ * the store's own — leadership first and then by name, the order the staff page
+ * and the People screen render in. Somebody appended to the published list
+ * would be the one name in the admin that is not where it is everywhere else.
+ */
+const people = (await listEveryPerson(db)).filter(
+  (person) => person.retiredAt === null || person.slug === course?.instructorSlug,
+);
 const instructorSlugs = people.map((person) => person.slug);
 /*
  * Read before the save, and used for both the slot list and the clash
@@ -148,15 +170,22 @@ if (Astro.request.method === 'POST') {
    * which is what falls through to the parser below.
    */
   const pressed = course
-    ? await pressRetirement({ db, form, slug: course.slug, actorName: actor.name, url: Astro.url })
+    ? await pressRetirement({
+        db,
+        subject: COURSE_RETIREMENT,
+        form,
+        slug: course.slug,
+        actorName: actor.name,
+        url: Astro.url,
+      })
     : null;
 
   if (pressed) {
     banner = pressed.banner;
     // Absent when the write was refused, which leaves the screen showing the
     // class exactly as it was — which is what happened to it.
-    if (pressed.course) {
-      course = pressed.course;
+    if (pressed.record) {
+      course = pressed.record;
       values = fieldsOf(course);
     }
   } else {
@@ -600,7 +629,10 @@ function warningLine(warning: ClashWarning): string {
       type="select"
       label={LABELS.instructorSlug}
       placeholder="Nobody yet"
-      options={people.map((person) => ({ value: person.slug, label: person.name }))}
+      options={people.map((person) => ({
+        value: person.slug,
+        label: person.retiredAt ? `${person.name} — retired` : person.name,
+      }))}
       value={values.instructorSlug}
       error={errors.instructorSlug}
       optional
@@ -609,7 +641,8 @@ function warningLine(warning: ClashWarning): string {
         From the <a href="/admin/people" class="underline underline-offset-4">people list</a> — never
         a typed name, so correcting a name corrects it here too. Leave it unset for a class you mean
         to run and have not staffed: no page invents a name for it, and the Classes list says one is
-        wanted.
+        wanted. Somebody retired is only here because this class still names them, and while the
+        school runs it no page prints their name — pick who is taking it over.
       </Fragment>
     </AdminField>
 

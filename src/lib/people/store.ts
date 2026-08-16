@@ -17,28 +17,45 @@ import type { Person } from './person.js';
  */
 
 /**
- * Everybody, leadership first and then alphabetically.
+ * The people the school lists today — leadership first, then alphabetically.
+ *
+ * The **published** reader, and the staff page is what it is for: somebody
+ * retired is not on it, which is the whole of "a retired person does not appear
+ * on the staff page" (#266). Nothing else has to know the word.
  *
  * An empty table is a broken deployment rather than a school with no staff —
  * the migration seeds ten — so it is refused loudly here rather than rendered
  * as a staff page with nobody on it.
+ *
+ * The filter is applied **after** the guard, deliberately, exactly as
+ * `listCourses` does it: "no rows at all" is a database the migration has never
+ * been run against, and "everybody retired" is a decision the school made. The
+ * one would turn the other's last retire into an outage.
  */
 export async function listPeople(db: Db): Promise<Person[]> {
-  const rows = await listPeopleForAdmin(db);
+  const rows = await listEveryPerson(db);
   if (rows.length === 0) {
     throw new Error('The people list is empty — run `npm run db:migrate`.');
   }
-  return rows;
+  return rows.filter((person) => person.retiredAt === null);
 }
 
 /**
- * The same list with the guard left off, for the admin list alone (#197).
+ * The whole table, retired people included, with the guard left off.
  *
- * The admin People screen is where an empty table is *reported* — "this
- * database has not been set up" — rather than shipped to a parent, so it has to
- * render "nobody" instead of failing the way the staff page must.
+ * Three kinds of reader want this rather than the published list. The admin
+ * People screen is where an empty table is *reported* — "this database has not
+ * been set up" — rather than shipped to a parent (#197), and it is also the
+ * screen that shows the retired ones in their own section (#266). The **class
+ * surfaces** need it because `instructorOf` is what decides whether a class
+ * names anybody, and it cannot decide about a person it was not handed: a
+ * retired course still prints who taught it. The backup needs it because a
+ * backup that drops rows is not one.
+ *
+ * It was `listPeopleForAdmin` while the admin list was the only caller; the
+ * name says what it returns now that the public pages read it too.
  */
-export async function listPeopleForAdmin(db: Db): Promise<Person[]> {
+export async function listEveryPerson(db: Db): Promise<Person[]> {
   const rows = await db.select().from(peopleTable).orderBy(asc(peopleTable.slug));
   return rows.map(toPerson).sort(byLeadershipThenName);
 }
@@ -50,7 +67,14 @@ export async function getPerson(db: Db, slug: string): Promise<Person | undefine
   return row ? toPerson(row) : undefined;
 }
 
-/** What a save may change. The slug is the key and is not one of them. */
+/**
+ * What a save may change. The slug is the key and is not one of them.
+ *
+ * `retiredAt` is not one of them either (#266), for the reason it is outside
+ * `CourseEdit`: retiring is its own press with its own writer, and a form that
+ * carried the date would let a save that only fixed a typo in somebody's bio
+ * put them back on the staff page.
+ */
 export type PersonEdit = {
   name: string;
   role: string;
@@ -153,6 +177,68 @@ export async function deletePerson(db: Db, slug: string): Promise<void> {
 }
 
 /**
+ * Take somebody off the staff page, and stamp them (#266).
+ *
+ * **The low-stakes move, and the one the school reaches for first.** Retiring
+ * and deleting (`deletePerson`) are the same distinction the catalogue draws
+ * (CONTEXT.md, "retired"): retiring is for somebody who has left and whose
+ * classes are the record of what they taught, deleting is for a row typed in
+ * twice. Retiring keeps every course pointing where it points and is one press
+ * back; deleting clears those references and is gone.
+ *
+ * One press and no confirmation, because nothing is lost: the row stays, the
+ * courses that point at it keep pointing at it, and `unretirePerson` is the
+ * whole of the way back. A confirmation belongs on a move that cannot be
+ * undone, and putting one here would teach the office to click through the ones
+ * that can.
+ *
+ * **Never refused, whatever they teach.** The school can act on a departure the
+ * day it happens rather than reassigning four courses first; what those courses
+ * print is `instructorOf`'s rule and needs nothing stored. That is only true
+ * because being an instructor is not a status a person carries — there is no
+ * second record of them to leave behind.
+ *
+ * Retiring somebody already retired re-dates them rather than refusing, which
+ * is the harmless reading of a double press.
+ */
+export async function retirePerson(
+  db: Db,
+  slug: string,
+  editorName: string,
+  now = new Date(),
+): Promise<Person> {
+  return setRetirement(db, slug, now, editorName, now);
+}
+
+/** Bring them back. The date is cleared; nothing else about the row is touched. */
+export async function unretirePerson(
+  db: Db,
+  slug: string,
+  editorName: string,
+  now = new Date(),
+): Promise<Person> {
+  return setRetirement(db, slug, null, editorName, now);
+}
+
+/** The one write both halves are. Deliberately not reachable through `PersonEdit`. */
+async function setRetirement(
+  db: Db,
+  slug: string,
+  retiredAt: Date | null,
+  editorName: string,
+  now: Date,
+): Promise<Person> {
+  const [row] = await db
+    .update(peopleTable)
+    .set({ retiredAt, lastEditedBy: editorName, lastEditedAt: now })
+    .where(eq(peopleTable.slug, slug))
+    .returning();
+
+  if (!row) throw new Error(`No person with the slug "${slug}".`);
+  return toPerson(row);
+}
+
+/**
  * Leadership in the school's order, then everybody else by name.
  *
  * The staff page renders in this order and so does the admin list, so the two
@@ -175,6 +261,7 @@ function toPerson(row: PersonRow): Person {
     bio: row.bio,
     photo: row.photo,
     leadershipRank: row.leadershipRank,
+    retiredAt: row.retiredAt,
     lastEditedBy: row.lastEditedBy,
     lastEditedAt: row.lastEditedAt,
   };

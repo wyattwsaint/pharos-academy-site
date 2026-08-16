@@ -60,6 +60,7 @@ async function open(): Promise<Db> {
     } else {
       await seedSuitePolicyFiles(db);
       await seedSuiteRetiredCourse(db);
+      await seedSuiteRetiredPerson(db);
     }
     return db;
   }
@@ -270,6 +271,51 @@ async function seedSuiteRetiredCourse(db: Db): Promise<void> {
     'Suite Admin',
   );
   await retireCourse(db, SUITE_RETIRED_COURSE, 'Suite Admin');
+}
+
+/**
+ * The slug of the one person the throwaway database retires (#266).
+ *
+ * Written out again in `e2e/suite-admin.ts` for the reason the class's slug is:
+ * the Playwright config loads that module and must not pull the driver in.
+ */
+export const SUITE_RETIRED_PERSON = 'suite-departed-instructor';
+
+/**
+ * Somebody already retired, so the People screen's own retired section can be
+ * measured (#266).
+ *
+ * The class's argument, in the people list. The section only appears on a day
+ * the office has retired somebody, and no spec may retire a *seeded* person to
+ * reach it: the public suite pins the staff page and the names printed on the
+ * classes, and it runs against this same database at the same time.
+ *
+ * **They teach nothing, and that is deliberate.** A retired person who taught a
+ * seeded class would unname it on the class page, the timetable, the full
+ * descriptions and its structured data — which is exactly the rule this ticket
+ * is about, and exactly the thing the public suite measures against the seed.
+ * That rule is proved where it is decided, at `instructorOf`, across all four
+ * cases; what is left for a browser is the screen, and the screen needs only
+ * somebody in the section.
+ *
+ * Suite mode only, and suite mode already refuses to run on a deployment.
+ */
+async function seedSuiteRetiredPerson(db: Db): Promise<void> {
+  const { createPerson, retirePerson } = await import('../people/store.js');
+
+  await createPerson(
+    db,
+    SUITE_RETIRED_PERSON,
+    {
+      name: 'Mrs. Suite Departed',
+      role: 'Instructor',
+      bio: null,
+      photo: null,
+      leadershipRank: null,
+    },
+    'Suite Admin',
+  );
+  await retirePerson(db, SUITE_RETIRED_PERSON, 'Suite Admin');
 }
 
 /**
