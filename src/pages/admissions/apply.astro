@@ -1223,12 +1223,17 @@ const description =
                   </strong>
                 </p>
                 {/*
-                  The first sentence is the page's claim about what the family
-                  is about to see, so it is written from whether the link
-                  actually carries the amount (#265) — telling somebody to type
-                  a figure that is already in the box is the page disagreeing
-                  with the button above it. The second sentence is true either
-                  way: no parameter Vanco accepts fills in the memo.
+                  The page's claim about what the family is about to see, so it
+                  is written from whether the link actually carries the amount
+                  (#265) — telling somebody to type a figure that is already in
+                  the box is the page disagreeing with the button above it.
+
+                  It used to carry a second sentence, that a payment reaches us
+                  detached from this application (ADR-0013). That is still true
+                  and still said — but after the application is sent, where
+                  there is a reference to type into the memo and the sentence is
+                  the reason to bother typing it. Here there is no reference
+                  yet, so it was a worry with nothing to do about it.
                 */}
                 <p class="mt-5">
                   {payLink.carriesAmount ? (
@@ -1242,9 +1247,7 @@ const description =
                       The giving page does not know what you owe, so please enter{' '}
                       <strong data-total="total">{formatMoney(cost.total.total)}</strong> yourself.
                     </Fragment>
-                  )}{' '}
-                  A payment through it does not reach us attached to this application, so the
-                  office matches the two up by hand.
+                  )}
                 </p>
 
                 {/*

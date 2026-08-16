@@ -35,12 +35,35 @@ const details = await getSchoolDetails(await getDb());
 <BaseLayout details={details} title="Current Families" description={description}>
   <section class="band band-quiet" data-section="current-families-header">
     <div class="wide">
-      <p class="label">Current Families</p>
-      <h1 class="mt-4">Families Already Here</h1>
-      <p class="sub mt-5">
-        The things you need during the year, in one place. None of it is behind a login — if you
-        are still deciding whether to apply, you are welcome to read every word of it.
-      </p>
+      {/*
+        Heading and picture, and nothing else. The paragraph that used to sit
+        here said the section is not gated — true, and still said in the meta
+        description, but it was a reassurance aimed at somebody who has not
+        applied yet, on the one page in the site named for the people who have.
+        The cards below say what is here better than a sentence about what is
+        not in the way.
+
+        That leaves a band carrying its heading alone, which is the case
+        `.accent-wide` was extracted for (#142): the plate takes the room the
+        missing type would have. The painting is the same hand as the other
+        plates, and decorative — the heading beside it already names the
+        section, so `alt` is empty.
+
+        It is the one plate that is not 3:2. `beacon.css` warns the edge ramp
+        was drawn for that ratio, but the warning is about the radial mask it
+        rejected, not the ratio: a linear ramp on four edges dissolves a 16:9
+        plate as cleanly. Cropping to 3:2 would have taken the jug and the globe
+        off the ends, which are what hold the composition together.
+      */}
+      <div class="accent accent-wide">
+        <div>
+          <p class="label">Current Families</p>
+          <h1 class="mt-4">Families Already Here</h1>
+        </div>
+        <figure class="plate">
+          <img src="/imagery/reading-table.webp" alt="" width="1400" height="788" loading="eager" />
+        </figure>
+      </div>
     </div>
   </section>
 
