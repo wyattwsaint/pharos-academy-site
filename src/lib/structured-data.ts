@@ -118,6 +118,13 @@ export function schoolJsonLd(details: SchoolDetails, site: string | URL = SITE_U
     // says the same thing the hero does.
     disambiguatingDescription: SCHOOL_DESCRIPTION,
     url: absoluteUrl(site, '/'),
+    // The mark, at the size a knowledge panel wants: absolute, because a
+    // relative path in JSON-LD is resolved against nothing, and the 512px
+    // raster rather than `favicon.svg` because Google's image pipeline reads
+    // rasters and clears its 112px floor with room to spare. This is *not* what
+    // fills the favicon beside a blue link — that comes from the icon links in
+    // `BaseLayout.astro` (#291).
+    logo: absoluteUrl(site, '/icon-512.png'),
     telephone: details.phone,
     email: details.email,
     ...(address ? { address: { '@type': 'PostalAddress', ...address } } : {}),

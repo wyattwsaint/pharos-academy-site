@@ -98,6 +98,21 @@ const preview = socialPreviewTags({ title, description, pathname: Astro.url.path
     <link rel="sitemap" href="/sitemap.xml" />
     {
       /*
+        The tab icon, and the icon Google prints beside the blue link (#291).
+
+        Google reads that one from the page's own icon links and never from the
+        structured data, so the `logo` on the School node below does not cover
+        it and neither would a favicon nobody declared. Declared here rather
+        than left to the browser's guess at `/favicon.ico`, because the guess is
+        the only thing that ever fetches the `.ico` and the SVG is what modern
+        tabs should be rendering.
+      */
+    }
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    {
+      /*
         Open Graph and Twitter cards (#147). Emitted from the page's own title
         and description, so a share of any page previews as that page rather
         than as one site-wide default.
