@@ -45,6 +45,8 @@ const VOCABULARY: Record<string, readonly string[]> = {
     'description',
     'disambiguatingDescription',
     'url',
+    // schema.org puts `logo` on Organization, which School inherits from.
+    'logo',
     'telephone',
     'email',
     'address',
