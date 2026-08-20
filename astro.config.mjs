@@ -69,6 +69,10 @@ export default defineConfig({
   // 301 and looks fine from the outside.
   redirects: redirectConfig(),
   adapter: vercel({
+    // Vercel Web Analytics. The adapter injects the loader that posts to
+    // `/_vercel/insights`, which only exists once Web Analytics is turned on for
+    // the project in the Vercel dashboard; until then the beacon 404s harmlessly.
+    webAnalytics: { enabled: true },
     isr: {
       expiration: 60 * 60,
       bypassToken,

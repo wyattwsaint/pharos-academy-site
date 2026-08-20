@@ -9,5 +9,13 @@ export default defineConfig({
     include: ['src/**/*.test.ts', 'e2e/**/*.test.ts'],
     exclude: ['node_modules/**', 'dist/**', 'prototypes/**'],
     environment: 'node',
+    // Each database-backed file spins up its own throwaway Postgres in
+    // `beforeEach`, and pglite's start is the slow part. Vitest's 10s default
+    // is enough for one file and not for a machine running the whole suite at
+    // once: the pre-commit gate failed a different eight to fifty tests every
+    // run, all of them the same "Hook timed out" on `createEphemeralDatabase`,
+    // and all of them green when run with fewer workers. A gate that fails at
+    // random teaches the office to bypass it.
+    hookTimeout: 30_000,
   },
 });
