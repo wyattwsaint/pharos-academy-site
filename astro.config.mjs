@@ -96,6 +96,9 @@ export default defineConfig({
       // cannot disagree.
       exclude: [/^\/api\/cron\/.*$/, /^\/admin(\/.*)?$/, ...onRequestPaths()],
     },
+    webAnalytics: {
+      enabled: true,
+    },
   }),
   // The dev toolbar injects its own `<h1>`s ("Audit", "Settings", …) into the
   // dev server's DOM, which no deployed page has. Left on, it races the browser
