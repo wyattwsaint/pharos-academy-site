@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 import { SEEDED_ANNOUNCEMENTS } from '../src/lib/announcements/announcement.js';
 import { NEWS_PATH } from '../src/lib/announcements/views.js';
@@ -34,8 +34,36 @@ const PLAIN = SEEDED_ANNOUNCEMENTS.find(
 /** The Weis fundraiser, which is unusable without its link. */
 const WITH_LINK = SEEDED_ANNOUNCEMENTS.find((announcement) => announcement.linkUrl !== null)!;
 
+/**
+ * Whether this run is reading a deployment rather than a freshly seeded one.
+ *
+ * Against a deployment the seed is not the record: the school posts and the
+ * office deletes, through the admin, which is what the admin is for. The
+ * senators' game fundraiser was seeded, published and then taken down on 14
+ * August, and every run since read a page that correctly no longer carried it.
+ * A spec that reads the seed for the answer fails on the day the office uses
+ * the site, and calls a working deletion a broken page.
+ *
+ * So the seed is asserted only where the seed is the truth — a local run, whose
+ * database this suite created — and against a deployment the page itself says
+ * what the school has announced. What is proved there is the shape of the
+ * record rather than its contents: that everything the page lists is a headline
+ * and a machine-readable date. Nothing asserts the page is non-empty, because
+ * an empty record is a real state the page renders a sentence for — a spec that
+ * demanded news would be the same mistake in the other direction.
+ */
+const AGAINST_A_DEPLOYMENT = !!process.env.PLAYWRIGHT_BASE_URL;
+
+/** The slugs the page itself carries, in the order it prints them. */
+async function publishedSlugs(page: Page): Promise<string[]> {
+  return page
+    .locator('.news-list > li')
+    .evaluateAll((entries) => entries.map((entry) => entry.id).filter((id) => id !== ''));
+}
+
 test.describe('the news page', () => {
   test('lists everything the school has announced, stale or not', async ({ page }) => {
+    test.skip(AGAINST_A_DEPLOYMENT, 'the seed is not the record on a deployment');
     await page.goto(NEWS_PATH);
 
     for (const announcement of SEEDED_ANNOUNCEMENTS) {
@@ -49,22 +77,37 @@ test.describe('the news page', () => {
   test('prints each one with the date the school posted it', async ({ page }) => {
     await page.goto(NEWS_PATH);
 
-    const entry = page.locator(`[id="${PLAIN.slug}"]`);
-    await expect(entry).toHaveCount(1);
-    // A machine-readable date beside the printed one, so the record is dated
-    // for anything reading the page rather than looking at it.
-    await expect(entry.locator('time')).toHaveAttribute('datetime', /^\d{4}-\d{2}-\d{2}$/);
-    await expect(entry).toContainText(PLAIN.body.slice(0, 40));
+    for (const slug of await publishedSlugs(page)) {
+      const entry = page.locator(`[id="${slug}"]`);
+      await expect(entry, slug).toHaveCount(1);
+      await expect(entry.getByRole('heading'), slug).toBeVisible();
+      // A machine-readable date beside the printed one, so the record is dated
+      // for anything reading the page rather than looking at it.
+      await expect(entry.locator('time'), slug).toHaveAttribute(
+        'datetime',
+        /^\d{4}-\d{2}-\d{2}$/,
+      );
+    }
+  });
+
+  test('prints the body the school wrote', async ({ page }) => {
+    test.skip(AGAINST_A_DEPLOYMENT, 'the seed is not the record on a deployment');
+    await page.goto(NEWS_PATH);
+
+    await expect(page.locator(`[id="${PLAIN.slug}"]`)).toContainText(PLAIN.body.slice(0, 40));
   });
 
   test('shows no PDF link on an announcement that has no file', async ({ page }) => {
+    test.skip(AGAINST_A_DEPLOYMENT, 'the seed is not the record on a deployment');
     await page.goto(NEWS_PATH);
 
     const entry = page.locator(`[id="${PLAIN.slug}"]`);
+    await expect(entry).toHaveCount(1);
     await expect(entry.locator('a[href$=".pdf"]')).toHaveCount(0);
   });
 
   test('carries a link out under the name the school gave it', async ({ page }) => {
+    test.skip(AGAINST_A_DEPLOYMENT, 'the seed is not the record on a deployment');
     await page.goto(NEWS_PATH);
 
     const entry = page.locator(`[id="${WITH_LINK.slug}"]`);
