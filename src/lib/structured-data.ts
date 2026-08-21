@@ -136,11 +136,20 @@ export function schoolJsonLd(details: SchoolDetails, site: string | URL = SITE_U
     // other school in the county, and each of them is true. The third names the
     // *families* rather than the school (#137): Pharos serves homeschooling
     // families and is not itself a homeschool, and the markup must not be the
-    // one place that still says otherwise.
+    // one place that still says otherwise. It names cyber school families
+    // beside them since #298 — widened in place rather than added as a fourth
+    // entry, because the value of this list is that it is the three facts that
+    // distinguish the school and not a keyword pile.
+    //
+    // There is no `audience` beside it, which was the obvious place to put this
+    // and is not a property of `Organization` — schema.org puts `audience` on
+    // `CreativeWork`, `Event`, `Product` and `Service`, and the allowlist in
+    // `structured-data.test-helper.ts` said so. Naming the audience here is the
+    // valid way to say it on a `School` node.
     knowsAbout: [
       'Classical education',
       'Christian education',
-      'Hybrid programs for homeschooling families',
+      'Hybrid programs for homeschooling and cyber school families',
     ],
     // The pages that say more, so the entity is anchored to real content rather
     // than to a name alone.

@@ -33,6 +33,14 @@ describe('llms.txt', () => {
     expect(renderLlmsTxt(SITE)).toContain(SCHOOL_DESCRIPTION);
   });
 
+  // #298. A model asked whether a cyber charter student can take an outside
+  // class near Harrisburg cannot infer the answer from "the families the school
+  // serves", and inference is the thing this file exists to spare it.
+  it('names both the families it serves on the admissions line', () => {
+    const body = renderLlmsTxt(SITE).toLowerCase();
+    expect(body).toContain('homeschooling and cyber school families');
+  });
+
   it('quotes no class count, because this file cannot read the catalogue', () => {
     // #138. The summaries are typed literals with no database behind them, so
     // a number here is a number nothing keeps true. The surfaces that do read

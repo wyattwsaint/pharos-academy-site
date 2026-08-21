@@ -38,6 +38,30 @@ test.describe('the admissions page', () => {
     }
   });
 
+  // #298 — Pastor Jensen: cyber school families are welcome “provided they are
+  // willing to pay the fees and meet the agreements just like home school
+  // families”. The terms are the half that has to survive an edit: a welcome
+  // that does not name them reads as a different deal.
+  test('welcomes cyber school families on the same terms as everybody else', async ({ page }) => {
+    await page.goto('/admissions');
+
+    const who = page.locator('#who');
+    await expect(who).toContainText('Cyber school families');
+    await expect(who).toContainText('the same fees');
+    await expect(who).toContainText('the same agreements');
+  });
+
+  // #298 — the obligation belongs before the button, not after enrollment. And
+  // the site names WhatsApp without ever linking it: a join link on a public
+  // page is joinable by anybody who finds the page, and the invitation is the
+  // school's to send.
+  test('names WhatsApp before the application, and links no group', async ({ page }) => {
+    await page.goto('/admissions');
+
+    await expect(page.locator('#start')).toContainText('WhatsApp');
+    await expect(page.locator('a[href*="whatsapp"]')).toHaveCount(0);
+  });
+
   test('marks the H.O.P.E. expansion as emphasis rather than as bold type', async ({ page }) => {
     await page.goto('/admissions');
 
