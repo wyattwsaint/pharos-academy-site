@@ -112,6 +112,21 @@ describe('the school’s structured data', () => {
     expect(node.knowsAbout).toContain('Classical education');
   });
 
+  // #298 — the school welcomes cyber school families on the same terms, and
+  // this entry is the only machine-readable place that says who it is for. Not
+  // an `audience` property, which would be the obvious way to say it and is not
+  // a property of `Organization`; the allowlist rejects it.
+  it('names both audiences it serves, not homeschooling families alone', () => {
+    expect(node.knowsAbout).toContain('Hybrid programs for homeschooling and cyber school families');
+    expect(node.audience).toBeUndefined();
+  });
+
+  // The audience widened; what the school *is* did not (#298). These are
+  // different claims and #137 is the release that proves conflating them ships.
+  it('leaves the canonical description saying nothing about who it serves', () => {
+    expect(SCHOOL_DESCRIPTION).not.toMatch(/homeschool|cyber/i);
+  });
+
   // #137 — the markup said microschool while the hero said homeschool. Both are
   // read from one constant now, and this is the half a search engine believes.
   it('says what kind of school it is in the site’s one canonical wording', () => {

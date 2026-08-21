@@ -93,9 +93,35 @@ const details = await getSchoolDetails(await getDb());
       </p>
       <p class="mt-4 text-ink-2">
         A subscribed calendar refreshes on your phone’s own schedule, so if something changes at
-        short notice the school will still text you. Anything else, <a href={INQUIRY_HREF}
+        short notice the school will say so on WhatsApp. Anything else, <a href={INQUIRY_HREF}
           >ask us</a
         >.
+      </p>
+    </div>
+  </section>
+
+  {/*
+    A section of its own, not two more sentences under the calendar (#298).
+    Which channel the school announces a closing on is not a calendar fact, and
+    the line it replaces — “the school will still text you” — drifted precisely
+    because it was living inside a section about something else.
+
+    No link and no group address. The invitation is the school’s to send, and a
+    join link on a public page is joinable by anybody who finds the page.
+  */}
+  <section class="band" id="reaching-you" data-section="current-families-reaching-you">
+    <div class="wide">
+      <h2>How the School Reaches You</h2>
+      <p class="mt-5">
+        Closings, cancellations and anything else at short notice go out on WhatsApp, and families
+        here are asked to be on it. It is free, it is easy to use, and it is what schools like
+        ours have found works — but it is also the one place the school announces a closing, so a
+        family that is not on it is a family the school cannot reach on the morning it matters.
+      </p>
+      <p class="mt-4">
+        There is nothing to join from this page. The school sends your family the invitation once
+        you are enrolled, and announcements come from the school rather than from anybody’s
+        personal number.
       </p>
     </div>
   </section>

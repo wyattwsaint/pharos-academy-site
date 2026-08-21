@@ -1030,6 +1030,48 @@ and a wrong one. The hero made it for one release.
 
 Not: "hybrid homeschool", "co-op", "university-model school".
 
+### cyber school family
+
+A family whose child is enrolled in a **cyber school** — a cyber charter or
+similar online program — and who takes Pharos classes alongside it, to
+supplement what that program gives. Welcome on exactly the terms a
+[homeschooling family](#microschool) is welcome on: the same classes, the same
+fees, the same [agreements](#agreement) (#298).
+
+**The terms are said out loud, not implied.** The school's answer here is "yes,
+and nothing about it is different", so copy that welcomes cyber school families
+without naming fees and agreements invites the question it was written to close.
+
+The two audiences are named together wherever the site says who it is for — the
+admissions page, `llms.txt`, and the structured data's `knowsAbout` — not an
+`audience` property, which is the obvious place for it and is not a property of
+`Organization`. They are *not* named in `SCHOOL_DESCRIPTION`, which says what
+the school **is** and not who it serves.
+
+Not: "online school family", "charter family" — both name the wrong institution,
+and a cyber school student is not enrolled at Pharos full time any more than
+anybody else is.
+
+### WhatsApp
+
+The channel the school announces **closings, cancellations and anything else at
+short notice** on. Families at the school are asked to be on it; the school
+initiates the announcements (#298).
+
+**The site names it and never links it.** There is no group address and no join
+link on any page — the invitation is the school's to send, once a family is
+enrolled — and the copy says "the school" rather than naming the person who
+sends, so the wording survives the day the role changes.
+
+**It is not an [agreement](#agreement).** Agreements name a
+[policy](#policy) version and are copied onto the application; this is an
+expectation stated in prose, before the application rather than inside it.
+
+**One channel, not two.** Current Families said until #298 that the school would
+"still text you" if something changed at short notice, which named a second
+channel for the same event — the reliable way for a parent to miss the
+announcement.
+
 ### H.O.P.E.
 
 **Helping Our Parents Educate** — the school's own acronym, real copy from the

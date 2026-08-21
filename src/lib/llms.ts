@@ -45,9 +45,15 @@ const SUMMARIES: Record<string, string> = {
   [TEACH_PATH]:
     'For people who might teach a class — instructors are independent contractors, and this ' +
     'carries the contract and the Pennsylvania clearances required.',
+  /*
+   * Both audiences by name (#298). A model asked whether a cyber charter
+   * student can take an outside class near Harrisburg cannot infer the answer
+   * from “the families the school serves”, and this file exists so it does not
+   * have to infer.
+   */
   '/admissions':
-    'How to apply — the families the school serves, what makes it different, the registration ' +
-    'fee and per-class deposit, and which documents families sign.',
+    'How to apply — homeschooling and cyber school families alike, what makes the school ' +
+    'different, the registration fee and per-class deposit, and which documents families sign.',
   /*
    * The four that were missing (#151 AC 8).
    *

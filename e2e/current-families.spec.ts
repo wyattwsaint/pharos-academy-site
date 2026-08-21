@@ -43,6 +43,30 @@ test.describe('Current Families', () => {
     await expect(calendar).toContainText('own schedule');
   });
 
+  // #298. Two things at once: WhatsApp is the channel, and it is a section of
+  // its own rather than a sentence under the calendar — which is where the line
+  // it replaced lived, and why that line drifted out of step with the school.
+  test('says how the school reaches families, in a section of its own', async ({ page }) => {
+    await page.goto(CURRENT_FAMILIES_PATH);
+
+    const reaching = page.locator('#reaching-you');
+    await expect(
+      reaching.getByRole('heading', { name: 'How the School Reaches You', exact: true }),
+    ).toBeVisible();
+    await expect(reaching).toContainText('WhatsApp');
+    // The invitation is the school's to send (#298).
+    await expect(page.locator('a[href*="whatsapp"]')).toHaveCount(0);
+  });
+
+  // One channel for one event. Until #298 the calendar section promised a text
+  // message, which is the reliable way for a parent to miss the announcement.
+  test('names no second channel for a short-notice change', async ({ page }) => {
+    await page.goto(CURRENT_FAMILIES_PATH);
+
+    await expect(page.locator('#calendar')).toContainText('WhatsApp');
+    await expect(page.locator('#calendar')).not.toContainText('text you');
+  });
+
   for (const link of CURRENT_FAMILIES_LINKS) {
     test(`${link.label} is linked from the section index and needs no login`, async ({ page }) => {
       await page.goto(CURRENT_FAMILIES_PATH);
