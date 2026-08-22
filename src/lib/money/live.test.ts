@@ -57,8 +57,23 @@ describe('what a family owes', () => {
       tuition: 0,
       creditedAgainstTuition: 0,
       tuitionDue: 0,
+      classes: 0,
       total: 0,
     });
+  });
+
+  /*
+   * The class-fee campaign's own figure (#303): the deposits and the tuition
+   * due together, which is what a family pays into it. Held on `AmountOwed`
+   * rather than added up by whoever needs it, because the server prints it and
+   * the browser reprints it, and a second addition is how the two come to
+   * disagree (ADR-0019).
+   */
+  it('totals the deposits and the tuition due as the classes', () => {
+    const owed = amountOwedForPrices([420, 420], settings());
+
+    expect(owed.classes).toBe(owed.deposits + owed.tuitionDue);
+    expect(owed.registration + owed.classes).toBe(owed.total);
   });
 
   it('puts the deposits on top when the credit is off', () => {

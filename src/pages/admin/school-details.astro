@@ -101,10 +101,29 @@ const FIELDS: Field[] = [
     type: 'url',
     hint: 'Where the Give button goes. Changed here, it changes everywhere.',
   },
+  /*
+   * One box per Vanco campaign, labelled after the campaign the office is
+   * copying from (#303). Named that way so pasting is a matching exercise and
+   * not a translating one: the office has MyVanco open in the other tab, and a
+   * box called "online payment link" beside three campaigns called something
+   * else is a guess about which one it wants.
+   */
   {
-    name: 'payOnlineUrl',
+    name: 'registrationFeesUrl',
     type: 'url',
-    hint: 'Optional. Where families pay the registration and the tuition online, in one payment — the Vanco page. Left empty, the Apply page offers no online payment at all.',
+    hint: 'Optional. Where families pay the registration fee — the Registration Fees campaign in MyVanco. Left empty, that fee is posted as a check instead.',
+    optional: true,
+  },
+  {
+    name: 'classFeesUrl',
+    type: 'url',
+    hint: 'Optional. Where families pay the deposits and the tuition together — the Class Fees campaign in MyVanco. Left empty, those are posted as a check instead.',
+    optional: true,
+  },
+  {
+    name: 'studyHallFeesUrl',
+    type: 'url',
+    hint: 'Optional. The Study Hall Fees campaign in MyVanco. Kept here so it is not lost; nothing on the site charges study hall yet.',
     optional: true,
   },
   {
@@ -118,7 +137,7 @@ const FIELDS: Field[] = [
      * any `type="url"`: same origin, same path, those two placeholders only.
      */
     type: 'text',
-    hint: 'Optional. The same Vanco page with {amount} and {reference} where the figures go, so a family finds the amount already filled in. It has to start with the online payment link above.',
+    hint: 'Optional. The class fees page with {amount} and {reference} where the figures go, so a family finds the amount already filled in. It has to start with the class fees payment link above.',
     optional: true,
   },
 ];

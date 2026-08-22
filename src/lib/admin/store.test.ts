@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
-import { MIGRATIONS } from '../db/migrations.js';
+import { MIGRATIONS, SEEDED_SCHOOL_DETAILS } from '../db/migrations.js';
 import { formatStamp } from './formatting.js';
 import { attemptLogin } from './login.js';
 import { matchesBreakGlass } from './passwords.js';
@@ -305,24 +305,46 @@ describe('school details', () => {
     expect((await getSchoolDetails(db)).giveUrl).toBe(saved.giveUrl);
   });
 
-  // #111. Empty until the office pastes the Vanco page in — which is what the
-  // Apply page reads to decide whether it offers online payment at all.
-  it('starts with no online payment link, and keeps the one it is given', async () => {
+  /*
+   * #303. The three fee links arrive **already written** by the migration, not
+   * blank for the office to fill in: a blank link falls that fee back to the
+   * check instruction, so shipping blank would take online payment off the site
+   * until somebody logged into the admin. That is the acceptance criterion and
+   * not a detail — a deployed site offers online payment with no admin visit.
+   */
+  it('arrives with the three fee links already written', async () => {
+    const details = await getSchoolDetails(db);
+
+    expect(details.registrationFeesUrl).toBe(SEEDED_SCHOOL_DETAILS.registrationFeesUrl);
+    expect(details.classFeesUrl).toBe(SEEDED_SCHOOL_DETAILS.classFeesUrl);
+    expect(details.studyHallFeesUrl).toBe(SEEDED_SCHOOL_DETAILS.studyHallFeesUrl);
+  });
+
+  /*
+   * Each of the three round-trips on its own, the study hall included: nothing
+   * renders it yet, and the point of storing it is that the office can capture
+   * the URL while they have it in front of them (#51).
+   */
+  it('keeps each fee link it is given, the study hall one included', async () => {
     const before = await getSchoolDetails(db);
-    expect(before.payOnlineUrl).toBe('');
+    const moved = {
+      registrationFeesUrl: 'https://secure.myvanco.com/L-ZZ7H/campaign/C-MOVED-REG',
+      classFeesUrl: 'https://secure.myvanco.com/L-ZZ7H/campaign/C-MOVED-CLASS',
+      studyHallFeesUrl: 'https://secure.myvanco.com/L-ZZ7H/campaign/C-MOVED-HALL',
+    };
 
     const saved = await saveSchoolDetails(
       db,
-      {
-        ...schoolDetailsFields(before),
-        payOnlineUrl: 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION',
-      },
+      { ...schoolDetailsFields(before), ...moved, givingLinkTemplate: '' },
       'Jill Kilker',
     );
 
-    expect(saved.payOnlineUrl).toBe('https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION');
-    expect((await getSchoolDetails(db)).payOnlineUrl).toBe(saved.payOnlineUrl);
-    expect(schoolDetailsFields(saved).payOnlineUrl).toBe(saved.payOnlineUrl);
+    const read = await getSchoolDetails(db);
+    for (const [field, url] of Object.entries(moved) as [keyof typeof moved, string][]) {
+      expect(saved[field]).toBe(url);
+      expect(read[field]).toBe(url);
+      expect(schoolDetailsFields(saved)[field]).toBe(url);
+    }
   });
 
   /*
@@ -340,7 +362,7 @@ describe('school details', () => {
       db,
       {
         ...schoolDetailsFields(before),
-        payOnlineUrl: 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION',
+        classFeesUrl: 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION',
         givingLinkTemplate: template,
       },
       'Jill Kilker',

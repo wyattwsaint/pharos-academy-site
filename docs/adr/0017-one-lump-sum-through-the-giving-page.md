@@ -1,5 +1,15 @@
 # ADR-0017 — A family pays one lump sum through the giving page, or writes one check
 
+> **Partly superseded by
+> [ADR-0023](0023-each-fee-is-paid-into-its-own-campaign.md).** "One address,
+> not two" below is reversed: the school now has its own Vanco organisation with
+> a campaign per fee, so a family makes **one payment per fee** — the
+> registration into one campaign, the deposits and the tuition together into
+> another — and `pay_online_url` has become three columns. Everything else here
+> stands: the family is asked once how they are paying, a check is still one
+> amount and one envelope, the site still learns nothing from a payment, and the
+> arithmetic is untouched. ADR-0023 says which is which, and why.
+
 **Status:** accepted
 **Date:** 2026-08-14
 **Context:** [#219](https://github.com/wyattwsaint/pharos-academy-site/issues/219),
