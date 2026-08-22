@@ -866,11 +866,17 @@ test.describe('the application page', () => {
     await expect(outcome).toBeVisible();
     await expect(outcome).toContainText(new RegExp(`Reference ${REFERENCE_SHAPE}\\.`));
 
-    // The confirmation replays the choice and the check, and promises no clock.
+    // The confirmation replays the choice and what to pay, and promises no
+    // clock. Which of the two payment branches is on screen is a fact about the
+    // school's own fee links (#303) and not about this application, so the
+    // assertion is that exactly one of them is there.
     const confirmation = page.locator('[data-section="apply-confirmation"]');
     await expect(confirmation).toContainText('Suite Child');
     await expect(confirmation).toContainText('Algebra 1');
-    await expect(confirmation).toContainText('Pharos Academy');
+    await expect(confirmation.getByRole('heading', { name: 'What to Pay' })).toBeVisible();
+    await expect(
+      confirmation.locator('[data-paying="online"], [data-paying="check"]'),
+    ).toHaveCount(1);
     expect(await page.locator('main').innerText()).not.toMatch(CLOCKS);
 
     // The suite has no mail credentials, so no email went — and the page must

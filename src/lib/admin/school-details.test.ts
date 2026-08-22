@@ -76,52 +76,76 @@ describe('parsing a school-details submission', () => {
       .toBeUndefined();
   });
 
-  // #111. The registration fee is paid on someone else's page, so the same two
-  // failures as the Give URL matter — but empty is a real answer here: it is
-  // what makes the Apply page offer no online payment at all, rather than a
-  // button that goes nowhere.
-  it('reads the online payment link, and lets it be empty', () => {
-    expect(
-      parseSchoolDetails(form({ payOnlineUrl: '  https://secure.myvanco.com/L-ZZ7H/campaign  ' }))
-        .values.payOnlineUrl,
-    ).toBe('https://secure.myvanco.com/L-ZZ7H/campaign');
+  /*
+   * The three fee links (#303). Each is paid on someone else's page, so the
+   * same two failures as the Give URL matter — but empty is a real answer here:
+   * it is what falls that one fee back to the check instruction, rather than a
+   * button that goes nowhere.
+   */
+  const FEE_LINKS = ['registrationFeesUrl', 'classFeesUrl', 'studyHallFeesUrl'] as const;
 
-    const absent = parseSchoolDetails(form());
-    expect(absent.values.payOnlineUrl).toBe('');
-    expect(absent.errors).toEqual({});
-  });
+  for (const field of FEE_LINKS) {
+    it(`reads ${field}, and lets it be empty`, () => {
+      expect(
+        parseSchoolDetails(form({ [field]: '  https://secure.myvanco.com/L-ZZ7H/campaign  ' }))
+          .values[field],
+      ).toBe('https://secure.myvanco.com/L-ZZ7H/campaign');
 
-  it('rejects an online payment link that is not an absolute http(s) address', () => {
-    expect(parseSchoolDetails(form({ payOnlineUrl: 'myvanco.com/L-ZZ7H' })).errors.payOnlineUrl)
-      .toBeTruthy();
-    expect(parseSchoolDetails(form({ payOnlineUrl: 'javascript:alert(1)' })).errors
-      .payOnlineUrl).toBeTruthy();
-    expect(parseSchoolDetails(form({ payOnlineUrl: '/pay' })).errors.payOnlineUrl)
-      .toBeTruthy();
-    expect(parseSchoolDetails(form({ payOnlineUrl: 'https://secure.myvanco.com/L-ZZ7H/home' }))
-      .errors.payOnlineUrl).toBeUndefined();
+      const absent = parseSchoolDetails(form());
+      expect(absent.values[field]).toBe('');
+      expect(absent.errors).toEqual({});
+    });
+
+    it(`rejects a ${field} that is not an absolute http(s) address`, () => {
+      expect(parseSchoolDetails(form({ [field]: 'myvanco.com/L-ZZ7H' })).errors[field]).toBeTruthy();
+      expect(parseSchoolDetails(form({ [field]: 'javascript:alert(1)' })).errors[field])
+        .toBeTruthy();
+      expect(parseSchoolDetails(form({ [field]: '/pay' })).errors[field]).toBeTruthy();
+      expect(
+        parseSchoolDetails(form({ [field]: 'https://secure.myvanco.com/L-ZZ7H/home' })).errors[
+          field
+        ],
+      ).toBeUndefined();
+    });
+  }
+
+  /*
+   * Named by field, because the office pastes three addresses in one sitting
+   * and "that is not a web address" without saying which box leaves them
+   * comparing all three against each other.
+   */
+  it('names the field it is complaining about, and complains about only that one', () => {
+    const errors = parseSchoolDetails(form({ classFeesUrl: 'myvanco.com' })).errors;
+
+    expect(errors.classFeesUrl).toContain('Class fees payment link');
+    expect(errors.registrationFeesUrl).toBeUndefined();
+    expect(errors.studyHallFeesUrl).toBeUndefined();
   });
 
   /*
-   * The giving-page link template (#265). The rules themselves are
+   * The giving-page link template (#265, #303). The rules themselves are
    * `money/giving-link.test.ts`; what is checked here is that the form applies
-   * them, against the payment link on the same submission rather than the one
-   * already saved, and that empty stays the shipping state.
+   * them, against the *class-fee* link on the same submission rather than the
+   * one already saved, and that empty stays the shipping state.
+   *
+   * One template and three campaigns, so it can only ever be checked against
+   * one of them. The class fees are the biggest of the three and the one the
+   * old single link became, which is where it stayed.
    */
   describe('the giving-page link template', () => {
     const PAY_ONLINE = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION';
 
-    it('lets it be empty, whether or not there is a payment link', () => {
+    it('lets it be empty, whether or not there is a class-fee link', () => {
       expect(parseSchoolDetails(form()).errors.givingLinkTemplate).toBeUndefined();
       expect(
-        parseSchoolDetails(form({ payOnlineUrl: PAY_ONLINE })).errors.givingLinkTemplate,
+        parseSchoolDetails(form({ classFeesUrl: PAY_ONLINE })).errors.givingLinkTemplate,
       ).toBeUndefined();
     });
 
-    it('accepts the payment link with the two placeholders on it', () => {
+    it('accepts the class-fee link with the two placeholders on it', () => {
       const result = parseSchoolDetails(
         form({
-          payOnlineUrl: PAY_ONLINE,
+          classFeesUrl: PAY_ONLINE,
           givingLinkTemplate: `  ${PAY_ONLINE}?amt={amount}  `,
         }),
       );
@@ -129,10 +153,10 @@ describe('parsing a school-details submission', () => {
       expect(result.values.givingLinkTemplate).toBe(`${PAY_ONLINE}?amt={amount}`);
     });
 
-    it('refuses one that does not start with the payment link, and says so', () => {
+    it('refuses one that does not start with the class-fee link, and says so', () => {
       const errors = parseSchoolDetails(
         form({
-          payOnlineUrl: PAY_ONLINE,
+          classFeesUrl: PAY_ONLINE,
           givingLinkTemplate: 'https://evil.example/pay?amt={amount}',
         }),
       ).errors;
@@ -142,12 +166,12 @@ describe('parsing a school-details submission', () => {
     it('refuses a placeholder it does not know', () => {
       expect(
         parseSchoolDetails(
-          form({ payOnlineUrl: PAY_ONLINE, givingLinkTemplate: `${PAY_ONLINE}?amt={amt}` }),
+          form({ classFeesUrl: PAY_ONLINE, givingLinkTemplate: `${PAY_ONLINE}?amt={amt}` }),
         ).errors.givingLinkTemplate,
       ).toBeTruthy();
     });
 
-    it('refuses one with no payment link to check it against', () => {
+    it('refuses one with no class-fee link to check it against', () => {
       expect(
         parseSchoolDetails(form({ givingLinkTemplate: `${PAY_ONLINE}?amt={amount}` })).errors
           .givingLinkTemplate,
@@ -155,12 +179,12 @@ describe('parsing a school-details submission', () => {
     });
 
     // One complaint, about the field that has to be fixed first. Two would
-    // point the office at the template when the payment link is what is wrong.
-    it('says nothing about the template while the payment link is itself refused', () => {
+    // point the office at the template when the class-fee link is what is wrong.
+    it('says nothing about the template while the class-fee link is itself refused', () => {
       const errors = parseSchoolDetails(
-        form({ payOnlineUrl: 'myvanco.com', givingLinkTemplate: `${PAY_ONLINE}?amt={amount}` }),
+        form({ classFeesUrl: 'myvanco.com', givingLinkTemplate: `${PAY_ONLINE}?amt={amount}` }),
       ).errors;
-      expect(errors.payOnlineUrl).toBeTruthy();
+      expect(errors.classFeesUrl).toBeTruthy();
       expect(errors.givingLinkTemplate).toBeUndefined();
     });
   });

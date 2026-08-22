@@ -41,7 +41,12 @@ import {
 import { paymentModeOf } from '../../lib/application/lifecycle.js';
 import { deliverApplication } from '../../lib/application/notices.js';
 import { applicationReference } from '../../lib/application/reference.js';
-import { paymentLines, type PaymentLine } from '../../lib/money/payment-lines.js';
+import {
+  feesNamed,
+  paymentLines,
+  subtotalOf,
+  type PaymentLine,
+} from '../../lib/money/payment-lines.js';
 import {
   createApplication,
   listApplications,
@@ -147,6 +152,18 @@ import { listPolicies } from '../../lib/policies/store.js';
  */
 const db = await getDb();
 const details = await getSchoolDetails(db);
+
+/**
+ * Where each fee is paid, as the school details hold it (#303).
+ *
+ * Read once, here, and handed to the money module and to the emails alike, so
+ * that the screen a family reads and the copy that outlives it are answering
+ * from the same two addresses.
+ */
+const payLinks = {
+  registrationFees: details.registrationFeesUrl,
+  classFees: details.classFeesUrl,
+};
 const settings = await getMoneySettings(db);
 const courses = await listCourses(db);
 const offerings = offeringsOf(courses);
@@ -351,7 +368,7 @@ if (Astro.request.method === 'POST') {
       postTo: details.address,
       // The same row the page words itself from, so the email a family keeps
       // and the screen they just read cannot disagree about how to pay (#149).
-      payOnlineAt: details.payOnlineUrl,
+      payLinks,
       schoolEmail: details.email.trim(),
       site: Astro.site?.toString() ?? SITE_URL,
     });
@@ -384,21 +401,24 @@ if (Astro.request.method === 'POST') {
 }
 
 /**
- * Whether there is anything to choose between (#111, #187, #219).
+ * Whether there is anything to choose between (#111, #187, #219, #303).
  *
- * The school has an online address or it has not — one row, one question — and
- * the payment stage, the method question and the confirmation all word
+ * The school has somewhere online to pay or it has not — one row, one question
+ * — and the payment stage, the method question and the confirmation all word
  * themselves around the answer. Asked three times it was three decisions that
  * could disagree; asked here it is one.
  *
- * With no address there is one way to pay, so the page **states** the answer
- * rather than asking it, here, before the gate reads it: a still-needed line
- * about a question the page never asks is a family stuck at a greyed button
- * with nothing on screen that could ungrey it. The hidden field in the stage
- * below posts the same word back, so a form with scripting off round-trips it
- * exactly as a radio would.
+ * **Any one fee is enough.** A site with a class-fee campaign and no
+ * registration one still offers online payment; what the family is asked is
+ * whether they mean to use it, and the fee left without a campaign falls back
+ * to a check on its own. Only a site with nowhere at all to pay states the
+ * answer instead of asking it, here, before the gate reads it: a still-needed
+ * line about a question the page never asks is a family stuck at a greyed
+ * button with nothing on screen that could ungrey it. The hidden field in the
+ * stage below posts the same word back, so a form with scripting off
+ * round-trips it exactly as a radio would.
  */
-const payOnline = details.payOnlineUrl !== '';
+const payOnline = payLinks.registrationFees !== '' || payLinks.classFees !== '';
 if (!payOnline) values.paymentMethod = 'check';
 
 /**
@@ -566,35 +586,49 @@ const creditNote = depositCreditNote(cost.total.creditedAgainstTuition);
  * and a link carrying a stale figure is worse than one carrying none. Null when
  * there is nothing to follow, which is the state this ships in.
  */
-const paymentLinesFor = (withReference: string | null): PaymentLine[] =>
+const paymentLinesFor = (withReference: string | null, keepEmpty = false): PaymentLine[] =>
   paymentLines({
     owed: cost.total,
-    payOnlineUrl: details.payOnlineUrl,
+    links: payLinks,
     template: details.givingLinkTemplate,
     reference: withReference,
+    keepEmpty,
   });
 
 /*
- * One line each way, because that is what the site charges today — all of it,
- * in one payment. Indexed rather than mapped for the same reason: the section
- * below is written around a single payment, and #300 is the ticket that turns
- * both into a list.
+ * The payment stage keeps its empty lines and the confirmation drops them
+ * (#303).
+ *
+ * On the stage the figures are still moving, and the buttons are server
+ * rendered: a family ticking their first class cannot be given a button that
+ * was not in the markup, so the lines there are the *shape* of what they will
+ * owe rather than a bill. On the confirmation the figures are frozen and a line
+ * at zero is a button that opens a page to pay nothing, so it is not offered.
+ *
+ * That leaves the stage showing live buttons beside $0.00 until a family ticks
+ * something — which is what the page did before the split, with one button
+ * instead of two. #304 is the ticket that fixes it, by disabling both of them
+ * until the application is sent and the reference exists; this one does not
+ * pre-empt it.
  */
-const payLine = paymentLinesFor(null)[0]!;
-const paidLine = paymentLinesFor(reference)[0]!;
+const payLines = paymentLinesFor(null, true);
+const paidLines = paymentLinesFor(reference);
 
 /*
- * Where this family pays, or null when the line falls back to a check — the
- * branch every payment block below is written on. Read off `byCheck` rather
- * than off the link being there, so that a line the money module says is a
- * check line can never be rendered with a button beside it.
+ * What is paid where, once the family's own answer has been applied (#303) —
+ * the branch every block on the confirmation is written on, and the same split
+ * the confirmation email makes from the same lines.
  *
- * `payOnline` above is a different question with today's single answer: it asks
- * whether the site has any online payment to *offer*, which is what decides
- * whether the family is asked how they are paying at all.
+ * Saying check moves every line onto the check, because the question is asked
+ * once for the whole application and never once per fee. Saying online leaves
+ * each line as the money module described it, so a fee with no campaign
+ * configured is posted while the fee beside it is not — read off `byCheck`
+ * rather than off the link being there, so a line the money module calls a
+ * check line can never be rendered with a button beside it.
  */
-const payAt = payLine.byCheck ? null : payLine.link;
-const paidAt = paidLine.byCheck ? null : paidLine.link;
+const payingOnline = values.paymentMethod === 'online';
+const paidOnline = payingOnline ? paidLines.filter((line) => !line.byCheck) : [];
+const paidByCheck = payingOnline ? paidLines.filter((line) => line.byCheck) : paidLines;
 
 const clashing = familyClashes(values, offerings, year);
 const clashCount = clashing.reduce((sum, one) => sum + one.clashes.length, 0);
@@ -713,37 +747,59 @@ const description =
             email, which says the same thing in the same words.
           */}
           <h3 class="mt-8">What to Pay</h3>
-          {paidAt && values.paymentMethod === 'online' ? (
+          {paidLines.length === 0 ? (
+            /*
+              Nothing chosen, so there is nothing to instruct (#303). "Pay $0
+              online" and "post a check for $0.00" are both an instruction to do
+              nothing written as though it were something — and the confirmation
+              email says exactly this, in these words.
+            */
+            <p class="mt-4" data-paying="nothing">
+              There is nothing to pay until you have chosen classes. Tell us what you would like
+              and we will send you the figures.
+            </p>
+          ) : paidOnline.length > 0 ? (
             <div data-paying="online">
               <p class="mt-4">
-                {paidLine.label} — <strong>{formatMoney(paidLine.subtotal)}</strong> at today’s
-                rates — in one payment, online, through the church’s giving page:
+                {paidOnline.length === 1
+                  ? 'One payment, online, at today’s rates:'
+                  : 'Two payments, online, at today’s rates — the school keeps the fees apart, so ' +
+                    'each one goes to its own page:'}
               </p>
               {/*
                 No `data-pay-template` here, unlike the stage above: this page
                 is the application as it was sent, and nothing on it moves. The
-                total is frozen, so the href the server wrote is the href that
-                is still right when it is clicked.
+                figures are frozen, so the href the server wrote is the href
+                that is still right when it is clicked.
               */}
-              <p class="pay mt-5">
-                <a class="btn solid" href={paidAt.href} rel="external" data-pay-online>
-                  Pay online
-                </a>
-                <strong class="pay-total" data-pay-total>{formatMoney(paidLine.subtotal)}</strong>
-              </p>
-              <p class="mt-5">
-                {paidAt.carriesAmount ? (
-                  <Fragment>
-                    The giving page opens with <strong>{formatMoney(paidLine.subtotal)}</strong>{' '}
-                    already in the box — check it before you pay.
-                  </Fragment>
-                ) : (
-                  <Fragment>
-                    The giving page does not know what you owe, so please enter{' '}
-                    <strong>{formatMoney(paidLine.subtotal)}</strong> yourself.
-                  </Fragment>
-                )}
-              </p>
+              <ul class="payments mt-5">
+                {paidOnline.map((line) => (
+                  <li data-payment-line={line.key}>
+                    <p class="pay">
+                      <a class="btn solid" href={line.link!.href} rel="external" data-pay-online>
+                        Pay {line.noun}
+                      </a>
+                      <strong class="pay-total" data-pay-total>
+                        {formatMoney(line.subtotal)}
+                      </strong>
+                    </p>
+                    <p class="mt-4">
+                      {line.link!.carriesAmount ? (
+                        <Fragment>
+                          The giving page opens with{' '}
+                          <strong>{formatMoney(line.subtotal)}</strong> already in the box — check
+                          it before you pay.
+                        </Fragment>
+                      ) : (
+                        <Fragment>
+                          The giving page does not know what you owe, so please enter{' '}
+                          <strong>{formatMoney(line.subtotal)}</strong> yourself.
+                        </Fragment>
+                      )}
+                    </p>
+                  </li>
+                ))}
+              </ul>
               {/*
                 What the reference is for (#218). A payment through the giving
                 page reaches the school detached from this application — Vanco
@@ -752,22 +808,40 @@ const description =
                 can write it there. The same sentence is in their email.
 
                 It names the box as Vanco labels it, and says the page cannot
-                fill it in (#265). Now that the amount can arrive prefilled,
-                this is the one box left to type in — which makes it the one a
-                family skips, and a skipped memo is a payment the office cannot
-                match to anybody.
+                fill it in (#265). Since #303 it also says **each** payment:
+                the reference now has to be typed more than once, and a family
+                reading quickly will assume once is enough — which leaves a
+                payment the office cannot match to anybody.
               */}
-              <p class="mt-4" data-reference-note>
+              <p class="mt-5" data-reference-note>
                 Please type your reference — <strong>{reference}</strong> — into the{' '}
-                <strong>Memo</strong> box on the giving page. The giving page cannot fill it in
-                for you, and a payment does not reach us attached to this application, so it is
-                how we match the two up.
+                <strong>Memo</strong> box of{' '}
+                {paidOnline.length === 1 ? 'that payment' : <strong>each</strong>}
+                {paidOnline.length === 1 ? '' : ' payment'}. The giving page cannot fill it in for
+                you, and a payment does not reach us attached to this application, so it is how we
+                match the two up.
               </p>
+              {/*
+                A fee the office has not given a campaign yet, beside the ones
+                they have (#303). It degrades that fee and never the section:
+                the family posts one thing and pays the rest online.
+              */}
+              {paidByCheck.length > 0 && (
+                <div class="mt-7" data-paying="part-check">
+                  <p>
+                    Please also post a check for{' '}
+                    <strong>{formatMoney(subtotalOf(paidByCheck))}</strong> — that is{' '}
+                    {feesNamed(paidByCheck)}, which cannot be paid online at the moment — made out
+                    to Pharos Academy, to:
+                  </p>
+                  <p class="address mt-4">{details.address}</p>
+                </div>
+              )}
             </div>
           ) : (
             <div data-paying="check">
               <p class="mt-4">
-                A check for <strong>{formatMoney(paidLine.subtotal)}</strong> — that is{' '}
+                A check for <strong>{formatMoney(cost.total.total)}</strong> — that is{' '}
                 {formatMoney(cost.total.registration)} in registration,{' '}
                 {formatMoney(cost.total.deposits)} in deposits and{' '}
                 {formatMoney(cost.total.tuitionDue)} in tuition at today’s rates — made out to
@@ -1174,7 +1248,12 @@ const description =
               itself is not a live region: a family ticking a class would have
               four figures read back at them, three of which are the working.
               The last line is, on its own — "All of it: $1,340" is what their
-              choice cost, and it is the number they type into the giving page.
+              choice cost.
+
+              It stopped saying "one payment" with #303: it is two now, into two
+              campaigns, and a list claiming one directly above two buttons is
+              the page disagreeing with itself. The figure is unchanged, and so
+              is every other line.
             */}
             <ul class="totals mt-7">
               <li>
@@ -1197,94 +1276,120 @@ const description =
               </li>
               <li class="due" aria-live="polite">
                 <span class="amount" data-total="total">{formatMoney(cost.total.total)}</span>
-                <span>All of it, at today’s rates — one payment</span>
+                <span>All of it, at today’s rates</span>
               </li>
             </ul>
 
             {/*
-              One lump sum, online first (#219, ADR-0017).
+              One payment per fee, online first (#303, ADR-0023).
 
-              All three amounts are the school’s money and all three now go the
-              same way: one payment through the church’s Vanco page, upfront.
-              The split this page used to draw — registration and tuition
-              online, the deposits by check — is reversed, and a check is only
-              ever the fallback.
+              All three amounts are the school’s money, and since #303 they go
+              to the school’s own Vanco organisation in two payments rather than
+              one: the registration fee into its own campaign, the deposits and
+              the tuition together into the class-fee one. They share a campaign
+              because they are both what a family owes for the classes and the
+              deposits come off the tuition — a relationship the paragraph above
+              spends its words holding together.
 
-              The link may carry the amount with it (#265), and says so when it
-              does — but it carries it only when the office has pasted a
-              template into School Details, and it ships without one. Either
-              way the total has to be impossible to miss beside the button,
-              which is what the figure next to “Pay online” is for, and either
-              way the memo is hand-typed: no parameter Vanco accepts sets it.
+              A link may carry its amount with it (#265), and says so when it
+              does — but at most one can, because a template is one campaign
+              with figures on it, and production has none. Either way each
+              amount has to be impossible to miss beside its own button, and
+              either way the memo is hand-typed: no parameter Vanco accepts
+              sets it.
 
               Nothing about the application changes. Vanco sends us no
               confirmation, so a "paid online" flag on the row would be a claim
               nobody checked; the office matches a payment to an application by
               hand, as it does now.
             */}
-            {payAt ? (
+            {payOnline ? (
               <Fragment>
                 {/*
-                  The button says it (#254). "All of it, in one payment, online"
-                  is the last line of the totals list and then the label on the
-                  button with the total beside it; a paragraph between the two
-                  saying it a third time is the page distrusting its own layout.
+                  The buttons say it (#254). Each names its own fee and carries
+                  its own figure, so the family reads what they are paying off
+                  the thing they press; a paragraph above them saying it again
+                  is the page distrusting its own layout.
                 */}
-                <p class="pay mt-7">
-                  <a
-                    class="btn solid"
-                    href={payAt.href}
-                    data-pay-template={payAt.pattern ?? undefined}
-                    rel="external"
-                    data-pay-online
-                  >
-                    Pay online
-                  </a>
-                  <strong class="pay-total" data-pay-total data-total="total">
-                    {formatMoney(payLine.subtotal)}
-                  </strong>
-                </p>
-                {/*
-                  The page's claim about what the family is about to see, so it
-                  is written from whether the link actually carries the amount
-                  (#265) — telling somebody to type a figure that is already in
-                  the box is the page disagreeing with the button above it.
+                <ul class="payments mt-7">
+                  {payLines.map((line) => (
+                    <li data-payment-line={line.key}>
+                      {line.byCheck ? (
+                        /*
+                          One fee with no campaign yet, beside one that has
+                          (#303). It degrades this fee and never the section.
+                        */
+                        <p>
+                          Paying {line.noun} online —{' '}
+                          <strong data-total={line.key}>{formatMoney(line.subtotal)}</strong> — is
+                          not set up at the moment, so it comes by check with the address below.
+                        </p>
+                      ) : (
+                        <Fragment>
+                          <p class="pay">
+                            <a
+                              class="btn solid"
+                              href={line.link!.href}
+                              data-pay-line={line.key}
+                              data-pay-template={line.link!.pattern ?? undefined}
+                              rel="external"
+                              data-pay-online
+                            >
+                              Pay {line.noun}
+                            </a>
+                            <strong class="pay-total" data-pay-total data-total={line.key}>
+                              {formatMoney(line.subtotal)}
+                            </strong>
+                          </p>
+                          {/*
+                            The page's claim about what the family is about to
+                            see, so it is written from whether that link
+                            actually carries its amount (#265) — telling
+                            somebody to type a figure that is already in the box
+                            is the page disagreeing with the button above it.
 
-                  It used to carry a second sentence, that a payment reaches us
-                  detached from this application (ADR-0013). That is still true
-                  and still said — but after the application is sent, where
-                  there is a reference to type into the memo and the sentence is
-                  the reason to bother typing it. Here there is no reference
-                  yet, so it was a worry with nothing to do about it.
-                */}
-                <p class="mt-5">
-                  {payAt.carriesAmount ? (
-                    <Fragment>
-                      The giving page opens with{' '}
-                      <strong data-total="total">{formatMoney(payLine.subtotal)}</strong> already in
-                      the box — check it before you pay.
-                    </Fragment>
-                  ) : (
-                    <Fragment>
-                      The giving page does not know what you owe, so please enter{' '}
-                      <strong data-total="total">{formatMoney(payLine.subtotal)}</strong> yourself.
-                    </Fragment>
-                  )}
-                </p>
+                            It used to carry a second sentence, that a payment
+                            reaches us detached from this application
+                            (ADR-0013). That is still true and still said — but
+                            after the application is sent, where there is a
+                            reference to type into the memo and the sentence is
+                            the reason to bother typing it. Here there is no
+                            reference yet, so it was a worry with nothing to do
+                            about it.
+                          */}
+                          <p class="mt-4">
+                            {line.link!.carriesAmount ? (
+                              <Fragment>
+                                The giving page opens with{' '}
+                                <strong data-total={line.key}>{formatMoney(line.subtotal)}</strong>{' '}
+                                already in the box — check it before you pay.
+                              </Fragment>
+                            ) : (
+                              <Fragment>
+                                The giving page does not know what you owe, so please enter{' '}
+                                <strong data-total={line.key}>{formatMoney(line.subtotal)}</strong>{' '}
+                                yourself.
+                              </Fragment>
+                            )}
+                          </p>
+                        </Fragment>
+                      )}
+                    </li>
+                  ))}
+                </ul>
 
                 {/*
                   Subordinate on purpose, and a disclosure rather than a second
-                  button: a check beside "Pay online" at equal weight is two
+                  button: a check beside the pay buttons at equal weight is two
                   primary actions, and the school has said which one it wants.
-                  It asks for the *whole* total — never the deposits alone —
-                  because there is no longer a second channel for the rest of it
-                  to go down.
+                  It asks for the *whole* total in one envelope — splitting the
+                  fees is the school’s bookkeeping and not the family’s problem.
                 */}
                 <details class="alternative mt-7" data-pay-by-check>
                   <summary>Prefer to pay by check?</summary>
                   <p class="mt-4">
-                    Post a check for <strong data-total="total">{formatMoney(payLine.subtotal)}</strong>{' '}
-                    — all of it — made out to Pharos Academy, to:
+                    Post a check for <strong data-total="total">{formatMoney(cost.total.total)}</strong>{' '}
+                    — all of it, in one envelope — made out to Pharos Academy, to:
                   </p>
                   <p class="address mt-4">{details.address}</p>
                 </details>
@@ -1292,8 +1397,8 @@ const description =
             ) : (
               <Fragment>
                 <p class="mt-7">
-                  {payLine.label} is paid to Pharos Academy by check —{' '}
-                  <strong data-total="total">{formatMoney(payLine.subtotal)}</strong>, the
+                  All of it is paid to Pharos Academy by check —{' '}
+                  <strong data-total="total">{formatMoney(cost.total.total)}</strong>, the
                   registration, the deposits and the tuition together — made out to Pharos Academy
                   and posted to:
                 </p>
@@ -1764,16 +1869,26 @@ const description =
 
       const family = sumOwed(owed.filter((_owed, index) => !rows[index]!.disabled));
 
-      for (const [field, amount] of [
-        ['registration', family.registration],
-        ['deposits', family.deposits],
-        ['tuitionDue', family.tuitionDue],
-        ['total', family.total],
-      ] as const) {
-        // Every figure, wherever it is: the four-line list, the total beside
-        // Pay online, the amount the family is asked to type in themselves and
-        // the one inside the check disclosure. A figure left out of this loop
-        // is the one somebody pays.
+      /*
+        Every figure, wherever it is: the four-line list, the amount beside each
+        payment button, the amount the family is asked to type in themselves and
+        the one inside the check disclosure. A figure left out of this map is
+        the one somebody pays.
+
+        `classes` is the deposits and the tuition together — the class-fee
+        payment line (#303). It is read off `sumOwed` rather than added up here,
+        because the server prints the same figure from the same field and a
+        second addition is how the two come to disagree (ADR-0019).
+      */
+      const figures = {
+        registration: family.registration,
+        deposits: family.deposits,
+        tuitionDue: family.tuitionDue,
+        classes: family.classes,
+        total: family.total,
+      };
+
+      for (const [field, amount] of Object.entries(figures)) {
         for (const figure of form.querySelectorAll(`[data-total="${field}"]`)) {
           write(figure, formatMoney(amount));
         }
@@ -1783,14 +1898,16 @@ const description =
       // server printed it with, so the two cannot come to say it differently.
       write(form.querySelector('[data-credit]'), depositCreditNote(family.creditedAgainstTuition));
 
-      payOnlineAmount(family.total);
+      payOnlineAmounts(figures);
     }
 
     /**
-      The amount on the giving-page link, moved with the rest (#265).
+      The amount on a giving-page link, moved with the rest (#265, #303).
 
-      The link a family clicks has to carry the total on the screen they clicked
-      it from — a link carrying a stale amount is worse than one carrying none.
+      A link a family clicks has to carry the figure on the screen they clicked
+      it from — a link carrying a stale amount is worse than one carrying none —
+      and since the split that figure is the **line's own subtotal** and not the
+      family's total, which is what `data-pay-line` names.
 
       One string replacement into a pattern the server wrote, and no giving-link
       module on the wire: the server has already checked that the pattern is the
@@ -1801,13 +1918,18 @@ const description =
       total beside it come to disagree over a dollar.
 
       The attribute is absent whenever there is no template, which is the state
-      this ships in, and then the href the server rendered stands.
+      this ships in, and then the href the server rendered stands. At most one
+      link can ever carry it: a template is one campaign with figures on it.
     */
-    function payOnlineAmount(total: number): void {
-      const link = form.querySelector<HTMLAnchorElement>('[data-pay-online][data-pay-template]');
-      if (!link) return;
+    function payOnlineAmounts(figures: Record<string, number>): void {
+      for (const link of form.querySelectorAll<HTMLAnchorElement>(
+        '[data-pay-online][data-pay-template]',
+      )) {
+        const amount = figures[link.dataset.payLine ?? ''];
+        if (amount === undefined) continue;
 
-      link.href = link.dataset.payTemplate!.replaceAll('{amount}', moneyOnALink(total));
+        link.href = link.dataset.payTemplate!.replaceAll('{amount}', moneyOnALink(amount));
+      }
     }
 
     /** Show or clear one field's sentence, and the wiring that points at it. */
@@ -2227,6 +2349,20 @@ const description =
     the totals list's own figures, because a number a family has to copy and
     cannot see is the whole way this goes wrong.
   */
+  /*
+    One row per fee, and the space between them the space between two decisions
+    (#303). A list rather than a stack of paragraphs because that is what it is:
+    the payments a family makes, in the order they make them.
+  */
+  .payments {
+    list-style: none;
+    padding: 0;
+  }
+
+  .payments > li + li {
+    margin-top: 2.5rem;
+  }
+
   .pay {
     display: flex;
     flex-wrap: wrap;

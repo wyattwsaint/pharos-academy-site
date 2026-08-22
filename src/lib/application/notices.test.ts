@@ -9,6 +9,7 @@ import {
   type ApplicationFields,
   type PaymentMethod,
 } from './application.js';
+import type { FeePaymentLinks } from '../money/payment-lines.js';
 import { offeringsOf } from './offerings.js';
 import { captureOfferingTitles, decodeOfferingTitles } from './chosen-classes.js';
 import { classTally } from './tally.js';
@@ -31,7 +32,14 @@ import { REFERENCE_PATTERN, applicationReference } from './reference.js';
 
 const OFFERINGS = offeringsOf(CATALOGUE);
 const POST_TO = '9 Sherwood Drive\nEnola, PA 17025';
-const PAY_AT = 'https://secure.myvanco.com/YNA9/campaign/C-12345';
+/**
+ * The two campaigns in the school's own Vanco organisation (#303, ADR-0023),
+ * and a deployment with neither of them configured.
+ */
+const REGISTRATION_AT = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ2';
+const CLASSES_AT = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ0';
+const PAY_LINKS = { registrationFees: REGISTRATION_AT, classFees: CLASSES_AT };
+const NOWHERE = { registrationFees: '', classFees: '' };
 /** A row, and what it calls itself — the emails carry the code, never the uuid (#218). */
 const ROW_ID = '0f8b3a41-6c2d-4f7e-9a10-b5c6d7e8f901';
 const REFERENCE = applicationReference(ROW_ID);
@@ -92,9 +100,7 @@ function submission(over: Partial<ApplicationSubmission> = {}): ApplicationSubmi
  */
 async function delivered(
   method: PaymentMethod,
-  options: { payOnlineAt: string; over?: Partial<ApplicationSubmission> } = {
-    payOnlineAt: PAY_AT,
-  },
+  options: { payLinks?: FeePaymentLinks; over?: Partial<ApplicationSubmission> } = {},
 ): Promise<{ toSchool: Mail; toFamily: Mail }> {
   const mailer = recorder();
   await deliverApplication(submission({ paymentMethod: method, ...options.over }), {
@@ -102,7 +108,7 @@ async function delivered(
     to: ['jill@example.com'],
     from: 'site@example.com',
     postTo: POST_TO,
-    payOnlineAt: options.payOnlineAt,
+    payLinks: options.payLinks ?? PAY_LINKS,
     schoolEmail: 'school@example.com',
     site: 'https://pharosacademy.net',
   });
@@ -137,7 +143,7 @@ describe('the school’s copy', () => {
     const mail = applicationNotification(submission(), {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payOnlineAt: '',
+      payLinks: NOWHERE,
     });
 
     expect(mail.to).toBe('jill@example.com');
@@ -161,7 +167,7 @@ describe('the school’s copy', () => {
     const mail = applicationNotification(submission(), {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payOnlineAt: '',
+      payLinks: NOWHERE,
     });
 
     expect(mail.text).toContain('Father: read — yes');
@@ -181,7 +187,7 @@ describe('the school’s copy', () => {
           },
         }),
       }),
-      { to: 'jill@example.com', from: 'site@example.com', payOnlineAt: '' },
+      { to: 'jill@example.com', from: 'site@example.com', payLinks: NOWHERE },
     );
 
     expect(mail.text).toContain('Code of Conduct: Family agrees (version 2)');
@@ -192,7 +198,7 @@ describe('the school’s copy', () => {
     const mail = applicationNotification(submission(), {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payOnlineAt: '',
+      payLinks: NOWHERE,
     });
 
     // An unasked question printed as "not answered" reads as a family who
@@ -208,7 +214,7 @@ describe('the school’s copy', () => {
     const mail = applicationNotification(flagged, {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payOnlineAt: '',
+      payLinks: NOWHERE,
     });
 
     expect(mail.subject).toContain('conversation flag');
@@ -222,7 +228,7 @@ describe('the school’s copy', () => {
     const mail = applicationNotification(submission(), {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payOnlineAt: '',
+      payLinks: NOWHERE,
     });
 
     expect(mail.text).toContain('THE CLASS TALLY');
@@ -241,7 +247,7 @@ describe('the school’s copy', () => {
       to: ['jill@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payOnlineAt: '',
+      payLinks: NOWHERE,
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
@@ -259,7 +265,7 @@ describe('the school’s copy', () => {
     const lost = applicationNotification(submission({ reference: null }), {
       to: 'jill@example.com',
       from: 'site@example.com',
-      payOnlineAt: '',
+      payLinks: NOWHERE,
     });
 
     expect(lost.text).toContain('could NOT be saved');
@@ -274,7 +280,7 @@ describe('what the family is told', () => {
       to: ['jill@example.com', 'george@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payOnlineAt: '',
+      payLinks: NOWHERE,
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
@@ -292,7 +298,7 @@ describe('what the family is told', () => {
       to: ['jill@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payOnlineAt: '',
+      payLinks: NOWHERE,
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
@@ -325,7 +331,7 @@ describe('what the family is told', () => {
    * assemble a number the email never wrote down.
    */
   it('reads as an invoice — itemized, totalled, with the status and the reference', async () => {
-    const { toFamily } = await delivered('check', { payOnlineAt: '' });
+    const { toFamily } = await delivered('check', { payLinks: NOWHERE });
 
     expect(toFamily.text).toMatch(/^ {2}Registration {2,}\$25$/m);
     expect(toFamily.text).toMatch(/^ {2}Deposits \(1 class\) {2,}\$100$/m);
@@ -342,7 +348,7 @@ describe('what the family is told', () => {
 
   /** In a plain-text client the alignment *is* the table, so it is asserted. */
   it('lines the amounts up so the block reads as a table', async () => {
-    const { toFamily, toSchool } = await delivered('check', { payOnlineAt: '' });
+    const { toFamily, toSchool } = await delivered('check', { payLinks: NOWHERE });
 
     for (const text of [toFamily.text, toSchool.text]) {
       const ends = amountColumns(text);
@@ -364,7 +370,7 @@ describe('what the family is told', () => {
         offeringKeys: ['algebra-1:year'],
       })),
     });
-    const { toFamily } = await delivered('check', { payOnlineAt: '', over: { values: big } });
+    const { toFamily } = await delivered('check', { payLinks: NOWHERE, over: { values: big } });
 
     const ends = amountColumns(toFamily.text);
     expect(ends.length).toBeGreaterThanOrEqual(5);
@@ -379,11 +385,16 @@ describe('what the family is told', () => {
    * given both a link and an address for the same money is the school
    * contradicting itself in the half that gets kept.
    */
-  it('gives a family paying online the giving page and the amount, and no address', async () => {
+  it('gives a family paying online a payment per fee, with its own amount and no address', async () => {
     const { toFamily, toSchool } = await delivered('online');
 
-    expect(toFamily.text).toContain(PAY_AT);
-    expect(toFamily.text).toContain('$865');
+    // Registration first, then the classes — the order the page lists them in
+    // and the order the totals above them are set out.
+    expect(toFamily.text).toMatch(new RegExp(`Registration — \\$25[\\s\\S]*${REGISTRATION_AT}`));
+    expect(toFamily.text).toMatch(new RegExp(`Classes — \\$840[\\s\\S]*${CLASSES_AT}`));
+    expect(toFamily.text.indexOf(REGISTRATION_AT)).toBeLessThan(
+      toFamily.text.indexOf(CLASSES_AT),
+    );
     expect(toFamily.text).toContain('Due in full — you told us you are paying online.');
     expect(toFamily.text).not.toContain('9 Sherwood Drive');
     expect(toFamily.text).not.toContain('Please post a check');
@@ -412,16 +423,45 @@ describe('what the family is told', () => {
   it('names the Memo box when it asks for the reference, and never says it is filled in', async () => {
     const { toFamily } = await delivered('online');
 
-    expect(toFamily.text).toContain(`type your reference, ${REFERENCE}, into the Memo box`);
+    // **Each** payment, since the split (#303): the reference now has to be
+    // typed more than once, and a family reading quickly will assume once is
+    // enough — which leaves a payment the office cannot match to anybody.
+    expect(toFamily.text).toContain(
+      `type your reference, ${REFERENCE}, into the Memo box of each payment`,
+    );
     expect(toFamily.text).not.toMatch(/memo.{0,40}(already|filled in|prefilled)/i);
+  });
+
+  /*
+   * A half-finished admin save degrades **one fee** and never the section
+   * (#303). The family pays what they can online and posts the rest, rather
+   * than being told to write one check for everything because one box is empty.
+   */
+  it('posts the one fee with no campaign and pays the other online', async () => {
+    const { toFamily, toSchool } = await delivered('online', {
+      payLinks: { registrationFees: '', classFees: CLASSES_AT },
+    });
+
+    expect(toFamily.text).toContain(CLASSES_AT);
+    expect(toFamily.text).toContain('Classes — $840');
+    expect(toFamily.text).toContain('post a check for the registration — $25');
+    expect(toFamily.text).toContain('9 Sherwood Drive');
+
+    // And the office is told what the envelope will actually contain, so a
+    // part payment does not read as a family who paid short.
+    expect(toSchool.text).toContain('Envelope to expect: $25');
+    expect(toSchool.text).toContain('no giving page set up');
   });
 
   it('gives a family paying by check the address and the whole total, and no link', async () => {
     const { toFamily, toSchool } = await delivered('check');
 
+    // One amount, all of it, one envelope: splitting the fees is the school's
+    // bookkeeping and not the family's problem (#303).
     expect(toFamily.text).toContain('Please post a check for $865');
     expect(toFamily.text).toContain('9 Sherwood Drive');
-    expect(toFamily.text).not.toContain(PAY_AT);
+    expect(toFamily.text).not.toContain(REGISTRATION_AT);
+    expect(toFamily.text).not.toContain(CLASSES_AT);
     // Never the deposits alone — the envelope is the whole amount or nothing.
     expect(toFamily.text).not.toContain('Please post a check for $100');
 
@@ -434,8 +474,8 @@ describe('what the family is told', () => {
    * family answered — the alternative is an email whose one instruction is a
    * blank line where a link should be.
    */
-  it('falls back to a check when the school has configured no giving page', async () => {
-    const { toFamily, toSchool } = await delivered('online', { payOnlineAt: '' });
+  it('falls back to a check when the school has configured no giving page at all', async () => {
+    const { toFamily, toSchool } = await delivered('online', { payLinks: NOWHERE });
 
     expect(toFamily.text).toContain('Please post a check for $865');
     expect(toFamily.text).toContain('9 Sherwood Drive');
@@ -445,14 +485,15 @@ describe('what the family is told', () => {
   it('asks a family who chose no classes for nothing at all', async () => {
     const noClasses = fields({ children: [{ name: 'Ada', age: '13', offeringKeys: [] }] });
     const { toFamily, toSchool } = await delivered('online', {
-      payOnlineAt: PAY_AT,
+      payLinks: PAY_LINKS,
       over: { values: noClasses },
     });
 
     // "Pay $0 online" and "post a check for $0.00" are both an instruction to
     // do nothing, written as though it were something.
     expect(toFamily.text).toContain('Nothing is due yet');
-    expect(toFamily.text).not.toContain(PAY_AT);
+    expect(toFamily.text).not.toContain(REGISTRATION_AT);
+    expect(toFamily.text).not.toContain(CLASSES_AT);
     expect(toFamily.text).not.toContain('9 Sherwood Drive');
     expect(toFamily.text).not.toMatch(/check for \$0/);
     expect(toSchool.text).toContain('Envelope to expect: nothing');
@@ -466,7 +507,7 @@ describe('what the family is told', () => {
       to: ['jill@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payOnlineAt: '',
+      payLinks: NOWHERE,
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
@@ -486,7 +527,7 @@ describe('what the family is told', () => {
 
   it('still mentions the conversation flag gently, after the money (#221)', async () => {
     const { toFamily } = await delivered('online', {
-      payOnlineAt: PAY_AT,
+      payLinks: PAY_LINKS,
       over: { values: fields({ objections: 'Article 9, on baptism.' }), flagged: true },
     });
 
@@ -507,7 +548,7 @@ describe('what the family is told', () => {
       to: ['jill@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payOnlineAt: '',
+      payLinks: NOWHERE,
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });
@@ -527,7 +568,7 @@ describe('what the family is told', () => {
       to: ['jill@example.com'],
       from: 'site@example.com',
       postTo: POST_TO,
-      payOnlineAt: '',
+      payLinks: NOWHERE,
       schoolEmail: 'school@example.com',
       site: 'https://pharosacademy.net',
     });

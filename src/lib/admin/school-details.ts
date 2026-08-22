@@ -32,13 +32,19 @@ export type SchoolDetailsFields = {
   vision: string;
   giveUrl: string;
   /**
-   * Where registration and tuition are paid online, in one payment (#111,
-   * #187). Absolute http(s), or empty — empty means the Apply page offers no
-   * online option at all.
+   * Where each fee is paid online — one Vanco campaign each (#303). Absolute
+   * http(s), or empty. Empty degrades **that fee** to the check instruction and
+   * never the section, so a half-finished save leaves the fee beside it paying
+   * online as usual.
+   *
+   * The study hall is stored and rendered nowhere: the site has never charged
+   * it on the application page (#51).
    */
-  payOnlineUrl: string;
+  registrationFeesUrl: string;
+  classFeesUrl: string;
+  studyHallFeesUrl: string;
   /**
-   * The same giving page with the family's figures on it (#265) — a URL
+   * The class-fee campaign with the family's figures on it (#265) — a URL
    * carrying `{amount}` and `{reference}`, or empty. Empty is how this ships;
    * what it means, and why it is a setting rather than code, is
    * `money/giving-link.ts`.
@@ -122,7 +128,9 @@ export function schoolDetailsFields(details: SchoolDetails): SchoolDetailsFields
     mission: details.mission,
     vision: details.vision,
     giveUrl: details.giveUrl,
-    payOnlineUrl: details.payOnlineUrl,
+    registrationFeesUrl: details.registrationFeesUrl,
+    classFeesUrl: details.classFeesUrl,
+    studyHallFeesUrl: details.studyHallFeesUrl,
     givingLinkTemplate: details.givingLinkTemplate,
     bannerEnabled: details.bannerEnabled,
     bannerMessage: details.bannerMessage,
@@ -142,7 +150,9 @@ export function parseSchoolDetails(form: FormData): ParsedSchoolDetails {
     mission: text(form, 'mission'),
     vision: text(form, 'vision'),
     giveUrl: text(form, 'giveUrl'),
-    payOnlineUrl: text(form, 'payOnlineUrl'),
+    registrationFeesUrl: text(form, 'registrationFeesUrl'),
+    classFeesUrl: text(form, 'classFeesUrl'),
+    studyHallFeesUrl: text(form, 'studyHallFeesUrl'),
     givingLinkTemplate: text(form, 'givingLinkTemplate'),
     // A checkbox posts its value only when it is ticked, so "absent" is "off".
     bannerEnabled: form.get('bannerEnabled') !== null,
@@ -186,18 +196,25 @@ export function parseSchoolDetails(form: FormData): ParsedSchoolDetails {
   if (values.giveUrl && !isWebAddress(values.giveUrl)) {
     errors.giveUrl = 'The Give link needs a full web address starting http:// or https://.';
   }
-  if (values.payOnlineUrl && !isWebAddress(values.payOnlineUrl)) {
-    errors.payOnlineUrl =
-      'The online payment link needs a full web address starting http:// or https://.';
+  /*
+   * Each fee link is checked on its own and named in its own complaint (#303).
+   * The office is pasting three addresses out of MyVanco in one sitting, and
+   * "that is not a web address" without saying which box would leave them
+   * comparing all three against each other.
+   */
+  for (const field of FEE_LINKS) {
+    if (values[field] && !isWebAddress(values[field])) {
+      errors[field] = `${LABELS[field]} needs a full web address starting http:// or https://.`;
+    }
   }
   /*
    * The one field checked against another (#265). A template is only ever
-   * allowed to be the online payment link with figures on it, so an online
-   * payment link that is itself being rejected leaves nothing to check against
-   * — and complaining about both would tell the office to fix the wrong one.
+   * allowed to be the class-fee link with figures on it, so a class-fee link
+   * that is itself being rejected leaves nothing to check against — and
+   * complaining about both would tell the office to fix the wrong one.
    */
-  if (!errors.payOnlineUrl) {
-    const templateError = givingLinkTemplateError(values.givingLinkTemplate, values.payOnlineUrl);
+  if (!errors.classFeesUrl) {
+    const templateError = givingLinkTemplateError(values.givingLinkTemplate, values.classFeesUrl);
     if (templateError) errors.givingLinkTemplate = templateError;
   }
 
@@ -213,7 +230,9 @@ export const LABELS: Record<keyof SchoolDetailsFields, string> = {
   mission: 'Mission',
   vision: 'Vision',
   giveUrl: 'Give link',
-  payOnlineUrl: 'Online payment link',
+  registrationFeesUrl: 'Registration fees payment link',
+  classFeesUrl: 'Class fees payment link',
+  studyHallFeesUrl: 'Study hall fees payment link',
   givingLinkTemplate: 'Giving-page link template',
   bannerEnabled: 'Show the banner on the home page',
   bannerMessage: 'Banner message',
@@ -222,13 +241,23 @@ export const LABELS: Record<keyof SchoolDetailsFields, string> = {
 };
 
 /**
+ * The three fee links, which are checked the same way and differ only in which
+ * campaign the office pasted into them.
+ */
+const FEE_LINKS = [
+  'registrationFeesUrl',
+  'classFeesUrl',
+  'studyHallFeesUrl',
+] as const satisfies readonly (keyof SchoolDetailsFields)[];
+
+/**
  * The fields that may never be blank, whatever else the form says.
  *
  * A list rather than "every key of LABELS", which is what it used to be: the
  * banner's four fields are legitimately empty while the banner is off, and a
  * blanket rule over the labels would forbid the state the switch exists to
- * express. The online payment link is optional for the same kind of reason:
- * empty is "no online option yet", not a mistake.
+ * express. The fee links are optional for the same kind of reason: empty is
+ * "that fee is posted as a check for now", not a mistake.
  */
 const ALWAYS_REQUIRED = [
   'address',

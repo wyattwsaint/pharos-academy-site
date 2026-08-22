@@ -22,7 +22,13 @@
  */
 
 import { sendAll, type Mail, type Sender } from '../backup/monthly.js';
-import { paymentLines, type PaymentLine } from '../money/payment-lines.js';
+import {
+  feesNamed,
+  paymentLines,
+  subtotalOf,
+  type FeePaymentLinks,
+  type PaymentLine,
+} from '../money/payment-lines.js';
 import { formatMoney, type MoneySettings } from '../money/settings.js';
 import { SCHOOL_NAME } from '../site.js';
 import { AGREEMENT_DOCUMENTS, agreementLabel } from './agreements.js';
@@ -158,30 +164,38 @@ function status(total: number, method: PaymentMethod, audience: 'family' | 'scho
 /**
  * Which instruction the emails write, once the deployment has had its say.
  *
- * A family may have chosen "online" on a site whose giving page was later
+ * A family may have chosen "online" on a site whose giving pages were later
  * cleared — and an instruction pointing at an address that is not there is a
  * blank line where the one thing the email exists to say should be. So the
  * school's configuration can veto the answer, and never the other way round: it
  * cannot turn a stated check into an online payment.
+ *
+ * **One line left with a link is enough** to keep the answer (#303). A fee
+ * whose own box is empty falls back to a check on its own, inside an otherwise
+ * online instruction; only a family with nowhere at all to pay is moved.
  */
-function methodOf(submission: ApplicationSubmission, payment: PaymentLine): PaymentMethod {
-  return submission.paymentMethod === 'online' && !payment.byCheck ? 'online' : 'check';
+function methodOf(submission: ApplicationSubmission, payments: readonly PaymentLine[]): PaymentMethod {
+  const anyOnline = payments.some((line) => !line.byCheck);
+  return submission.paymentMethod === 'online' && anyOnline ? 'online' : 'check';
 }
 
 /**
- * What to pay and where, as both emails read it (#301).
+ * What to pay and where, as both emails read it (#301, #303).
  *
  * The same description the application page renders from, so the screen and the
  * copy that outlives it cannot word one payment two ways. No template is passed:
  * an email has never put an amount on a link and this is not the ticket that
- * gives it one, so a line's link is the giving page the office configured.
+ * gives it one, so a line's link is the campaign the office configured.
  */
-function paymentFor(submission: ApplicationSubmission, payOnlineAt: string): PaymentLine {
+function paymentsFor(
+  submission: ApplicationSubmission,
+  payLinks: FeePaymentLinks,
+): PaymentLine[] {
   return paymentLines({
     owed: submission.cost.total,
-    payOnlineUrl: payOnlineAt,
+    links: payLinks,
     reference: submission.reference,
-  })[0]!;
+  });
 }
 
 /**
@@ -201,7 +215,7 @@ function paymentFor(submission: ApplicationSubmission, payOnlineAt: string): Pay
  */
 export function applicationNotification(
   submission: ApplicationSubmission,
-  options: { to: string; from: string; payOnlineAt: string },
+  options: { to: string; from: string; payLinks: FeePaymentLinks },
 ): Mail {
   const { values, cost, settings, flagged, reference } = submission;
   const lines: string[] = [];
@@ -227,12 +241,13 @@ export function applicationNotification(
   // family *said*, not whether a giving-page address happens to be configured:
   // an office watching for an envelope the family never meant to send spends a
   // fortnight chasing it.
-  const method = methodOf(submission, paymentFor(submission, options.payOnlineAt));
+  const payments = paymentsFor(submission, options.payLinks);
+  const method = methodOf(submission, payments);
   lines.push(
     '',
     'WHAT THEY OWE',
     ...invoice(cost, method, { audience: 'school' }),
-    `  ${envelope(cost, method)}`,
+    `  ${envelope(cost, method, payments)}`,
     '',
     'THE STATEMENT OF FAITH',
     ...faithRecord(values),
@@ -278,11 +293,31 @@ export function applicationNotification(
  * "Nothing" rather than "$0", because an office reading `$0.00` beside
  * "envelope to expect" reads a line that says an envelope is coming.
  */
-function envelope(cost: ApplicationCost, method: PaymentMethod): string {
+function envelope(
+  cost: ApplicationCost,
+  method: PaymentMethod,
+  payments: readonly PaymentLine[],
+): string {
   if (cost.total.total === 0) return 'Envelope to expect: nothing — they owe nothing yet.';
-  return method === 'online'
-    ? 'Envelope to expect: nothing — the family said they are paying online.'
-    : `Envelope to expect: ${formatMoney(cost.total.total)} — the whole amount.`;
+  if (method === 'check') {
+    return `Envelope to expect: ${formatMoney(cost.total.total)} — the whole amount.`;
+  }
+
+  /*
+   * A family paying online can still be posting part of it (#303): a fee whose
+   * campaign is not configured falls back to a check on its own. The office is
+   * told the figure the envelope will contain and which fees make it up, so a
+   * part payment does not read as a family who paid short.
+   */
+  const posting = payments.filter((line) => line.byCheck);
+  if (posting.length === 0) {
+    return 'Envelope to expect: nothing — the family said they are paying online.';
+  }
+  return (
+    `Envelope to expect: ${formatMoney(subtotalOf(posting))} — they said they are paying online, ` +
+    `but ${feesNamed(posting)} ${posting.length === 1 ? 'has' : 'have'} no giving page set up, so ` +
+    'that part comes by check.'
+  );
 }
 
 /**
@@ -388,19 +423,21 @@ function agreementRecord(values: ApplicationFields): string[] {
  */
 export function applicationConfirmation(
   submission: ApplicationSubmission,
-  options: { from: string; postTo: string; payOnlineAt: string },
+  options: { from: string; postTo: string; payLinks: FeePaymentLinks },
 ): Mail {
   const { values, cost, reference } = submission;
-  const payment = paymentFor(submission, options.payOnlineAt);
-  const method = methodOf(submission, payment);
-  const total = payment.subtotal;
+  const payments = paymentsFor(submission, options.payLinks);
+  const method = methodOf(submission, payments);
+  const total = cost.total.total;
   /*
-   * Where this family pays, or null when they are posting a check — either
-   * because they said so or because the line has no link to offer them. Held
-   * as one value so the instruction below cannot name a giving page that is
-   * not there: the two ways of ending up on a check are one branch.
+   * What is paid where, once the family's own answer has been applied to it
+   * (#303). Saying check moves every line onto the check, because the question
+   * is asked once for the whole application and never once per fee; saying
+   * online leaves each line as the money module described it, so a fee with no
+   * campaign configured is posted while the fee beside it is not.
    */
-  const payAt = method === 'online' ? payment.link : null;
+  const online = method === 'online' ? payments.filter((line) => !line.byCheck) : [];
+  const posting = method === 'online' ? payments.filter((line) => line.byCheck) : payments;
 
   const lines = [
     `Thank you — we have your application, ${values.familyName}.`,
@@ -426,34 +463,65 @@ export function applicationConfirmation(
       'There is nothing to pay until you have chosen classes. Tell us what you would like and ' +
         'we will send you the figures.',
     );
-  } else if (payAt) {
-    lines.push(
-      '',
-      `Please pay the whole ${formatMoney(total)} in one payment through the church’s giving page:`,
-      '',
-      `  ${payAt.href}`,
-      '',
-      'A payment through the giving page does not reach us attached to this application, so we ' +
-        'match the two up ourselves' +
-        (reference
-          ? // The box as Vanco labels it, and the box the giving page cannot fill
-            // in for the family (#265): whatever else a link carries, the memo
-            // is hand-typed, and it is the only thing joining a payment to this
-            // application (ADR-0016).
-            ` — please type your reference, ${reference}, into the Memo box when you pay, and ` +
-            'there is nothing further for you to send us about it.'
-          : ' — there is nothing further for you to send us about it.'),
-      '',
-      'A place is held for each class as soon as your payment reaches us.',
-    );
   } else {
+    /*
+     * One payment per fee, each into the campaign the school keeps for it
+     * (#303, ADR-0023) — the same lines, in the same order, with the same
+     * amounts the confirmation screen showed a minute ago.
+     *
+     * The reference is asked for **per payment**, because it now has to be
+     * typed more than once and a family reading quickly will assume once is
+     * enough. It is the box as Vanco labels it, and the box the giving page
+     * cannot fill in for them (#265, ADR-0016): whatever else a link carries,
+     * the memo is hand-typed, and it is the only thing joining a payment to
+     * this application.
+     */
+    if (online.length > 0) {
+      lines.push(
+        '',
+        online.length === 1
+          ? 'Please pay this through the school’s giving page:'
+          : 'Please make these payments through the school’s giving pages — one for each fee, ' +
+            'because they are kept apart on our side:',
+      );
+      for (const line of online) {
+        lines.push('', `  ${line.label} — ${formatMoney(line.subtotal)}`, `  ${line.link!.href}`);
+      }
+      lines.push(
+        '',
+        'A payment through the giving page does not reach us attached to this application, so we ' +
+          'match the two up ourselves' +
+          (reference
+            ? ` — please type your reference, ${reference}, into the Memo box of each payment, ` +
+              'and there is nothing further for you to send us about it.'
+            : ' — there is nothing further for you to send us about it.'),
+      );
+    }
+
+    /*
+     * The check, for whatever is not being paid online — the whole total for a
+     * family who said check, and one fee's share for a family whose site has a
+     * campaign missing. One amount and one envelope either way: splitting the
+     * fees is the school's problem and not theirs.
+     */
+    if (posting.length > 0) {
+      const amount = formatMoney(subtotalOf(posting));
+      lines.push(
+        '',
+        online.length > 0
+          ? `And please post a check for ${feesNamed(posting)} — ${amount}, made out to ` +
+            `${SCHOOL_NAME}, to:`
+          : `Please post a check for ${amount}, made out to ${SCHOOL_NAME}, to:`,
+        '',
+        options.postTo,
+      );
+    }
+
     lines.push(
       '',
-      `Please post a check for ${formatMoney(total)}, made out to ${SCHOOL_NAME}, to:`,
-      '',
-      options.postTo,
-      '',
-      'A place is held for each class as soon as your check reaches us.',
+      online.length > 0
+        ? 'A place is held for each class as soon as your payment reaches us.'
+        : 'A place is held for each class as soon as your check reaches us.',
     );
   }
 
@@ -547,13 +615,13 @@ export async function deliverApplication(
     /** Where a check is posted — the school's own address, from its details. */
     postTo: string;
     /**
-     * Where registration and tuition are paid online, or `''` when nowhere
-     * (#149, #187).
+     * Where each fee is paid online, or `''` for a fee paid nowhere (#149,
+     * #187, #303).
      *
-     * The school's own setting, the same row the apply page reads, so the two
-     * cannot drift and the school can move the link without a deploy.
+     * The school's own settings, the same row the apply page reads, so the two
+     * cannot drift and the school can move a campaign without a deploy.
      */
-    payOnlineAt: string;
+    payLinks: FeePaymentLinks;
     /** The address a family is given when nothing worked. */
     schoolEmail: string;
     /** The absolute origin an emailed link is built against. */
@@ -566,7 +634,7 @@ export async function deliverApplication(
       applicationNotification(submission, {
         to: address,
         from: options.from,
-        payOnlineAt: options.payOnlineAt,
+        payLinks: options.payLinks,
       }),
     ),
   );
@@ -581,7 +649,7 @@ export async function deliverApplication(
     : applicationConfirmation(submission, {
         from: options.from,
         postTo: options.postTo,
-        payOnlineAt: options.payOnlineAt,
+        payLinks: options.payLinks,
       });
 
   const family = await sendAll(options.sender, [toFamily]);

@@ -56,6 +56,20 @@ export const SEEDED_SCHOOL_DETAILS = {
   // seed had before a campaign was pasted over it. Being a value in a row is
   // still the point: the next move is a field, not a deploy.
   giveUrl: 'https://secure.myvanco.com/L-ZZ7H/home',
+  /*
+   * The three campaigns in the school's own Vanco organisation (#303,
+   * ADR-0023), seeded rather than left blank for the office to fill in. A blank
+   * link renders the check instruction for that fee, so shipping blank would
+   * silently withdraw online payment from the site until somebody logged into
+   * the admin — the wrong failure mode for a cutover.
+   *
+   * The study hall is stored and rendered nowhere: the site has never charged
+   * it on the application page, and the handbook contradicts itself about the
+   * amount (#51). Capturing the URL now is cheaper than finding it again later.
+   */
+  registrationFeesUrl: 'https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ2',
+  classFeesUrl: 'https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ0',
+  studyHallFeesUrl: 'https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ4',
 } as const;
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -1057,6 +1071,72 @@ export const MIGRATIONS: readonly Migration[] = [
           set give_url = ${literal(SEEDED_SCHOOL_DETAILS.giveUrl)}
         where give_url like 'https://secure.myvanco.com/YH8R/%'
            or give_url = 'https://secure.myvanco.com/YH8R'`,
+    ],
+  },
+  {
+    /**
+     * One fee, one campaign (#303, ADR-0023).
+     *
+     * `pay_online_url` held one address covering registration, deposits and
+     * tuition together, in a campaign belonging to the host church. The school
+     * now has its own organisation with a campaign per fee, so the column
+     * becomes the class-fee link and two more join it.
+     *
+     * **Renamed rather than dropped and re-added**, so the live value survives
+     * the migration and can be looked at by the guard below rather than being
+     * replaced sight unseen. The class fees are what the old column was mostly
+     * about — the deposits and the tuition are the bulk of what a family owed
+     * through it — so that is where it lands.
+     *
+     * The three links are then **written**, not left for the office. A blank
+     * link renders the check instruction for that fee, so shipping blank would
+     * take online payment off the site until somebody logged into the admin.
+     *
+     * Guarded the way 0029 guarded the Give link: an address in the church's
+     * organisation, or an empty box, is overwritten; anything else is the
+     * office having chosen a destination, and the argument for these being
+     * columns is that they can. A re-run finds nothing to do, and so does a
+     * fresh database, which reaches here already holding the new addresses.
+     *
+     * `giving_link_template` is left exactly as it is. It is empty in
+     * production, so nothing today puts an amount on a link, and restructuring
+     * one template to cover three campaigns is its own piece of work.
+     */
+    id: '0030-each-fee-is-paid-into-its-own-campaign',
+    statements: [
+      // Guarded on both sides, as 0022's rename was, so a re-run is a no-op and
+      // a fresh database takes the same route the live one does.
+      `do $$
+       begin
+         if exists (
+              select 1 from information_schema.columns
+              where table_schema = current_schema()
+                and table_name = 'school_details' and column_name = 'pay_online_url'
+            ) and not exists (
+              select 1 from information_schema.columns
+              where table_schema = current_schema()
+                and table_name = 'school_details' and column_name = 'class_fees_url'
+            ) then
+           alter table school_details rename column pay_online_url to class_fees_url;
+         end if;
+       end $$`,
+      `alter table school_details
+         add column if not exists class_fees_url text not null default ''`,
+      `alter table school_details
+         add column if not exists registration_fees_url text not null default ''`,
+      `alter table school_details
+         add column if not exists study_hall_fees_url text not null default ''`,
+      ...[
+        ['class_fees_url', SEEDED_SCHOOL_DETAILS.classFeesUrl],
+        ['registration_fees_url', SEEDED_SCHOOL_DETAILS.registrationFeesUrl],
+        ['study_hall_fees_url', SEEDED_SCHOOL_DETAILS.studyHallFeesUrl],
+      ].map(
+        ([column, url]) => `update school_details
+            set ${column} = ${literal(url!)}
+          where ${column} = ''
+             or ${column} like 'https://secure.myvanco.com/YH8R/%'
+             or ${column} = 'https://secure.myvanco.com/YH8R'`,
+      ),
     ],
   },
 ];

@@ -206,29 +206,56 @@ Since #220 the flip carries less. What a stated `online` submission changes is
 the **mode** and not the status: the row still opens `awaiting`, because nothing
 about the family's answer says money arrived.
 
-Since #111 the slot is **partly filled**, and it is filled for **all three
-amounts through one channel**. The **registration fee**, the **per-class
-deposits** and the **tuition** are one lump sum, paid upfront through the
-church's Vanco giving page — one campaign, held as `pay_online_url` on the school
-details row, so the office moves it without a deploy, and empty there means the
-Apply page offers no online payment at all. A **check** to the school is the
-fallback, for the whole total and never the deposits alone.
+Since #111 the slot is **partly filled**. The **registration fee**, the
+**per-class deposits** and the **tuition** are paid upfront through Vanco, and a
+**check** to the school is the fallback — for the whole total in one envelope,
+never the deposits alone.
 
-Since #265 the link may **carry the amount with it**. Vanco's campaign pages
+Since #303 they are paid **one fee, one campaign**, in Pharos's own Vanco
+organisation `L-ZZ7H` rather than the host church's `YH8R` (ADR-0023). The
+mapping is fixed and written down here so the next person does not re-derive it
+from the markup:
+
+| Fee | Campaign | Column |
+| --- | --- | --- |
+| Registration | `C-16GQ2` | `registration_fees_url` |
+| Deposits **and** tuition together | `C-16GQ0` | `class_fees_url` |
+| Study hall | `C-16GQ4` | `study_hall_fees_url` — stored, rendered nowhere |
+
+Deposits and tuition share a campaign because they are both what a family owes
+for the classes and the deposits come off the tuition — the relationship the
+page spends a paragraph explaining. Study hall has never been charged on the
+Apply page and the handbook states its fee twice with two different figures
+(#51), so its URL is captured and nothing renders it.
+
+Each is a column on the school details row, so the office moves a campaign
+without a deploy, and each is validated as a web address on save. **Empty
+degrades one fee and never the section**: that fee falls back to the check
+instruction while the fee beside it keeps its button, so a half-finished admin
+save never leaves a family with no way to pay. The migration **wrote** the three
+links rather than shipping them blank, because blank would have taken online
+payment off the site until somebody logged into the admin.
+
+Since #265 a link may **carry the amount with it**. Vanco's campaign pages
 accept an amount on the query string and accept **no memo** — `memo`,
 `memoline`, `memoLine`, `memo_line` and `note` were all tried and all ignored —
 so the figure can arrive prefilled and the [reference](#reference) stays
 hand-typed, which is what keeps it the only thing joining a payment to an
-application (ADR-0013, ADR-0016).
+application (ADR-0013, ADR-0016). It is typed into the Memo box of **each**
+payment, and the copy says so, because a family reading quickly will assume once
+is enough.
 
 Because that parameter is undocumented, **the shape of the link is a setting and
 not code**: a `giving_link_template` on the same row, a URL carrying `{amount}`
-and `{reference}`, refused at save unless it starts with `pay_online_url`'s own
-origin and path and carries no other placeholder. The **Pay online** button uses
-it when it substitutes cleanly and the plain address in every other case —
-empty, invalid, or a reference that does not exist yet — so the button can never
-point anywhere but the giving page. Nothing about an application changes because
-a link carried an amount; Vanco still tells the site nothing.
+and `{reference}`, refused at save unless it starts with `class_fees_url`'s own
+origin and path and carries no other placeholder. A payment button uses it when
+it substitutes cleanly and the plain address in every other case — empty,
+invalid, not that campaign, or a reference that does not exist yet — so a button
+can never point anywhere but a configured campaign. One template pins to one
+campaign, so **at most one line can carry an amount**; putting figures on all
+three means restructuring the template, which is its own piece of work. Nothing
+about an application changes because a link carried an amount; Vanco still tells
+the site nothing.
 
 **It ships empty**, and empty is the state to expect: the school's campaign
 opens with its frequency set to **Monthly**, and an amount arriving prefilled
@@ -458,10 +485,22 @@ tells them about it — the application's payment stage, its confirmation, and
 the confirmation email. A line carries its label, its subtotal, the link it is
 paid at or nothing, and whether it falls back to the check instruction.
 
-**One line today — all of it**, at today's rates, in one payment (ADR-0017).
-The description exists ahead of the split so that the page and the email cannot
-word one payment two ways: before it, the page worked the payment out in its
-markup and the email worked it out again in its prose.
+**Two lines since #303** — the registration, then the classes — each paid into
+its own Vanco campaign (ADR-0023). The description exists so that the page and
+the email cannot word one payment two ways: before it, the page worked the
+payment out in its markup and the email worked it out again in its prose, and
+the split would have made that four answers to one question.
+
+Three rules live in `paymentLines` and in no template:
+
+- **Order.** Registration first, then classes — the order of the totals list
+  already on the page, and registration is the one every applicant owes.
+- **A line at zero is not returned.** A family who ticked no classes is not
+  offered a button that opens a page to pay nothing. The *form* stage asks for
+  the empty lines back, because the figures there are still moving and a button
+  appearing underneath a family as they tick is the page rearranging itself.
+- **A line with no link is a check line on its own**, rather than collapsing the
+  section to check-only.
 
 The lines **compose** figures the money module has already totalled and links
 `givingLink` has already checked; nothing about a line adds anything up or

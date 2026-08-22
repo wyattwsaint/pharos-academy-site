@@ -39,6 +39,16 @@ export type AmountOwed = {
   creditedAgainstTuition: number;
   /** Tuition less any credit: the tuition the family actually owes. */
   tuitionDue: number;
+  /**
+   * The deposits and the tuition due together — what the classes cost.
+   *
+   * Here rather than added up by whoever needs it, because two of them do: the
+   * class-fee payment line (#303) and the browser writing the same figure onto
+   * the same screen (ADR-0019). It is the one Vanco campaign the school's class
+   * money is paid into, and the deposits come off the tuition inside it, which
+   * is the relationship the copy spends a paragraph on.
+   */
+  classes: number;
   /** Everything the family pays across the year, counted once. */
   total: number;
 };
@@ -78,6 +88,7 @@ export function amountOwedForPrices(
     tuition,
     creditedAgainstTuition,
     tuitionDue,
+    classes: deposits + tuitionDue,
     total: registration + deposits + tuitionDue,
   };
 }
@@ -105,6 +116,7 @@ export function sumOwed(parts: readonly AmountOwed[]): AmountOwed {
     tuition: add((owed) => owed.tuition),
     creditedAgainstTuition: add((owed) => owed.creditedAgainstTuition),
     tuitionDue: add((owed) => owed.tuitionDue),
+    classes: add((owed) => owed.classes),
     total: add((owed) => owed.total),
   };
 }

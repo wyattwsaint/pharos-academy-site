@@ -215,48 +215,99 @@ test.describe('saving school details', () => {
    * rendered per request off this shared row and an absence assertion that
    * leans on whatever ran last is an assertion about scheduling.
    */
-  const VANCO = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION';
+  /** A money figure on the page, as a number — read off the text a family reads. */
+  const dollars = (text: string): number => Number(text.replace(/[^0-9.]/g, ''));
 
-  async function setPayOnlineUrl(page: Page, url: string): Promise<void> {
+  const REGISTRATION_VANCO = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ2';
+  const CLASSES_VANCO = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ0';
+
+  /** Both fee links, driven in through the boxes the office types them into. */
+  async function setPayLinks(
+    page: Page,
+    links: { registration: string; classes: string },
+  ): Promise<void> {
     await page.goto('/admin/school-details');
-    await page.getByLabel('Online payment link').fill(url);
+    await page.getByLabel('Registration fees payment link').fill(links.registration);
+    await page.getByLabel('Class fees payment link').fill(links.classes);
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
   }
 
-  test('offers the online payment, and stops offering it when the link goes', async ({
+  const BOTH_VANCO = { registration: REGISTRATION_VANCO, classes: CLASSES_VANCO };
+
+  test('offers a payment per fee, degrades one at a time, and stops when both links go', async ({
     page,
   }) => {
     await signIn(page);
-    await setPayOnlineUrl(page, VANCO);
+    await setPayLinks(page, BOTH_VANCO);
 
     await page.goto('/admissions/apply');
     const payment = page.locator('[data-section="apply-payment"]');
-    await expect(payment.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
-    // One payment for everything (#219), said once (#254). The paragraph that
-    // used to restate the totals list is gone; the button and the figure beside
-    // it are what the online state says now, and the state is read off those.
+    const registration = payment.locator('[data-payment-line="registration"]');
+    const classes = payment.locator('[data-payment-line="classes"]');
+
+    // One button per fee, each opening the school's own campaign for it (#303).
+    await expect(registration.locator('[data-pay-online]')).toHaveAttribute(
+      'href',
+      REGISTRATION_VANCO,
+    );
+    await expect(classes.locator('[data-pay-online]')).toHaveAttribute('href', CLASSES_VANCO);
     await expect(payment).not.toContainText('All of it is paid to Pharos Academy');
 
-    // The giving page carries no amount, so the figure beside the button and
-    // the "enter it yourself" line both have to agree with the totals list.
-    const total = await payment.locator('.totals > li.due .amount').innerText();
-    await expect(payment.locator('[data-pay-total]')).toHaveText(total);
-    await expect(payment).toContainText(`please enter ${total} yourself`);
+    // Two calls to action and no more: one per fee, and the check is not one.
+    await expect(payment.locator('a.btn, button.btn')).toHaveCount(2);
 
-    // The check is a closed disclosure asking for the whole total — a fallback,
-    // never a second channel for part of it.
+    /*
+     * Each states its own amount beside its own button, because the giving page
+     * carries none and the family types it in — and each is checked against the
+     * totals list above rather than against itself. A figure that agrees only
+     * with the sentence underneath it is a figure that can be wrong twice.
+     *
+     * The classes are the deposits and the tuition due together, which is the
+     * split's whole arithmetic, and the two lines come back to the grand total:
+     * a split that does not add back up is a family paying twice or the office
+     * chasing a shortfall.
+     */
+    await page.locator('form[data-enhanced]').waitFor();
+    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+    const listed = async (field: string): Promise<number> =>
+      dollars(await payment.locator(`[data-total="${field}"]`).first().innerText());
+
+    const registrationAmount = await registration.locator('[data-pay-total]').innerText();
+    const classesAmount = await classes.locator('[data-pay-total]').innerText();
+    expect(dollars(registrationAmount)).toBeGreaterThan(0);
+    expect(dollars(registrationAmount)).toBe(await listed('registration'));
+    expect(dollars(classesAmount)).toBe((await listed('deposits')) + (await listed('tuitionDue')));
+    expect(dollars(registrationAmount) + dollars(classesAmount)).toBe(await listed('total'));
+    await expect(registration).toContainText(`please enter ${registrationAmount} yourself`);
+    await expect(classes).toContainText(`please enter ${classesAmount} yourself`);
+
+    // The check is a closed disclosure asking for the whole total in one
+    // envelope — splitting the fees is the school's bookkeeping, not the
+    // family's problem.
+    const owed = await payment.locator('.totals > li.due .amount').innerText();
     const byCheck = payment.locator('[data-pay-by-check]');
     await expect(byCheck).toHaveJSProperty('open', false);
     await byCheck.locator('summary', { hasText: 'Prefer to pay by check?' }).click();
-    await expect(byCheck).toContainText(`Post a check for ${total} — all of it`);
+    await expect(byCheck).toContainText(`Post a check for ${owed} — all of it`);
 
-    // One call to action: "Pay online" has no peer button beside it.
-    await expect(payment.locator('a.btn, button.btn')).toHaveCount(1);
+    /*
+     * A half-finished save degrades **one fee** (#303). The registration falls
+     * back to the check instruction on its own and the classes keep their
+     * button — a fee with no campaign must not take the section with it.
+     */
+    await setPayLinks(page, { registration: '', classes: CLASSES_VANCO });
 
-    await setPayOnlineUrl(page, '');
+    await page.goto('/admissions/apply');
+    await expect(registration.locator('[data-pay-online]')).toHaveCount(0);
+    await expect(registration).toContainText('Paying the registration online');
+    await expect(registration).toContainText('not set up at the moment');
+    await expect(classes.locator('[data-pay-online]')).toHaveAttribute('href', CLASSES_VANCO);
+    await expect(payment.locator('[data-payment-method]')).toHaveCount(1);
 
-    // Empty is no link at all, never a button to nowhere.
+    await setPayLinks(page, { registration: '', classes: '' });
+
+    // Both empty is no link at all, never a button to nowhere.
     await page.goto('/admissions/apply');
     await expect(payment.locator('[data-pay-online]')).toHaveCount(0);
     await expect(payment).toContainText('no online payment set up at the moment');
@@ -278,7 +329,7 @@ test.describe('saving school details', () => {
       test.skip(!!process.env.PLAYWRIGHT_BASE_URL, 'writes an application row');
 
       await signIn(page);
-      await setPayOnlineUrl(page, VANCO);
+      await setPayLinks(page, BOTH_VANCO);
 
       const family = `Suite Paying ${method}`;
       await page.goto(APPLICATION_PATH);
@@ -307,7 +358,17 @@ test.describe('saving school details', () => {
       const confirmation = page.locator('[data-section="apply-confirmation"]');
       await expect(confirmation.locator(`[data-paying="${method}"]`)).toHaveCount(1);
       if (method === 'online') {
-        await expect(confirmation.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
+        // Two payments, each into its own campaign, and the reference asked for
+        // in each of them (#303).
+        await expect(
+          confirmation.locator('[data-payment-line="registration"] [data-pay-online]'),
+        ).toHaveAttribute('href', REGISTRATION_VANCO);
+        await expect(
+          confirmation.locator('[data-payment-line="classes"] [data-pay-online]'),
+        ).toHaveAttribute('href', CLASSES_VANCO);
+        await expect(confirmation.locator('[data-reference-note]')).toContainText(
+          'box of each payment',
+        );
         await expect(confirmation).not.toContainText('Post a check');
       } else {
         await expect(confirmation).toContainText('A check for');
@@ -334,73 +395,115 @@ test.describe('saving school details', () => {
     await expect(page.getByTestId('save-banner')).toHaveAttribute('role', 'status');
   });
 
-  test('refuses an online payment link that is not a web address', async ({ page }) => {
+  test('refuses a fee payment link that is not a web address, by field', async ({ page }) => {
     await signIn(page, '/admin/school-details');
 
     // `type="url"` lets the browser catch most of this; what reaches the server
-    // is what it does not, and the field is optional, so "empty is fine but
-    // `javascript:` is not" is the rule worth driving.
-    await page.getByLabel('Online payment link').fill('javascript:alert(1)');
+    // is what it does not, and the fields are optional, so "empty is fine but
+    // `javascript:` is not" is the rule worth driving. Three boxes are pasted
+    // in one sitting, so the complaint has to name which one it is about.
+    await page.getByLabel('Study hall fees payment link').fill('javascript:alert(1)');
     await page.getByRole('button', { name: 'Save' }).click();
 
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
-    await expect(page.locator('#payOnlineUrl')).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.locator('#payOnlineUrl-error')).toContainText('full web address');
+    await expect(page.locator('#studyHallFeesUrl')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#studyHallFeesUrl-error')).toContainText(
+      'Study hall fees payment link',
+    );
+    await expect(page.locator('#classFeesUrl')).not.toHaveAttribute('aria-invalid', 'true');
   });
 
   /*
-   * The giving-page link carries the amount (#265).
-   *
-   * Driven from the admin, like the payment link above it and for the same
-   * reason: the claim is that the office turns this on without a deploy, and
-   * seeding the template would prove a substitution and nothing about the path
-   * that sets it. The refusals are driven here too, because the rule they
-   * enforce is "a paste error cannot redirect a family's payment" and a unit
-   * test cannot show a family being kept on the giving page.
+   * The study-hall link round-trips and renders nowhere (#303). The office
+   * captures the URL while they have it in front of them; what charges it is a
+   * decision the school has to make first, because the handbook states the fee
+   * twice with two different figures (#51).
    */
-  test('carries the amount on the giving-page link, and refuses a template that would not', async ({
+  test('keeps the study-hall link and renders it nowhere', async ({ page }) => {
+    const studyHall = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ4';
+
+    await signIn(page, '/admin/school-details');
+    await page.getByLabel('Study hall fees payment link').fill(studyHall);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+
+    await page.reload();
+    await expect(page.getByLabel('Study hall fees payment link')).toHaveValue(studyHall);
+
+    await page.goto('/admissions/apply');
+    await expect(page.locator(`[href="${studyHall}"]`)).toHaveCount(0);
+    await expect(page.locator('[data-section="apply-payment"]')).not.toContainText('study hall');
+  });
+
+  /*
+   * The giving-page link carries the amount (#265, #303).
+   *
+   * Driven from the admin, like the fee links above it and for the same reason:
+   * the claim is that the office turns this on without a deploy, and seeding
+   * the template would prove a substitution and nothing about the path that
+   * sets it. The refusals are driven here too, because the rule they enforce is
+   * "a paste error cannot redirect a family's payment" and a unit test cannot
+   * show a family being kept on the giving page.
+   *
+   * **One template and three campaigns**, so it can only ever be one line's:
+   * it is checked against the class-fee link, and the registration button beside
+   * it keeps its plain address. Restructuring the template so all three could
+   * carry an amount is its own piece of work, and production has no template at
+   * all — which is why the split shipped without it.
+   */
+  test('carries the amount on the one line the template belongs to, and refuses one that would not', async ({
     page,
   }) => {
     await signIn(page);
-    await setPayOnlineUrl(page, VANCO);
+    await setPayLinks(page, BOTH_VANCO);
 
-    // Empty is how it ships, and empty is the plain giving page.
+    // Empty is how it ships, and empty is the plain campaign address.
     await page.goto('/admissions/apply');
     const payment = page.locator('[data-section="apply-payment"]');
-    await expect(payment.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
+    const registration = payment.locator('[data-payment-line="registration"]');
+    const classes = payment.locator('[data-payment-line="classes"]');
+    await expect(classes.locator('[data-pay-online]')).toHaveAttribute('href', CLASSES_VANCO);
     await expect(payment).toContainText('please enter');
 
-    // Anything that is not the giving page is refused before it can be saved,
-    // and the message names the link it had to start with.
+    // Anything that is not the class-fee page is refused before it can be
+    // saved, and the message names the link it had to start with.
     await page.goto('/admin/school-details');
     const template = page.getByLabel('Giving-page link template');
-    await template.fill('https://secure.myvanco.com.example/L-ZZ7H/campaign/C-REGISTRATION?amt={amount}');
+    await template.fill('https://secure.myvanco.com.example/L-ZZ7H/campaign/C-16GQ0?amt={amount}');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
     await expect(page.locator('#givingLinkTemplate')).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.locator('#givingLinkTemplate-error')).toContainText(VANCO);
+    await expect(page.locator('#givingLinkTemplate-error')).toContainText(CLASSES_VANCO);
 
     // So is a placeholder nobody knows — a literal `{amt}` in a query string is
     // a family sent to a page that cannot read it.
-    await template.fill(`${VANCO}?amt={amt}`);
+    await template.fill(`${CLASSES_VANCO}?amt={amt}`);
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
     await expect(page.locator('#givingLinkTemplate-error')).toContainText('{amount}');
 
-    // The real one saves, and the button carries the total beside it.
-    await template.fill(`${VANCO}?amt={amount}`);
+    // The real one saves, and the class-fee button carries its own subtotal —
+    // never the family's total, which is a different figure since the split.
+    await template.fill(`${CLASSES_VANCO}?amt={amount}`);
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
 
     await page.goto('/admissions/apply');
-    const total = await payment.locator('.totals > li.due .amount').innerText();
-    await expect(payment.locator('[data-pay-online]')).toHaveAttribute(
+    const owed = await classes.locator('[data-pay-total]').innerText();
+    await expect(classes.locator('[data-pay-online]')).toHaveAttribute(
       'href',
-      `${VANCO}?amt=${total.replace('$', '')}`,
+      `${CLASSES_VANCO}?amt=${owed.replace('$', '')}`,
     );
     // And the copy stops telling them to type a figure that is already there.
-    await expect(payment).toContainText(`opens with ${total} already in the box`);
-    await expect(payment).not.toContainText('please enter');
+    await expect(classes).toContainText(`opens with ${owed} already in the box`);
+    await expect(classes).not.toContainText('please enter');
+    // The registration is not that campaign, so it keeps the plain address and
+    // keeps asking for its figure.
+    await expect(registration.locator('[data-pay-online]')).toHaveAttribute(
+      'href',
+      REGISTRATION_VANCO,
+    );
+    await expect(registration).toContainText('please enter');
 
     /*
      * The amount on the link is the amount on the screen it was clicked from
@@ -410,18 +513,18 @@ test.describe('saving school details', () => {
      */
     await page.locator('form[data-enhanced]').waitFor();
     await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
-    const ticked = await payment.locator('.totals > li.due .amount').innerText();
-    expect(ticked).not.toBe(total);
-    await expect(payment.locator('[data-pay-online]')).toHaveAttribute(
+    const ticked = await classes.locator('[data-pay-total]').innerText();
+    expect(ticked).not.toBe(owed);
+    await expect(classes.locator('[data-pay-online]')).toHaveAttribute(
       'href',
-      `${VANCO}?amt=${ticked.replace('$', '')}`,
+      `${CLASSES_VANCO}?amt=${ticked.replace('$', '')}`,
     );
 
     // And back again, so the figure follows a family changing their mind.
     await page.uncheck('input[name="child-0-classes"][value="algebra-1:year"]');
-    await expect(payment.locator('[data-pay-online]')).toHaveAttribute(
+    await expect(classes.locator('[data-pay-online]')).toHaveAttribute(
       'href',
-      `${VANCO}?amt=${total.replace('$', '')}`,
+      `${CLASSES_VANCO}?amt=${owed.replace('$', '')}`,
     );
 
     // Back to empty, back to the plain address: the fallback is the state the
@@ -432,7 +535,7 @@ test.describe('saving school details', () => {
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
 
     await page.goto('/admissions/apply');
-    await expect(payment.locator('[data-pay-online]')).toHaveAttribute('href', VANCO);
+    await expect(classes.locator('[data-pay-online]')).toHaveAttribute('href', CLASSES_VANCO);
   });
 
   test('puts the banner on the home page, and takes it off again', async ({ page }) => {
@@ -1865,7 +1968,7 @@ test.describe('applications', () => {
     );
 
     // Which way the money is coming (#219). Conditional because whether the
-    // radio exists at all depends on the shared `pay_online_url` row.
+    // radio exists at all depends on the shared fee-link columns.
     const method = page.locator(
       `[data-payment-method] input[value="${family.paying ?? 'check'}"]`,
     );

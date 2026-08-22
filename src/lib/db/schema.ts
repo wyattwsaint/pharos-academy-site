@@ -117,24 +117,41 @@ export const schoolDetails = pgTable('school_details', {
    */
   giveUrl: text('give_url').notNull(),
   /**
-   * Where a family pays online — the church's Vanco page (#111, #187). Beside
-   * the giving destination for the same reason it exists at all: the office
-   * changes where the money goes without a deploy.
+   * Where each fee is paid online — one column per Vanco campaign in the
+   * school's own organisation (#303, ADR-0023). Beside the giving destination
+   * for the same reason they exist at all: the office moves a campaign without
+   * a deploy.
    *
-   * One address, covering **the whole sum** — registration, deposits and
-   * tuition — in a single payment, because that is one Vanco campaign and not
-   * two (ADR-0013, ADR-0017). There is no second channel: a cheque is the
-   * fallback for all of it, never for a part of it.
+   * Three columns rather than one address covering the whole sum, because the
+   * school's account has three campaigns and one lump payment into one of them
+   * tells the office nothing about what it was for. The registration fee is its
+   * own campaign; the deposits and the tuition share the class-fee campaign,
+   * because they are both what a family owes for the classes and the deposits
+   * come off the tuition.
    *
-   * Empty is a real state, and the only honest default: until someone pastes
-   * the page in, the Apply page offers no online option rather than a link
-   * that goes nowhere.
+   * Empty is a real state and it degrades **one fee**, not the section: a fee
+   * with no link is posted as a check while the fee beside it keeps its button,
+   * so a half-finished save never leaves a family with no way to pay.
    */
-  payOnlineUrl: text('pay_online_url').notNull().default(''),
+  registrationFeesUrl: text('registration_fees_url').notNull().default(''),
+  classFeesUrl: text('class_fees_url').notNull().default(''),
   /**
-   * The same giving page with the family's figures written onto it (#265) — a
+   * The study-hall campaign, captured and rendered nowhere.
+   *
+   * The site has never charged study hall on the application page, and the
+   * handbook states the fee twice with two different figures (#51). The URL is
+   * stored so the office can paste it while they have it in front of them; what
+   * renders it is a decision the school has to make first.
+   */
+  studyHallFeesUrl: text('study_hall_fees_url').notNull().default(''),
+  /**
+   * The class-fee campaign with the family's figures written onto it (#265) — a
    * URL carrying `{amount}` and `{reference}`, checked at save against
-   * `pay_online_url` and refused if it is not that page.
+   * `class_fees_url` and refused if it is not that page.
+   *
+   * One template and three campaigns, so at most one line can ever carry an
+   * amount (#303). It is empty in production, which is why the split shipped
+   * without restructuring it.
    *
    * A setting rather than code because the query parameter it uses is
    * undocumented: Vanco publishes nothing about it, so the day it changes is a

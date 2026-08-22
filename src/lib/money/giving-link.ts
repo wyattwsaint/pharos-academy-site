@@ -13,6 +13,11 @@
  * carrying `{amount}` and `{reference}` into School Details, and whatever Vanco
  * supports next is a settings change rather than a deploy.
  *
+ * Since #303 there are three campaigns and still one template, so it is checked
+ * against the **class-fee** link — the one the site's single address became —
+ * and at most one payment line can ever carry an amount. The complaints below
+ * name that field, because it is the box the office has to fix.
+ *
  * That freedom is why the checking here is severe. A box the office pastes a URL
  * into is a box a family's payment can be redirected out of, so a template is
  * refused unless it is the configured giving page — same origin, same path — and
@@ -78,12 +83,12 @@ export function givingLinkTemplateError(template: string, payOnlineUrl: string):
   if (template === '') return null;
 
   if (payOnlineUrl === '') {
-    return 'Set the online payment link first — there is nothing to check this template against.';
+    return 'Set the class fees payment link first — there is nothing to check this template against.';
   }
 
   const givingPage = webAddress(payOnlineUrl);
   if (!givingPage) {
-    return 'Fix the online payment link first — this template is checked against it.';
+    return 'Fix the class fees payment link first — this template is checked against it.';
   }
 
   const candidate = webAddress(template);
@@ -104,7 +109,7 @@ export function givingLinkTemplateError(template: string, payOnlineUrl: string):
     template.startsWith(givingPage.origin) &&
     isPathWithin(candidate.pathname, givingPage.pathname);
   if (!sameGivingPage) {
-    return `The link template has to start with the online payment link — ${payOnlineUrl}.`;
+    return `The link template has to start with the class fees payment link — ${payOnlineUrl}.`;
   }
 
   if (hasUnknownPlaceholder(template)) {
