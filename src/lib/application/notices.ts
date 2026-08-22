@@ -22,6 +22,7 @@
  */
 
 import { sendAll, type Mail, type Sender } from '../backup/monthly.js';
+import { paymentLines, type PaymentLine } from '../money/payment-lines.js';
 import { formatMoney, type MoneySettings } from '../money/settings.js';
 import { SCHOOL_NAME } from '../site.js';
 import { AGREEMENT_DOCUMENTS, agreementLabel } from './agreements.js';
@@ -163,8 +164,24 @@ function status(total: number, method: PaymentMethod, audience: 'family' | 'scho
  * school's configuration can veto the answer, and never the other way round: it
  * cannot turn a stated check into an online payment.
  */
-function methodOf(submission: ApplicationSubmission, payOnlineAt: string): PaymentMethod {
-  return submission.paymentMethod === 'online' && payOnlineAt !== '' ? 'online' : 'check';
+function methodOf(submission: ApplicationSubmission, payment: PaymentLine): PaymentMethod {
+  return submission.paymentMethod === 'online' && !payment.byCheck ? 'online' : 'check';
+}
+
+/**
+ * What to pay and where, as both emails read it (#301).
+ *
+ * The same description the application page renders from, so the screen and the
+ * copy that outlives it cannot word one payment two ways. No template is passed:
+ * an email has never put an amount on a link and this is not the ticket that
+ * gives it one, so a line's link is the giving page the office configured.
+ */
+function paymentFor(submission: ApplicationSubmission, payOnlineAt: string): PaymentLine {
+  return paymentLines({
+    owed: submission.cost.total,
+    payOnlineUrl: payOnlineAt,
+    reference: submission.reference,
+  })[0]!;
 }
 
 /**
@@ -210,7 +227,7 @@ export function applicationNotification(
   // family *said*, not whether a giving-page address happens to be configured:
   // an office watching for an envelope the family never meant to send spends a
   // fortnight chasing it.
-  const method = methodOf(submission, options.payOnlineAt);
+  const method = methodOf(submission, paymentFor(submission, options.payOnlineAt));
   lines.push(
     '',
     'WHAT THEY OWE',
@@ -374,8 +391,16 @@ export function applicationConfirmation(
   options: { from: string; postTo: string; payOnlineAt: string },
 ): Mail {
   const { values, cost, reference } = submission;
-  const total = cost.total.total;
-  const method = methodOf(submission, options.payOnlineAt);
+  const payment = paymentFor(submission, options.payOnlineAt);
+  const method = methodOf(submission, payment);
+  const total = payment.subtotal;
+  /*
+   * Where this family pays, or null when they are posting a check — either
+   * because they said so or because the line has no link to offer them. Held
+   * as one value so the instruction below cannot name a giving page that is
+   * not there: the two ways of ending up on a check are one branch.
+   */
+  const payAt = method === 'online' ? payment.link : null;
 
   const lines = [
     `Thank you — we have your application, ${values.familyName}.`,
@@ -401,12 +426,12 @@ export function applicationConfirmation(
       'There is nothing to pay until you have chosen classes. Tell us what you would like and ' +
         'we will send you the figures.',
     );
-  } else if (method === 'online') {
+  } else if (payAt) {
     lines.push(
       '',
       `Please pay the whole ${formatMoney(total)} in one payment through the church’s giving page:`,
       '',
-      `  ${options.payOnlineAt}`,
+      `  ${payAt.href}`,
       '',
       'A payment through the giving page does not reach us attached to this application, so we ' +
         'match the two up ourselves' +
