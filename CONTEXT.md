@@ -427,6 +427,25 @@ things.
 Not: "payment status", "paid", "payment state" — none of those are facts this
 site can observe.
 
+### payment line
+
+One thing a family pays, described once and rendered by every surface that
+tells them about it — the application's payment stage, its confirmation, and
+the confirmation email. A line carries its label, its subtotal, the link it is
+paid at or nothing, and whether it falls back to the check instruction.
+
+**One line today — all of it**, at today's rates, in one payment (ADR-0017).
+The description exists ahead of the split so that the page and the email cannot
+word one payment two ways: before it, the page worked the payment out in its
+markup and the email worked it out again in its prose.
+
+The lines **compose** figures the money module has already totalled and links
+`givingLink` has already checked; nothing about a line adds anything up or
+decides where a link may point.
+
+Not: [payment slot](#payment-slot), which is the stage of the form; not
+[payment method](#payment-method), which is what a family said they would do.
+
 ### money settings
 
 The single row holding every number about money the school controls: the two

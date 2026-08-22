@@ -41,7 +41,7 @@ import {
 import { paymentModeOf } from '../../lib/application/lifecycle.js';
 import { deliverApplication } from '../../lib/application/notices.js';
 import { applicationReference } from '../../lib/application/reference.js';
-import { givingLink, type GivingLink } from '../../lib/money/giving-link.js';
+import { paymentLines, type PaymentLine } from '../../lib/money/payment-lines.js';
 import {
   createApplication,
   listApplications,
@@ -548,31 +548,53 @@ const childTotal = (index: number): number => cost.perChild[index]?.owed.total ?
 const creditNote = depositCreditNote(cost.total.creditedAgainstTuition);
 
 /*
- * The giving-page link, with the family's figures on it (#265).
+ * What this family pays, and where (#301).
  *
- * Two of them, because the page renders the button twice — the payment stage,
- * where the application has no reference yet, and the confirmation, where it
- * has one. A template asking for a reference falls back to the plain giving
- * page on the stage that has none. Every fallback lives in `givingLink`, and
- * the only thing this file assumes is that whatever comes back points at the
- * giving page.
+ * The page does not work the payment out any more: `paymentLines` describes it
+ * once and the confirmation email renders from the same description, so the
+ * screen and the copy that outlives it cannot drift (#300).
  *
- * `pattern` is the same link with `{amount}` still in it, handed to the browser
- * so the href follows the total as the family ticks classes — the amount on the
+ * Twice, because the page renders the payment twice — the payment stage, where
+ * the application has no reference yet, and the confirmation, where it has one.
+ * A template asking for a reference falls back to the plain giving page on the
+ * stage that has none. Every fallback lives under `paymentLines`, and the only
+ * thing this file assumes is that a line with a link points at the giving page.
+ *
+ * A line's `pattern` is its link with `{amount}` still in it, handed to the
+ * browser so the href follows the total as the family ticks classes — the amount on the
  * link a family clicks has to be the amount on the screen they clicked it from,
  * and a link carrying a stale figure is worse than one carrying none. Null when
  * there is nothing to follow, which is the state this ships in.
  */
-const givingLinkFor = (withReference: string | null): GivingLink =>
-  givingLink({
+const paymentLinesFor = (withReference: string | null): PaymentLine[] =>
+  paymentLines({
+    owed: cost.total,
     payOnlineUrl: details.payOnlineUrl,
     template: details.givingLinkTemplate,
     reference: withReference,
-    amount: cost.total.total,
   });
 
-const payLink = givingLinkFor(null);
-const paidLink = givingLinkFor(reference);
+/*
+ * One line each way, because that is what the site charges today — all of it,
+ * in one payment. Indexed rather than mapped for the same reason: the section
+ * below is written around a single payment, and #300 is the ticket that turns
+ * both into a list.
+ */
+const payLine = paymentLinesFor(null)[0]!;
+const paidLine = paymentLinesFor(reference)[0]!;
+
+/*
+ * Where this family pays, or null when the line falls back to a check — the
+ * branch every payment block below is written on. Read off `byCheck` rather
+ * than off the link being there, so that a line the money module says is a
+ * check line can never be rendered with a button beside it.
+ *
+ * `payOnline` above is a different question with today's single answer: it asks
+ * whether the site has any online payment to *offer*, which is what decides
+ * whether the family is asked how they are paying at all.
+ */
+const payAt = payLine.byCheck ? null : payLine.link;
+const paidAt = paidLine.byCheck ? null : paidLine.link;
 
 const clashing = familyClashes(values, offerings, year);
 const clashCount = clashing.reduce((sum, one) => sum + one.clashes.length, 0);
@@ -691,11 +713,11 @@ const description =
             email, which says the same thing in the same words.
           */}
           <h3 class="mt-8">What to Pay</h3>
-          {payOnline && values.paymentMethod === 'online' ? (
+          {paidAt && values.paymentMethod === 'online' ? (
             <div data-paying="online">
               <p class="mt-4">
-                All of it — <strong>{formatMoney(cost.total.total)}</strong> at today’s rates — in
-                one payment, online, through the church’s giving page:
+                {paidLine.label} — <strong>{formatMoney(paidLine.subtotal)}</strong> at today’s
+                rates — in one payment, online, through the church’s giving page:
               </p>
               {/*
                 No `data-pay-template` here, unlike the stage above: this page
@@ -704,21 +726,21 @@ const description =
                 is still right when it is clicked.
               */}
               <p class="pay mt-5">
-                <a class="btn solid" href={paidLink.href} rel="external" data-pay-online>
+                <a class="btn solid" href={paidAt.href} rel="external" data-pay-online>
                   Pay online
                 </a>
-                <strong class="pay-total" data-pay-total>{formatMoney(cost.total.total)}</strong>
+                <strong class="pay-total" data-pay-total>{formatMoney(paidLine.subtotal)}</strong>
               </p>
               <p class="mt-5">
-                {paidLink.carriesAmount ? (
+                {paidAt.carriesAmount ? (
                   <Fragment>
-                    The giving page opens with <strong>{formatMoney(cost.total.total)}</strong>{' '}
+                    The giving page opens with <strong>{formatMoney(paidLine.subtotal)}</strong>{' '}
                     already in the box — check it before you pay.
                   </Fragment>
                 ) : (
                   <Fragment>
                     The giving page does not know what you owe, so please enter{' '}
-                    <strong>{formatMoney(cost.total.total)}</strong> yourself.
+                    <strong>{formatMoney(paidLine.subtotal)}</strong> yourself.
                   </Fragment>
                 )}
               </p>
@@ -745,7 +767,7 @@ const description =
           ) : (
             <div data-paying="check">
               <p class="mt-4">
-                A check for <strong>{formatMoney(cost.total.total)}</strong> — that is{' '}
+                A check for <strong>{formatMoney(paidLine.subtotal)}</strong> — that is{' '}
                 {formatMoney(cost.total.registration)} in registration,{' '}
                 {formatMoney(cost.total.deposits)} in deposits and{' '}
                 {formatMoney(cost.total.tuitionDue)} in tuition at today’s rates — made out to
@@ -1200,7 +1222,7 @@ const description =
               nobody checked; the office matches a payment to an application by
               hand, as it does now.
             */}
-            {payOnline ? (
+            {payAt ? (
               <Fragment>
                 {/*
                   The button says it (#254). "All of it, in one payment, online"
@@ -1211,15 +1233,15 @@ const description =
                 <p class="pay mt-7">
                   <a
                     class="btn solid"
-                    href={payLink.href}
-                    data-pay-template={payLink.pattern ?? undefined}
+                    href={payAt.href}
+                    data-pay-template={payAt.pattern ?? undefined}
                     rel="external"
                     data-pay-online
                   >
                     Pay online
                   </a>
                   <strong class="pay-total" data-pay-total data-total="total">
-                    {formatMoney(cost.total.total)}
+                    {formatMoney(payLine.subtotal)}
                   </strong>
                 </p>
                 {/*
@@ -1236,16 +1258,16 @@ const description =
                   yet, so it was a worry with nothing to do about it.
                 */}
                 <p class="mt-5">
-                  {payLink.carriesAmount ? (
+                  {payAt.carriesAmount ? (
                     <Fragment>
                       The giving page opens with{' '}
-                      <strong data-total="total">{formatMoney(cost.total.total)}</strong> already in
+                      <strong data-total="total">{formatMoney(payLine.subtotal)}</strong> already in
                       the box — check it before you pay.
                     </Fragment>
                   ) : (
                     <Fragment>
                       The giving page does not know what you owe, so please enter{' '}
-                      <strong data-total="total">{formatMoney(cost.total.total)}</strong> yourself.
+                      <strong data-total="total">{formatMoney(payLine.subtotal)}</strong> yourself.
                     </Fragment>
                   )}
                 </p>
@@ -1261,7 +1283,7 @@ const description =
                 <details class="alternative mt-7" data-pay-by-check>
                   <summary>Prefer to pay by check?</summary>
                   <p class="mt-4">
-                    Post a check for <strong data-total="total">{formatMoney(cost.total.total)}</strong>{' '}
+                    Post a check for <strong data-total="total">{formatMoney(payLine.subtotal)}</strong>{' '}
                     — all of it — made out to Pharos Academy, to:
                   </p>
                   <p class="address mt-4">{details.address}</p>
@@ -1270,8 +1292,8 @@ const description =
             ) : (
               <Fragment>
                 <p class="mt-7">
-                  All of it is paid to Pharos Academy by check —{' '}
-                  <strong data-total="total">{formatMoney(cost.total.total)}</strong>, the
+                  {payLine.label} is paid to Pharos Academy by check —{' '}
+                  <strong data-total="total">{formatMoney(payLine.subtotal)}</strong>, the
                   registration, the deposits and the tuition together — made out to Pharos Academy
                   and posted to:
                 </p>
