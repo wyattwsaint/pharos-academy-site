@@ -60,15 +60,6 @@ export type GivingLink = {
    * carrying only a reference exactly backwards.
    */
   carriesAmount: boolean;
-  /**
-   * The same link with `{amount}` still in it, or null.
-   *
-   * Handed to the page as an attribute so that the script which moves the
-   * figures as a family ticks classes (#261) can move the href with them — one
-   * string replacement, with no module of this one on the wire. Null means
-   * there is nothing to move and the server-rendered href stands.
-   */
-  pattern: string | null;
 };
 
 /**
@@ -146,18 +137,29 @@ export function givingLink(options: GivingLinkOptions): GivingLink {
   const carriesAmount = pattern.includes('{amount}');
   const href = carriesAmount ? withAmount(pattern, amount) : pattern;
 
+  /*
+   * The link is written once, here, and nothing moves it afterwards (#304).
+   *
+   * It used to hand the page the pattern as well, so the browser could
+   * re-substitute the amount as a family ticked classes — a link on the form
+   * stage had to keep up with a total that was still moving. Since #304 the
+   * only link a family is given is on the confirmation, where the figures have
+   * stopped, so the substitution happens once and there is nothing to keep in
+   * step.
+   */
+
   // The last gate, after every substitution: if what came out is not the giving
   // page, the family goes to the giving page.
   if (href === null || givingLinkTemplateError(href, payOnlineUrl) !== null) {
     return plain(payOnlineUrl);
   }
 
-  return { href, carriesAmount, pattern: carriesAmount ? pattern : null };
+  return { href, carriesAmount };
 }
 
 /** The plain giving page, carrying nothing. What every failure above falls back to. */
 function plain(payOnlineUrl: string): GivingLink {
-  return { href: payOnlineUrl, carriesAmount: false, pattern: null };
+  return { href: payOnlineUrl, carriesAmount: false };
 }
 
 function withAmount(pattern: string, amount: number): string | null {

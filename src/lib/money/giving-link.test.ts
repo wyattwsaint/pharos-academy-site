@@ -81,13 +81,12 @@ describe('the link a family clicks', () => {
   }
 
   /** The state every failure below has to land in: the plain address, carrying nothing. */
-  const PLAIN: GivingLink = { href: GIVING_PAGE, carriesAmount: false, pattern: null };
+  const PLAIN: GivingLink = { href: GIVING_PAGE, carriesAmount: false };
 
   it('carries the amount and the reference', () => {
     expect(link({ template: `${GIVING_PAGE}?amt={amount}&memo={reference}` })).toEqual({
       href: `${GIVING_PAGE}?amt=1285&memo=PA-4KMN-7QTW`,
       carriesAmount: true,
-      pattern: `${GIVING_PAGE}?amt={amount}&memo=PA-4KMN-7QTW`,
     });
   });
 
@@ -122,7 +121,7 @@ describe('the link a family clicks', () => {
   });
 
   it('is the plain giving page when there is no giving page to be', () => {
-    expect(link({ payOnlineUrl: '' })).toEqual({ href: '', carriesAmount: false, pattern: null });
+    expect(link({ payOnlineUrl: '' })).toEqual({ href: '', carriesAmount: false });
   });
 
   /*
@@ -135,7 +134,5 @@ describe('the link a family clicks', () => {
     const carried = link({ template: `${GIVING_PAGE}?memo={reference}` });
     expect(carried.href).toBe(`${GIVING_PAGE}?memo=PA-4KMN-7QTW`);
     expect(carried.carriesAmount).toBe(false);
-    // And nothing for the browser to move, so the server's href stands.
-    expect(carried.pattern).toBeNull();
   });
 });

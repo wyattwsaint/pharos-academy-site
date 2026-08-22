@@ -429,7 +429,7 @@ if (!payOnline) values.paymentMethod = 'check';
  * above it is the page arguing with itself.
  */
 const PAYMENT_METHOD_CHOICES: { value: PaymentMethod; label: string }[] = [
-  { value: 'online', label: 'Pay online, through the giving page' },
+  { value: 'online', label: 'Pay online' },
   { value: 'check', label: 'Post a check' },
 ];
 
@@ -576,15 +576,13 @@ const creditNote = depositCreditNote(cost.total.creditedAgainstTuition);
  *
  * Twice, because the page renders the payment twice — the payment stage, where
  * the application has no reference yet, and the confirmation, where it has one.
- * A template asking for a reference falls back to the plain giving page on the
- * stage that has none. Every fallback lives under `paymentLines`, and the only
- * thing this file assumes is that a line with a link points at the giving page.
+ * Every fallback lives under `paymentLines`, and the only thing this file
+ * assumes is that a line with a link points at the giving page.
  *
- * A line's `pattern` is its link with `{amount}` still in it, handed to the
- * browser so the href follows the total as the family ticks classes — the amount on the
- * link a family clicks has to be the amount on the screen they clicked it from,
- * and a link carrying a stale figure is worse than one carrying none. Null when
- * there is nothing to follow, which is the state this ships in.
+ * Only the confirmation renders an href (#304). The stage's buttons are
+ * disabled, so what it takes from a line is the fee, the figure and whether it
+ * comes by check — which is why nothing there follows the totals as a family
+ * ticks: there is no address on screen to go stale.
  */
 const paymentLinesFor = (withReference: string | null, keepEmpty = false): PaymentLine[] =>
   paymentLines({
@@ -605,11 +603,10 @@ const paymentLinesFor = (withReference: string | null, keepEmpty = false): Payme
  * owe rather than a bill. On the confirmation the figures are frozen and a line
  * at zero is a button that opens a page to pay nothing, so it is not offered.
  *
- * That leaves the stage showing live buttons beside $0.00 until a family ticks
- * something — which is what the page did before the split, with one button
- * instead of two. #304 is the ticket that fixes it, by disabling both of them
- * until the application is sent and the reference exists; this one does not
- * pre-empt it.
+ * A line at zero on the stage is no longer a live button beside $0.00, because
+ * since #304 no button there is live: both wait for the reference the
+ * application does not have yet. `payLines` is the shape of the payment;
+ * `paidLines` is the payment.
  */
 const payLines = paymentLinesFor(null, true);
 const paidLines = paymentLinesFor(reference);
@@ -767,9 +764,11 @@ const description =
                     'each one goes to its own page:'}
               </p>
               {/*
-                No `data-pay-template` here, unlike the stage above: this page
-                is the application as it was sent, and nothing on it moves. The
-                figures are frozen, so the href the server wrote is the href
+                Links here, where the stage above has greyed buttons (#304).
+
+                This page is the application as it was sent: the reference
+                exists, so a payment can be joined to a family, and the figures
+                have stopped moving, so the href the server wrote is the href
                 that is still right when it is clicked.
               */}
               <ul class="payments mt-5">
@@ -1306,10 +1305,23 @@ const description =
             {payOnline ? (
               <Fragment>
                 {/*
-                  The buttons say it (#254). Each names its own fee and carries
-                  its own figure, so the family reads what they are paying off
-                  the thing they press; a paragraph above them saying it again
-                  is the page distrusting its own layout.
+                  The buttons wait for the reference (#304).
+
+                  Vanco ignores every memo parameter, so the reference is typed
+                  into the Memo box by hand (ADR-0013) — and there is no
+                  reference until the application is a row. A family who pays
+                  before they send has sent money that arrives attached to
+                  nobody, and two buttons doubles the chance of it.
+
+                  So both are real `disabled` buttons. A link ignores
+                  `disabled`, and one dressed to look inert still takes focus
+                  and still opens on Enter; a button is genuinely dead and the
+                  keyboard skips it.
+
+                  The lines stay, and each still carries its own figure: what
+                  this stage owes a family is the *shape* of what is coming —
+                  two payments, what each is for, what each costs — which is the
+                  thing they plan around. Acting on it is one screen away.
                 */}
                 <ul class="payments mt-7">
                   {payLines.map((line) => (
@@ -1325,58 +1337,33 @@ const description =
                           not set up at the moment, so it comes by check with the address below.
                         </p>
                       ) : (
-                        <Fragment>
-                          <p class="pay">
-                            <a
-                              class="btn solid"
-                              href={line.link!.href}
-                              data-pay-line={line.key}
-                              data-pay-template={line.link!.pattern ?? undefined}
-                              rel="external"
-                              data-pay-online
-                            >
-                              Pay {line.noun}
-                            </a>
-                            <strong class="pay-total" data-pay-total data-total={line.key}>
-                              {formatMoney(line.subtotal)}
-                            </strong>
-                          </p>
-                          {/*
-                            The page's claim about what the family is about to
-                            see, so it is written from whether that link
-                            actually carries its amount (#265) — telling
-                            somebody to type a figure that is already in the box
-                            is the page disagreeing with the button above it.
-
-                            It used to carry a second sentence, that a payment
-                            reaches us detached from this application
-                            (ADR-0013). That is still true and still said — but
-                            after the application is sent, where there is a
-                            reference to type into the memo and the sentence is
-                            the reason to bother typing it. Here there is no
-                            reference yet, so it was a worry with nothing to do
-                            about it.
-                          */}
-                          <p class="mt-4">
-                            {line.link!.carriesAmount ? (
-                              <Fragment>
-                                The giving page opens with{' '}
-                                <strong data-total={line.key}>{formatMoney(line.subtotal)}</strong>{' '}
-                                already in the box — check it before you pay.
-                              </Fragment>
-                            ) : (
-                              <Fragment>
-                                The giving page does not know what you owe, so please enter{' '}
-                                <strong data-total={line.key}>{formatMoney(line.subtotal)}</strong>{' '}
-                                yourself.
-                              </Fragment>
-                            )}
-                          </p>
-                        </Fragment>
+                        <p class="pay">
+                          <button class="btn solid" type="button" disabled data-pay-online>
+                            Pay {line.noun}
+                          </button>
+                          <strong class="pay-total" data-pay-total data-total={line.key}>
+                            {formatMoney(line.subtotal)}
+                          </strong>
+                        </p>
                       )}
                     </li>
                   ))}
                 </ul>
+
+                {/*
+                  Said once under the pair and never twice inside it (#304):
+                  greyed buttons are one fact about the application and not two
+                  facts about two fees. It says what opens them and why, so a
+                  family reads a wait with a reason rather than a page that is
+                  broken. Absent when neither fee has a button to wait for.
+                */}
+                {payLines.some((line) => !line.byCheck) && (
+                  <p class="mt-6 text-ink-2" data-pay-waiting>
+                    These buttons open when you send this application. Each payment has to carry
+                    your reference number, and we do not have one for you until your application
+                    reaches us — so the links, and the number, are on the screen you land on next.
+                  </p>
+                )}
 
                 {/*
                   Subordinate on purpose, and a disclosure rather than a second
@@ -1430,7 +1417,8 @@ const description =
                 <legend>Which of those are you planning to do?</legend>
                 <p class="hint">
                   Telling us saves the office watching the post for an envelope that is not coming.
-                  Either answer sends your application straight away — nothing waits on the money.
+                  Either answer sends your application straight away — nothing waits on the money,
+                  and either way the payment links are on the screen that follows.
                 </p>
                 <div class="mt-4">
                   {PAYMENT_METHOD_CHOICES.map((choice, at) => (
@@ -1593,7 +1581,7 @@ const description =
     type AmountOwed,
     type LiveMoneySettings,
   } from '../../lib/money/live.js';
-  import { depositCreditNote, formatMoney, moneyOnALink } from '../../lib/money/settings.js';
+  import { depositCreditNote, formatMoney } from '../../lib/money/settings.js';
 
   const found = document.querySelector<HTMLFormElement>('form[data-application-form]');
 
@@ -1871,9 +1859,13 @@ const description =
 
       /*
         Every figure, wherever it is: the four-line list, the amount beside each
-        payment button, the amount the family is asked to type in themselves and
-        the one inside the check disclosure. A figure left out of this map is
-        the one somebody pays.
+        greyed payment button, and the one inside the check disclosure. A figure
+        left out of this map is the one somebody pays.
+
+        No href moves with them any more (#304). The stage's buttons are
+        disabled buttons rather than links, so there is nothing here to keep in
+        step with the totals; the confirmation's links are written by the server
+        against figures that have stopped moving.
 
         `classes` is the deposits and the tuition together — the class-fee
         payment line (#303). It is read off `sumOwed` rather than added up here,
@@ -1897,39 +1889,6 @@ const description =
       // The credit clause, in the server's own words — the same function the
       // server printed it with, so the two cannot come to say it differently.
       write(form.querySelector('[data-credit]'), depositCreditNote(family.creditedAgainstTuition));
-
-      payOnlineAmounts(figures);
-    }
-
-    /**
-      The amount on a giving-page link, moved with the rest (#265, #303).
-
-      A link a family clicks has to carry the figure on the screen they clicked
-      it from — a link carrying a stale amount is worse than one carrying none —
-      and since the split that figure is the **line's own subtotal** and not the
-      family's total, which is what `data-pay-line` names.
-
-      One string replacement into a pattern the server wrote, and no giving-link
-      module on the wire: the server has already checked that the pattern is the
-      giving page and that its placeholders are the two known ones, so the only
-      thing left to substitute is a number this script computed. The figure is
-      written by `moneyOnALink`, which is the same function the server wrote the
-      first href with — a second rounding rule here is how the link and the
-      total beside it come to disagree over a dollar.
-
-      The attribute is absent whenever there is no template, which is the state
-      this ships in, and then the href the server rendered stands. At most one
-      link can ever carry it: a template is one campaign with figures on it.
-    */
-    function payOnlineAmounts(figures: Record<string, number>): void {
-      for (const link of form.querySelectorAll<HTMLAnchorElement>(
-        '[data-pay-online][data-pay-template]',
-      )) {
-        const amount = figures[link.dataset.payLine ?? ''];
-        if (amount === undefined) continue;
-
-        link.href = link.dataset.payTemplate!.replaceAll('{amount}', moneyOnALink(amount));
-      }
     }
 
     /** Show or clear one field's sentence, and the wiring that points at it. */
@@ -2419,13 +2378,22 @@ const description =
   }
 
   /*
-    The greyed Send button (#85).
+    The greyed buttons: Send (#85), and the two payment buttons waiting for the
+    reference (#304).
 
     Grey and a not-allowed cursor, and no `opacity`: a translucent solid button
     drops its text below the contrast floor, and the one user this styling is
-    most likely to matter to is the one who would notice. The button is still
-    focusable, still clickable and still explains itself — see the script.
+    most likely to matter to is the one who would notice.
+
+    One appearance and two mechanisms, because they are greyed for opposite
+    reasons. Send keeps `aria-disabled`: it is still focusable, still clickable
+    and still explains itself, since a family who reaches it has to be told what
+    is missing and taken there. A payment button has nothing to explain and
+    nowhere to send anybody, so it is really `disabled` — dead to the pointer
+    and skipped by the keyboard.
   */
+  .btn:disabled,
+  .btn:disabled:hover,
   .btn[aria-disabled='true'],
   .btn[aria-disabled='true']:hover {
     background: var(--color-ink-2);

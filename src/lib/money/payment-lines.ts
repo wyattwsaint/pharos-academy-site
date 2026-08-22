@@ -62,8 +62,8 @@ export type PaymentLine = {
    * Where it is paid online, or null when no link is configured for it.
    *
    * A `GivingLink` rather than an address, because the page's claim about what
-   * a family is about to see is written from `carriesAmount` and the browser's
-   * live figures follow `pattern` — both of which a bare href loses.
+   * a family is about to see is written from `carriesAmount`, which a bare href
+   * loses.
    */
   link: GivingLink | null;
   /**

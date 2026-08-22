@@ -1,7 +1,9 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { APPLICATION_PATH, FAITH_QUESTIONS, faithKey } from '../src/lib/application/application.js';
 import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
+import { AXE_TAGS, describeViolation } from './axe.js';
 import { previewTotals } from './preview.js';
 
 /**
@@ -850,6 +852,49 @@ test.describe('the application page', () => {
     expect(await page.locator('main').innerText()).not.toMatch(CLOCKS);
   });
 
+  /*
+   * The payment buttons wait for the reference (#304).
+   *
+   * Vanco ignores every memo parameter, so the reference is typed into the Memo
+   * box by hand — and it does not exist until the application is a row. A
+   * family who pays first sends money that arrives attached to nobody, so the
+   * stage shows the shape of the payment with no way to act on it: real
+   * `disabled` buttons, which a link cannot be.
+   *
+   * Whether either line is on screen at all is a fact about the school's fee
+   * links and not about this test, which is why it reads what is there.
+   */
+  test('greys the payment buttons while the application is still being filled in', async ({
+    page,
+  }) => {
+    await open(page);
+
+    const payment = page.locator('[data-section="apply-payment"]');
+    const buttons = payment.locator('[data-pay-online]');
+    const offered = await buttons.count();
+    test.skip(offered === 0, 'this deployment has no fee payment links, so there is no button');
+
+    for (const button of await buttons.all()) {
+      await expect(button).toBeDisabled();
+      await expect(button).toHaveJSProperty('tagName', 'BUTTON');
+      // A disabled button is skipped by the keyboard; a link dressed to look
+      // inert is not, which is the whole reason this is a button.
+      await expect(button).toHaveJSProperty('disabled', true);
+    }
+
+    // With a reason beside them, so a wait reads as a wait and not as a page
+    // that is broken.
+    await expect(payment.locator('[data-pay-waiting]')).toContainText(
+      'open when you send this application',
+    );
+    await expect(payment.locator('[data-pay-waiting]')).toContainText('reference number');
+
+    // And the check is still where it was, behind its own disclosure.
+    const byCheck = payment.locator('[data-pay-by-check]');
+    await expect(byCheck).toHaveJSProperty('open', false);
+    await expect(byCheck.locator('summary')).toHaveText('Prefer to pay by check?');
+  });
+
   test('takes a real application and holds the reference', async ({ page }) => {
     test.skip(!MAY_SUBMIT, 'a real send writes an application row');
     await open(page);
@@ -878,6 +923,29 @@ test.describe('the application page', () => {
       confirmation.locator('[data-paying="online"], [data-paying="check"]'),
     ).toHaveCount(1);
     expect(await page.locator('main').innerText()).not.toMatch(CLOCKS);
+
+    /*
+     * And where the stage greyed its buttons, this screen hands over live ones
+     * (#304): the reference exists now, and it is printed beside them for the
+     * Memo box. Nothing is greyed here and nothing waits.
+     */
+    for (const link of await confirmation.locator('[data-pay-online]').all()) {
+      await expect(link).toHaveJSProperty('tagName', 'A');
+      await expect(link).toHaveAttribute('href', /^https?:/);
+      await expect(link).toBeEnabled();
+    }
+    await expect(confirmation.locator('[data-pay-waiting]')).toHaveCount(0);
+
+    /*
+     * And the bar the form stage is held to (#304).
+     *
+     * `accessibility.spec.ts` sweeps the form stage at five widths, but it
+     * cannot reach this one: the confirmation exists only after an application
+     * has been sent, which is a row written, which is why it is measured here
+     * where a send is already happening.
+     */
+    const audit = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+    expect(audit.violations.map(describeViolation)).toEqual([]);
 
     // The suite has no mail credentials, so no email went — and the page must
     // not claim one did (#136). The family has everything they need on screen.
