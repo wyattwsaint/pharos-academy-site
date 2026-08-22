@@ -247,12 +247,14 @@ export function formatMoney(amount: number): string {
  * "420". The same figure a query string can carry (#265).
  *
  * `formatMoney` without the dollar sign, which a giving-page link has no use
- * for — and beside it rather than in `giving-link.ts`, because both sides write
- * this figure and only one of them may import that module. The browser puts the
- * amount on the **Pay online** link as the family ticks classes, and the page's
- * import graph is asserted down to the module (`application/validation.test.ts`)
- * — `giving-link.ts` is not on that list and should not be. One writer, either
- * side of the wire, so the link and the server cannot come to round differently.
+ * for.
+ *
+ * Beside the formatter it is a variant of, rather than inside `giving-link.ts`
+ * which is its one caller: it is a way of writing a figure, and every other way
+ * of writing one is here. The browser wrote it too until #304 greyed the
+ * payment buttons on the form stage — there is no href on screen to keep in
+ * step with the totals now, so the server writes the amount once, against
+ * figures that have stopped moving.
  */
 export function moneyOnALink(amount: number): string {
   return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
