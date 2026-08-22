@@ -1,6 +1,8 @@
+import { sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
+import { MIGRATIONS } from '../db/migrations.js';
 import { formatStamp } from './formatting.js';
 import { attemptLogin } from './login.js';
 import { matchesBreakGlass } from './passwords.js';
@@ -241,6 +243,56 @@ describe('school details', () => {
     expect(again.lastEditedBy).toBe('George Jensen');
   });
 
+  /*
+   * #302. The seed pointed at the host church's Vanco organisation, an explicit
+   * placeholder written while Pharos had no merchant account of its own. It has
+   * one now, and a fresh database has to ship pointing at it — a seed that still
+   * named the church would put a donation in somebody else's account on every
+   * database stood up from here on.
+   */
+  it('starts on the school’s own giving organisation', async () => {
+    expect((await getSchoolDetails(db)).giveUrl).toBe('https://secure.myvanco.com/L-ZZ7H/home');
+  });
+
+  /*
+   * 0029's guard, replayed over rows put back by hand. It asks about the
+   * organisation rather than the exact address, because the live row holds a
+   * campaign inside the church's org and not the home page 0001 seeded — an
+   * exact-match guard would have matched nothing and left the Give button
+   * pointing at the wrong merchant. A link pointing somewhere else entirely is
+   * still the office's, and stays.
+   */
+  const replaceTheGivingOrganisation = async () => {
+    const migration = MIGRATIONS.find((one) => one.id.startsWith('0029-'))!;
+    for (const statement of migration.statements) await db.execute(sql.raw(statement));
+  };
+
+  it.each([
+    // What 0001 seeded.
+    'https://secure.myvanco.com/YH8R/home',
+    // What the live row actually holds: a campaign pasted over the seed.
+    'https://secure.myvanco.com/YH8R/campaign/C-15G5B',
+  ])('moves a give link still inside the church’s organisation: %s', async (church) => {
+    await db.execute(sql.raw(`update school_details set give_url = '${church}'`));
+
+    await replaceTheGivingOrganisation();
+
+    expect((await getSchoolDetails(db)).giveUrl).toBe('https://secure.myvanco.com/L-ZZ7H/home');
+  });
+
+  it('leaves a give link somebody has changed, because a change makes it theirs', async () => {
+    const before = await getSchoolDetails(db);
+    await saveSchoolDetails(
+      db,
+      { ...schoolDetailsFields(before), giveUrl: 'https://give.example/pharos' },
+      'Jill Kilker',
+    );
+
+    await replaceTheGivingOrganisation();
+
+    expect((await getSchoolDetails(db)).giveUrl).toBe('https://give.example/pharos');
+  });
+
   it('keeps the Give URL as one value, changed in one place', async () => {
     const before = await getSchoolDetails(db);
     const saved = await saveSchoolDetails(
@@ -263,12 +315,12 @@ describe('school details', () => {
       db,
       {
         ...schoolDetailsFields(before),
-        payOnlineUrl: 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION',
+        payOnlineUrl: 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION',
       },
       'Jill Kilker',
     );
 
-    expect(saved.payOnlineUrl).toBe('https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION');
+    expect(saved.payOnlineUrl).toBe('https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION');
     expect((await getSchoolDetails(db)).payOnlineUrl).toBe(saved.payOnlineUrl);
     expect(schoolDetailsFields(saved).payOnlineUrl).toBe(saved.payOnlineUrl);
   });
@@ -283,12 +335,12 @@ describe('school details', () => {
     const before = await getSchoolDetails(db);
     expect(before.givingLinkTemplate).toBe('');
 
-    const template = 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION?amt={amount}';
+    const template = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION?amt={amount}';
     const saved = await saveSchoolDetails(
       db,
       {
         ...schoolDetailsFields(before),
-        payOnlineUrl: 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION',
+        payOnlineUrl: 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION',
         givingLinkTemplate: template,
       },
       'Jill Kilker',
@@ -348,7 +400,7 @@ describe('school details', () => {
     form.set('schoolYearStart', '2026-02-31');
     form.set('mission', 'Mission');
     form.set('vision', 'Vision');
-    form.set('giveUrl', 'myvanco.com/YH8R');
+    form.set('giveUrl', 'myvanco.com/L-ZZ7H');
 
     const { errors } = parseSchoolDetails(form);
 

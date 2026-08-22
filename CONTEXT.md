@@ -284,6 +284,30 @@ What is offered on **cheque rows only** is the pair that names an envelope: the
 cheque has arrived, and wait again for one. An online row is never asked to
 expect a cheque from a family who said they were not sending one.
 
+### gift
+
+A donation to the school, which is **not a fee** and shares nothing with one but
+the payment processor. It has no application, no reference and no amount the site
+knows about — a giver clicks **Give** in the footer or on the support page and
+the site's involvement ends there.
+
+Since #302 the link is Pharos's **own Vanco organisation**, `L-ZZ7H`, and no
+longer the host church's `YH8R`, which was seeded as an explicit placeholder
+while the school had no merchant account of its own. It opens the organisation's
+**home page** rather than a campaign: the new account carries a campaign per fee
+— class fees, registration fees, study hall fees — and no general giving one, so
+a giver arrives at the organisation and chooses.
+
+It is a value on the school details row (`give_url`), not an address in a
+template, so where a gift goes is a setting the office changes. What a **fee**
+goes to is a different setting entirely — see **payment slot** above — and the
+two moved on separate tickets because they are separate destinations.
+
+The support page's own words about giving are the school's, verbatim, and still
+describe the church's platform (**verbatim copy**). That the link has moved ahead
+of the copy is known: rewriting how a donation is described is the school's
+decision, and the Form 1023 for federal tax-exempt status is still in progress.
+
 ### stated payment method
 
 What the family said they would do, recorded on the application as

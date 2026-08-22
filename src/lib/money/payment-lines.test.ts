@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { amountOwedForPrices } from './live.js';
 import { ALL_OF_IT, paymentLines } from './payment-lines.js';
 
-const GIVING_PAGE = 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION';
+const GIVING_PAGE = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION';
 const REFERENCE = 'PA-4KMN-7QTW';
 
 const RATES = { registrationFee: 50, classDeposit: 100, depositCreditedAgainstTuition: true };

@@ -275,17 +275,19 @@ export const PHAROS_DRAWING = {
 /**
  * How the school explains giving, from `/giving`, verbatim.
  *
- * Every word of this is load-bearing and none of it is ours. Pharos has no
- * merchant account and no Vanco org of its own: a gift goes through Enola First
- * Church of God's platform, where the giver picks "Pharos Academy" from a list.
- * A tidier sentence here would be a sentence that misrepresents where somebody's
- * money is going, and the Form 1023 for federal tax-exempt status is still in
- * progress, so how a donation is described is not a copywriting question.
+ * Every word of this is load-bearing and none of it is ours. It describes a gift
+ * going through Enola First Church of God's platform, where the giver picks
+ * "Pharos Academy" from a list. A tidier sentence here would be a sentence that
+ * misrepresents where somebody's money is going, and the Form 1023 for federal
+ * tax-exempt status is still in progress, so how a donation is described is not
+ * a copywriting question.
  *
  * The link itself is **not** here. It is `giveUrl` on the school details row —
- * spec #18 §12 — because the board update records a dedicated Pharos account
- * being set up, and the day that lands the school changes one field rather than
- * waiting for a deploy.
+ * spec #18 §12 — which is why #302 could move it to Pharos's own Vanco
+ * organisation without touching a template. **These words did not move with
+ * it**, and the mismatch is deliberate rather than missed: the school owns this
+ * paragraph, and the day it decides how the new account is described, the
+ * sentence is theirs to rewrite.
  */
 export const GIVING_INTRO: readonly string[] = [
   'Pharos Academy is currently partnering with Enola First Church of God to facilitate ' +

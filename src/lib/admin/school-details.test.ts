@@ -12,7 +12,7 @@ function form(overrides: Record<string, string> = {}): FormData {
     schoolYearStart: '2026-08-31',
     mission: 'Partnering with parents.',
     vision: 'Preparing students.',
-    giveUrl: 'https://secure.myvanco.com/YH8R/home',
+    giveUrl: 'https://secure.myvanco.com/L-ZZ7H/home',
     ...overrides,
   };
   for (const [name, value] of Object.entries(fields)) {
@@ -82,9 +82,9 @@ describe('parsing a school-details submission', () => {
   // button that goes nowhere.
   it('reads the online payment link, and lets it be empty', () => {
     expect(
-      parseSchoolDetails(form({ payOnlineUrl: '  https://secure.myvanco.com/YH8R/campaign  ' }))
+      parseSchoolDetails(form({ payOnlineUrl: '  https://secure.myvanco.com/L-ZZ7H/campaign  ' }))
         .values.payOnlineUrl,
-    ).toBe('https://secure.myvanco.com/YH8R/campaign');
+    ).toBe('https://secure.myvanco.com/L-ZZ7H/campaign');
 
     const absent = parseSchoolDetails(form());
     expect(absent.values.payOnlineUrl).toBe('');
@@ -92,13 +92,13 @@ describe('parsing a school-details submission', () => {
   });
 
   it('rejects an online payment link that is not an absolute http(s) address', () => {
-    expect(parseSchoolDetails(form({ payOnlineUrl: 'myvanco.com/YH8R' })).errors.payOnlineUrl)
+    expect(parseSchoolDetails(form({ payOnlineUrl: 'myvanco.com/L-ZZ7H' })).errors.payOnlineUrl)
       .toBeTruthy();
     expect(parseSchoolDetails(form({ payOnlineUrl: 'javascript:alert(1)' })).errors
       .payOnlineUrl).toBeTruthy();
     expect(parseSchoolDetails(form({ payOnlineUrl: '/pay' })).errors.payOnlineUrl)
       .toBeTruthy();
-    expect(parseSchoolDetails(form({ payOnlineUrl: 'https://secure.myvanco.com/YH8R/home' }))
+    expect(parseSchoolDetails(form({ payOnlineUrl: 'https://secure.myvanco.com/L-ZZ7H/home' }))
       .errors.payOnlineUrl).toBeUndefined();
   });
 
@@ -109,7 +109,7 @@ describe('parsing a school-details submission', () => {
    * already saved, and that empty stays the shipping state.
    */
   describe('the giving-page link template', () => {
-    const PAY_ONLINE = 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION';
+    const PAY_ONLINE = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION';
 
     it('lets it be empty, whether or not there is a payment link', () => {
       expect(parseSchoolDetails(form()).errors.givingLinkTemplate).toBeUndefined();

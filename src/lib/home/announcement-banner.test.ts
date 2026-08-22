@@ -13,7 +13,7 @@ function details(overrides: Partial<SchoolDetails> = {}): SchoolDetails {
     schoolYearStart: '2026-08-31',
     mission: 'Partnering with parents.',
     vision: 'Preparing students.',
-    giveUrl: 'https://secure.myvanco.com/YH8R/home',
+    giveUrl: 'https://secure.myvanco.com/L-ZZ7H/home',
     payOnlineUrl: '',
     givingLinkTemplate: '',
     bannerEnabled: true,

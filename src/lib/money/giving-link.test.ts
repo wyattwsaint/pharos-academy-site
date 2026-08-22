@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { givingLink, givingLinkTemplateError, type GivingLink } from './giving-link.js';
 
-const GIVING_PAGE = 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION';
+const GIVING_PAGE = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION';
 const TEMPLATE = `${GIVING_PAGE}?amt={amount}`;
 const REFERENCE = 'PA-4KMN-7QTW';
 
@@ -28,10 +28,10 @@ describe('checking a giving-page link template', () => {
    */
   it('refuses another host, however much it looks like the right one', () => {
     for (const template of [
-      'https://secure.myvanco.com.evil.example/YH8R/campaign/C-REGISTRATION?amt={amount}',
-      'https://evil.example/YH8R/campaign/C-REGISTRATION?amt={amount}',
-      'http://secure.myvanco.com/YH8R/campaign/C-REGISTRATION?amt={amount}',
-      'https://secure.myvanco.com:8443/YH8R/campaign/C-REGISTRATION?amt={amount}',
+      'https://secure.myvanco.com.evil.example/L-ZZ7H/campaign/C-REGISTRATION?amt={amount}',
+      'https://evil.example/L-ZZ7H/campaign/C-REGISTRATION?amt={amount}',
+      'http://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION?amt={amount}',
+      'https://secure.myvanco.com:8443/L-ZZ7H/campaign/C-REGISTRATION?amt={amount}',
     ]) {
       expect(givingLinkTemplateError(template, GIVING_PAGE)).toBeTruthy();
     }
@@ -42,14 +42,14 @@ describe('checking a giving-page link template', () => {
       givingLinkTemplateError(`${GIVING_PAGE}-STAFF-PARTY?amt={amount}`, GIVING_PAGE),
     ).toBeTruthy();
     expect(
-      givingLinkTemplateError('https://secure.myvanco.com/YH8R/home?amt={amount}', GIVING_PAGE),
+      givingLinkTemplateError('https://secure.myvanco.com/L-ZZ7H/home?amt={amount}', GIVING_PAGE),
     ).toBeTruthy();
   });
 
   it('refuses what is not an absolute http(s) address at all', () => {
     expect(givingLinkTemplateError('?amt={amount}', GIVING_PAGE)).toBeTruthy();
     expect(givingLinkTemplateError('javascript:alert(1)', GIVING_PAGE)).toBeTruthy();
-    expect(givingLinkTemplateError('secure.myvanco.com/YH8R?amt={amount}', GIVING_PAGE)).toBeTruthy();
+    expect(givingLinkTemplateError('secure.myvanco.com/L-ZZ7H?amt={amount}', GIVING_PAGE)).toBeTruthy();
   });
 
   // Two placeholders and no others, so a typo cannot survive as a literal

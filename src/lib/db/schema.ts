@@ -108,7 +108,12 @@ export const schoolDetails = pgTable('school_details', {
   /**
    * The one place a giving destination is written down (#18 §12). Swapping the
    * host church's Vanco org for a Pharos merchant account has to be a settings
-   * change, not a hunt through the templates.
+   * change, not a hunt through the templates — and #302 is that swap, made as a
+   * seed and a guarded update rather than a deploy of new markup.
+   *
+   * It holds Pharos's own organisation home page, not a campaign: the new
+   * account has three campaigns for the three fees and no general giving one,
+   * so a giver arrives at the organisation and picks.
    */
   giveUrl: text('give_url').notNull(),
   /**
