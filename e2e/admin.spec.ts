@@ -215,7 +215,7 @@ test.describe('saving school details', () => {
    * rendered per request off this shared row and an absence assertion that
    * leans on whatever ran last is an assertion about scheduling.
    */
-  const VANCO = 'https://secure.myvanco.com/YH8R/campaign/C-REGISTRATION';
+  const VANCO = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-REGISTRATION';
 
   async function setPayOnlineUrl(page: Page, url: string): Promise<void> {
     await page.goto('/admin/school-details');
@@ -374,7 +374,7 @@ test.describe('saving school details', () => {
     // and the message names the link it had to start with.
     await page.goto('/admin/school-details');
     const template = page.getByLabel('Giving-page link template');
-    await template.fill('https://secure.myvanco.com.example/YH8R/campaign/C-REGISTRATION?amt={amount}');
+    await template.fill('https://secure.myvanco.com.example/L-ZZ7H/campaign/C-REGISTRATION?amt={amount}');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
     await expect(page.locator('#givingLinkTemplate')).toHaveAttribute('aria-invalid', 'true');

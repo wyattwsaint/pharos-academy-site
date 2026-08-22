@@ -49,9 +49,13 @@ export const SEEDED_SCHOOL_DETAILS = {
     'Partnering with parents to provide academic rigor and mentoring, while deepening students’ relationships with Christ, developing a Biblical world view, and pursuing goodness, truth, and beauty in a loving church environment.',
   vision:
     'Preparing students to, “honor Christ the Lord as holy, always being prepared to make a defense for the hope that is within,” (1 Peter 3:15) while loving and impacting the world for God.',
-  // The host church's Vanco org, an explicit placeholder for Pharos's own
-  // merchant account (#18 §12). Being a value in a row is the point.
-  giveUrl: 'https://secure.myvanco.com/YH8R/home',
+  // Pharos's own Vanco organisation, `L-ZZ7H` (#302). It replaces the host
+  // church's org, which was an explicit placeholder written while the school
+  // had no merchant account of its own. There is no general giving campaign on
+  // the new account, so this is the organisation's home page — the shape the
+  // seed had before a campaign was pasted over it. Being a value in a row is
+  // still the point: the next move is a field, not a deploy.
+  giveUrl: 'https://secure.myvanco.com/L-ZZ7H/home',
 } as const;
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -1016,6 +1020,43 @@ export const MIGRATIONS: readonly Migration[] = [
            from policy_versions v
           where not exists (select 1 from policies p where p.slug = v.policy_slug)
        on conflict (slug) do nothing`,
+    ],
+  },
+  {
+    /*
+     * The Give link moves to the school's own Vanco organisation (#302).
+     *
+     * The seed above now names `L-ZZ7H`, which settles every database stood up
+     * from here on and settles nothing about the live one, where a donation
+     * from the footer or the support page still lands in the host church's
+     * account. That is the bug, and a seed cannot reach it.
+     *
+     * **Guarded on the organisation and not on the exact address**, which is
+     * the one judgement in here. The live row does not hold what 0001 seeded:
+     * somebody pasted a campaign inside the church's org over it in August,
+     * so a guard demanding the seeded home page character for character would
+     * have matched nothing and shipped the bug. What every address under
+     * `/YH8R/` has in common is the thing this ticket is about — it is the
+     * wrong merchant account — so the organisation is what the guard asks
+     * about.
+     *
+     * A link pointing anywhere else is left alone: that is the office having
+     * chosen a destination, and the whole argument for this being a column is
+     * that they can. A re-run finds nothing, and so does a fresh database,
+     * which reaches here already holding the new address.
+     *
+     * The fee links are **not** touched. `pay_online_url` holds an address in
+     * the same wrong organisation, but it is a different destination with its
+     * own campaigns and its own ticket (#303); moving it from here would guess
+     * a campaign path from an organisation id, which is how a registration fee
+     * lands in the offering.
+     */
+    id: '0029-the-give-link-moves-to-the-schools-own-account',
+    statements: [
+      `update school_details
+          set give_url = ${literal(SEEDED_SCHOOL_DETAILS.giveUrl)}
+        where give_url like 'https://secure.myvanco.com/YH8R/%'
+           or give_url = 'https://secure.myvanco.com/YH8R'`,
     ],
   },
 ];

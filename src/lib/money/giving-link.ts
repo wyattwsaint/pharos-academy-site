@@ -160,7 +160,7 @@ function withAmount(pattern: string, amount: number): string | null {
   return pattern.replaceAll('{amount}', moneyOnALink(amount));
 }
 
-/** `/YH8R/campaign/C-REG` is not within `/YH8R/campaign/C-REGISTRATION`. */
+/** `/L-ZZ7H/campaign/C-REG` is not within `/L-ZZ7H/campaign/C-REGISTRATION`. */
 function isPathWithin(path: string, base: string): boolean {
   if (path === base) return true;
   return path.startsWith(base.endsWith('/') ? base : `${base}/`);
