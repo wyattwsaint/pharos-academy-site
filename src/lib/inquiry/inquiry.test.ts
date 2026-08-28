@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 import type { Mail } from '../backup/monthly.js';
+import { PHONE_FORMAT_MESSAGE, PHONE_REQUIRED_MESSAGE } from '../forms.js';
 import {
   inquiryConfirmation,
   inquiryNotification,
@@ -16,15 +17,17 @@ import {
  * The inquiry's rules (#25).
  *
  * Every acceptance criterion that is a property of the decision rather than of
- * a page is proved here: that a phone field does not exist, that no copy on
- * this path promises a response time, that the confirmation carries the three
- * links it owes a family, and — the one that matters most — that persisting and
- * emailing cannot lose one another.
+ * a page is proved here: that the phone number is captured (#311 — this file
+ * used to prove the opposite), that no copy on this path promises a response
+ * time, that the confirmation carries the three links it owes a family, and —
+ * the one that matters most — that persisting and emailing cannot lose one
+ * another.
  */
 
 const FIELDS: InquiryFields = {
   name: 'Ruth Marsh',
   email: 'ruth@example.com',
+  phone: '717-555-0142',
   ages: '6, 9 and 13',
   message: 'Is there room in Latin?',
 };
@@ -51,9 +54,9 @@ const options = (extra: Partial<Parameters<typeof submitInquiry>[1]>) => ({
 });
 
 describe('the fields', () => {
-  it('asks for a name, an email and the children’s ages, and nothing else required', () => {
-    const { errors } = parseInquiry(form({ name: '', email: '', ages: '', message: '' }));
-    expect(Object.keys(errors).sort()).toEqual(['ages', 'email', 'name']);
+  it('asks for a name, an email, a phone number and the ages, and nothing else required', () => {
+    const { errors } = parseInquiry(form({ name: '', email: '', phone: '', ages: '', message: '' }));
+    expect(Object.keys(errors).sort()).toEqual(['ages', 'email', 'name', 'phone']);
   });
 
   it('accepts a submission with no message at all', () => {
@@ -82,20 +85,52 @@ describe('the fields', () => {
   });
 
   /**
-   * #25 AC 6, as a test rather than as an intention.
+   * #311, and it is the inversion of the test that used to stand here.
    *
-   * A phone number raises the perceived commitment of the form more than any
-   * other field, and a parent who wants a call says so. The form markup is read
-   * from disk because that is the surface a field would actually be added to.
+   * #25 AC 6 said a phone field must not exist, and this file proved it by
+   * reading the form markup back from disk. The school reversed that decision
+   * (ADR-0024) because it could reach a family only by email. The assertion is
+   * inverted rather than deleted, on the same surface, so the reversal is
+   * legible to whoever reads this file next.
    */
-  it('has no phone field, in the parser or in the form', async () => {
-    const parsed = parseInquiry(form({ ...FIELDS, phone: '717-555-0142' } as never));
-    expect(Object.keys(parsed.values)).toEqual(['name', 'email', 'ages', 'message']);
+  it('captures the phone number, in the parser and in the form', async () => {
+    const parsed = parseInquiry(form({ ...FIELDS, phone: '717-555-0142' }));
+    expect(Object.keys(parsed.values)).toEqual(['name', 'email', 'phone', 'ages', 'message']);
+    expect(parsed.errors).toEqual({});
+    expect(parsed.values.phone).toBe('717-555-0142');
 
     const markup = await readFile('src/components/InquiryForm.astro', 'utf8');
-    expect(markup).not.toMatch(/name="phone"/);
-    expect(markup).not.toMatch(/type="tel"/);
-    expect(markup).not.toMatch(/autocomplete="tel"/);
+    expect(markup).toMatch(/name="phone"/);
+    expect(markup).toMatch(/type="tel"/);
+    expect(markup).toMatch(/autocomplete="tel"/);
+  });
+
+  it('refuses a submission with no phone number at all', () => {
+    const { errors } = parseInquiry(form({ ...FIELDS, phone: '' }));
+    expect(errors.phone).toBe(PHONE_REQUIRED_MESSAGE);
+  });
+
+  it('refuses a number that is not ###-###-####', () => {
+    // The auto-format runs in the browser; this is the same rule on the server,
+    // which is what a submission with scripting off meets (#311 AC 2).
+    for (const typed of ['7175550142', '(717) 555-0142', '717-555-014', '1-717-555-0142']) {
+      expect(parseInquiry(form({ ...FIELDS, phone: typed })).errors.phone).toBe(
+        PHONE_FORMAT_MESSAGE,
+      );
+    }
+  });
+
+  it('keeps a good number exactly as it was typed', () => {
+    const { values } = parseInquiry(form({ ...FIELDS, phone: '717-555-0142' }));
+    expect(values.phone).toBe('717-555-0142');
+  });
+
+  it('gives back the number when some other field is what failed', () => {
+    // Nothing typed is thrown away by a rejection — the phone number least of
+    // all, since it is the field a family is least willing to retype.
+    const { values, errors } = parseInquiry(form({ ...FIELDS, ages: '' }));
+    expect(errors.ages).toBeTruthy();
+    expect(values.phone).toBe('717-555-0142');
   });
 });
 
@@ -135,6 +170,9 @@ describe('the notification the school gets', () => {
     expect(mail.text).toContain('ruth@example.com');
     expect(mail.text).toContain('6, 9 and 13');
     expect(mail.text).toContain('Is there room in Latin?');
+    // #311: in the body, so somebody acting from their inbox can dial without
+    // opening the admin.
+    expect(mail.text).toContain('717-555-0142');
   });
 
   it('says the inquiry is also on the website when it was stored', () => {
@@ -174,6 +212,12 @@ describe('the confirmation the family gets', () => {
     const lines = mail.text.split('\n').filter(Boolean);
     expect(lines[lines.length - 1]).toContain('/admissions');
     expect(lines[lines.length - 2]).toBe('—');
+  });
+
+  it('says the number back, so a mistyped digit can be spotted', () => {
+    // The only correction route a capture-once record has is a family noticing
+    // and writing in (#311, #310 story 15).
+    expect(mail.text).toContain('717-555-0142');
   });
 
   it('says what Pharos is in two lines rather than selling', () => {

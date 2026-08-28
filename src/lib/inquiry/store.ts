@@ -26,6 +26,7 @@ export async function createInquiry(db: Db, values: InquiryFields, now = new Dat
     .values({
       name: values.name,
       email: values.email,
+      phone: values.phone,
       ages: values.ages,
       message: values.message,
       receivedAt: now,

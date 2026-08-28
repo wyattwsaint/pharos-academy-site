@@ -347,6 +347,7 @@ describe('coverage of the editable set', () => {
     await createInquiry(db, {
       name: 'Ruth Marsh',
       email: 'ruth@example.com',
+      phone: '717-555-0142',
       ages: '6, 9 and 13',
       message: '',
     });

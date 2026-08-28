@@ -32,3 +32,64 @@ export function textField(form: FormData, name: string): string {
 export function isEmailAddress(value: string): boolean {
   return /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(value);
 }
+
+/**
+ * The one phone number shape the site accepts — `###-###-####` (#310, #311).
+ *
+ * The opposite stance to `isEmailAddress`, and deliberately so. An address can
+ * only be proved by sending to it, so the check there is loose; a phone number
+ * is typed by a parent who will be *called back on it*, and every family this
+ * school serves has a ten-digit North American number. Strict is what turns a
+ * transposed digit into an inline error rather than into a wrong number Jill
+ * dials next week.
+ *
+ * Extensions and international numbers are rejected. That is a real cost, and
+ * ADR-0024 accepts it: a family with either writes it in the message, and the
+ * alternative is a field no rule can hold and no auto-format can help with.
+ *
+ * This lives here rather than beside the inquiry because the application asks
+ * for the same number under a different name, and two copies of the pattern is
+ * how one form comes to accept what the other refuses.
+ */
+export const PHONE_PATTERN = /^\d{3}-\d{3}-\d{4}$/;
+
+/** What both forms say when the field is empty. One sentence, one place. */
+export const PHONE_REQUIRED_MESSAGE = 'We need a phone number so we can call you back.';
+
+/** What both forms say when it is filled in but not a number of that shape. */
+export const PHONE_FORMAT_MESSAGE = 'A phone number looks like 717-555-0142 — ten digits.';
+
+export function isPhoneNumber(value: string): boolean {
+  return PHONE_PATTERN.test(value);
+}
+
+/**
+ * The dashes, inserted as the parent types.
+ *
+ * Digits are the only thing kept, so a number pasted as `(717) 555-0142` or
+ * `717.555.0142` becomes the accepted shape rather than an error — the paste is
+ * the common case on a phone, and refusing it would be refusing a correct
+ * number over its punctuation. Anything past ten digits is dropped, which is
+ * what stops a keyboard-mashed field from growing past the field.
+ *
+ * Called on every keystroke in the browser, so it is a pure function of the
+ * string: the caller owns the caret, this owns the value.
+ */
+export function formatPhoneAsTyped(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 10);
+  const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6)];
+  return parts.filter((part) => part.length > 0).join('-');
+}
+
+/**
+ * Read a phone field and say what is wrong with it, or nothing.
+ *
+ * The server's half of the rule, and it runs whatever the browser did: the
+ * auto-format is an enhancement, and a submission with scripting off — or from
+ * anything that is not a browser — meets the same pattern here.
+ */
+export function phoneError(value: string): string | undefined {
+  if (!value) return PHONE_REQUIRED_MESSAGE;
+  if (!isPhoneNumber(value)) return PHONE_FORMAT_MESSAGE;
+  return undefined;
+}
