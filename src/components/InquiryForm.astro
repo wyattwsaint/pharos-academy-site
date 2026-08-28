@@ -141,44 +141,13 @@ const typed = (field: keyof InquiryFields): string => values?.[field] ?? '';
   /*
     The dashes, as the parent types (#311 AC 2).
 
-    An enhancement and not a dependency: with scripting off a family types the
-    dashes themselves, `parseInquiry` applies the identical rule on POST, and
-    the inline error says what shape is wanted. What this buys is *not having
-    to guess the format*, which is the whole reason the field auto-formats.
-
-    The rule is imported rather than restated, for the reason `apply.astro`
-    imports its validation: `forms.ts` is a leaf that imports nothing, so what
-    crosses the wire is one regular expression and one string function.
-
-    The caret is remapped by counting digits rather than characters. Editing in
-    the middle of a number is the case a naive "put the caret at the end" gets
-    wrong, and a caret that jumps is worse than no auto-format at all.
+    The behaviour lives in `phone-field.ts` rather than here, because the Apply
+    page asks for the same number and two copies of a keystroke handler is how
+    one form comes to auto-format what the other leaves alone (#312).
   */
-  import { formatPhoneAsTyped } from '../lib/forms.js';
+  import { bindPhoneFields } from './phone-field.js';
 
-  for (const field of document.querySelectorAll<HTMLInputElement>('input[data-phone]')) {
-    field.addEventListener('input', () => {
-      const before = field.value;
-      const caret = field.selectionStart ?? before.length;
-      const digitsBefore = before.slice(0, caret).replace(/\D/g, '').length;
-
-      const formatted = formatPhoneAsTyped(before);
-      if (formatted === before) return;
-      field.value = formatted;
-
-      let seen = 0;
-      let position = formatted.length;
-      for (let index = 0; index < formatted.length; index += 1) {
-        if (/\d/.test(formatted[index]!)) seen += 1;
-        if (seen === digitsBefore) {
-          position = index + 1;
-          break;
-        }
-      }
-      if (digitsBefore === 0) position = 0;
-      field.setSelectionRange(position, position);
-    });
-  }
+  bindPhoneFields();
 </script>
 
 <style>

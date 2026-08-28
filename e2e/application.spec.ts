@@ -4,6 +4,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { APPLICATION_PATH, FAITH_QUESTIONS, faithKey } from '../src/lib/application/application.js';
 import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
 import { AXE_TAGS, describeViolation } from './axe.js';
+import { fillContactDetails } from './contact-details.js';
 import { previewTotals } from './preview.js';
 
 /**
@@ -57,16 +58,25 @@ const CLOCKS =
  * `apply.astro`'s source; this reads the rendered DOM, which is what actually
  * reaches a family — and what a client-side island could add without ever
  * appearing in the source scan.
+ *
+ * Two lists since #312, and the difference between them is ADR-0024's whole
+ * decision. The words below are barred everywhere on the page. The address
+ * parts are barred **against a child** and asked for once, of the household —
+ * an address is a fact about the people the school corresponds with rather than
+ * about a student. Reopening a door is not removing the wall.
  */
-const FORBIDDEN_FIELDS = [
+const controlsNamed = (words: string[]): string =>
+  words
+    .flatMap((word) => [
+      `input[name*="${word}" i]`,
+      `textarea[name*="${word}" i]`,
+      `select[name*="${word}" i]`,
+    ])
+    .join(', ');
+
+const FORBIDDEN_FIELDS = controlsNamed([
   'dob',
   'birth',
-  'address',
-  'street',
-  'city',
-  'state',
-  'zip',
-  'postcode',
   'custody',
   'medical',
   'medicat',
@@ -75,9 +85,17 @@ const FORBIDDEN_FIELDS = [
   'evaluation',
   'adhd',
   'iep',
-]
-  .flatMap((word) => [`input[name*="${word}" i]`, `textarea[name*="${word}" i]`, `select[name*="${word}" i]`])
-  .join(', ');
+]);
+
+/** And these, anywhere inside a child's row. */
+const FORBIDDEN_PER_CHILD = controlsNamed([
+  'address',
+  'street',
+  'city',
+  'state',
+  'zip',
+  'postcode',
+]);
 
 /**
  * Tick Algebra 1 (year) and Beginner Latin 5-6 (year) for the first child —
@@ -185,6 +203,15 @@ async function fillSendable(page: Page, except?: string) {
   if (except !== 'faith') await answerFaith(page);
   if (except !== 'familyName') await page.fill('#apply-family-name', 'Suite Family');
   if (except !== 'email') await page.fill('#apply-email', 'suite-family@example.com');
+  // The two #312 added. Filled together, because they are one thing a family
+  // does — and left out together when a test is about one of them.
+  if (except !== 'phone' && except !== 'address') await fillContactDetails(page);
+  else if (except === 'address') await page.fill('#apply-phone', '717-555-0142');
+  else {
+    await page.fill('#apply-street', '12 Oak Lane');
+    await page.fill('#apply-city', 'Gettysburg');
+    await page.fill('#apply-zip', '17325');
+  }
   if (except !== 'children') {
     await page.fill('#apply-child-0-name', 'Suite Child');
     await page.fill('#apply-child-0-age', '13');
@@ -319,7 +346,19 @@ test.describe('the application page', () => {
     // per outstanding rule, each line a link to the control it is about.
     await open(page);
 
-    const fields = ['faith', 'familyName', 'email', 'children', 'classes', 'agreements'];
+    const fields = [
+      'faith',
+      'familyName',
+      'email',
+      // The two #312 added, held to the same bar as the six before them: named
+      // in the list from the first paint, linked to a control that exists, and
+      // enough on their own to keep the button grey.
+      'phone',
+      'address',
+      'children',
+      'classes',
+      'agreements',
+    ];
     for (const field of fields) await expect(stillNeeded(page, field)).toBeVisible();
 
     // Each line goes somewhere, and somewhere that exists.
@@ -527,6 +566,72 @@ test.describe('the application page', () => {
     await context.close();
   });
 
+  /**
+   * The household's own contact details (#312, ADR-0024).
+   *
+   * The rules are proved in `address.test.ts` and `forms.test.ts`. What these
+   * are about is the *treatment*: one sentence over five controls, the marks
+   * landing on the parts that are actually short of something, and the dashes
+   * appearing as a parent types.
+   */
+  test('marks only the part of the address that is missing', async ({ page }) => {
+    await open(page);
+
+    await page.fill('#apply-street', '12 Oak Lane');
+    await page.fill('#apply-city', 'Gettysburg');
+    await page.fill('#apply-zip', '173');
+    await leave(page);
+
+    // One sentence, under the block, for the whole address.
+    const error = page.locator('#apply-address-error');
+    await expect(error).toBeVisible();
+    await expect(page.locator('#apply-zip')).toHaveAttribute('aria-invalid', 'true');
+    // The parts that are right are not marked wrong, and the optional line is
+    // never marked at all.
+    await expect(page.locator('#apply-street')).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#apply-city')).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#apply-street2')).not.toHaveAttribute('aria-invalid', 'true');
+    // And every part is told where the sentence is, which is what a screen
+    // reader needs whichever box the family is standing in.
+    for (const part of ['#apply-street', '#apply-city', '#apply-state', '#apply-zip']) {
+      await expect(page.locator(part)).toHaveAttribute('aria-describedby', 'apply-address-error');
+    }
+
+    // Corrected, and the mark goes with the sentence rather than lingering.
+    await page.fill('#apply-zip', '17325');
+    await expect(error).toBeHidden();
+    await expect(page.locator('#apply-zip')).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  test('opens the state on Pennsylvania, with all fifty-one to choose from', async ({ page }) => {
+    await open(page);
+
+    const state = page.locator('#apply-state');
+    await expect(state).toHaveValue('PA');
+    await expect(state.locator('option')).toHaveCount(51);
+
+    // A preselection and not a lock.
+    await state.selectOption('MD');
+    await expect(state).toHaveValue('MD');
+  });
+
+  test('inserts the dashes in the phone number as the parent types', async ({ page }) => {
+    // The inquiry's behaviour, on the form that asks for the same number
+    // (#312). Bound from one module, so it cannot drift.
+    await open(page);
+
+    await page.fill('#apply-phone', '7175550142');
+    await expect(page.locator('#apply-phone')).toHaveValue('717-555-0142');
+
+    // A pasted number with a country code is handed back exactly as typed, so
+    // the family meets the error rather than a well-formed, different number.
+    await page.fill('#apply-phone', '1-717-555-0142');
+    await expect(page.locator('#apply-phone')).toHaveValue('1-717-555-0142');
+    await leave(page);
+    await expect(page.locator('#apply-phone-error')).toBeVisible();
+    await expect(page.locator('#apply-phone')).toHaveAttribute('aria-invalid', 'true');
+  });
+
   test('never raises an error against the objections box, or against a “No”', async ({ page }) => {
     // AC 7. Saying what you think costs a family nothing, at any point in the
     // filling in — not on blur, not on a keystroke, not on the way out.
@@ -632,6 +737,17 @@ test.describe('the application page', () => {
     // covers the template; this covers what a browser actually built.
     await open(page);
     await expect(page.locator(FORBIDDEN_FIELDS)).toHaveCount(0);
+
+    // And the address, which the household is asked for once (#312), is asked
+    // of no child. Every control inside a child row is measured, including the
+    // rows the count picker has hidden — a field that only appears at seven
+    // children is still a field.
+    const rows = page.locator('fieldset[data-child-row]');
+    await expect(rows).not.toHaveCount(0);
+    await expect(rows.locator(FORBIDDEN_PER_CHILD)).toHaveCount(0);
+
+    // The other half of the same criterion: the household is asked, once.
+    await expect(page.locator('[data-address] input, [data-address] select')).toHaveCount(5);
   });
 
   test('leaves the send ungreyed when the classes collide', async ({ page }) => {

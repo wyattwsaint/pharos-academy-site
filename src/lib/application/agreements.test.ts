@@ -47,14 +47,20 @@ function form(entries: Record<string, string>): FormData {
 }
 
 /**
- * A sendable application, without the agreements. #85 requires a family name, a
- * reachable address, a child, a class and one answered column of the Statement
- * of Faith grid — so a fixture testing "the agreements never block" has to be
- * complete in every other respect, or it proves nothing about the agreements.
+ * A sendable application, without the agreements. #85 requires a family name,
+ * an email, a child, a class and one answered column of the Statement of Faith
+ * grid, and #312 adds a phone number and somewhere to post to — so a fixture
+ * testing "the agreements never block" has to be complete in every other
+ * respect, or it proves nothing about the agreements.
  */
 const SENDABLE: Record<string, string> = {
   familyName: 'Marsh',
   email: 'ruth@example.com',
+  phone: '717-555-0142',
+  street: '12 Oak Lane',
+  city: 'Gettysburg',
+  state: 'PA',
+  zip: '17325',
   'child-0-name': 'Obi',
   'child-0-age': '9',
   'child-0-classes': 'algebra-1:year',

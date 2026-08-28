@@ -6,6 +6,7 @@ import { unzipSync } from 'fflate';
 
 import { LABELS } from '../src/lib/admin/policies.js';
 import { AXE_TAGS } from './axe.js';
+import { SUITE_ADDRESS, fillContactDetails } from './contact-details.js';
 import { SUITE_ADMIN, SUITE_RETIRED_PERSON, signIn } from './suite-admin.js';
 import {
   APPLICATION_PATH,
@@ -252,6 +253,7 @@ test.describe('saving school details', () => {
     }
     await page.fill('#apply-family-name', family);
     await page.fill('#apply-email', `${slugify(family)}@example.com`);
+    await fillContactDetails(page);
     await page.fill('#apply-child-0-name', 'Method Child');
     await page.fill('#apply-child-0-age', '13');
     await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
@@ -1999,6 +2001,7 @@ test.describe('applications', () => {
     await page.goto(APPLICATION_PATH);
     await page.fill('#apply-family-name', family.name);
     await page.fill('#apply-email', family.email);
+    await fillContactDetails(page);
     await page.fill('#apply-child-0-name', family.child);
     await page.fill('#apply-child-0-age', '13');
     await page.check(`input[name="child-0-classes"][value="${family.offering}"]`);
@@ -2052,6 +2055,22 @@ test.describe('applications', () => {
     const row = rowFor(page, family);
     await expect(row.getByTestId('application-state')).toContainText('Submitted');
     await expect(row.getByTestId('application-payment')).toContainText('Awaiting check');
+
+    /*
+     * The household's contact details, all the way from a real submission
+     * (#312 AC 5). Dialable from the page rather than a number to copy out by
+     * hand, and the address as it goes on an envelope — three lines of one
+     * string, so the assertion is on the whole block rather than on a town.
+     */
+    await expect(row.getByTestId('application-phone').getByRole('link')).toHaveAttribute(
+      'href',
+      'tel:7175550142',
+    );
+    await expect(row.getByTestId('application-phone')).toContainText(SUITE_ADDRESS.phone);
+    await expect(row.getByTestId('application-address')).toContainText(SUITE_ADDRESS.street);
+    await expect(row.getByTestId('application-address')).toContainText(
+      `${SUITE_ADDRESS.city}, ${SUITE_ADDRESS.state} ${SUITE_ADDRESS.zip}`,
+    );
 
     // The check arrives. The application has not moved.
     await row.getByRole('button', { name: 'Check has arrived' }).click();

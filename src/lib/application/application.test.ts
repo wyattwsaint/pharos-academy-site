@@ -64,6 +64,11 @@ function goodForm(over: Record<string, string | string[]> = {}): FormData {
   return form({
     familyName: 'Okonkwo',
     email: 'okonkwo@example.com',
+    phone: '717-555-0142',
+    street: '12 Oak Lane',
+    city: 'Gettysburg',
+    state: 'PA',
+    zip: '17325',
     'child-0-name': 'Ada',
     'child-0-age': '13',
     'child-0-classes': ['algebra-1:year'],
@@ -83,6 +88,17 @@ describe('pre-filling from an inquiry (#31 AC 1)', () => {
 
     expect(values.familyName).toBe('Okonkwo');
     expect(values.email).toBe('o@example.com');
+    // Blank, and the address opens on Pennsylvania (#312). Nothing on an
+    // inquiry carries a postal address, and the number it does carry is
+    // deliberately not brought across.
+    expect(values.phone).toBe('');
+    expect(values.address).toEqual({
+      street: '',
+      street2: '',
+      city: '',
+      state: 'PA',
+      zip: '',
+    });
     expect(values.children.map((child) => child.age)).toEqual(['6', '9', '13']);
     // Names are the school's guess to make, and it does not have one — the
     // inquiry never asked for the children's names.
@@ -152,6 +168,43 @@ describe('reading a submitted application', () => {
   it('refuses an address that is not one', () => {
     const { errors } = parseApplication(goodForm({ email: 'okonkwo at example' }), OFFERINGS);
     expect(errors.email).toContain('does not look like');
+  });
+
+  /*
+   * The household's own contact details (#312, ADR-0024). The rules are
+   * `forms.ts`'s and `address.ts`'s and are proved there; what these assert is
+   * that the application actually runs them, on the fields it posts under.
+   */
+  it('reads the phone and the address off the form', () => {
+    const { values } = parseApplication(goodForm({ street2: 'Apt 3' }), OFFERINGS);
+
+    expect(values.phone).toBe('717-555-0142');
+    expect(values.address).toEqual({
+      street: '12 Oak Lane',
+      street2: 'Apt 3',
+      city: 'Gettysburg',
+      state: 'PA',
+      zip: '17325',
+    });
+  });
+
+  it('asks for a phone number, in the shape the inquiry asks for it in', () => {
+    expect(parseApplication(goodForm({ phone: '' }), OFFERINGS).errors.phone).toBeTruthy();
+    expect(parseApplication(goodForm({ phone: '7175550142' }), OFFERINGS).errors.phone).toContain(
+      'ten digits',
+    );
+  });
+
+  it('asks for somewhere to post to, and takes an apartment as optional', () => {
+    expect(parseApplication(goodForm({ street: '' }), OFFERINGS).errors.address).toBeTruthy();
+    expect(parseApplication(goodForm({ zip: '173' }), OFFERINGS).errors.address).toBeTruthy();
+    expect(parseApplication(goodForm({ street2: '' }), OFFERINGS).errors.address).toBeUndefined();
+  });
+
+  it('refuses a state that is not one, however it was posted', () => {
+    // The dropdown can only produce one of the fifty-one. A hand-built POST is
+    // not a dropdown, and the server's rule is the one that decides.
+    expect(parseApplication(goodForm({ state: 'ZZ' }), OFFERINGS).errors.address).toBeTruthy();
   });
 
   it('asks for an age beside a name', () => {
@@ -568,8 +621,14 @@ describe('the children’s sensitive data does not enter the site (#31 AC 9)', (
     // the second and has nothing to say about the first. `paymentMethod` (#219)
     // is the same kind of fact one step further out: it is how the family says
     // they will pay the school, and it says nothing about any child at all.
+    //
+    // `phone` and `address` are the two ADR-0024 adds (#312), and they are met
+    // here on the same argument: a household's contact details are the class of
+    // fact the email address beside them always was. They sit on the
+    // application and never on a child, which the test above is what proves.
     const { values } = parseApplication(goodForm(), OFFERINGS);
     expect(Object.keys(values).sort()).toEqual([
+      'address',
       'agreements',
       'children',
       'email',
@@ -577,6 +636,7 @@ describe('the children’s sensitive data does not enter the site (#31 AC 9)', (
       'faith',
       'objections',
       'paymentMethod',
+      'phone',
     ].sort());
   });
 
@@ -619,31 +679,79 @@ describe('the children’s sensitive data does not enter the site (#31 AC 9)', (
     expect(names).not.toMatch(FORBIDDEN);
   });
 
-  it('asks for no date of birth, address, medical, evaluation or custody field', () => {
-    const page = readFileSync(
-      fileURLToPath(new URL('../../pages/admissions/apply.astro', import.meta.url)),
+  it('declares the household address only on the application, never on a child', () => {
+    // ADR-0024's line, at the type. `ApplicationChild` is read on its own —
+    // the file around it now legitimately declares `address`, `street`, `city`
+    // and `zip` on `ApplicationFields`, and the criterion this guards was never
+    // about the file: it is about what the site records against a student.
+    const validation = readFileSync(
+      fileURLToPath(new URL('validation.ts', import.meta.url)),
       'utf8',
     );
+    const child = /export type ApplicationChild = \{[\s\S]*?\n\};/.exec(validation)?.[0] ?? '';
+    expect(child.length).toBeGreaterThan(0);
 
-    const asked = [...page.matchAll(/(?:name|id|for)=(?:"([^"]*)"|\{`([^`]*)`\})/g)].map(
-      (match) => (match[1] ?? match[2] ?? '').toLowerCase(),
-    );
-    expect(asked.length).toBeGreaterThan(0);
+    expect(child.toLowerCase()).not.toMatch(PER_CHILD_FORBIDDEN);
+  });
 
-    for (const field of asked) {
+  it('asks for no date of birth, medical, evaluation or custody field', () => {
+    for (const field of asksFor()) {
       expect(field, `the form asks for ${field}`).not.toMatch(FORBIDDEN);
+    }
+  });
+
+  it('asks for no address, street or zip against a child (#312)', () => {
+    // The household address is asked for once, as `street`, `city`, `state`
+    // and `zip` (ADR-0024). What stays barred is the same question asked *per
+    // child* — every control inside a child row posts under `child-<n>-`, so
+    // that prefix is exactly the criterion.
+    // The row index is a template hole in the markup rather than a number,
+    // which is why the pattern accepts one.
+    const perChild = asksFor().filter((field) => /^(apply-)?child-(\d+|\$\{)/.test(field));
+    expect(perChild.length).toBeGreaterThan(0);
+
+    for (const field of perChild) {
+      expect(field, `the form asks a child for ${field}`).not.toMatch(PER_CHILD_FORBIDDEN);
     }
   });
 });
 
+/** Every name, id and label target the Apply page asks for, lowercased. */
+function asksFor(): string[] {
+  const page = readFileSync(
+    fileURLToPath(new URL('../../pages/admissions/apply.astro', import.meta.url)),
+    'utf8',
+  );
+
+  const asked = [...page.matchAll(/(?:name|id|for)=(?:"([^"]*)"|\{`([^`]*)`\})/g)].map(
+    (match) => (match[1] ?? match[2] ?? '').toLowerCase(),
+  );
+  expect(asked.length).toBeGreaterThan(0);
+  return asked;
+}
+
 /**
- * What the site does not collect (#31 AC 9).
+ * What the site does not collect, anywhere (#31 AC 9).
  *
- * Date of birth, home address, allergies, medical conditions, evaluation
- * history and custody arrangements are all on the school's live Google Form and
- * are all deliberately absent here — they move to paper signed at enrolment.
- * This is what deletes the stricter storage tier rather than building it, and
- * it is not a shortcut to be quietly reversed.
+ * Date of birth, allergies, medical conditions, evaluation history and custody
+ * arrangements are all on the school's live Google Form and are all
+ * deliberately absent here — they move to paper signed at enrolment. This is
+ * what deletes the stricter storage tier rather than building it, and it is not
+ * a shortcut to be quietly reversed.
  */
-const FORBIDDEN =
-  /\b(dob|birth|address|street|zip|postcode|allerg|medical|medicat|diagnos|custody|iep|adhd|evaluation)/;
+const FORBIDDEN = /\b(dob|birth|allerg|medical|medicat|diagnos|custody|iep|adhd|evaluation)/;
+
+/**
+ * And what it does not collect **about a child** (#312, ADR-0024).
+ *
+ * The home address was on the list above until the school found it could not
+ * post paperwork to a family. ADR-0024 reopens ADR-0007 exactly this far: one
+ * household address on the application, in the same class of fact as the email
+ * address beside it — and not one word of it against a student. Every rule
+ * above still applies to both.
+ *
+ * The two lists are the decision. Deleting this one would be removing the wall
+ * rather than opening a door, and is a reversal that needs its own ADR.
+ */
+const PER_CHILD_FORBIDDEN =
+  /\b(address|street|zip|postcode|dob|birth|allerg|medical|medicat|diagnos|custody|iep|adhd|evaluation)/;

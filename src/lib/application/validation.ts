@@ -11,8 +11,8 @@
  * `<script>` imports these rules into the browser, and importing `application.ts`
  * would drag the Statement of Faith text, the catalogue, the clash rule and the
  * money graph across the wire to check that a text field is not empty. The only
- * imports allowed in this file are the email check and `agreements.ts`, which is
- * a leaf itself.
+ * imports allowed in this file are leaves that import nothing themselves —
+ * `forms.ts`, `address.ts` and `agreements.ts`.
  *
  * **Answered, never agreed.** Every rule below gates on a question having been
  * answered. None of them gates on the answer. "No" passes — to a faith question
@@ -25,15 +25,24 @@
  *
  * **The children's sensitive data does not enter the site.** `ApplicationChild`
  * lives here now, and it is a name, an age and the classes — that is the entire
- * type. Date of birth, home address, allergies, medical conditions, evaluation
- * history and custody arrangements are all on the school's live Google Form and
- * are all deliberately absent. `application.test.ts` reads this file, the module
- * next door and the form component back and fails if any of them grows one of
- * those words. **ADR-0007** holds the decision and what reversing it would cost.
+ * type. Date of birth, allergies, medical conditions, evaluation history and
+ * custody arrangements are all on the school's live Google Form and are all
+ * deliberately absent. `application.test.ts` reads this file, the module next
+ * door and the form component back and fails if any of them grows one of those
+ * words. **ADR-0007** holds the decision and what reversing it would cost.
+ *
+ * **The household's contact details do enter it, since #312.** A primary phone
+ * and one postal address sit on `ApplicationFields` beside the email address,
+ * because they are facts about the people the school corresponds with rather
+ * than about a student. That is ADR-0024's line and the whole of its
+ * concession: it is written down in `address.ts`, and the tests above still
+ * refuse every per-child field, on `ApplicationChild` and on the
+ * `application_children` table alike.
  */
 
+import { addressError, type HouseholdAddress } from '../address.js';
 import { agreementAnswer, type AgreementSlug, type Agreements } from './agreements.js';
-import { isEmailAddress } from '../forms.js';
+import { isEmailAddress, phoneError } from '../forms.js';
 
 /**
  * Who is asked the three questions, separately.
@@ -107,6 +116,23 @@ export type ApplicationChild = {
 export type ApplicationFields = {
   familyName: string;
   email: string;
+  /**
+   * The number the school calls back on — `###-###-####`, stored as typed
+   * (#312, ADR-0024).
+   *
+   * The same rule the inquiry runs, from `forms.ts`, under a different name on
+   * the form. One copy of the pattern, because two is how one form comes to
+   * accept what the other refuses.
+   */
+  phone: string;
+  /**
+   * Where the school posts paperwork — one address per application (#312).
+   *
+   * **Per application and never per child.** Siblings share a household, and a
+   * per-child address would be a per-child field, which is the thing ADR-0007
+   * bars and ADR-0024 did not reopen.
+   */
+  address: HouseholdAddress;
   children: ApplicationChild[];
   faith: FaithAnswers;
   /**
@@ -158,7 +184,7 @@ export function paymentMethodOf(value: string): PaymentMethod | '' {
 }
 
 /**
- * The seven things that can be missing, in the order they appear on the page.
+ * The nine things that can be missing, in the order they appear on the page.
  *
  * The order is the reading order of the document, because it is what "the first
  * thing that needs attention" means to a family scrolling down: focus goes to
@@ -174,6 +200,10 @@ export const ERROR_FIELDS = [
   'faith',
   'familyName',
   'email',
+  // Beside the email, because the three of them are how the school reaches this
+  // family and the page asks for them together (#312).
+  'phone',
+  'address',
   'children',
   'classes',
   'agreements',
@@ -195,8 +225,8 @@ export type AskedAgreement = { slug: AgreementSlug };
 /**
  * Everything wrong with an application, in one pass (#85).
  *
- * Seven things can be missing and none of them is an opinion: who is applying,
- * how to reach them, who the children are, whether any class was chosen,
+ * Nine things can be missing and none of them is an opinion: who is applying,
+ * the three ways to reach them, who the children are, whether any class was chosen,
  * whether anybody answered the Statement of Faith questions, whether each
  * published document was answered, and how the family says they will pay.
  * **What was answered is never wrong.** A "No" to an article, a "No" to a
@@ -225,6 +255,17 @@ export function validateApplication(
   } else if (!isEmailAddress(values.email)) {
     errors.email = 'That does not look like an email address.';
   }
+
+  /*
+   * The two the school reaches a household by, once it has the email (#312).
+   * Both are the same shape of rule as everything above: they ask whether the
+   * question was answered, and the answer is a fact rather than an opinion.
+   */
+  const phone = phoneError(values.phone);
+  if (phone) errors.phone = phone;
+
+  const address = addressError(values.address);
+  if (address) errors.address = address;
 
   const named = values.children.filter((child) => child.name);
   const ageless = named.find((child) => !child.age);

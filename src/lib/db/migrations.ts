@@ -1152,6 +1152,31 @@ export const MIGRATIONS: readonly Migration[] = [
     id: '0031-the-inquiry-captures-a-phone-number',
     statements: [`alter table inquiries add column if not exists phone text`],
   },
+  {
+    /*
+     * The application's phone and household address (#312, ADR-0024).
+     *
+     * Six nullable columns and no backfill, for #0031's reason: an application
+     * is a record of what a family sent, nothing edits one, and the rows taken
+     * before this migration have no number and no address and never will. The
+     * admin renders a dash for them.
+     *
+     * **On `applications` and not on `application_children`.** The address is a
+     * fact about a household, in the same class as the email column beside it;
+     * the per-child bar of ADR-0007 is untouched, and the test in
+     * `store.test.ts` still fails on any of these words appearing on the child
+     * table.
+     */
+    id: '0032-the-application-captures-a-phone-and-an-address',
+    statements: [
+      `alter table applications add column if not exists phone text`,
+      `alter table applications add column if not exists street text`,
+      `alter table applications add column if not exists street2 text`,
+      `alter table applications add column if not exists city text`,
+      `alter table applications add column if not exists state text`,
+      `alter table applications add column if not exists zip text`,
+    ],
+  },
 ];
 
 /**

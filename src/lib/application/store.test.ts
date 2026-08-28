@@ -43,6 +43,8 @@ function fields(overrides: Partial<ApplicationFields> = {}): ApplicationFields {
   return {
     familyName: 'Marsh',
     email: 'ruth@example.com',
+    phone: '717-555-0142',
+    address: { street: '12 Oak Lane', street2: 'Apt 3', city: 'Gettysburg', state: 'PA', zip: '17325' },
     children: [
       { name: 'Obi', age: '9', offeringKeys: ['algebra-1:year'] },
       { name: 'Ada', age: '13', offeringKeys: [] },
@@ -147,21 +149,83 @@ describe('an application', () => {
     expect((await listApplications(db)).map((row) => row.familyName)).toEqual(['Newer', 'Older']);
   });
 
-  it('stores no date of birth, address, medical or custody column', async () => {
-    // AC 9 at the storage layer. The type test in `application.test.ts` guards
-    // the shape; this guards the table, because a column is what a later form
-    // field would be added to fill.
+  /**
+   * The line ADR-0024 draws, at the storage layer (#31 AC 9, #312).
+   *
+   * The type test in `application.test.ts` guards the shape; this guards the
+   * tables, because a column is what a later form field would be added to fill.
+   *
+   * Two lists, and the difference between them is the whole decision. A **child**
+   * may carry a name, an age and the classes and nothing else — `address`,
+   * `street` and `zip` are as barred there as a date of birth. An
+   * **application** may carry the household's postal address, because that is a
+   * fact about the people the school corresponds with rather than about a
+   * student, and it may still carry none of the five per-child fields.
+   * Reopening a door is not removing the wall.
+   */
+  const NEVER = ['dob', 'birth', 'allerg', 'medical', 'diagnos', 'custody', 'iep', 'adhd', 'evaluation'];
+  const NOT_ON_A_CHILD = ['address', 'street', 'zip', 'postcode'];
+
+  const columnsOf = async (table: string) => {
+    const columns = await db.execute(
+      `select column_name from information_schema.columns where table_name = '${table}'`,
+    );
+    return (columns.rows as { column_name: string }[]).map((row) => row.column_name);
+  };
+
+  it('stores no date of birth, medical, evaluation or custody column, on either table', async () => {
     await createApplication(db, fields(), { statementVersion: statementVersion() });
 
-    const columns = await db.execute(
-      `select column_name from information_schema.columns
-       where table_name in ('applications', 'application_children')`,
-    );
-    const names = (columns.rows as { column_name: string }[]).map((row) => row.column_name);
+    for (const table of ['applications', 'application_children']) {
+      const names = await columnsOf(table);
+      expect(names.length).toBeGreaterThan(0);
+      for (const forbidden of NEVER) {
+        expect(names.filter((name) => name.includes(forbidden)), `${table}.${forbidden}`).toEqual([]);
+      }
+    }
+  });
 
-    for (const forbidden of ['dob', 'birth', 'address', 'street', 'zip', 'allerg', 'medical', 'diagnos', 'custody', 'iep', 'adhd', 'evaluation']) {
+  it('stores no address, street or zip column on a child', async () => {
+    await createApplication(db, fields(), { statementVersion: statementVersion() });
+
+    const names = await columnsOf('application_children');
+    expect(names.length).toBeGreaterThan(0);
+    for (const forbidden of NOT_ON_A_CHILD) {
       expect(names.filter((name) => name.includes(forbidden))).toEqual([]);
     }
+  });
+
+  it('keeps the household phone and address on the application (#312)', async () => {
+    await createApplication(db, fields(), { statementVersion: statementVersion() });
+
+    const [row] = await listApplications(db);
+    expect(row!.phone).toBe('717-555-0142');
+    expect(row!.address).toEqual({
+      street: '12 Oak Lane',
+      street2: 'Apt 3',
+      city: 'Gettysburg',
+      state: 'PA',
+      zip: '17325',
+    });
+  });
+
+  it('reads a row written before #312 back as empty, never as null', async () => {
+    // Every application already in Neon. There is no honest number or address
+    // to recover, the columns are nullable and there is no backfill — so the
+    // record says empty and the admin renders a dash.
+    const id = await createApplication(
+      db,
+      fields({ phone: '', address: { street: '', street2: '', city: '', state: '', zip: '' } }),
+      { statementVersion: statementVersion() },
+    );
+    await db.execute(
+      `update applications set phone = null, street = null, street2 = null,
+       city = null, state = null, zip = null where id = '${id}'`,
+    );
+
+    const [row] = await listApplications(db);
+    expect(row!.phone).toBe('');
+    expect(row!.address).toEqual({ street: '', street2: '', city: '', state: '', zip: '' });
   });
 });
 
