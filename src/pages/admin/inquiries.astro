@@ -3,6 +3,7 @@ export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { formatTimestamp } from '../../lib/admin/formatting.js';
+import { APPLICATION_PATH } from '../../lib/application/application.js';
 import { telHref } from '../../lib/admin/school-details.js';
 import { getDb } from '../../lib/db/client.js';
 import { listInquiries } from '../../lib/inquiry/store.js';
@@ -83,6 +84,21 @@ const settings = await getMoneySettings(db);
                 {inquiry.message}
               </p>
             )}
+            {/*
+              The link Jill pastes into her reply (#31 AC 1, #313). The prefill
+              is keyed on the inquiry's id, and this screen is the only place
+              the id is legible — without it the ready-made application, phone
+              number and all, is a feature nobody in the school can reach.
+            */}
+            <p class="mt-2 text-sm" data-testid="inquiry-apply-link">
+              Ready-filled application:{' '}
+              <a
+                href={`${APPLICATION_PATH}?inquiry=${inquiry.id}`}
+                class="underline underline-offset-4"
+              >
+                {`${APPLICATION_PATH}?inquiry=${inquiry.id}`}
+              </a>
+            </p>
             <p class="mt-2 text-sm">{formatTimestamp(inquiry.receivedAt)}</p>
             {inquiry.notifiedAt ? (
               <p class="mt-1 text-sm" data-testid="inquiry-delivery">
