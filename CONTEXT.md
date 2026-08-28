@@ -1141,9 +1141,23 @@ so in one line rather than silently. The admin stops printing an expired link
 altogether: its only purpose is to be pasted, and a link that will hand the
 family an empty form is worse than no link.
 
-**A copy, not a join.** Following it fills the form; it does not tie the
-application to the inquiry, and nothing on the submitted application records
-which inquiry it came from.
+**A copy that leaves a record of itself** (#319). The prefill is still a copy —
+the form holds the family's own words, not a live view of the inquiry — but an
+application submitted from a link that *opened* carries the id of the inquiry it
+was filled from, and an inquiry can therefore say whether it became an
+application. Both screens print the fact and neither links to the other. On an
+inquiry that produced one, that line **replaces the link** rather than sitting
+beside it: the link exists to be pasted into a reply that starts a family off,
+and a family who has started does not need one — the same rule that already
+withdraws an expired link, for the same reason.
+
+**Only an opened link counts.** A family whose link was expired, unknown or
+mangled typed everything themselves and the prefill did nothing, so their
+application records no inquiry: the id in the URL opened nothing, and a column
+that meant both "filled from this" and "arrived carrying this" would answer
+neither question. An application with no inquiry recorded says nothing at all
+rather than claiming the family arrived cold — every application taken before
+#319 is in that state too, and the two are not distinguishable.
 
 Not: a sign-in. It authenticates nobody, opens no existing application, and
 reaches nothing but the one inquiry named in it — unlike **break-glass**, which

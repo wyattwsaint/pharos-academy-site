@@ -12,7 +12,9 @@ import {
 import { catalogueCourses, chosenClasses } from './chosen-classes.js';
 import { CHEQUE_GRACE_DAYS, paymentStatusNow } from './lifecycle.js';
 import { offeringsOf } from './offerings.js';
+import { createInquiry } from '../inquiry/store.js';
 import {
+  applicationsByInquiry,
   countApplicationsForCourse,
   createApplication,
   getApplication,
@@ -58,6 +60,11 @@ function fields(overrides: Partial<ApplicationFields> = {}): ApplicationFields {
     paymentMethod: 'check',
     ...overrides,
   };
+}
+
+/** The inquiry an application is filled from — a real row, never an invented id. */
+function inquiry() {
+  return { name: 'Marsh', email: 'ruth@example.com', phone: '717-555-0142', ages: '9 and 13', message: '' };
 }
 
 describe('an application', () => {
@@ -226,6 +233,91 @@ describe('an application', () => {
     const [row] = await listApplications(db);
     expect(row!.phone).toBe('');
     expect(row!.address).toEqual({ street: '', street2: '', city: '', state: '', zip: '' });
+  });
+
+  it('records the inquiry the form was filled from (#319)', async () => {
+    const inquiryId = await createInquiry(db, inquiry());
+
+    await createApplication(db, fields(), {
+      statementVersion: statementVersion(),
+      inquiryId,
+    });
+
+    const [row] = await listApplications(db);
+    expect(row!.inquiry?.id).toBe(inquiryId);
+    // With the date, so a screen naming the inquiry does not have to go asking.
+    expect(row!.inquiry?.receivedAt).toBeInstanceOf(Date);
+    expect((await getApplication(db, row!.id))!.inquiry?.id).toBe(inquiryId);
+  });
+
+  it('records no inquiry for a family who arrived without one (#319)', async () => {
+    // The application taken cold and the one taken before #319 are the same
+    // null, deliberately: neither says the family never asked.
+    await createApplication(db, fields(), { statementVersion: statementVersion() });
+
+    const [row] = await listApplications(db);
+    expect(row!.inquiry).toBeNull();
+    expect((await getApplication(db, row!.id))!.inquiry).toBeNull();
+  });
+});
+
+/**
+ * Which inquiries became applications (#319).
+ *
+ * The reverse of the column, asked once for a whole screen: the inquiries list
+ * says whether a family went on to apply, and Jill stops matching two lists by
+ * eye on the family name.
+ */
+describe('the applications an inquiry led to', () => {
+  it('answers with the applications that named it, newest first', async () => {
+    const inquiryId = await createInquiry(db, inquiry());
+    const older = new Date('2026-08-01T10:00:00Z');
+    const newer = new Date('2026-08-02T10:00:00Z');
+
+    await createApplication(
+      db,
+      fields({ familyName: 'First try' }),
+      { statementVersion: statementVersion(), inquiryId },
+      older,
+    );
+    await createApplication(
+      db,
+      fields({ familyName: 'Second try' }),
+      { statementVersion: statementVersion(), inquiryId },
+      newer,
+    );
+
+    const byInquiry = await applicationsByInquiry(db);
+    // In the order they were sent: the second is the correction, and it is
+    // read after the thing it corrects.
+    expect(byInquiry.get(inquiryId)?.map((application) => application.familyName)).toEqual([
+      'First try',
+      'Second try',
+    ]);
+    expect(byInquiry.get(inquiryId)?.[0]?.receivedAt).toEqual(older);
+  });
+
+  it('counts an application whatever became of it', async () => {
+    const inquiryId = await createInquiry(db, inquiry());
+    const withdrawn = await createApplication(db, fields(), {
+      statementVersion: statementVersion(),
+      inquiryId,
+    });
+    await moveApplication(db, withdrawn, 'withdraw');
+
+    // The question is whether this inquiry produced an application at all. A
+    // withdrawn one did, and the screen that says so must not disagree with
+    // the applications screen, which lists it.
+    expect((await applicationsByInquiry(db)).get(inquiryId)).toHaveLength(1);
+  });
+
+  it('says nothing about an inquiry nobody applied from', async () => {
+    const inquiryId = await createInquiry(db, inquiry());
+    // An application from a family who never asked cannot make this inquiry
+    // look answered.
+    await createApplication(db, fields(), { statementVersion: statementVersion() });
+
+    expect((await applicationsByInquiry(db)).get(inquiryId)).toBeUndefined();
   });
 });
 

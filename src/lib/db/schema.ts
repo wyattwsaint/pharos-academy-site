@@ -761,6 +761,24 @@ export const applications = pgTable('applications', {
   /** A two-letter code — `address.ts` holds the fifty-one. Never a name. */
   state: text('state'),
   zip: text('zip'),
+  /**
+   * The inquiry this form was filled from (#319, ADR-0025).
+   *
+   * **Written only when the link actually opened.** `?inquiry=<id>` is a bearer
+   * link with a 90-day life, and an id that was expired, unknown or mangled by
+   * a mail client prefilled nothing — the family typed every field themselves —
+   * so it is recorded as nothing. That keeps this column meaning one thing,
+   * "this form was filled from that inquiry", rather than two: a column that
+   * also meant "arrived carrying this id" would answer neither question, and
+   * the school's question is the first one.
+   *
+   * Nullable, no backfill, and a null is **not** a claim that the family
+   * arrived cold. Every application taken before #319 has one, and so does one
+   * from a family who found the form themselves; the admin says nothing about
+   * an application with no inquiry rather than telling the two apart, because
+   * it cannot.
+   */
+  inquiryId: uuid('inquiry_id').references(() => inquiries.id),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   /** Needs a conversation before it is accepted. Never a refusal. */
   flagged: boolean('flagged').notNull().default(false),

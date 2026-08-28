@@ -2423,18 +2423,96 @@ test.describe("inquiries", () => {
     await expect(row.getByTestId("application-phone")).toContainText(
       SUITE_ADDRESS.phone,
     );
+    // And the application says which inquiry it grew from (#319) — the join
+    // the school could not make when the link was only a copy.
+    await expect(row.getByTestId("application-from-inquiry")).toContainText(
+      "Filled in from their inquiry of",
+    );
 
     // AC 5: the inquiry is a record of what was asked, and applying did not
     // write back to it.
     await page.goto("/admin/inquiries");
-    await expect(
-      page
-        .getByTestId("inquiry")
-        .filter({ hasText: name })
-        .first()
-        .getByTestId("inquiry-phone"),
-    ).toContainText(inquired);
+    const asked = page
+      .getByTestId("inquiry")
+      .filter({ hasText: name })
+      .first();
+    await expect(asked.getByTestId("inquiry-phone")).toContainText(inquired);
+    // The reverse view (#319): the inquiry says it became an application, so
+    // "did they ever apply?" is answered where the question is.
+    await expect(asked.getByTestId("inquiry-applied")).toContainText("Applied:");
+    await expect(asked.getByTestId("inquiry-applied")).toContainText(name);
+    // And the ready-filled link goes with it: it exists to start a family off,
+    // and this one has started (#319).
+    await expect(asked.getByTestId("inquiry-apply-link")).toHaveCount(0);
   });
+
+  /**
+   * A form the family filled themselves records no inquiry (#319).
+   *
+   * The other half of the column's meaning, and the one an assertion has to
+   * carry: an application that arrived without a working link says nothing
+   * about an inquiry rather than claiming the family arrived cold, and the
+   * inquiry that was never applied from says so in its own words.
+   */
+  test("records no inquiry for an application typed from scratch (#319)", async ({
+    page,
+  }) => {
+    // Three ways to arrive with nothing that opens — no link at all, an id
+    // that is not a row, and an id a mail client mangled. The expired link is
+    // the fourth and is asserted where the rule lives (`inquiry/store.test.ts`),
+    // since no browser can age an inquiry ninety days.
+    const arrivals = [
+      { name: "Suite Cold Family", at: APPLICATION_PATH },
+      {
+        name: "Suite Unknown Link Family",
+        at: `${APPLICATION_PATH}?inquiry=00000000-0000-0000-0000-000000000000`,
+      },
+      { name: "Suite Mangled Link Family", at: `${APPLICATION_PATH}?inquiry=not-a-uuid` },
+    ];
+
+    for (const arrival of arrivals) {
+      await applyFromScratch(page, arrival.name, arrival.at);
+    }
+
+    await signIn(page, "/admin/applications");
+    for (const arrival of arrivals) {
+      await expect(
+        page
+          .getByTestId("application")
+          .filter({ hasText: arrival.name })
+          .first()
+          .getByTestId("application-from-inquiry"),
+        arrival.name,
+      ).toHaveCount(0);
+    }
+  });
+
+  /** One application, sent from `at`, filled in entirely by hand. */
+  async function applyFromScratch(
+    page: Page,
+    name: string,
+    at: string,
+  ): Promise<void> {
+    await page.goto(at);
+    await page.locator("form[data-enhanced]").waitFor();
+    await fillContactDetails(page);
+    await page.fill("#apply-family-name", name);
+    await page.fill("#apply-email", `${slugify(name)}@example.com`);
+    await page.fill("#apply-child-0-name", "Cold Child");
+    await page.fill("#apply-child-0-age", "11");
+    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+    for (const question of FAITH_QUESTIONS) {
+      await page.check(
+        `input[name="${faithKey("Father", question.id)}"][value="yes"]`,
+      );
+    }
+    await page.check('[data-agreement="handbook"] input[value="yes"]');
+    await page.check('[data-agreement="code-of-conduct"] input[value="yes"]');
+    const method = page.locator('[data-payment-method] input[value="check"]');
+    if ((await method.count()) > 0) await method.check();
+    await page.getByRole("button", { name: "Send the application" }).click();
+    await expect(page.locator('[data-outcome="received"]')).toBeVisible();
+  }
 
   test("offers no way to edit or delete what a family typed", async ({
     page,

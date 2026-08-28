@@ -9,6 +9,7 @@ import {
   applicationLinkIsLive,
   APPLICATION_LINK_DAYS,
 } from '../../lib/application/link.js';
+import { applicationsByInquiry } from '../../lib/application/store.js';
 import { getDb } from '../../lib/db/client.js';
 import { listInquiries } from '../../lib/inquiry/store.js';
 import { getMoneySettings } from '../../lib/money/store.js';
@@ -31,6 +32,16 @@ const actor = Astro.locals.actor!;
 
 const inquiries = await listInquiries(db);
 const settings = await getMoneySettings(db);
+/**
+ * What each inquiry became (#319).
+ *
+ * One read for the whole list, so the screen answers "did the Marshes ever
+ * apply?" without Jill holding two lists side by side and matching them by eye
+ * on the family name. It says nothing about the applications themselves — those
+ * are on the screen built to read them, and this one is still a list of
+ * questions.
+ */
+const appliedFrom = await applicationsByInquiry(db);
 
 /**
  * One clock for the whole list (#317).
@@ -59,82 +70,109 @@ const now = new Date();
       </p>
     ) : (
       <ul class="mt-8 flex flex-col gap-6">
-        {inquiries.map((inquiry) => (
-          <li class="border-t border-navy/15 pt-6" data-testid="inquiry">
-            <h2 class="text-xl font-semibold text-navy" data-testid="inquiry-name">
-              {inquiry.name}
-            </h2>
-            <p class="mt-1">
-              <a
-                href={`mailto:${inquiry.email}`}
-                class="underline underline-offset-4"
-                data-testid="inquiry-email"
-              >
-                {inquiry.email}
-              </a>
-            </p>
-            {/*
-              The number, dialable (#311). Inquiries taken before that ticket
-              have none and never will — an inquiry is a record of what a
-              family sent, not a row anybody edits — so the dash is the honest
-              rendering rather than a gap that reads as a bug.
-            */}
-            <p class="mt-1" data-testid="inquiry-phone">
-              Phone:{' '}
-              {inquiry.phone ? (
-                <a href={telHref(inquiry.phone)} class="underline underline-offset-4">
-                  {inquiry.phone}
+        {inquiries.map((inquiry) => {
+          /** What this inquiry became — asked once, printed or not (#319). */
+          const applied = appliedFrom.get(inquiry.id) ?? [];
+
+          return (
+            <li class="border-t border-navy/15 pt-6" data-testid="inquiry">
+              <h2 class="text-xl font-semibold text-navy" data-testid="inquiry-name">
+                {inquiry.name}
+              </h2>
+              <p class="mt-1">
+                <a
+                  href={`mailto:${inquiry.email}`}
+                  class="underline underline-offset-4"
+                  data-testid="inquiry-email"
+                >
+                  {inquiry.email}
                 </a>
-              ) : (
-                '—'
-              )}
-            </p>
-            <p class="mt-1" data-testid="inquiry-ages">
-              Children’s ages: {inquiry.ages}
-            </p>
-            {inquiry.message && (
-              <p class="mt-2 whitespace-pre-line" data-testid="inquiry-message">
-                {inquiry.message}
               </p>
-            )}
-            {/*
-              The link Jill pastes into her reply (#31 AC 1, #313). The prefill
-              is keyed on the inquiry's id, and this screen is the only place
-              the id is legible — without it the ready-made application, phone
-              number and all, is a feature nobody in the school can reach.
-            */}
-            <p class="mt-2 text-sm" data-testid="inquiry-apply-link">
-              {applicationLinkIsLive(inquiry.receivedAt, now) ? (
-                <>
-                  Ready-filled application:{' '}
-                  <a href={applicationLink(inquiry.id)} class="underline underline-offset-4">
-                    {applicationLink(inquiry.id)}
+              {/*
+                The number, dialable (#311). Inquiries taken before that ticket
+                have none and never will — an inquiry is a record of what a
+                family sent, not a row anybody edits — so the dash is the honest
+                rendering rather than a gap that reads as a bug.
+              */}
+              <p class="mt-1" data-testid="inquiry-phone">
+                Phone:{' '}
+                {inquiry.phone ? (
+                  <a href={telHref(inquiry.phone)} class="underline underline-offset-4">
+                    {inquiry.phone}
                   </a>
-                </>
-              ) : (
-                /*
-                  Past the window the link is not printed at all (#317,
-                  ADR-0025). Its only purpose is to be pasted, and a link that
-                  will hand the family an empty form is worse than no link,
-                  because it is sent believing it works and the school finds out
-                  when the family says the form was blank.
-                */
-                `The ready-filled application link expired ${APPLICATION_LINK_DAYS} days after this inquiry came in.`
+                ) : (
+                  '—'
+                )}
+              </p>
+              <p class="mt-1" data-testid="inquiry-ages">
+                Children’s ages: {inquiry.ages}
+              </p>
+              {inquiry.message && (
+                <p class="mt-2 whitespace-pre-line" data-testid="inquiry-message">
+                  {inquiry.message}
+                </p>
               )}
-            </p>
-            <p class="mt-2 text-sm">{formatTimestamp(inquiry.receivedAt)}</p>
-            {inquiry.notifiedAt ? (
-              <p class="mt-1 text-sm" data-testid="inquiry-delivery">
-                Emailed to the school.
-              </p>
-            ) : (
-              <p class="mt-1 text-sm font-semibold" data-testid="inquiry-delivery">
-                ⚠ Nobody was emailed about this one — it is only here.
-                {inquiry.notificationError && ` (${inquiry.notificationError})`}
-              </p>
-            )}
-          </li>
-        ))}
+              {/*
+                What this inquiry became, or the link that would start it (#319,
+                #31 AC 1, #313).
+
+                One line and never both, because the link exists to be pasted
+                into a reply that starts a family off and a family who has
+                started does not need it — the same rule ADR-0025 already applies
+                to an expired link, which this screen stops printing for the same
+                reason. Every application off the inquiry is named, in the order
+                they were sent: two of them is exactly what the office needs to
+                see rather than have summarised.
+
+                Recorded only for a family whose ready-filled link actually
+                opened, so a family who found the form themselves is one this
+                screen cannot see and does not claim to.
+              */}
+              {applied.length > 0 ? (
+                <p class="mt-2 text-sm" data-testid="inquiry-applied">
+                  Applied:{' '}
+                  {applied
+                    .map(
+                      (application) =>
+                        `${application.familyName}, ${formatTimestamp(application.receivedAt)}`,
+                    )
+                    .join('; ')}
+                </p>
+              ) : (
+                <p class="mt-2 text-sm" data-testid="inquiry-apply-link">
+                  {applicationLinkIsLive(inquiry.receivedAt, now) ? (
+                    <>
+                      Ready-filled application:{' '}
+                      <a href={applicationLink(inquiry.id)} class="underline underline-offset-4">
+                        {applicationLink(inquiry.id)}
+                      </a>
+                    </>
+                  ) : (
+                    /*
+                      Past the window the link is not printed at all (#317,
+                      ADR-0025). Its only purpose is to be pasted, and a link that
+                      will hand the family an empty form is worse than no link,
+                      because it is sent believing it works and the school finds
+                      out when the family says the form was blank.
+                    */
+                    `The ready-filled application link expired ${APPLICATION_LINK_DAYS} days after this inquiry came in.`
+                  )}
+                </p>
+              )}
+              <p class="mt-2 text-sm">{formatTimestamp(inquiry.receivedAt)}</p>
+              {inquiry.notifiedAt ? (
+                <p class="mt-1 text-sm" data-testid="inquiry-delivery">
+                  Emailed to the school.
+                </p>
+              ) : (
+                <p class="mt-1 text-sm font-semibold" data-testid="inquiry-delivery">
+                  ⚠ Nobody was emailed about this one — it is only here.
+                  {inquiry.notificationError && ` (${inquiry.notificationError})`}
+                </p>
+              )}
+            </li>
+          );
+        })}
       </ul>
     )
   }

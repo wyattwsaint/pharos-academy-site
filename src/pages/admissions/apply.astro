@@ -267,6 +267,22 @@ let rows: number;
  * mean asserting an age we cannot know about an id that never existed.
  */
 let prefill: { inquiredOn: string } | 'unopened' | null = null;
+/**
+ * The inquiry in the link, opened once for whichever method this is (#319).
+ *
+ * Read here rather than in the GET branch below, because both branches want the
+ * same answer: the GET fills the form from it and says so, and the POST writes
+ * its id onto the application. The form posts to its own URL, so `?inquiry=<id>`
+ * is still in hand at the submit — there is no hidden field to round-trip and
+ * no id the browser could post that this page did not itself resolve.
+ *
+ * Undefined is every way the link fails to open — expired, unknown, or mangled
+ * by a mail client — because `getInquiry` is the single reader of that rule
+ * (ADR-0025). The family typed the whole form themselves in all three, so all
+ * three record nothing.
+ */
+const askedFrom = Astro.url.searchParams.get('inquiry') ?? '';
+const openedInquiry = askedFrom ? await getInquiry(db, askedFrom) : undefined;
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
@@ -303,6 +319,14 @@ if (Astro.request.method === 'POST') {
         statementVersion: statementVersion(),
         flagged: parsed.flagged,
         agreedTermsId,
+        /*
+         * Which inquiry this form was filled from (#319, ADR-0025). The id of
+         * the row the prefill opened, and nothing else: an expired, unknown or
+         * mangled id opened no row, prefilled no field, and is recorded as
+         * nothing, so the column means "this form was filled from that
+         * inquiry" and never "arrived carrying this".
+         */
+        inquiryId: openedInquiry?.id ?? null,
         // The gate means an unanswered method cannot reach here; if one ever
         // does, the unstated fallback reads as a check and the office watches
         // the post, which is what it did before anybody was asked (#219).
@@ -406,31 +430,35 @@ if (Astro.request.method === 'POST') {
   }
 } else {
   /*
-   * The prefill (#31 AC 1). `?inquiry=<id>` is the link Jill pastes into an
-   * email; `getInquiry` already answers undefined for a stale id *and* for a
-   * malformed one, so no link, a dead link and a link an email client wrapped
-   * all land on the same clean slate.
-   */
-  const asked = Astro.url.searchParams.get('inquiry') ?? '';
-  const row = await getInquiry(db, asked);
-  /*
-   * The notice off the row already in hand — not a second query (#317). A
-   * family who followed a link is told either which inquiry the form was
-   * started from or that it could not be opened; one who came from the
-   * Admissions page asked nothing and is told nothing.
-   */
-  /*
+   * The prefill (#31 AC 1), off the row `openedInquiry` already holds.
+   * `?inquiry=<id>` is the link Jill pastes into an email; `getInquiry` already
+   * answers undefined for a stale id *and* for a malformed one, so no link, a
+   * dead link and a link an email client wrapped all land on the same clean
+   * slate.
+   *
+   * The notice is off that same row — not a second query (#317). A family who
+   * followed a link is told either which inquiry the form was started from or
+   * that it could not be opened; one who came from the Admissions page asked
+   * nothing and is told nothing.
+   *
    * `schoolWallClock` rather than `schoolToday`: the instant being named is the
    * day the inquiry came in, not today, and the two helpers differ only in
    * which of those their name claims.
    */
-  if (asked) {
-    prefill = row
-      ? { inquiredOn: americanDateLabel(schoolWallClock(row.receivedAt).date) }
+  if (askedFrom) {
+    prefill = openedInquiry
+      ? { inquiredOn: americanDateLabel(schoolWallClock(openedInquiry.receivedAt).date) }
       : 'unopened';
   }
   values = prefillFrom(
-    row ? { name: row.name, email: row.email, phone: row.phone, ages: row.ages } : null,
+    openedInquiry
+      ? {
+          name: openedInquiry.name,
+          email: openedInquiry.email,
+          phone: openedInquiry.phone,
+          ages: openedInquiry.ages,
+        }
+      : null,
   );
   // "6, 9 and 13" on the inquiry opens the form on three, so the family sees
   // the number they already told us rather than being asked it twice.
