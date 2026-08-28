@@ -402,4 +402,15 @@ describe('coverage of the editable set', () => {
       expect(excluded.label, excluded.table).not.toContain('_');
     }
   });
+
+  // Jill decides where to email the ZIP from these sentences alone. The contact
+  // details the inquiry and application forms now collect are the part of that
+  // decision she cannot make from a table name.
+  it('says the export carries the phone numbers and the household address', () => {
+    expect(EXPORTED_TABLE_LABELS.inquiries).toContain('phone number');
+    expect(EXPORTED_TABLE_LABELS.applications).toContain('phone number');
+    expect(EXPORTED_TABLE_LABELS.applications).toContain('household address');
+    // Per-child data stays barred, and the child label is what says so.
+    expect(EXPORTED_TABLE_LABELS.application_children).toContain('no addresses');
+  });
 });
