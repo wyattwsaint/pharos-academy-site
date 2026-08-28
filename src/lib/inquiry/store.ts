@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm';
 
 import type { Db } from '../db/client.js';
 import { inquiries, type InquiryRow } from '../db/schema.js';
-import type { InquiryFields, InquiryOutcome } from './inquiry.js';
+import { applicationLinkIsLive, type InquiryFields, type InquiryOutcome } from './inquiry.js';
 
 /**
  * The inquiries, as rows (#25).
@@ -92,10 +92,24 @@ export async function listInquiries(db: Db): Promise<InquiryRow[]> {
  * no rows. Guarding it here rather than at the page keeps "no prefill" a
  * single outcome — the family gets the same clean slate whether they arrived
  * without a link, with a stale one, or with a broken one.
+ *
+ * **And undefined once the link's 90 days are up** (#317, ADR-0025). The rule
+ * lives in this one reader rather than at either sender, so the link the school
+ * pastes obeys the same clock as the link the family was emailed: staff cannot
+ * mint a link that outlives the window, and do not have to know they can't. An
+ * expired id and an unknown one stay deliberately the same answer — telling
+ * them apart would be a third state that changes nothing the family does.
+ *
+ * `now` is a parameter so the tests can stand either side of the boundary.
  */
-export async function getInquiry(db: Db, id: string): Promise<InquiryRow | undefined> {
+export async function getInquiry(
+  db: Db,
+  id: string,
+  now = new Date(),
+): Promise<InquiryRow | undefined> {
   if (!UUID.test(id)) return undefined;
   const [row] = await db.select().from(inquiries).where(eq(inquiries.id, id)).limit(1);
+  if (!row || !applicationLinkIsLive(row.receivedAt, now)) return undefined;
   return row;
 }
 

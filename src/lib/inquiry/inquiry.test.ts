@@ -191,9 +191,11 @@ describe('the notification the school gets', () => {
 });
 
 describe('the confirmation the family gets', () => {
+  const INQUIRY_ID = '3f0d5c2a-1b4e-4a77-9c31-2d6e8f0a5b91';
   const mail = inquiryConfirmation(FIELDS, {
     from: 'site@pharosacademy.net',
     site: 'https://www.pharosacademy.net',
+    inquiryId: INQUIRY_ID,
   });
 
   it('goes to the address they gave', () => {
@@ -203,14 +205,45 @@ describe('the confirmation the family gets', () => {
   it('carries the class list, the Statement of Faith and a quiet application link', () => {
     expect(mail.text).toContain('https://www.pharosacademy.net/classes');
     expect(mail.text).toContain('https://www.pharosacademy.net/about/beliefs');
-    expect(mail.text).toContain('https://www.pharosacademy.net/admissions');
+    expect(mail.text).toContain('https://www.pharosacademy.net/admissions/apply');
+  });
+
+  it('points the quiet line at the form itself, carrying this inquiry’s id (#317)', () => {
+    // It pointed at the page describing how applying works, because the flow
+    // was unbuilt when the line was written (#25). The flow landed in #31 and
+    // the prefill in #313; without the id the family who follows their own
+    // email retypes what they sent an hour ago.
+    expect(mail.text).toContain(
+      `https://www.pharosacademy.net/admissions/apply?inquiry=${INQUIRY_ID}`,
+    );
+  });
+
+  it('names the prefill rather than springing it', () => {
+    // ADR-0025: a family who clicks and finds their own phone number already
+    // typed either delights or flinches, and the sentence decides which.
+    const last = mail.text.split('\n').filter(Boolean).at(-1)!;
+    expect(last.toLowerCase()).toMatch(/started|filled|what you (have )?told us/);
+  });
+
+  it('drops the query string when the inquiry was not stored', () => {
+    // The confirmation goes out even when the write failed, and then there is
+    // no id. Same sentence, bare form, and nothing about the failure — that is
+    // the site's problem, not the family's.
+    const orphan = inquiryConfirmation(FIELDS, {
+      from: 'site@pharosacademy.net',
+      site: 'https://www.pharosacademy.net',
+    });
+
+    expect(orphan.text).toContain('https://www.pharosacademy.net/admissions/apply');
+    expect(orphan.text).not.toContain('?inquiry=');
+    expect(orphan.text.toLowerCase()).not.toMatch(/saved|fail|error|sorry|wrong/);
   });
 
   it('puts the application link last and small, under a rule', () => {
     // "A small line at the bottom", not a second call to action competing with
     // the two things the family was asked to read first.
     const lines = mail.text.split('\n').filter(Boolean);
-    expect(lines[lines.length - 1]).toContain('/admissions');
+    expect(lines[lines.length - 1]).toContain('/admissions/apply');
     expect(lines[lines.length - 2]).toBe('—');
   });
 
@@ -226,7 +259,7 @@ describe('the confirmation the family gets', () => {
   });
 
   it('builds absolute links, because an email has no base URL', () => {
-    for (const path of ['/classes', '/about/beliefs', '/admissions']) {
+    for (const path of ['/classes', '/about/beliefs', '/admissions/apply']) {
       expect(mail.text).not.toMatch(new RegExp(`\\s${path}\\b`));
     }
   });
@@ -263,6 +296,24 @@ describe('a submission', () => {
       'jkilker@enolacog.com',
       'ruth@example.com',
     ]);
+    // The id the store just answered with, on the family's own link (#317).
+    expect(mailer.sent[1]!.text).toContain('/admissions/apply?inquiry=row-1');
+  });
+
+  it('sends the family a bare application link when the write failed', async () => {
+    const mailer = recorder();
+    await submitInquiry(
+      FIELDS,
+      options({
+        sender: mailer.send,
+        store: async () => {
+          throw new Error('Neon is unreachable');
+        },
+      }),
+    );
+
+    expect(mailer.sent[1]!.text).toContain('/admissions/apply');
+    expect(mailer.sent[1]!.text).not.toContain('?inquiry=');
   });
 
   it('emails every address in the settings list, not just the first', async () => {

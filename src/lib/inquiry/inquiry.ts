@@ -1,4 +1,5 @@
 import { BELIEFS_PATH } from '../about/beliefs.js';
+import { APPLICATION_PATH } from '../application/application.js';
 import { describeFailure, sendAll, type Mail, type Sender } from '../backup/monthly.js';
 import { isEmailAddress, phoneError, textField as text } from '../forms.js';
 import { SCHOOL_NAME } from '../site.js';
@@ -23,14 +24,42 @@ import { SCHOOL_NAME } from '../site.js';
 export const INQUIRY_PATH = '/inquire';
 
 /**
- * Where the confirmation's quiet application line points, today.
+ * How long the pre-filled application link works for (#317, ADR-0025).
  *
- * The application flow is its own ticket (#18 §11); until it exists the honest
- * destination for "I already know we want to apply" is the page that says how
- * applying works, its fees and its dates. A link to a flow that is not built
- * would be the one wrong note in an email whose whole job is to be trustworthy.
+ * A named constant rather than a literal at the comparison, because the number
+ * is the school's and the design is the code's: shortening the window should be
+ * one edit and one test, and reopening the ADR should be reserved for changing
+ * the *shape* — removing the expiry, making the link single-use, or letting the
+ * two senders diverge.
+ *
+ * It lives in this module rather than beside the reader that enforces it so the
+ * admin screen, which must stop offering a link it knows is dead, can read the
+ * same number without importing a database module.
  */
-const APPLY_PATH = '/admissions';
+export const APPLICATION_LINK_DAYS = 90;
+
+/**
+ * Whether the link built from an inquiry received at `receivedAt` still opens.
+ *
+ * Computed from the timestamp the row already carries — no column, no
+ * migration, no backfill. The clock is a parameter so both sides of the
+ * boundary are testable without manufacturing an old row and waiting.
+ */
+export function applicationLinkIsLive(receivedAt: Date, now: Date = new Date()): boolean {
+  const life = APPLICATION_LINK_DAYS * 24 * 60 * 60 * 1000;
+  return now.getTime() - receivedAt.getTime() <= life;
+}
+
+/**
+ * The application link a family or the school is given, for one inquiry.
+ *
+ * With the id when there is one, bare when there is not — a confirmation sent
+ * after a failed write has no id to carry, and the family gets a blank form
+ * rather than a sentence about our database (#317 AC 2).
+ */
+export function applicationLink(inquiryId?: string): string {
+  return inquiryId ? `${APPLICATION_PATH}?inquiry=${inquiryId}` : APPLICATION_PATH;
+}
 
 /** The class list and the Statement of Faith — the two links #25 names. */
 const CLASSES_PATH = '/classes';
@@ -175,12 +204,18 @@ export function inquiryNotification(
  * already knows they want to apply and should not have to wait for a reply to
  * start (#25).
  *
+ * That last line carries `inquiryId`, so the form opens filled in from what the
+ * family just sent (#317, ADR-0025), and it **names the prefill**: a family who
+ * clicks and finds their own phone number already typed either delights or
+ * flinches, and the sentence decides which. Without an id — the confirmation is
+ * sent even when the write failed — it is the same sentence and a bare link.
+ *
  * `site` is the absolute origin, because an email has no base URL: a
  * root-relative link in a mail client is a link that goes nowhere.
  */
 export function inquiryConfirmation(
   values: InquiryFields,
-  options: { from: string; site: string },
+  options: { from: string; site: string; inquiryId?: string },
 ): Mail {
   const at = (path: string) => new URL(path, options.site).toString();
 
@@ -202,7 +237,8 @@ export function inquiryConfirmation(
       `${values.phone} if a call is easier.`,
     '',
     '—',
-    `If you already know you would like to apply, how it works is here: ${at(APPLY_PATH)}`,
+    `If you already know you would like to apply, we have started the form from what you ` +
+      `told us — ${at(applicationLink(options.inquiryId))}`,
   ].join('\n');
 
   return {
@@ -287,8 +323,14 @@ export async function submitInquiry(
     ),
   );
 
+  /*
+   * The id goes to the family, so their own copy of the link opens the form
+   * pre-filled (#317). It is absent exactly when the write failed, and then the
+   * line offers the bare form: the family is told nothing about the failure,
+   * which is the site's problem rather than theirs.
+   */
   const confirmation = await sendAll(options.sender, [
-    inquiryConfirmation(values, { from: options.from, site: options.site }),
+    inquiryConfirmation(values, { from: options.from, site: options.site, inquiryId: id }),
   ]);
 
   const held = id !== undefined || notification.sent;

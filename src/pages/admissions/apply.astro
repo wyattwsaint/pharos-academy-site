@@ -57,11 +57,11 @@ import { classTally } from '../../lib/application/tally.js';
 import { configuredMailer } from '../../lib/backup/monthly.js';
 import { SITE_URL } from '../../lib/site.js';
 import { getSchoolYear } from '../../lib/calendar/store.js';
-import { SEEDED_SCHOOL_YEAR } from '../../lib/calendar/year.js';
+import { americanDateLabel, schoolToday, SEEDED_SCHOOL_YEAR } from '../../lib/calendar/year.js';
 import { timeLabel } from '../../lib/courses/schedule.js';
 import { listCourses, listEveryCourse } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
-import { INQUIRY_PATH } from '../../lib/inquiry/inquiry.js';
+import { APPLICATION_LINK_DAYS, INQUIRY_PATH } from '../../lib/inquiry/inquiry.js';
 import { getInquiry } from '../../lib/inquiry/store.js';
 import { depositCreditNote, formatMoney, type MoneySettings } from '../../lib/money/settings.js';
 import { getMoneySettings, recordAgreedTerms } from '../../lib/money/store.js';
@@ -250,6 +250,18 @@ let storeFailed = false;
 let confirmationEmailed = false;
 let checked = false;
 let rows: number;
+/**
+ * What the page says above the form about where its values came from (#317).
+ *
+ * Three states, and the third is the one the ticket is about. `null` is a
+ * family who arrived with no link at all and is owed no explanation. A date
+ * means the prefill worked, and the line names the inquiry it read so a family
+ * can correct anything that has moved on. `'unopened'` covers an id that was
+ * expired, unknown or mangled by a mail client — deliberately **one** state,
+ * because distinguishing them would change nothing the family does and would
+ * mean asserting an age we cannot know about an id that never existed.
+ */
+let prefill: { on: string } | 'unopened' | null = null;
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
@@ -394,7 +406,15 @@ if (Astro.request.method === 'POST') {
    * malformed one, so no link, a dead link and a link an email client wrapped
    * all land on the same clean slate.
    */
-  const row = await getInquiry(db, Astro.url.searchParams.get('inquiry') ?? '');
+  const asked = Astro.url.searchParams.get('inquiry') ?? '';
+  const row = await getInquiry(db, asked);
+  /*
+   * The notice off the row already in hand — not a second query (#317). A
+   * family who followed a link is told either which inquiry the form was
+   * started from or that it could not be opened; one who came from the
+   * Admissions page asked nothing and is told nothing.
+   */
+  if (asked) prefill = row ? { on: americanDateLabel(schoolToday(row.receivedAt)) } : 'unopened';
   values = prefillFrom(
     row ? { name: row.name, email: row.email, phone: row.phone, ages: row.ages } : null,
   );
@@ -703,6 +723,28 @@ const description =
             Nothing was sent — the fields below need fixing first.
           </p>
         )
+      }
+
+      {/*
+        Where the boxes below came from (#317, ADR-0025). A family who followed
+        the link in their own confirmation should not have to wonder how we know
+        their phone number, and one whose link has run out should be told that
+        rather than left looking at a form that silently forgot them.
+      */}
+      {
+        prefill !== null &&
+          (prefill === 'unopened' ? (
+            <p class="notice mt-7" data-prefill="unopened" role="status">
+              We could not open your inquiry — these links stop working {APPLICATION_LINK_DAYS} days
+              after you write to us. The form below is blank, and everything you type still reaches
+              us the same way.
+            </p>
+          ) : (
+            <p class="notice mt-7" data-prefill="filled" role="status">
+              We have filled this in from your inquiry of {prefill.on} — your name, your email, your
+              phone number and a row for each child. Change anything that has moved on.
+            </p>
+          ))
       }
 
       {
