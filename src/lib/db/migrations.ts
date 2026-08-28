@@ -1177,6 +1177,30 @@ export const MIGRATIONS: readonly Migration[] = [
       `alter table applications add column if not exists zip text`,
     ],
   },
+  {
+    /*
+     * Which inquiry an application was filled from (#319, ADR-0025).
+     *
+     * One nullable column with a foreign key, and no backfill. The join it
+     * makes is one the school asks out loud — "did the Marshes ever apply?" —
+     * and could not answer since #317 put the pre-filled link in every
+     * inquirer's confirmation: most applications now come from an inquiry and
+     * nothing said which.
+     *
+     * **Nullable is not "arrived cold".** Every application taken before this
+     * migration has no inquiry recorded and never will, and so does one from a
+     * family who typed the form themselves; the two are the same null on
+     * purpose, and the admin says nothing rather than claiming either.
+     *
+     * A real foreign key, because the id is only ever written after the link
+     * opened the row it names — an application pointing at an inquiry that
+     * does not exist would be a worse answer than no answer.
+     */
+    id: '0033-the-application-records-the-inquiry-it-came-from',
+    statements: [
+      `alter table applications add column if not exists inquiry_id uuid references inquiries (id)`,
+    ],
+  },
 ];
 
 /**

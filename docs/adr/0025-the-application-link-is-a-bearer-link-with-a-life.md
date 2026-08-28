@@ -74,6 +74,15 @@ Concretely:
   application still does not say which inquiry it came from. That is a real gap and it is a
   separate ticket, not a rider on this one.
 
+  **Amended by [#319](https://github.com/wyattwsaint/pharos-academy-site/issues/319).** That
+  ticket was opened and the gap is closed: an application now carries the id of the inquiry it
+  was filled from. This is the promise this bullet made rather than a reversal of it, and it
+  changes nothing about the link itself — the same bearer id, the same 90-day life, the same
+  single reader. What it adds is a nullable column written **only when the link actually
+  opened**: an expired or unknown id opened nothing and is recorded as nothing, which keeps
+  "this form was filled from that inquiry" the one thing the column can mean. See the column's
+  own doc comment for that argument, and the **application link** entry in `CONTEXT.md`.
+
 **90 days is the school's number, not the code's.** A shorter or longer window is a change of
 constant and its test — reopen this ADR only to change the *design*: to remove the expiry, to
 make it single-use, or to let the two senders diverge.

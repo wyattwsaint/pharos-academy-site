@@ -138,6 +138,7 @@ const now = new Date();
  */
 const termsById = new Map((await listAgreedTerms(db)).map((terms) => [terms.id, terms]));
 
+
 const owedOn = (application: ApplicationRecord) => {
   const agreed = application.agreedTermsId ? termsById.get(application.agreedTermsId) : undefined;
   return {
@@ -290,6 +291,25 @@ const resubmittedIds = new Set(
                 </span>
               </p>
               <p class="mt-1 text-sm">{formatTimestamp(application.receivedAt)}</p>
+
+              {/*
+                Where this family came from, when the site knows (#319). A
+                pointer and not a transcript: what they asked is on the
+                inquiries screen, in full, and reprinting it here would make
+                this card the record of two things.
+
+                Nothing at all when there is no inquiry recorded. Every
+                application taken before #319 is in that state, and so is one
+                from a family who typed the form themselves — a line saying "no
+                inquiry" would turn something the column cannot know into a
+                claim about the family.
+              */}
+              {application.inquiry && (
+                <p class="mt-1 text-sm" data-testid="application-from-inquiry">
+                  Filled in from their inquiry of{' '}
+                  {formatTimestamp(application.inquiry.receivedAt)}
+                </p>
+              )}
 
               {application.flagged && (
                 <p class="mt-3 border-l-4 border-navy pl-3 font-semibold" data-testid="application-flag">

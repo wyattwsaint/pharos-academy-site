@@ -1,10 +1,11 @@
-import { asc, desc, eq, inArray } from 'drizzle-orm';
+import { asc, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 
 import type { HouseholdAddress } from '../address.js';
 import type { Db } from '../db/client.js';
 import {
   applicationChildren,
   applications,
+  inquiries,
   type ApplicationChildRow,
   type ApplicationRow,
 } from '../db/schema.js';
@@ -63,6 +64,13 @@ export type RecordedChild = ApplicationChild &
     offeringTitles: Record<string, string>;
   };
 
+/** The inquiry an application was filled from, as its readers name it (#319). */
+export type FilledFromInquiry = {
+  id: string;
+  /** When the family first wrote in. The date the admin prints. */
+  receivedAt: Date;
+};
+
 /** What was recorded, as the admin and the confirmation read it back. */
 export type ApplicationRecord = {
   id: string;
@@ -72,6 +80,22 @@ export type ApplicationRecord = {
   phone: string;
   /** The household's postal address, or every part empty for a pre-#312 row. */
   address: HouseholdAddress;
+  /**
+   * The inquiry this application was filled from, or null (#319).
+   *
+   * The date rides with the id because every reader of the id wants it — the
+   * admin names the inquiry an application grew from, and a screen holding a
+   * bare uuid would have to go and ask. It is read from the inquiry each time
+   * rather than frozen onto the application: nothing edits an inquiry, so there
+   * is nothing here to freeze against, which is the opposite of the money terms
+   * beside it.
+   *
+   * Null is the family who arrived without a working link **and** the family
+   * who applied before #319 — the two are not distinguishable and neither is
+   * "arrived cold". A reader may say which inquiry it came from; none may say
+   * that it came from none.
+   */
+  inquiry: FilledFromInquiry | null;
   receivedAt: Date;
   flagged: boolean;
   objections: string;
@@ -108,6 +132,15 @@ export type SubmissionFacts = {
   flagged?: boolean;
   /** The frozen money terms, when `recordAgreedTerms` got that far. */
   agreedTermsId?: string | null;
+  /**
+   * The inquiry the form was filled from, when the link opened one (#319).
+   *
+   * A submission fact rather than a posted field: the family typed no id, and
+   * the page resolved the one in the URL against `getInquiry` before handing it
+   * here. Omitted is the ordinary case — a family who arrived cold, or one
+   * whose link had expired and who therefore filled the form themselves.
+   */
+  inquiryId?: string | null;
   /**
    * How the family **said** they would pay, when the form asked (#220).
    *
@@ -147,6 +180,10 @@ export async function createApplication(
       city: values.address.city,
       state: values.address.state,
       zip: values.address.zip,
+      // Only ever the id of an inquiry the link actually opened (#319) — the
+      // column has a foreign key, and an id that opened nothing was never
+      // going to be one.
+      inquiryId: facts.inquiryId ?? null,
       receivedAt: now,
       flagged: facts.flagged ?? false,
       objections: values.objections,
@@ -209,10 +246,35 @@ export async function listApplications(db: Db): Promise<ApplicationRecord[]> {
     )
     .orderBy(asc(applicationChildren.position));
 
+  const inquiries = await inquiriesBehind(db, rows);
+
   return rows.map((row) => ({
-    ...toRecord(row),
+    ...toRecord(row, inquiries),
     children: children.filter((child) => child.applicationId === row.id).map(toChild),
   }));
+}
+
+/**
+ * The inquiries the given applications were filled from, by id (#319).
+ *
+ * A second query rather than a join, the way the children are fetched and for
+ * the same reason: a join over a table this reads one column of would widen
+ * every row of the result to carry a date. Only the ids actually recorded are
+ * asked for, so a list with no prefilled applications in it asks nothing at all.
+ */
+async function inquiriesBehind(
+  db: Db,
+  rows: readonly ApplicationRow[],
+): Promise<Map<string, FilledFromInquiry>> {
+  const ids = [...new Set(rows.map((row) => row.inquiryId).filter((id) => id !== null))];
+  if (ids.length === 0) return new Map();
+
+  const found = await db
+    .select({ id: inquiries.id, receivedAt: inquiries.receivedAt })
+    .from(inquiries)
+    .where(inArray(inquiries.id, ids));
+
+  return new Map(found.map((row) => [row.id, row]));
 }
 
 /**
@@ -320,8 +382,67 @@ export async function getApplication(db: Db, id: string): Promise<ApplicationRec
     .where(eq(applicationChildren.applicationId, id))
     .orderBy(asc(applicationChildren.position));
 
-  return { ...toRecord(row), children: children.map(toChild) };
+  return {
+    ...toRecord(row, await inquiriesBehind(db, [row])),
+    children: children.map(toChild),
+  };
 }
+
+/**
+ * What an inquiry became: the applications filled from each one (#319).
+ *
+ * The reverse of `inquiry_id`, asked once for a whole screen rather than once
+ * per row, because the inquiries list renders every inquiry and a query each
+ * would be a query per family the school has ever heard from.
+ *
+ * **A list per inquiry, not one application.** A family who applies twice —
+ * the resubmission the tally already knows about — asked once, and an answer
+ * shaped as a single application would silently drop the second. In the order
+ * they were sent, oldest first, because two applications off one inquiry are
+ * read as a sequence: the second is the correction, and it goes last.
+ *
+ * **Whatever became of them.** No filter on `status`: the question is whether
+ * this inquiry produced an application at all, and a withdrawn one still did.
+ * Filtering here would make the two admin screens disagree the day a state is
+ * added.
+ *
+ * Deliberately narrow: an inquiry is answered on the inquiries screen with a
+ * date and a name, and the whole application is a click away on the screen
+ * built to read it. Returning records here would attach the children of every
+ * application in the database to a screen about questions.
+ */
+export async function applicationsByInquiry(
+  db: Db,
+): Promise<Map<string, ApplicationFromInquiry[]>> {
+  const rows = await db
+    .select({
+      id: applications.id,
+      inquiryId: applications.inquiryId,
+      familyName: applications.familyName,
+      receivedAt: applications.receivedAt,
+    })
+    .from(applications)
+    .where(isNotNull(applications.inquiryId))
+    .orderBy(asc(applications.receivedAt));
+
+  const byInquiry = new Map<string, ApplicationFromInquiry[]>();
+  for (const row of rows) {
+    // Narrowed by hand: the `is not null` above is the guarantee, and the
+    // column's type does not carry it.
+    if (!row.inquiryId) continue;
+    const applied = byInquiry.get(row.inquiryId) ?? [];
+    applied.push({ id: row.id, familyName: row.familyName, receivedAt: row.receivedAt });
+    byInquiry.set(row.inquiryId, applied);
+  }
+  return byInquiry;
+}
+
+/** One application, as the inquiry that led to it names it (#319). */
+export type ApplicationFromInquiry = {
+  id: string;
+  familyName: string;
+  receivedAt: Date;
+};
 
 /**
  * How many applications named a course, in any unit and in any state (#267).
@@ -381,7 +502,10 @@ async function getApplicationRow(db: Db, id: string): Promise<ApplicationRow | u
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** A row as the record, minus the children the caller fetches its own way. */
-function toRecord(row: ApplicationRow): Omit<ApplicationRecord, 'children'> {
+function toRecord(
+  row: ApplicationRow,
+  inquiries: Map<string, FilledFromInquiry>,
+): Omit<ApplicationRecord, 'children'> {
   return {
     id: row.id,
     familyName: row.familyName,
@@ -400,6 +524,7 @@ function toRecord(row: ApplicationRow): Omit<ApplicationRecord, 'children'> {
       state: row.state ?? '',
       zip: row.zip ?? '',
     },
+    inquiry: (row.inquiryId ? inquiries.get(row.inquiryId) : undefined) ?? null,
     receivedAt: row.receivedAt,
     flagged: row.flagged,
     objections: row.objections,

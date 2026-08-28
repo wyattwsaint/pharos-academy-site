@@ -343,8 +343,10 @@ describe('coverage of the editable set', () => {
       new Date('2026-10-01T12:00:00Z'),
     );
     // And one inquiry (#25), for the same reason again: nobody has asked on a
-    // fresh database, which is a real state and a useless one here.
-    await createInquiry(db, {
+    // fresh database, which is a real state and a useless one here. The
+    // application below is filled from it, so the export is measured on a row
+    // that carries the join as well as on one that does not (#319).
+    const inquiryId = await createInquiry(db, {
       name: 'Ruth Marsh',
       email: 'ruth@example.com',
       phone: '717-555-0142',
@@ -368,13 +370,21 @@ describe('coverage of the editable set', () => {
         agreements: { handbook: { answer: 'parent', version: 1 } },
         paymentMethod: 'check',
       },
-      { statementVersion: 'sof-00000000' },
+      { statementVersion: 'sof-00000000', inquiryId },
     );
 
     const files = await open();
     const manifest = json(files, 'manifest.json') as {
       tables: { table: string; file: string; rows: number }[];
     };
+
+    // The join rides in the ZIP, not only on the screen (#319): a restore that
+    // dropped it would leave the school with the two unjoinable lists again.
+    const applications = json(
+      files,
+      manifest.tables.find((entry) => entry.table === 'applications')!.file,
+    );
+    expect(JSON.stringify(applications)).toContain(inquiryId);
 
     expect(manifest.tables.map((entry) => entry.table).sort()).toEqual([...EXPORTED_TABLES].sort());
     for (const entry of manifest.tables) {
@@ -409,6 +419,9 @@ describe('coverage of the editable set', () => {
   it('says the export carries the phone numbers and the household address', () => {
     expect(EXPORTED_TABLE_LABELS.inquiries).toContain('phone number');
     expect(EXPORTED_TABLE_LABELS.applications).toContain('phone number');
+    // And which inquiry it grew from (#319) — the join the school reads the
+    // two lists against is in the download too, not only on the screen.
+    expect(EXPORTED_TABLE_LABELS.applications).toContain('which inquiry');
     expect(EXPORTED_TABLE_LABELS.applications).toContain('household address');
     // Per-child data stays barred, and the child label is what says so.
     expect(EXPORTED_TABLE_LABELS.application_children).toContain('no addresses');
