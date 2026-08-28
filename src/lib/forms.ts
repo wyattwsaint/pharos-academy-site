@@ -69,14 +69,22 @@ export function isPhoneNumber(value: string): boolean {
  * Digits are the only thing kept, so a number pasted as `(717) 555-0142` or
  * `717.555.0142` becomes the accepted shape rather than an error — the paste is
  * the common case on a phone, and refusing it would be refusing a correct
- * number over its punctuation. Anything past ten digits is dropped, which is
- * what stops a keyboard-mashed field from growing past the field.
+ * number over its punctuation.
+ *
+ * **More than ten digits is left exactly as typed.** Truncating instead would
+ * be the worst outcome this function can produce: `1-717-555-0142` would become
+ * `171-755-5014`, which passes `isPhoneNumber`, gets stored, and is dialled — a
+ * wrong number nobody was ever shown an error about, and it would make the
+ * rejection of country codes and extensions (ADR-0024) unreachable in a
+ * browser. Handing the string back untouched puts the parent in front of
+ * `PHONE_FORMAT_MESSAGE`, which is the whole point of a strict shape.
  *
  * Called on every keystroke in the browser, so it is a pure function of the
  * string: the caller owns the caret, this owns the value.
  */
 export function formatPhoneAsTyped(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 10);
+  const digits = value.replace(/\D/g, '');
+  if (digits.length > 10) return value;
   const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6)];
   return parts.filter((part) => part.length > 0).join('-');
 }

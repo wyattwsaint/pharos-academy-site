@@ -59,8 +59,17 @@ describe('the dashes as the parent types', () => {
     }
   });
 
-  it('stops at ten digits, so the field cannot outgrow itself', () => {
-    expect(formatPhoneAsTyped('71755501429999')).toBe('717-555-0142');
+  it('hands back more than ten digits untouched, so the error is the one shown', () => {
+    // The defect this replaces: truncating to ten turned a country code into a
+    // *different, valid* number — `1-717-555-0142` became `171-755-5014`,
+    // stored and dialled, and no family ever saw a message about it. Extensions
+    // went the same way, silently dropped. Both shapes are refused by
+    // ADR-0024, and a refusal only happens if the string survives to the
+    // server looking like what the parent typed.
+    for (const tooMany of ['1-717-555-0142', '717-555-0142 x12', '71755501429999']) {
+      expect(formatPhoneAsTyped(tooMany)).toBe(tooMany);
+      expect(phoneError(formatPhoneAsTyped(tooMany))).toBe(PHONE_FORMAT_MESSAGE);
+    }
   });
 
   it('is stable once the number is right, so typing on does nothing', () => {

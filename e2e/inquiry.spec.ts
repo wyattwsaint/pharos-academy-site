@@ -92,6 +92,12 @@ test.describe('the inquiry page', () => {
     const phone = page.locator('#ask-phone');
     await phone.pressSequentially('7175550142');
     await expect(phone).toHaveValue('717-555-0142');
+
+    // And leaves alone what it cannot format: a number pasted with a country
+    // code stays as pasted, because rewriting it would hand back a *different*
+    // ten-digit number that the server then accepts (see `forms.test.ts`).
+    await phone.fill('1-717-555-0142');
+    await expect(phone).toHaveValue('1-717-555-0142');
   });
 
   test('refuses a phone number of the wrong shape', async ({ page }) => {

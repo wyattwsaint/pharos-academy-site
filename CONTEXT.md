@@ -1070,7 +1070,10 @@ reading it).
 
 The **one** number a household is reached on, in the strict shape
 `###-###-####`, stored exactly as the family typed it. Mandatory on the inquiry
-and on the application alike (#310, #311, ADR-0024). The dashes are inserted as
+(#311); mandatory on the application too once the second ticket under #310 lands,
+which it has not yet — the application asks for no number today (ADR-0024). The
+rule itself is already shared, so that ticket adds a field rather than a
+definition. The dashes are inserted as
 the parent types, and the identical rule runs client-side and server-side —
 `src/lib/forms.ts` owns it, once, so the two forms cannot come to disagree about
 what a phone number is.
@@ -1093,9 +1096,14 @@ it is).
 ### household address
 
 Where a **family** lives — street line, optional second line, city, state, ZIP —
-held once on the application, never per child. The school's need is postal:
+to be held once on the application, never per child. The school's need is postal:
 paperwork sent before enrolment. Mandatory, structured rather than free text, and
 Pennsylvania preselected.
+
+**Decided, not yet built.** ADR-0024 settles that it is allowed and what shape it
+takes; the second ticket under #310 builds it. Nothing on the site collects or
+stores an address today, and this entry is here so the decision is findable from
+the glossary rather than only from the ADR.
 
 **It is a fact about a household, and that is the whole of why it is allowed.**
 [ADR-0007](docs/adr/0007-childrens-sensitive-data-does-not-enter-the-site.md)
