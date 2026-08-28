@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
@@ -22,6 +23,7 @@ beforeEach(async () => {
 const FIELDS: InquiryFields = {
   name: 'Ruth Marsh',
   email: 'ruth@example.com',
+  phone: '717-555-0142',
   ages: '6, 9 and 13',
   message: 'Is there room in Latin?',
 };
@@ -36,6 +38,17 @@ describe('an inquiry', () => {
     expect(row!.email).toBe('ruth@example.com');
     expect(row!.ages).toBe('6, 9 and 13');
     expect(row!.message).toBe('Is there room in Latin?');
+    expect(row!.phone).toBe('717-555-0142');
+  });
+
+  it('holds a null phone for an inquiry taken before the column existed', async () => {
+    // #311. The column is nullable precisely because these rows exist and are
+    // never edited; the admin renders a dash rather than inventing a number.
+    await db.execute(sql`insert into inquiries (name, email, ages) values ('Old', 'o@x.z', '8')`);
+
+    const [row] = await listInquiries(db);
+    expect(row!.name).toBe('Old');
+    expect(row!.phone).toBeNull();
   });
 
   it('is written before anything is emailed, so a refused send cannot lose it', async () => {

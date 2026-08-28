@@ -54,7 +54,7 @@ const ANYWHERE = ['/', '/classes', '/classes/algebra-1', '/admissions', BELIEFS_
 async function fill(
   page: Page,
   idPrefix: string,
-  fields: { name?: string; email?: string; ages?: string; message?: string },
+  fields: { name?: string; email?: string; phone?: string; ages?: string; message?: string },
 ): Promise<void> {
   for (const [field, value] of Object.entries(fields)) {
     await page.fill(`#${idPrefix}-${field}`, value!);
@@ -70,27 +70,69 @@ test.describe('the inquiry page', () => {
     await expect(page.locator('#ask-ages')).toBeVisible();
   });
 
-  test('asks for no phone number, on either copy of the form', async ({ page }) => {
-    // AC 6. Not "is not required" — it must not exist. A phone field raises the
-    // perceived commitment of the form more than any other, and a parent who
-    // wants a call says so in the message.
+  test('asks for a phone number, on both copies of the form', async ({ page }) => {
+    // #311, and the inversion of what stood here: #25 AC 6 required this field
+    // *not* to exist, and the school reversed that (ADR-0024) because it could
+    // reach a family only by email. Both copies, because the home page renders
+    // the same component and a field added to one of them is a form that
+    // disagrees with itself.
     await page.goto(INQUIRY_PATH);
-    await expect(page.locator('input[name="phone"], input[type="tel"]')).toHaveCount(0);
+    await expect(page.locator('#ask-phone')).toHaveAttribute('type', 'tel');
 
     await page.goto('/');
-    await expect(page.locator('input[name="phone"], input[type="tel"]')).toHaveCount(0);
+    await expect(page.locator('#inquiry-phone')).toHaveAttribute('type', 'tel');
+  });
+
+  test('puts the dashes in as the parent types', async ({ page }) => {
+    // AC 2, and only a browser settles it: the rule is unit-tested in
+    // `forms.test.ts`, but that it is bound to this field on this page is a
+    // claim about a script that shipped.
+    await page.goto(INQUIRY_PATH);
+
+    const phone = page.locator('#ask-phone');
+    await phone.pressSequentially('7175550142');
+    await expect(phone).toHaveValue('717-555-0142');
+
+    // And leaves alone what it cannot format: a number pasted with a country
+    // code stays as pasted, because rewriting it would hand back a *different*
+    // ten-digit number that the server then accepts (see `forms.test.ts`).
+    await phone.fill('1-717-555-0142');
+    await expect(phone).toHaveValue('1-717-555-0142');
+  });
+
+  test('refuses a phone number of the wrong shape', async ({ page }) => {
+    await page.goto(INQUIRY_PATH);
+
+    // Scripting is on here, so the auto-format would fix a plain ten digits.
+    // Nine digits is what it cannot rescue, and what the server refuses.
+    await fill(page, 'ask', {
+      name: 'Suite Parent',
+      email: 'suite-parent@example.com',
+      phone: '717-555-014',
+      ages: '6 and 9',
+    });
+    await page.getByRole('button', { name: 'Send my question' }).click();
+
+    await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
+    await expect(page.locator('#ask-phone-error')).toContainText('717-555-0142');
+    await expect(page.locator('#ask-phone')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#ask-phone')).toHaveAttribute(
+      'aria-describedby',
+      'ask-phone-error',
+    );
   });
 
   test('refuses an incomplete submission and gives back what was typed', async ({ page }) => {
     await page.goto(INQUIRY_PATH);
 
-    await fill(page, 'ask', { name: 'Suite Parent' });
+    await fill(page, 'ask', { name: 'Suite Parent', phone: '7175550142' });
     await page.getByRole('button', { name: 'Send my question' }).click();
 
     await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
     // Nothing was thrown away — a form that clears itself is a family who does
-    // not fill it in twice.
+    // not fill it in twice. The phone number least of all (#311).
     await expect(page.locator('#ask-name')).toHaveValue('Suite Parent');
+    await expect(page.locator('#ask-phone')).toHaveValue('717-555-0142');
     await expect(page.locator('#ask-email-error')).toBeVisible();
     await expect(page.locator('#ask-ages-error')).toBeVisible();
     await expect(page.locator('#ask-email')).toHaveAttribute('aria-invalid', 'true');
@@ -99,7 +141,12 @@ test.describe('the inquiry page', () => {
   test('refuses an address that is not one', async ({ page }) => {
     await page.goto(INQUIRY_PATH);
 
-    await fill(page, 'ask', { name: 'Suite Parent', email: 'not-an-address', ages: '6 and 9' });
+    await fill(page, 'ask', {
+      name: 'Suite Parent',
+      email: 'not-an-address',
+      phone: '717-555-0142',
+      ages: '6 and 9',
+    });
     await page.getByRole('button', { name: 'Send my question' }).click();
 
     await expect(page.locator('[data-outcome="failed"]')).toBeVisible();
@@ -114,6 +161,7 @@ test.describe('the inquiry page', () => {
     await fill(page, 'ask', {
       name: 'Suite Parent',
       email: 'suite-parent@example.com',
+      phone: '717-555-0142',
       ages: '6, 9 and 13',
       message: 'Is there room in Latin?',
     });
@@ -155,6 +203,7 @@ test.describe('the inquiry page', () => {
     await fill(page, 'inquiry', {
       name: 'Suite Homepage Parent',
       email: 'suite-homepage@example.com',
+      phone: '717-555-0143',
       ages: '4 and 17',
     });
     await page.locator('#inquiry').getByRole('button', { name: 'Send my question' }).click();
@@ -180,6 +229,7 @@ test.describe('the inquiry page', () => {
     await fill(page, 'ask', {
       name: 'Suite Clockwatcher',
       email: 'suite-clock@example.com',
+      phone: '717-555-0144',
       ages: '11',
     });
     await page.getByRole('button', { name: 'Send my question' }).click();

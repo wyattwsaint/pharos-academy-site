@@ -664,10 +664,11 @@ export const syncedEvents = pgTable('synced_events', {
  * The application flow (#18 §11) pre-fills from these rows, which is the second
  * reason they are rows.
  *
- * **There is no phone column**, and its absence is the decision the ticket
- * makes most loudly. `ages` is free text and required: families have several
- * children, the school serves a fourteen-year span, and without it every first
- * reply is a question rather than an answer.
+ * **There is a phone column since #311**, and it is a reversal rather than an
+ * addition: #25 made its absence the decision it stated most loudly, and
+ * ADR-0024 records why the school changed its mind. `ages` is free text and
+ * required: families have several children, the school serves a fourteen-year
+ * span, and without it every first reply is a question rather than an answer.
  *
  * The four delivery columns are what makes a failed send visible. They are the
  * only thing a second write touches — the family's own words are written once
@@ -678,6 +679,17 @@ export const inquiries = pgTable('inquiries', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   email: text('email').notNull(),
+  /**
+   * `###-###-####`, as typed (#311).
+   *
+   * **Nullable, though the field is mandatory.** Every inquiry sent before
+   * #311 has no number, and an inquiry is never edited — so a not-null column
+   * would mean either inventing a value for those rows or making the record
+   * editable, and both are worse than the admin rendering a dash. The
+   * mandatory rule lives in `parseInquiry`, where a family can be told about
+   * it.
+   */
+  phone: text('phone'),
   /** Free text, never a dropdown. "6, 9 and 13" is the normal shape. */
   ages: text('ages').notNull(),
   /** The one optional field. Empty is a real state, not a missing one. */

@@ -1139,6 +1139,19 @@ export const MIGRATIONS: readonly Migration[] = [
       ),
     ],
   },
+  {
+    /*
+     * The inquiry's phone number (#311, ADR-0024).
+     *
+     * Nullable, and no backfill. Every inquiry taken before this migration has
+     * no number and never will — an inquiry is a record of what a family sent,
+     * not a row the school edits — so the old rows stay null and the admin
+     * renders a dash for them. A default would be inventing a phone number,
+     * and a not-null column would need one.
+     */
+    id: '0031-the-inquiry-captures-a-phone-number',
+    statements: [`alter table inquiries add column if not exists phone text`],
+  },
 ];
 
 /**

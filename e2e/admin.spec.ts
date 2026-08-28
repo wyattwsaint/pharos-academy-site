@@ -1916,6 +1916,7 @@ test.describe('inquiries', () => {
     await page.goto(INQUIRY_PATH);
     await page.fill('#ask-name', name);
     await page.fill('#ask-email', email);
+    await page.fill('#ask-phone', '717-555-0142');
     await page.fill('#ask-ages', '7 and 15');
     await page.fill('#ask-message', 'Do you take a child mid-year?');
     await page.getByRole('button', { name: 'Send my question' }).click();
@@ -1932,6 +1933,11 @@ test.describe('inquiries', () => {
     await expect(entry.getByTestId('inquiry-name')).toHaveText(name);
     await expect(entry.getByTestId('inquiry-email')).toHaveText(email);
     await expect(entry.getByTestId('inquiry-ages')).toContainText('7 and 15');
+    // #311: dialable from the page, rather than a number to copy out by hand.
+    await expect(entry.getByTestId('inquiry-phone').getByRole('link')).toHaveAttribute(
+      'href',
+      'tel:7175550142',
+    );
     await expect(entry.getByTestId('inquiry-message')).toHaveText('Do you take a child mid-year?');
 
     // AC 2's other direction: the send failed, and the screen says so rather

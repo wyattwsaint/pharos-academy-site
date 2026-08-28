@@ -1066,6 +1066,57 @@ the same figures one round trip later and writes nothing.
 Not: "validated", "approved", "accepted" (the school does that, later, by
 reading it).
 
+### primary phone
+
+The **one** number a household is reached on, in the strict shape
+`###-###-####`, stored exactly as the family typed it. Mandatory on the inquiry
+(#311); mandatory on the application too once the second ticket under #310 lands,
+which it has not yet — the application asks for no number today (ADR-0024). The
+rule itself is already shared, so that ticket adds a field rather than a
+definition. The dashes are inserted as
+the parent types, and the identical rule runs client-side and server-side —
+`src/lib/forms.ts` owns it, once, so the two forms cannot come to disagree about
+what a phone number is.
+
+Strict on purpose, and the opposite stance to an email address: an address can
+only be proved by sending to it, while a number is typed by a family who will be
+*called back on it*. Extensions and international numbers are rejected; a family
+with either writes it in the message.
+
+**Primary because there is exactly one per record** — never one per guardian.
+Which parent answers is not something this site models.
+
+An inquiry or application taken before #310 has none, will never have one, and
+renders **—** in the admin. Neither record is editable, so this is a permanent
+state rather than a gap awaiting a backfill.
+
+Not: "contact number", "telephone", "mobile" (the school does not ask which kind
+it is).
+
+### household address
+
+Where a **family** lives — street line, optional second line, city, state, ZIP —
+to be held once on the application, never per child. The school's need is postal:
+paperwork sent before enrolment. Mandatory, structured rather than free text, and
+Pennsylvania preselected.
+
+**Decided, not yet built.** ADR-0024 settles that it is allowed and what shape it
+takes; the second ticket under #310 builds it. Nothing on the site collects or
+stores an address today, and this entry is here so the decision is findable from
+the glossary rather than only from the ADR.
+
+**It is a fact about a household, and that is the whole of why it is allowed.**
+[ADR-0007](docs/adr/0007-childrens-sensitive-data-does-not-enter-the-site.md)
+barred it along with every per-child sensitive field;
+[ADR-0024](docs/adr/0024-the-site-captures-family-contact-info.md) supersedes it
+**this far and no further**. A child's date of birth, allergies, medical
+conditions, evaluation history and custody arrangements are facts about a
+*child*, are still absent from the form, the parser, the schema and the database,
+and are still enforced by tests. Reopening a door is not removing the wall.
+
+Not: "home address" as ADR-0007 uses the phrase — that reads as a fact filed
+against a student, which is exactly what this is not.
+
 ### heading case
 
 **Title case, Chicago**, for every heading the site writes for itself: `<h1>` to

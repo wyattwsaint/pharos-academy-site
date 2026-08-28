@@ -1,6 +1,6 @@
 import { BELIEFS_PATH } from '../about/beliefs.js';
 import { describeFailure, sendAll, type Mail, type Sender } from '../backup/monthly.js';
-import { isEmailAddress, textField as text } from '../forms.js';
+import { isEmailAddress, phoneError, textField as text } from '../forms.js';
 import { SCHOOL_NAME } from '../site.js';
 
 /**
@@ -38,14 +38,25 @@ const CLASSES_PATH = '/classes';
 /**
  * What the parent typed.
  *
- * **There is no phone number, and its absence is a decision** (#25): it raises
- * the perceived commitment of the form more than any other field, and a parent
- * who wants a call will say so in the message. The test beside this file
- * refuses one.
+ * **The phone number is mandatory, and that reverses #25** (#311, ADR-0024).
+ * Its absence used to be the decision — a phone field raises the perceived
+ * commitment of the form more than any other, so the ticket refused one and the
+ * test beside this file enforced the refusal. The school then found it could
+ * reach a family only by email, and decided the operational need outweighs the
+ * friction. A mandatory field is the maximum-friction version of what was
+ * excluded; the reversal is argued rather than assumed, in the ADR.
  */
 export type InquiryFields = {
   name: string;
   email: string;
+  /**
+   * `###-###-####`, stored exactly as typed.
+   *
+   * The rule is `forms.ts`'s rather than this module's, because the application
+   * asks for the same number under a different name (#310) and two copies of a
+   * pattern is how one form comes to accept what the other refuses.
+   */
+  phone: string;
   /**
    * Free text, never a dropdown — families have several children, and the
    * school serves a fourteen-year span.
@@ -83,6 +94,7 @@ export function parseInquiry(form: FormData): ParsedInquiry {
   const values: InquiryFields = {
     name: text(form, 'name'),
     email: text(form, 'email'),
+    phone: text(form, 'phone'),
     ages: text(form, 'ages'),
     message: text(form, 'message'),
   };
@@ -94,6 +106,13 @@ export function parseInquiry(form: FormData): ParsedInquiry {
   } else if (!isEmailAddress(values.email)) {
     errors.email = 'That does not look like an email address.';
   }
+  /*
+   * The same rule the browser ran, run again. The auto-format is an
+   * enhancement; a submission with scripting off, or from anything that is not
+   * a browser, meets the identical pattern here (#311 AC 2).
+   */
+  const phone = phoneError(values.phone);
+  if (phone) errors.phone = phone;
   if (!values.ages) {
     errors.ages = 'Tell us your children’s ages — it is what lets us answer rather than ask.';
   }
@@ -121,6 +140,10 @@ export function inquiryNotification(
     `${values.name} has asked about ${SCHOOL_NAME}.`,
     '',
     `Email:            ${values.email}`,
+    // The number is in the body for the reason the address is: the school
+    // office forwards these, and somebody acting from their inbox should be
+    // able to dial without opening the admin (#310, story 4).
+    `Phone:            ${values.phone}`,
     `Children’s ages:  ${values.ages}`,
   ];
 
@@ -173,7 +196,10 @@ export function inquiryConfirmation(
     `  The classes we run, with ages and prices — ${at(CLASSES_PATH)}`,
     `  What we believe — ${at(BELIEFS_PATH)}`,
     '',
-    'We have your children’s ages and we will write back to this address.',
+    // What we hold, said back — a family who mistyped a digit can spot it and
+    // write in, which is the only correction route a capture-once record has.
+    `We have your children’s ages, we will write back to this address, and we have ` +
+      `${values.phone} if a call is easier.`,
     '',
     '—',
     `If you already know you would like to apply, how it works is here: ${at(APPLY_PATH)}`,

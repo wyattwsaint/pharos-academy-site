@@ -285,12 +285,18 @@ export function copyrightYear(now = new Date()): number {
 }
 
 /**
- * The school's phone as a `tel:` target.
+ * A phone number as a `tel:` target.
  *
- * Held here rather than in each template because the phone is displayed the way
- * Jill types it — "(717) 555-0142" — and dialled stripped, and two surfaces
- * writing that regex out separately is how one of them ends up keeping the
- * parentheses. `+` survives so an international prefix still dials.
+ * Written for the school's own number, which is displayed the way Jill types it
+ * — "(717) 555-0142" — and dialled stripped; two surfaces writing that regex out
+ * separately is how one of them ends up keeping the parentheses. `+` survives so
+ * an international prefix still dials.
+ *
+ * Since #311 the inquiries screen calls it with a *family's* number too, which
+ * arrives already in the strict `###-###-####` shape (`src/lib/forms.ts`). The
+ * stripping is a no-op on that shape, so the two callers agree; this stays here
+ * rather than moving because it is about dialling a string, not about what the
+ * site accepts as a phone number.
  */
 export function telHref(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, '')}`;

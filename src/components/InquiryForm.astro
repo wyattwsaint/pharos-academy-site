@@ -5,10 +5,9 @@ import { INQUIRY_PATH, type InquiryErrors, type InquiryFields } from '../lib/inq
  * The inquiry form itself — one component, rendered on the homepage and again
  * on `/inquire` (#25).
  *
- * One component because there is one form. Two copies of these five controls
- * would be two sets of labels, two `aria-describedby` wirings and two chances
- * for one of them to grow a phone field; the ticket's "no phone number" is a
- * property of this file and of nothing else.
+ * One component because there is one form. Two copies of these controls would
+ * be two sets of labels, two `aria-describedby` wirings and two chances for one
+ * of them to drift from the other.
  *
  * **It always posts to `/inquire`, never to the page it is on.** The public site
  * is ISR (#18 §1) and a cached page cannot take a POST, so the homepage's copy
@@ -66,11 +65,38 @@ const typed = (field: keyof InquiryFields): string => values?.[field] ?? '';
 
   {
     /*
-     * Free text and required — the one field that earns its friction. A
-     * dropdown cannot hold "6, 9 and 13", and Pharos serves a fourteen-year
-     * span, so without this every first reply from Jill is a question.
+     * The phone number — mandatory, and a reversal of #25 (#311, ADR-0024).
      *
-     * There is deliberately no phone field anywhere below this comment.
+     * `inputmode="numeric"` rather than `type="tel"` alone would lose the
+     * dialling keypad on iOS; `type="tel"` keeps it and `novalidate` on the
+     * form means the browser's own bubble never competes with the inline error
+     * below. `data-phone` is what the script at the foot of this file binds
+     * the auto-dash to, and it is an attribute rather than an id because the
+     * form renders twice on the home page.
+     */
+  }
+  <div>
+    <label for={id('phone')}>Phone</label>
+    <input
+      id={id('phone')}
+      name="phone"
+      type="tel"
+      inputmode="tel"
+      autocomplete="tel"
+      placeholder="717-555-0142"
+      value={typed('phone')}
+      data-phone
+      aria-describedby={errors.phone ? errorId('phone') : undefined}
+      aria-invalid={errors.phone ? 'true' : undefined}
+    />
+    {errors.phone && <p class="error" id={errorId('phone')}>{errors.phone}</p>}
+  </div>
+
+  {
+    /*
+     * Free text and required — the field that earns its friction. A dropdown
+     * cannot hold "6, 9 and 13", and Pharos serves a fourteen-year span, so
+     * without this every first reply from Jill is a question.
      */
   }
   <div class="full">
@@ -110,6 +136,50 @@ const typed = (field: keyof InquiryFields): string => values?.[field] ?? '';
     <slot name="alongside" />
   </div>
 </form>
+
+<script>
+  /*
+    The dashes, as the parent types (#311 AC 2).
+
+    An enhancement and not a dependency: with scripting off a family types the
+    dashes themselves, `parseInquiry` applies the identical rule on POST, and
+    the inline error says what shape is wanted. What this buys is *not having
+    to guess the format*, which is the whole reason the field auto-formats.
+
+    The rule is imported rather than restated, for the reason `apply.astro`
+    imports its validation: `forms.ts` is a leaf that imports nothing, so what
+    crosses the wire is one regular expression and one string function.
+
+    The caret is remapped by counting digits rather than characters. Editing in
+    the middle of a number is the case a naive "put the caret at the end" gets
+    wrong, and a caret that jumps is worse than no auto-format at all.
+  */
+  import { formatPhoneAsTyped } from '../lib/forms.js';
+
+  for (const field of document.querySelectorAll<HTMLInputElement>('input[data-phone]')) {
+    field.addEventListener('input', () => {
+      const before = field.value;
+      const caret = field.selectionStart ?? before.length;
+      const digitsBefore = before.slice(0, caret).replace(/\D/g, '').length;
+
+      const formatted = formatPhoneAsTyped(before);
+      if (formatted === before) return;
+      field.value = formatted;
+
+      let seen = 0;
+      let position = formatted.length;
+      for (let index = 0; index < formatted.length; index += 1) {
+        if (/\d/.test(formatted[index]!)) seen += 1;
+        if (seen === digitsBefore) {
+          position = index + 1;
+          break;
+        }
+      }
+      if (digitsBefore === 0) position = 0;
+      field.setSelectionRange(position, position);
+    });
+  }
+</script>
 
 <style>
   .inquiry-form {
