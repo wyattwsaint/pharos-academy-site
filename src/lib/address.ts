@@ -150,8 +150,23 @@ export const ZIP_FORMAT_MESSAGE = 'A ZIP code looks like 17325, or 17325-1234.';
 /** What it says when the state is not one the dropdown offers. */
 export const STATE_UNKNOWN_MESSAGE = 'Choose a state from the list.';
 
+/** The parts a family can be short of. `street2` is not one of them. */
+export type AddressPart = 'street' | 'city' | 'state' | 'zip';
+
+const ASKED_FOR: readonly AddressPart[] = ['street', 'city', 'state', 'zip'];
+
 /**
- * Read an address and say what is wrong with it, or nothing.
+ * What is wrong with this address: the sentence to print, and the parts it is
+ * about.
+ *
+ * Both together, because the form needs both and they must agree. The Apply
+ * page prints the sentence once and marks `aria-invalid` on the controls the
+ * sentence is about, in four places — the server's markup, the browser's
+ * repaint, the browser's focus-on-refusal, and the tests. When each of those
+ * decided for itself which parts were short, they were four copies of a rule
+ * that had to stay in step; the state was left out of three of them, so a
+ * refused state printed "Choose a state from the list." with the mark on
+ * nothing and the cursor in the street box.
  *
  * One sentence for the whole address rather than one per part, and that is the
  * page's convention rather than a shortcut: the Statement of Faith grid and the
@@ -162,15 +177,26 @@ export const STATE_UNKNOWN_MESSAGE = 'Choose a state from the list.';
  * `street2` is never asked about. It is the only optional part, and a rule that
  * mentioned it would be a rule about apartments.
  */
-export function addressError(address: HouseholdAddress): string | undefined {
-  if (!address.street || !address.city || !address.state || !address.zip) {
-    return ADDRESS_REQUIRED_MESSAGE;
-  }
+export function addressFault(
+  address: HouseholdAddress,
+): { parts: readonly AddressPart[]; message: string } | undefined {
+  const blank = ASKED_FOR.filter((part) => !address[part]);
+  if (blank.length) return { parts: blank, message: ADDRESS_REQUIRED_MESSAGE };
   // After the required check, because "choose a state" is unhelpful advice to
   // somebody who has not typed a street yet.
-  if (!isUsState(address.state)) return STATE_UNKNOWN_MESSAGE;
-  if (!isZipCode(address.zip)) return ZIP_FORMAT_MESSAGE;
+  if (!isUsState(address.state)) return { parts: ['state'], message: STATE_UNKNOWN_MESSAGE };
+  if (!isZipCode(address.zip)) return { parts: ['zip'], message: ZIP_FORMAT_MESSAGE };
   return undefined;
+}
+
+/** Read an address and say what is wrong with it, or nothing. */
+export function addressError(address: HouseholdAddress): string | undefined {
+  return addressFault(address)?.message;
+}
+
+/** Which parts that sentence is about — empty when there is no sentence. */
+export function addressPartsShort(address: HouseholdAddress): readonly AddressPart[] {
+  return addressFault(address)?.parts ?? [];
 }
 
 /**

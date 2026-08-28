@@ -1070,8 +1070,8 @@ reading it).
 
 The **one** number a household is reached on, in the strict shape
 `###-###-####`, stored exactly as the family typed it. Mandatory on the inquiry
-(#311) and on the application (#312) — one rule, asked twice, under a different
-field name each time (ADR-0024). The dashes are inserted as
+(#311) and on the application (#312) — one rule, asked twice, under the same
+field name on both forms (ADR-0024). The dashes are inserted as
 the parent types, and the identical rule runs client-side and server-side —
 `src/lib/forms.ts` owns it, once, so the two forms cannot come to disagree about
 what a phone number is.

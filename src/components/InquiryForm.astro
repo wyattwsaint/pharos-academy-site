@@ -70,9 +70,10 @@ const typed = (field: keyof InquiryFields): string => values?.[field] ?? '';
      * `inputmode="numeric"` rather than `type="tel"` alone would lose the
      * dialling keypad on iOS; `type="tel"` keeps it and `novalidate` on the
      * form means the browser's own bubble never competes with the inline error
-     * below. `data-phone` is what the script at the foot of this file binds
-     * the auto-dash to, and it is an attribute rather than an id because the
-     * form renders twice on the home page.
+     * below. `data-phone` is what `components/phone-field.ts` binds the
+     * auto-dash to — shared with the application form since #312 — and it is
+     * an attribute rather than an id because the form renders twice on the
+     * home page.
      */
   }
   <div>

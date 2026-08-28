@@ -3,7 +3,7 @@ export const prerender = false;
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { BELIEFS_ARTICLES, BELIEFS_CLOSING, BELIEFS_PATH } from '../../lib/about/beliefs.js';
-import { isZipCode, US_STATES } from '../../lib/address.js';
+import { addressPartsShort, US_STATES } from '../../lib/address.js';
 import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import {
   APPLICATION_STAGES,
@@ -496,6 +496,23 @@ const childNeeds = ((): { index: number; box: 'name' | 'age' } => {
  * (#88, `firstError`).
  */
 const focus: ErrorField | null = rejected ? firstError(errors, childNeeds.index) : null;
+
+/**
+ * Which parts of the address the address sentence is about (#312).
+ *
+ * Off the same rule the browser marks with, so a refused POST and a refusal
+ * raised while the family types put `aria-invalid` on exactly the same boxes.
+ */
+const addressShort = errors.address ? addressPartsShort(values.address) : [];
+
+/**
+ * Which box a refused send lands in, when it is the address that refused it.
+ *
+ * The first part the sentence is about, not the top of the block — a family
+ * whose only gap is the ZIP is put in the ZIP box, and one whose state was
+ * refused is put in the dropdown. `FOCUS.address` is the browser's half.
+ */
+const addressFocus = focus === 'address' ? (addressShort[0] ?? 'street') : null;
 
 /**
  * Which document a refused send should land on — the first one nobody has
@@ -998,8 +1015,8 @@ const description =
               {/*
                 The number the school calls back on (#312, ADR-0024). The same
                 rule and the same shared helper as the inquiry — `type="tel"`
-                keeps the dialling keypad on iOS, and `data-phone` is what the
-                script at the foot of this file binds the auto-dash to.
+                keeps the dialling keypad on iOS, and `data-phone` is what
+                `components/phone-field.ts` binds the auto-dash to.
               */}
               <div>
                 <label for="apply-phone">Phone</label>
@@ -1046,8 +1063,8 @@ const description =
                     autocomplete="address-line1"
                     value={values.address.street}
                     aria-describedby={errors.address ? 'apply-address-error' : undefined}
-                    aria-invalid={errors.address && !values.address.street ? 'true' : undefined}
-                    autofocus={focus === 'address'}
+                    aria-invalid={addressShort.includes('street') ? 'true' : undefined}
+                    autofocus={addressFocus === 'street'}
                   />
                 </div>
 
@@ -1069,7 +1086,8 @@ const description =
                     autocomplete="address-level2"
                     value={values.address.city}
                     aria-describedby={errors.address ? 'apply-address-error' : undefined}
-                    aria-invalid={errors.address && !values.address.city ? 'true' : undefined}
+                    aria-invalid={addressShort.includes('city') ? 'true' : undefined}
+                    autofocus={addressFocus === 'city'}
                   />
                 </div>
 
@@ -1086,6 +1104,8 @@ const description =
                     name="state"
                     autocomplete="address-level1"
                     aria-describedby={errors.address ? 'apply-address-error' : undefined}
+                    aria-invalid={addressShort.includes('state') ? 'true' : undefined}
+                    autofocus={addressFocus === 'state'}
                   >
                     {US_STATES.map((state) => (
                       <option value={state.code} selected={state.code === values.address.state}>
@@ -1105,7 +1125,8 @@ const description =
                     placeholder="17325"
                     value={values.address.zip}
                     aria-describedby={errors.address ? 'apply-address-error' : undefined}
-                    aria-invalid={errors.address && !isZipCode(values.address.zip) ? 'true' : undefined}
+                    aria-invalid={addressShort.includes('zip') ? 'true' : undefined}
+                    autofocus={addressFocus === 'zip'}
                   />
                 </div>
               </div>
@@ -1678,7 +1699,7 @@ const description =
     timetable, which is why `applicationCost` is not reachable from here and
     `validation.test.ts` fails the moment it is.
   */
-  import { isZipCode } from '../../lib/address.js';
+  import { addressPartsShort, type AddressPart } from '../../lib/address.js';
   import { bindPhoneFields } from '../../components/phone-field.js';
   import type {
     AgreementAnswer,
@@ -1770,6 +1791,31 @@ const description =
       reader. `invalid` is set only where the server sets it.
     */
     const enabledRow = 'fieldset[data-child-row]:not([disabled])';
+
+    /**
+      Which box holds which part of the address (#312).
+
+      The map, rather than four selectors written out, because three readings
+      need it — the controls the rule may mark, which of them it is marking,
+      and where a refused send lands — and they have to be the same four.
+    */
+    const ADDRESS_BOXES: Record<string, AddressPart> = {
+      'apply-street': 'street',
+      'apply-city': 'city',
+      'apply-state': 'state',
+      'apply-zip': 'zip',
+    };
+
+    /** The address parts currently short of something, off the boxes themselves. */
+    const partsShort = (): readonly AddressPart[] =>
+      addressPartsShort({
+        street: valueOf('#apply-street'),
+        // Never asked about, so what it holds cannot change the answer.
+        street2: '',
+        city: valueOf('#apply-city'),
+        state: valueOf('#apply-state'),
+        zip: valueOf('#apply-zip'),
+      });
     const WIRING: Record<
       ErrorField,
       {
@@ -1792,17 +1838,23 @@ const description =
       /*
         One sentence over five controls, the way `faith` is one over nine
         (#312). `invalid` is deliberately narrower than `describes`: every part
-        of the address is told where the sentence is, but only the parts that
-        are actually short of something are marked invalid — an optional second
-        street line and a state that is always chosen are not defects.
+        of the address is told where the sentence is, but only the parts the
+        sentence is actually about are marked invalid — the optional second
+        street line is never one of them.
+
+        Which parts those are is `addressPartsShort`'s to say, not this file's,
+        so the marks the browser sets and the marks the server rendered cannot
+        come to disagree.
       */
       address: {
         error: 'apply-address-error',
         describes: '[data-address] input, [data-address] select',
-        invalid: '#apply-street, #apply-city, #apply-zip',
+        invalid: Object.keys(ADDRESS_BOXES)
+          .map((id) => `#${id}`)
+          .join(', '),
         offends: (control) => {
-          const value = (control as HTMLInputElement).value.trim();
-          return control.id === 'apply-zip' ? !isZipCode(value) : value === '';
+          const part = ADDRESS_BOXES[control.id];
+          return part !== undefined && partsShort().includes(part);
         },
       },
       children: {
@@ -1827,11 +1879,13 @@ const description =
       email: () => form.querySelector('#apply-email'),
       phone: () => form.querySelector('#apply-phone'),
       // The first part that is short of something, not the top of the block: a
-      // family whose only gap is the ZIP is put in the ZIP box.
-      address: () =>
-        [...form.querySelectorAll<HTMLInputElement>('#apply-street, #apply-city, #apply-zip')].find(
-          (box) => (box.id === 'apply-zip' ? !isZipCode(box.value.trim()) : !box.value.trim()),
-        ) ?? form.querySelector('#apply-street'),
+      // family whose only gap is the ZIP is put in the ZIP box. Same rule and
+      // same order as the marks, so the cursor lands on a box that is marked.
+      address: () => {
+        const short = partsShort();
+        const id = Object.keys(ADDRESS_BOXES).find((box) => short.includes(ADDRESS_BOXES[box]!));
+        return form.querySelector(`#${id ?? 'apply-street'}`);
+      },
       children: () => {
         for (const row of visibleRows()) {
           const name = row.querySelector<HTMLInputElement>('input[name$="-name"]');

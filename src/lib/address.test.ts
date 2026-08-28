@@ -7,6 +7,7 @@ import {
   US_STATES,
   ZIP_FORMAT_MESSAGE,
   addressError,
+  addressPartsShort,
   blankAddress,
   formatAddress,
   isUsState,
@@ -99,6 +100,38 @@ describe('what makes a household address complete (#312)', () => {
 
   it('refuses a state nobody could have picked', () => {
     expect(addressError(address({ state: 'ZZ' }))).toBe(STATE_UNKNOWN_MESSAGE);
+  });
+});
+
+describe('which parts of the address the sentence is about (#312)', () => {
+  // The form marks `aria-invalid` on exactly these, in the server's markup and
+  // in the browser's repaint. A part the sentence complains about and nothing
+  // marks is a sentence pointing at nothing.
+  it('is nothing at all when the address is complete', () => {
+    expect(addressPartsShort(address())).toEqual([]);
+  });
+
+  it('is every blank part, and never the optional street line', () => {
+    expect(addressPartsShort(blankAddress())).toEqual(['street', 'city', 'zip']);
+    expect(addressPartsShort(address({ city: '', street2: '' }))).toEqual(['city']);
+  });
+
+  it('is the state when the state is the thing being refused', () => {
+    // The bug this rule exists to prevent: "Choose a state from the list."
+    // printed with the mark on nothing and the cursor in the street box.
+    expect(addressPartsShort(address({ state: 'ZZ' }))).toEqual(['state']);
+    expect(addressError(address({ state: 'ZZ' }))).toBe(STATE_UNKNOWN_MESSAGE);
+  });
+
+  it('is the ZIP alone when the ZIP is the only thing wrong', () => {
+    expect(addressPartsShort(address({ zip: '173' }))).toEqual(['zip']);
+  });
+
+  it('names a part for every sentence, and a sentence for every part', () => {
+    for (const over of [{}, { street: '' }, { state: 'ZZ' }, { zip: '173' }, { city: '', zip: '' }]) {
+      const short = addressPartsShort(address(over));
+      expect(short.length > 0).toBe(addressError(address(over)) !== undefined);
+    }
   });
 });
 
