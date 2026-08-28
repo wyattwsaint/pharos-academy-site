@@ -96,9 +96,9 @@ export const EXPORTED_TABLE_LABELS: Record<(typeof EXPORTED_TABLES)[number], str
   school_year_closures: 'Every day the school is closed, with what it is closed for',
   calendar_events: 'One-off events — open houses, concerts, picture days',
   synced_events: 'Events from the school’s own Google calendar, as the site last read them',
-  inquiries: 'Every family who has asked about the school, and what they asked',
+  inquiries: 'Every family who has asked about the school, their phone number, and what they asked',
   applications:
-    'Every application a family has sent — who applied, what they answered about the Statement of Faith, any objection they raised, and who agreed to the Code of Conduct and the Handbook',
+    'Every application a family has sent — who applied, their phone number and household address, what they answered about the Statement of Faith, any objection they raised, and who agreed to the Code of Conduct and the Handbook',
   application_children:
     'The children on each application: a name, an age and the classes chosen. Nothing else — no dates of birth, no addresses and no medical history',
 };
