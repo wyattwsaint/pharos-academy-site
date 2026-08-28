@@ -395,7 +395,9 @@ if (Astro.request.method === 'POST') {
    * all land on the same clean slate.
    */
   const row = await getInquiry(db, Astro.url.searchParams.get('inquiry') ?? '');
-  values = prefillFrom(row ? { name: row.name, email: row.email, ages: row.ages } : null);
+  values = prefillFrom(
+    row ? { name: row.name, email: row.email, phone: row.phone, ages: row.ages } : null,
+  );
   // "6, 9 and 13" on the inquiry opens the form on three, so the family sees
   // the number they already told us rather than being asked it twice.
   rows = childRows(null, values.children.length);

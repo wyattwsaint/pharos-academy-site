@@ -1,25 +1,25 @@
-import { readFile } from 'node:fs/promises';
+import { readFile } from "node:fs/promises";
 
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
-import { unzipSync } from 'fflate';
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test, type Page } from "@playwright/test";
+import { unzipSync } from "fflate";
 
-import { LABELS } from '../src/lib/admin/policies.js';
-import { AXE_TAGS } from './axe.js';
-import { SUITE_ADDRESS, fillContactDetails } from './contact-details.js';
-import { SUITE_ADMIN, SUITE_RETIRED_PERSON, signIn } from './suite-admin.js';
+import { LABELS } from "../src/lib/admin/policies.js";
+import { AXE_TAGS } from "./axe.js";
+import { SUITE_ADDRESS, fillContactDetails } from "./contact-details.js";
+import { SUITE_ADMIN, SUITE_RETIRED_PERSON, signIn } from "./suite-admin.js";
 import {
   APPLICATION_PATH,
   FAITH_QUESTIONS,
   faithKey,
-} from '../src/lib/application/application.js';
-import { REFERENCE_SHAPE } from '../src/lib/application/reference.js';
-import { announcementSlug } from '../src/lib/announcements/announcement.js';
-import { attachmentPath, NEWS_PATH } from '../src/lib/announcements/views.js';
-import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
-import { slugify } from '../src/lib/people/person.js';
-import { STAFF_PATH } from '../src/lib/people/views.js';
-import { POLICIES_PATH } from '../src/lib/policies/views.js';
+} from "../src/lib/application/application.js";
+import { REFERENCE_SHAPE } from "../src/lib/application/reference.js";
+import { announcementSlug } from "../src/lib/announcements/announcement.js";
+import { attachmentPath, NEWS_PATH } from "../src/lib/announcements/views.js";
+import { INQUIRY_PATH } from "../src/lib/inquiry/inquiry.js";
+import { slugify } from "../src/lib/people/person.js";
+import { STAFF_PATH } from "../src/lib/people/views.js";
+import { POLICIES_PATH } from "../src/lib/policies/views.js";
 
 /**
  * The admin, in a browser (#20).
@@ -36,47 +36,51 @@ import { POLICIES_PATH } from '../src/lib/policies/views.js';
 
 const TAGS = AXE_TAGS;
 
-test.describe('the guard', () => {
-  test('bounces an anonymous visitor to the login page, and back afterwards', async ({ page }) => {
-    await page.goto('/admin/users');
+test.describe("the guard", () => {
+  test("bounces an anonymous visitor to the login page, and back afterwards", async ({
+    page,
+  }) => {
+    await page.goto("/admin/users");
 
     await expect(page).toHaveURL(/\/admin\/login\?next=%2Fadmin%2Fusers$/);
-    await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sign In" })).toBeVisible();
 
-    await page.getByLabel('Username').fill(SUITE_ADMIN.username);
-    await page.getByLabel('Password').fill(SUITE_ADMIN.password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.getByLabel("Username").fill(SUITE_ADMIN.username);
+    await page.getByLabel("Password").fill(SUITE_ADMIN.password);
+    await page.getByRole("button", { name: "Sign in" }).click();
 
     // Landed on the page that was asked for, not on a dashboard.
     await expect(page).toHaveURL(/\/admin\/users$/);
   });
 
-  test('keeps the admin out of search results', async ({ page }) => {
-    const response = await page.goto('/admin/login');
-    expect(response?.headers()['x-robots-tag']).toBe('noindex, nofollow');
+  test("keeps the admin out of search results", async ({ page }) => {
+    const response = await page.goto("/admin/login");
+    expect(response?.headers()["x-robots-tag"]).toBe("noindex, nofollow");
   });
 });
 
-test.describe('signing in', () => {
-  test('says one thing about a wrong password, and does not say which half was wrong', async ({
+test.describe("signing in", () => {
+  test("says one thing about a wrong password, and does not say which half was wrong", async ({
     page,
   }) => {
-    await page.goto('/admin/login');
-    await page.getByLabel('Username').fill(SUITE_ADMIN.username);
-    await page.getByLabel('Password').fill('not-the-right-passphrase');
-    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.goto("/admin/login");
+    await page.getByLabel("Username").fill(SUITE_ADMIN.username);
+    await page.getByLabel("Password").fill("not-the-right-passphrase");
+    await page.getByRole("button", { name: "Sign in" }).click();
 
-    const alert = page.getByRole('alert');
-    await expect(alert).toHaveText('That username and password do not match an account.');
+    const alert = page.getByRole("alert");
+    await expect(alert).toHaveText(
+      "That username and password do not match an account.",
+    );
     await expect(page).toHaveURL(/\/admin\/login$/);
   });
 
-  test('signs out again, and the guard means it', async ({ page }) => {
+  test("signs out again, and the guard means it", async ({ page }) => {
     await signIn(page);
 
-    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.getByRole("button", { name: "Sign out" }).click();
 
-    await page.goto('/admin/school-details');
+    await page.goto("/admin/school-details");
     await expect(page).toHaveURL(/\/admin\/login\?next=/);
   });
 });
@@ -88,59 +92,69 @@ test.describe('signing in', () => {
  * for — and it is asserted on more than one screen because "unmissable" means on
  * every screen, not on the one screen somebody thought to put it on.
  */
-test.describe('an unconfigured mailer', () => {
-  test('warns on every admin screen, and says what still works', async ({ page }) => {
-    await signIn(page, '/admin/applications');
+test.describe("an unconfigured mailer", () => {
+  test("warns on every admin screen, and says what still works", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/applications");
 
-    const warning = page.getByTestId('mail-warning');
+    const warning = page.getByTestId("mail-warning");
     await expect(warning).toBeVisible();
-    await expect(warning).toContainText('No mailer is configured');
-    await expect(warning).toContainText('GMAIL_APP_PASSWORD');
-    await expect(warning).toContainText('still being recorded');
+    await expect(warning).toContainText("No mailer is configured");
+    await expect(warning).toContainText("GMAIL_APP_PASSWORD");
+    await expect(warning).toContainText("still being recorded");
     // Nothing to dismiss: a warning with a close button is gone by the second
     // application.
-    await expect(warning.getByRole('button')).toHaveCount(0);
+    await expect(warning.getByRole("button")).toHaveCount(0);
 
-    for (const path of ['/admin/inquiries', '/admin/money', '/admin/school-details']) {
+    for (const path of [
+      "/admin/inquiries",
+      "/admin/money",
+      "/admin/school-details",
+    ]) {
       await page.goto(path);
-      await expect(page.getByTestId('mail-warning')).toBeVisible();
+      await expect(page.getByTestId("mail-warning")).toBeVisible();
     }
   });
 
-  test('says nothing to a stranger on the login page', async ({ page }) => {
+  test("says nothing to a stranger on the login page", async ({ page }) => {
     // Nobody to warn, and the deployment's missing variables are not a thing to
     // name to somebody who has not signed in.
-    await page.goto('/admin/login');
+    await page.goto("/admin/login");
 
-    await expect(page.getByTestId('mail-warning')).toHaveCount(0);
+    await expect(page.getByTestId("mail-warning")).toHaveCount(0);
   });
 });
 
-test.describe('saving school details', () => {
+test.describe("saving school details", () => {
   // One row, and a save posts the whole form: in parallel these two would
   // overwrite each other's fields.
-  test.describe.configure({ mode: 'serial' });
+  test.describe.configure({ mode: "serial" });
 
-  test('saves, says the live site is up to date, and stamps who did it', async ({ page }) => {
+  test("saves, says the live site is up to date, and stamps who did it", async ({
+    page,
+  }) => {
     await signIn(page);
 
-    const phone = '717-497-1234';
-    await page.getByLabel('Phone').fill(phone);
-    await page.getByRole('button', { name: 'Save' }).click();
+    const phone = "717-497-1234";
+    await page.getByLabel("Phone").fill(phone);
+    await page.getByRole("button", { name: "Save" }).click();
 
-    const banner = page.getByTestId('save-banner');
-    await expect(banner).toHaveAttribute('data-ok', 'true');
-    await expect(banner).toContainText('Saved and live.');
+    const banner = page.getByTestId("save-banner");
+    await expect(banner).toHaveAttribute("data-ok", "true");
+    await expect(banner).toContainText("Saved and live.");
 
     // The stamp is the attribution that flat permissions lean on (#18 §4).
-    await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
+    await expect(page.getByTestId("stamp")).toContainText(
+      "Last edited by Suite Admin",
+    );
 
     // And it is a real write: it survives coming back to the page.
-    await page.goto('/admin/school-details');
-    await expect(page.getByLabel('Phone')).toHaveValue(phone);
+    await page.goto("/admin/school-details");
+    await expect(page.getByLabel("Phone")).toHaveValue(phone);
   });
 
-  test('refuses a submission that would empty the footer, and says which field', async ({
+  test("refuses a submission that would empty the footer, and says which field", async ({
     page,
   }) => {
     await signIn(page);
@@ -150,14 +164,19 @@ test.describe('saving school details', () => {
     // what gets past the browser — `required` sees a non-empty value — and it
     // is the server's trim that has to catch it. That is the case worth a
     // browser test: the others never reach the code being defended.
-    await page.getByLabel('Address').fill('   ');
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByLabel("Address").fill("   ");
+    await page.getByRole("button", { name: "Save" }).click();
 
-    const banner = page.getByTestId('save-banner');
-    await expect(banner).toHaveAttribute('data-ok', 'false');
-    await expect(banner).toContainText('Nothing was saved');
-    await expect(page.locator('#address')).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.locator('#address-error')).toContainText('Address cannot be empty.');
+    const banner = page.getByTestId("save-banner");
+    await expect(banner).toHaveAttribute("data-ok", "false");
+    await expect(banner).toContainText("Nothing was saved");
+    await expect(page.locator("#address")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(page.locator("#address-error")).toContainText(
+      "Address cannot be empty.",
+    );
   });
 
   /*
@@ -184,26 +203,29 @@ test.describe('saving school details', () => {
     page: Page,
     banner: { message: string; date: string; link: string } | null,
   ): Promise<void> {
-    await page.goto('/admin/school-details');
-    const shown = page.getByLabel('Show the banner on the home page');
+    await page.goto("/admin/school-details");
+    const shown = page.getByLabel("Show the banner on the home page");
 
     if (banner === null) {
       await shown.uncheck();
     } else {
       await shown.check();
-      await page.getByLabel('Banner message').fill(banner.message);
-      await page.getByLabel('Banner date').fill(banner.date);
-      await page.getByLabel('Banner link').fill(banner.link);
+      await page.getByLabel("Banner message").fill(banner.message);
+      await page.getByLabel("Banner date").fill(banner.date);
+      await page.getByLabel("Banner link").fill(banner.link);
     }
 
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "true",
+    );
   }
 
   const REGISTER = {
-    message: 'Register now! Classes begin',
-    date: '2026-08-31',
-    link: 'https://example.org/register',
+    message: "Register now! Classes begin",
+    date: "2026-08-31",
+    link: "https://example.org/register",
   };
 
   /*
@@ -217,24 +239,34 @@ test.describe('saving school details', () => {
    * leans on whatever ran last is an assertion about scheduling.
    */
   /** A money figure on the page, as a number — read off the text a family reads. */
-  const dollars = (text: string): number => Number(text.replace(/[^0-9.]/g, ''));
+  const dollars = (text: string): number =>
+    Number(text.replace(/[^0-9.]/g, ""));
 
-  const REGISTRATION_VANCO = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ2';
-  const CLASSES_VANCO = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ0';
+  const REGISTRATION_VANCO =
+    "https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ2";
+  const CLASSES_VANCO = "https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ0";
 
   /** Both fee links, driven in through the boxes the office types them into. */
   async function setPayLinks(
     page: Page,
     links: { registration: string; classes: string },
   ): Promise<void> {
-    await page.goto('/admin/school-details');
-    await page.getByLabel('Registration fees payment link').fill(links.registration);
-    await page.getByLabel('Class fees payment link').fill(links.classes);
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    await page.goto("/admin/school-details");
+    await page
+      .getByLabel("Registration fees payment link")
+      .fill(links.registration);
+    await page.getByLabel("Class fees payment link").fill(links.classes);
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "true",
+    );
   }
 
-  const BOTH_VANCO = { registration: REGISTRATION_VANCO, classes: CLASSES_VANCO };
+  const BOTH_VANCO = {
+    registration: REGISTRATION_VANCO,
+    classes: CLASSES_VANCO,
+  };
 
   /**
    * A sendable application, every answer but the method.
@@ -247,27 +279,29 @@ test.describe('saving school details', () => {
    */
   async function fillApplication(page: Page, family: string): Promise<void> {
     await page.goto(APPLICATION_PATH);
-    await page.locator('form[data-enhanced]').waitFor();
+    await page.locator("form[data-enhanced]").waitFor();
     for (const question of FAITH_QUESTIONS) {
-      await page.check(`input[name="${faithKey('Father', question.id)}"][value="yes"]`);
+      await page.check(
+        `input[name="${faithKey("Father", question.id)}"][value="yes"]`,
+      );
     }
-    await page.fill('#apply-family-name', family);
-    await page.fill('#apply-email', `${slugify(family)}@example.com`);
+    await page.fill("#apply-family-name", family);
+    await page.fill("#apply-email", `${slugify(family)}@example.com`);
     await fillContactDetails(page);
-    await page.fill('#apply-child-0-name', 'Method Child');
-    await page.fill('#apply-child-0-age', '13');
+    await page.fill("#apply-child-0-name", "Method Child");
+    await page.fill("#apply-child-0-age", "13");
     await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
     await page.check('[data-agreement="handbook"] input[value="yes"]');
     await page.check('[data-agreement="code-of-conduct"] input[value="yes"]');
   }
 
-  test('offers a payment per fee, degrades one at a time, and stops when both links go', async ({
+  test("offers a payment per fee, degrades one at a time, and stops when both links go", async ({
     page,
   }) => {
     await signIn(page);
     await setPayLinks(page, BOTH_VANCO);
 
-    await page.goto('/admissions/apply');
+    await page.goto("/admissions/apply");
     const payment = page.locator('[data-section="apply-payment"]');
     const registration = payment.locator('[data-payment-line="registration"]');
     const classes = payment.locator('[data-payment-line="classes"]');
@@ -282,19 +316,23 @@ test.describe('saving school details', () => {
      * one dressed to look inert would still take focus and still open.
      */
     for (const line of [registration, classes]) {
-      const button = line.locator('[data-pay-online]');
+      const button = line.locator("[data-pay-online]");
       await expect(button).toBeDisabled();
-      await expect(button).toHaveJSProperty('tagName', 'BUTTON');
-      await expect(button).not.toHaveAttribute('href', /./);
+      await expect(button).toHaveJSProperty("tagName", "BUTTON");
+      await expect(button).not.toHaveAttribute("href", /./);
     }
-    await expect(payment.locator('[data-pay-waiting]')).toContainText(
-      'open when you send this application',
+    await expect(payment.locator("[data-pay-waiting]")).toContainText(
+      "open when you send this application",
     );
-    await expect(payment.locator('[data-pay-waiting]')).toContainText('reference number');
-    await expect(payment).not.toContainText('All of it is paid to Pharos Academy');
+    await expect(payment.locator("[data-pay-waiting]")).toContainText(
+      "reference number",
+    );
+    await expect(payment).not.toContainText(
+      "All of it is paid to Pharos Academy",
+    );
 
     // Two calls to action and no more: one per fee, and the check is not one.
-    await expect(payment.locator('a.btn, button.btn')).toHaveCount(2);
+    await expect(payment.locator("a.btn, button.btn")).toHaveCount(2);
 
     /*
      * Each states its own amount beside its own button, because the giving page
@@ -307,25 +345,35 @@ test.describe('saving school details', () => {
      * a split that does not add back up is a family paying twice or the office
      * chasing a shortfall.
      */
-    await page.locator('form[data-enhanced]').waitFor();
+    await page.locator("form[data-enhanced]").waitFor();
     await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
     const listed = async (field: string): Promise<number> =>
-      dollars(await payment.locator(`[data-total="${field}"]`).first().innerText());
+      dollars(
+        await payment.locator(`[data-total="${field}"]`).first().innerText(),
+      );
 
-    const registrationAmount = await registration.locator('[data-pay-total]').innerText();
-    const classesAmount = await classes.locator('[data-pay-total]').innerText();
+    const registrationAmount = await registration
+      .locator("[data-pay-total]")
+      .innerText();
+    const classesAmount = await classes.locator("[data-pay-total]").innerText();
     expect(dollars(registrationAmount)).toBeGreaterThan(0);
-    expect(dollars(registrationAmount)).toBe(await listed('registration'));
-    expect(dollars(classesAmount)).toBe((await listed('deposits')) + (await listed('tuitionDue')));
-    expect(dollars(registrationAmount) + dollars(classesAmount)).toBe(await listed('total'));
+    expect(dollars(registrationAmount)).toBe(await listed("registration"));
+    expect(dollars(classesAmount)).toBe(
+      (await listed("deposits")) + (await listed("tuitionDue")),
+    );
+    expect(dollars(registrationAmount) + dollars(classesAmount)).toBe(
+      await listed("total"),
+    );
 
     // The check is a closed disclosure asking for the whole total in one
     // envelope — splitting the fees is the school's bookkeeping, not the
     // family's problem.
-    const owed = await payment.locator('.totals > li.due .amount').innerText();
-    const byCheck = payment.locator('[data-pay-by-check]');
-    await expect(byCheck).toHaveJSProperty('open', false);
-    await byCheck.locator('summary', { hasText: 'Prefer to pay by check?' }).click();
+    const owed = await payment.locator(".totals > li.due .amount").innerText();
+    const byCheck = payment.locator("[data-pay-by-check]");
+    await expect(byCheck).toHaveJSProperty("open", false);
+    await byCheck
+      .locator("summary", { hasText: "Prefer to pay by check?" })
+      .click();
     await expect(byCheck).toContainText(`Post a check for ${owed} — all of it`);
 
     /*
@@ -333,28 +381,34 @@ test.describe('saving school details', () => {
      * back to the check instruction on its own and the classes keep their
      * button — a fee with no campaign must not take the section with it.
      */
-    await setPayLinks(page, { registration: '', classes: CLASSES_VANCO });
+    await setPayLinks(page, { registration: "", classes: CLASSES_VANCO });
 
-    await page.goto('/admissions/apply');
-    await expect(registration.locator('[data-pay-online]')).toHaveCount(0);
-    await expect(registration).toContainText('Paying the registration online');
-    await expect(registration).toContainText('not set up at the moment');
-    await expect(classes.locator('[data-pay-online]')).toBeDisabled();
-    await expect(payment.locator('[data-payment-method]')).toHaveCount(1);
+    await page.goto("/admissions/apply");
+    await expect(registration.locator("[data-pay-online]")).toHaveCount(0);
+    await expect(registration).toContainText("Paying the registration online");
+    await expect(registration).toContainText("not set up at the moment");
+    await expect(classes.locator("[data-pay-online]")).toBeDisabled();
+    await expect(payment.locator("[data-payment-method]")).toHaveCount(1);
 
-    await setPayLinks(page, { registration: '', classes: '' });
+    await setPayLinks(page, { registration: "", classes: "" });
 
     // Both empty is no link at all, never a button to nowhere — and nothing
     // left to say a button is waiting for (#304).
-    await page.goto('/admissions/apply');
-    await expect(payment.locator('[data-pay-online]')).toHaveCount(0);
-    await expect(payment.locator('[data-pay-waiting]')).toHaveCount(0);
-    await expect(payment).toContainText('no online payment set up at the moment');
-    await expect(payment).toContainText('All of it is paid to Pharos Academy by check');
+    await page.goto("/admissions/apply");
+    await expect(payment.locator("[data-pay-online]")).toHaveCount(0);
+    await expect(payment.locator("[data-pay-waiting]")).toHaveCount(0);
+    await expect(payment).toContainText(
+      "no online payment set up at the moment",
+    );
+    await expect(payment).toContainText(
+      "All of it is paid to Pharos Academy by check",
+    );
     // With nothing to choose between, the method is stated rather than asked —
     // and the gate does not hold the form open for an answer nobody can give.
-    await expect(payment.locator('[data-payment-method]')).toHaveCount(0);
-    await expect(page.locator('[data-missing-for="paymentMethod"]')).toBeHidden();
+    await expect(payment.locator("[data-payment-method]")).toHaveCount(0);
+    await expect(
+      page.locator('[data-missing-for="paymentMethod"]'),
+    ).toBeHidden();
   });
 
   /*
@@ -363,9 +417,11 @@ test.describe('saving school details', () => {
    * speaks in the family's own answer, and the admin row reads it back as the
    * mode-aware "Awaiting" label.
    */
-  for (const method of ['online', 'check'] as const) {
-    test(`sends an application that says it is paying by ${method}`, async ({ page }) => {
-      test.skip(!!process.env.PLAYWRIGHT_BASE_URL, 'writes an application row');
+  for (const method of ["online", "check"] as const) {
+    test(`sends an application that says it is paying by ${method}`, async ({
+      page,
+    }) => {
+      test.skip(!!process.env.PLAYWRIGHT_BASE_URL, "writes an application row");
 
       await signIn(page);
       await setPayLinks(page, BOTH_VANCO);
@@ -375,39 +431,48 @@ test.describe('saving school details', () => {
 
       // The method is the one thing still missing, and either answer opens
       // the gate — choosing check delays nothing (AC 5).
-      const send = page.getByRole('button', { name: 'Send the application' });
-      await expect(send).toHaveAttribute('aria-disabled', 'true');
+      const send = page.getByRole("button", { name: "Send the application" });
+      await expect(send).toHaveAttribute("aria-disabled", "true");
       await page.check(`[data-payment-method] input[value="${method}"]`);
-      await expect(send).not.toHaveAttribute('aria-disabled', 'true');
+      await expect(send).not.toHaveAttribute("aria-disabled", "true");
       await send.click();
 
       // The confirmation is worded from the answer, not from what the page
       // could have offered (AC 6).
       const confirmation = page.locator('[data-section="apply-confirmation"]');
-      await expect(confirmation.locator(`[data-paying="${method}"]`)).toHaveCount(1);
-      if (method === 'online') {
+      await expect(
+        confirmation.locator(`[data-paying="${method}"]`),
+      ).toHaveCount(1);
+      if (method === "online") {
         // Two payments, each into its own campaign, and the reference asked for
         // in each of them (#303).
         await expect(
-          confirmation.locator('[data-payment-line="registration"] [data-pay-online]'),
-        ).toHaveAttribute('href', REGISTRATION_VANCO);
+          confirmation.locator(
+            '[data-payment-line="registration"] [data-pay-online]',
+          ),
+        ).toHaveAttribute("href", REGISTRATION_VANCO);
         await expect(
-          confirmation.locator('[data-payment-line="classes"] [data-pay-online]'),
-        ).toHaveAttribute('href', CLASSES_VANCO);
-        await expect(confirmation.locator('[data-reference-note]')).toContainText(
-          'box of each payment',
-        );
-        await expect(confirmation).not.toContainText('Post a check');
+          confirmation.locator(
+            '[data-payment-line="classes"] [data-pay-online]',
+          ),
+        ).toHaveAttribute("href", CLASSES_VANCO);
+        await expect(
+          confirmation.locator("[data-reference-note]"),
+        ).toContainText("box of each payment");
+        await expect(confirmation).not.toContainText("Post a check");
       } else {
-        await expect(confirmation).toContainText('A check for');
-        await expect(confirmation.locator('[data-pay-online]')).toHaveCount(0);
+        await expect(confirmation).toContainText("A check for");
+        await expect(confirmation.locator("[data-pay-online]")).toHaveCount(0);
       }
 
       // And the office knows whether to watch the post for an envelope.
-      await page.goto('/admin/applications');
-      const row = page.getByTestId('application').filter({ hasText: family }).first();
-      await expect(row.getByTestId('application-payment')).toContainText(
-        method === 'online' ? 'Awaiting payment online' : 'Awaiting check',
+      await page.goto("/admin/applications");
+      const row = page
+        .getByTestId("application")
+        .filter({ hasText: family })
+        .first();
+      await expect(row.getByTestId("application-payment")).toContainText(
+        method === "online" ? "Awaiting payment online" : "Awaiting check",
       );
     });
   }
@@ -416,29 +481,47 @@ test.describe('saving school details', () => {
   // because it clicks Save: posting the whole form from a parallel worker
   // re-posts a stale copy of the one row over whatever a test here just saved,
   // which is the overwrite the comment at the top of this describe is about.
-  test('the save banner is announced without stealing focus', async ({ page }) => {
+  test("the save banner is announced without stealing focus", async ({
+    page,
+  }) => {
     await signIn(page);
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByRole("button", { name: "Save" }).click();
 
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('role', 'status');
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "role",
+      "status",
+    );
   });
 
-  test('refuses a fee payment link that is not a web address, by field', async ({ page }) => {
-    await signIn(page, '/admin/school-details');
+  test("refuses a fee payment link that is not a web address, by field", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/school-details");
 
     // `type="url"` lets the browser catch most of this; what reaches the server
     // is what it does not, and the fields are optional, so "empty is fine but
     // `javascript:` is not" is the rule worth driving. Three boxes are pasted
     // in one sitting, so the complaint has to name which one it is about.
-    await page.getByLabel('Study hall fees payment link').fill('javascript:alert(1)');
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page
+      .getByLabel("Study hall fees payment link")
+      .fill("javascript:alert(1)");
+    await page.getByRole("button", { name: "Save" }).click();
 
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
-    await expect(page.locator('#studyHallFeesUrl')).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.locator('#studyHallFeesUrl-error')).toContainText(
-      'Study hall fees payment link',
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "false",
     );
-    await expect(page.locator('#classFeesUrl')).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator("#studyHallFeesUrl")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(page.locator("#studyHallFeesUrl-error")).toContainText(
+      "Study hall fees payment link",
+    );
+    await expect(page.locator("#classFeesUrl")).not.toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
   });
 
   /*
@@ -447,20 +530,27 @@ test.describe('saving school details', () => {
    * decision the school has to make first, because the handbook states the fee
    * twice with two different figures (#51).
    */
-  test('keeps the study-hall link and renders it nowhere', async ({ page }) => {
-    const studyHall = 'https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ4';
+  test("keeps the study-hall link and renders it nowhere", async ({ page }) => {
+    const studyHall = "https://secure.myvanco.com/L-ZZ7H/campaign/C-16GQ4";
 
-    await signIn(page, '/admin/school-details');
-    await page.getByLabel('Study hall fees payment link').fill(studyHall);
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    await signIn(page, "/admin/school-details");
+    await page.getByLabel("Study hall fees payment link").fill(studyHall);
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "true",
+    );
 
     await page.reload();
-    await expect(page.getByLabel('Study hall fees payment link')).toHaveValue(studyHall);
+    await expect(page.getByLabel("Study hall fees payment link")).toHaveValue(
+      studyHall,
+    );
 
-    await page.goto('/admissions/apply');
+    await page.goto("/admissions/apply");
     await expect(page.locator(`[href="${studyHall}"]`)).toHaveCount(0);
-    await expect(page.locator('[data-section="apply-payment"]')).not.toContainText('study hall');
+    await expect(
+      page.locator('[data-section="apply-payment"]'),
+    ).not.toContainText("study hall");
   });
 
   /*
@@ -483,7 +573,7 @@ test.describe('saving school details', () => {
    * confirmation and is driven by the test below, because since #304 the stage
    * has no link to put an amount on.
    */
-  test('carries the amount on the one line the template belongs to, and refuses one that would not', async ({
+  test("carries the amount on the one line the template belongs to, and refuses one that would not", async ({
     page,
   }) => {
     await signIn(page);
@@ -491,38 +581,59 @@ test.describe('saving school details', () => {
 
     // Anything that is not the class-fee page is refused before it can be
     // saved, and the message names the link it had to start with.
-    await page.goto('/admin/school-details');
-    const template = page.getByLabel('Giving-page link template');
-    await template.fill('https://secure.myvanco.com.example/L-ZZ7H/campaign/C-16GQ0?amt={amount}');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
-    await expect(page.locator('#givingLinkTemplate')).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.locator('#givingLinkTemplate-error')).toContainText(CLASSES_VANCO);
+    await page.goto("/admin/school-details");
+    const template = page.getByLabel("Giving-page link template");
+    await template.fill(
+      "https://secure.myvanco.com.example/L-ZZ7H/campaign/C-16GQ0?amt={amount}",
+    );
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "false",
+    );
+    await expect(page.locator("#givingLinkTemplate")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(page.locator("#givingLinkTemplate-error")).toContainText(
+      CLASSES_VANCO,
+    );
 
     // So is a placeholder nobody knows — a literal `{amt}` in a query string is
     // a family sent to a page that cannot read it.
     await template.fill(`${CLASSES_VANCO}?amt={amt}`);
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
-    await expect(page.locator('#givingLinkTemplate-error')).toContainText('{amount}');
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "false",
+    );
+    await expect(page.locator("#givingLinkTemplate-error")).toContainText(
+      "{amount}",
+    );
 
     // The real one saves. What it renders is the next test: the stage it used
     // to change is greyed now, and the link it belongs on is the one the
     // confirmation writes against a reference.
     await template.fill(`${CLASSES_VANCO}?amt={amount}`);
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "true",
+    );
 
     await page.reload();
-    await expect(page.getByLabel('Giving-page link template')).toHaveValue(
+    await expect(page.getByLabel("Giving-page link template")).toHaveValue(
       `${CLASSES_VANCO}?amt={amount}`,
     );
 
     // Back to empty, because the Apply page is rendered off this shared row and
     // the tests beside this one assert the plain address.
-    await page.getByLabel('Giving-page link template').fill('');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    await page.getByLabel("Giving-page link template").fill("");
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "true",
+    );
   });
 
   /*
@@ -536,85 +647,101 @@ test.describe('saving school details', () => {
    * have stopped moving, which is why nothing in the browser keeps this href in
    * step any more — the server writes it once, against the total it printed.
    */
-  test('carries the amount on the confirmation link, where the family is given one', async ({
+  test("carries the amount on the confirmation link, where the family is given one", async ({
     page,
   }) => {
-    test.skip(!!process.env.PLAYWRIGHT_BASE_URL, 'writes an application row');
+    test.skip(!!process.env.PLAYWRIGHT_BASE_URL, "writes an application row");
 
     await signIn(page);
     await setPayLinks(page, BOTH_VANCO);
 
-    await page.goto('/admin/school-details');
-    await page.getByLabel('Giving-page link template').fill(`${CLASSES_VANCO}?amt={amount}`);
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    await page.goto("/admin/school-details");
+    await page
+      .getByLabel("Giving-page link template")
+      .fill(`${CLASSES_VANCO}?amt={amount}`);
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "true",
+    );
 
     try {
-      await fillApplication(page, 'Suite Template');
+      await fillApplication(page, "Suite Template");
       await page.check('[data-payment-method] input[value="online"]');
-      await page.getByRole('button', { name: 'Send the application' }).click();
+      await page.getByRole("button", { name: "Send the application" }).click();
       await expect(page.locator('[data-outcome="received"]')).toBeVisible();
 
       const confirmation = page.locator('[data-section="apply-confirmation"]');
       const classes = confirmation.locator('[data-payment-line="classes"]');
-      const owed = await classes.locator('[data-pay-total]').innerText();
+      const owed = await classes.locator("[data-pay-total]").innerText();
       expect(dollars(owed)).toBeGreaterThan(0);
 
       // The class fees are that campaign, so the box is filled in for them and
       // the copy stops asking them to type a figure that is already there.
-      await expect(classes.locator('[data-pay-online]')).toHaveAttribute(
-        'href',
-        `${CLASSES_VANCO}?amt=${owed.replace('$', '')}`,
+      await expect(classes.locator("[data-pay-online]")).toHaveAttribute(
+        "href",
+        `${CLASSES_VANCO}?amt=${owed.replace("$", "")}`,
       );
-      await expect(classes).toContainText(`opens with ${owed} already in the box`);
-      await expect(classes).not.toContainText('please enter');
+      await expect(classes).toContainText(
+        `opens with ${owed} already in the box`,
+      );
+      await expect(classes).not.toContainText("please enter");
 
       // The registration is a different campaign, so it keeps the plain address
       // and keeps asking for its figure.
-      const registration = confirmation.locator('[data-payment-line="registration"]');
-      await expect(registration.locator('[data-pay-online]')).toHaveAttribute(
-        'href',
+      const registration = confirmation.locator(
+        '[data-payment-line="registration"]',
+      );
+      await expect(registration.locator("[data-pay-online]")).toHaveAttribute(
+        "href",
         REGISTRATION_VANCO,
       );
-      await expect(registration).toContainText('please enter');
+      await expect(registration).toContainText("please enter");
     } finally {
       // The template is one shared row, and the tests beside this one assert
       // the plain address.
-      await page.goto('/admin/school-details');
-      await page.getByLabel('Giving-page link template').fill('');
-      await page.getByRole('button', { name: 'Save' }).click();
-      await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+      await page.goto("/admin/school-details");
+      await page.getByLabel("Giving-page link template").fill("");
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByTestId("save-banner")).toHaveAttribute(
+        "data-ok",
+        "true",
+      );
     }
   });
 
-  test('puts the banner on the home page, and takes it off again', async ({ page }) => {
+  test("puts the banner on the home page, and takes it off again", async ({
+    page,
+  }) => {
     await signIn(page);
     await setBanner(page, REGISTER);
 
-    await page.goto('/');
-    const bar = page.locator('[data-announcement-bar]');
+    await page.goto("/");
+    const bar = page.locator("[data-announcement-bar]");
     // American, no ordinal suffix, and the date after the words the office
     // typed — "Register now! Classes begin August 31".
-    await expect(bar).toContainText('Register now! Classes begin August 31');
-    await expect(bar.getByRole('link')).toHaveAttribute('href', REGISTER.link);
+    await expect(bar).toContainText("Register now! Classes begin August 31");
+    await expect(bar.getByRole("link")).toHaveAttribute("href", REGISTER.link);
 
     // Above the header's row, not floating over it.
-    const row = await page.locator('[data-site-header] > .wide').boundingBox();
+    const row = await page.locator("[data-site-header] > .wide").boundingBox();
     const box = await bar.boundingBox();
     expect(box!.y + box!.height).toBeLessThanOrEqual(row!.y + 1);
 
     // Centred, and centred on the bar rather than on the space left beside the
     // dismiss button: the message's own midpoint has to land on the bar's.
-    const message = await bar.locator('.site-banner-message').boundingBox();
-    const drift = Math.abs(message!.x + message!.width / 2 - (box!.x + box!.width / 2));
+    const message = await bar.locator(".site-banner-message").boundingBox();
+    const drift = Math.abs(
+      message!.x + message!.width / 2 - (box!.x + box!.width / 2),
+    );
     expect(drift).toBeLessThanOrEqual(1);
 
     await setBanner(page, null);
 
     // Off is nothing at all, not an empty bar: the hero still starts at the top
     // of the document, so the region leaves no space behind it.
-    await page.goto('/');
-    await expect(page.locator('[data-announcement-bar]')).toHaveCount(0);
+    await page.goto("/");
+    await expect(page.locator("[data-announcement-bar]")).toHaveCount(0);
     const hero = await page.locator('[data-section="hero"]').boundingBox();
     expect(hero!.y).toBeCloseTo(0, 0);
   });
@@ -628,130 +755,161 @@ test.describe('saving school details', () => {
    * one in January never saw the snow day in February. The reload is the whole
    * assertion: whatever the visitor did last time, the line is still there.
    */
-  test('keeps the banner up across a reload, with nothing to close it', async ({ page }) => {
+  test("keeps the banner up across a reload, with nothing to close it", async ({
+    page,
+  }) => {
     await signIn(page);
-    await setBanner(page, { message: 'Snow day — no classes', date: '2027-01-05', link: '' });
+    await setBanner(page, {
+      message: "Snow day — no classes",
+      date: "2027-01-05",
+      link: "",
+    });
 
-    await page.goto('/');
-    const bar = page.locator('[data-announcement-bar]');
+    await page.goto("/");
+    const bar = page.locator("[data-announcement-bar]");
     // Named, so a screen reader announces a region called Announcement rather
     // than an unlabelled run of text above the header.
-    await expect(bar).toHaveAttribute('aria-label', 'Announcement');
-    await expect(bar).toContainText('Snow day — no classes January 5');
+    await expect(bar).toHaveAttribute("aria-label", "Announcement");
+    await expect(bar).toContainText("Snow day — no classes January 5");
     // With no link set, the message is not a link to nowhere.
-    await expect(bar.getByRole('link')).toHaveCount(0);
+    await expect(bar.getByRole("link")).toHaveCount(0);
     // No control of any kind inside the bar — the admin switch is the only
     // thing that takes it down.
-    await expect(bar.getByRole('button')).toHaveCount(0);
+    await expect(bar.getByRole("button")).toHaveCount(0);
 
     await page.reload();
-    await expect(page.locator('[data-announcement-bar]')).toContainText('Snow day — no classes');
+    await expect(page.locator("[data-announcement-bar]")).toContainText(
+      "Snow day — no classes",
+    );
 
     await setBanner(page, null);
   });
 
-  test('has no accessibility failures with the banner live', async ({ page }) => {
+  test("has no accessibility failures with the banner live", async ({
+    page,
+  }) => {
     await signIn(page);
     await setBanner(page, REGISTER);
 
     // Navy ink on gold, over a header that is transparent above the hero. The
     // contrast is the thing most likely to have been got wrong by eye, and the
     // public axe run never sees this state because the banner ships off.
-    await page.goto('/');
-    await expect(page.locator('[data-announcement-bar]')).toBeVisible();
+    await page.goto("/");
+    await expect(page.locator("[data-announcement-bar]")).toBeVisible();
     const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
     expect(results.violations).toEqual([]);
 
     await setBanner(page, null);
   });
 
-  test('refuses a banner with no date, and one whose link is not a link', async ({ page }) => {
+  test("refuses a banner with no date, and one whose link is not a link", async ({
+    page,
+  }) => {
     await signIn(page);
     await setBanner(page, null);
 
-    await page.getByLabel('Show the banner on the home page').check();
-    await page.getByLabel('Banner message').fill('Register now! Classes begin');
-    await page.getByLabel('Banner date').fill('');
+    await page.getByLabel("Show the banner on the home page").check();
+    await page.getByLabel("Banner message").fill("Register now! Classes begin");
+    await page.getByLabel("Banner date").fill("");
     // `type="url"` catches most of these in the browser before they ever post.
     // A scheme the browser accepts is what proves the server's own check runs.
-    await page.getByLabel('Banner link').fill('javascript:alert(1)');
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByLabel("Banner link").fill("javascript:alert(1)");
+    await page.getByRole("button", { name: "Save" }).click();
 
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
-    await expect(page.locator('#bannerDate-error')).toBeVisible();
-    await expect(page.locator('#bannerLink-error')).toBeVisible();
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "false",
+    );
+    await expect(page.locator("#bannerDate-error")).toBeVisible();
+    await expect(page.locator("#bannerLink-error")).toBeVisible();
 
     // Nothing was saved, so the home page is still the one the school ships.
-    await page.goto('/');
-    await expect(page.locator('[data-announcement-bar]')).toHaveCount(0);
+    await page.goto("/");
+    await expect(page.locator("[data-announcement-bar]")).toHaveCount(0);
   });
 });
 
-test.describe('editing a person', () => {
+test.describe("editing a person", () => {
   // One row per person and a save posts the whole form, as school details does.
-  test.describe.configure({ mode: 'serial' });
+  test.describe.configure({ mode: "serial" });
 
-  test('saves, republishes the site, and stamps who did it', async ({ page }) => {
-    await signIn(page, '/admin/people');
+  test("saves, republishes the site, and stamps who did it", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/people");
 
-    await page.getByRole('link', { name: 'Mrs. Angela Fecteau' }).click();
+    await page.getByRole("link", { name: "Mrs. Angela Fecteau" }).click();
 
-    const role = 'Instructor, Life Science';
-    await page.getByLabel('Role').fill(role);
-    await page.getByRole('button', { name: 'Save' }).click();
+    const role = "Instructor, Life Science";
+    await page.getByLabel("Role").fill(role);
+    await page.getByRole("button", { name: "Save" }).click();
 
     // AC 5: the screen reports what actually happened to the live site, not
     // what it hopes happened. This name is printed on the staff page and on
     // every class she teaches, so a save that did not republish is a site
     // disagreeing with itself.
-    const banner = page.getByTestId('save-banner');
-    await expect(banner).toHaveAttribute('data-ok', 'true');
-    await expect(banner).toContainText('Saved and live.');
-    await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
+    const banner = page.getByTestId("save-banner");
+    await expect(banner).toHaveAttribute("data-ok", "true");
+    await expect(banner).toContainText("Saved and live.");
+    await expect(page.getByTestId("stamp")).toContainText(
+      "Last edited by Suite Admin",
+    );
 
     // A real write, and it reaches the public page it is printed on.
     await page.goto(STAFF_PATH);
-    await expect(page.locator('#angela-fecteau .role')).toHaveText(role);
+    await expect(page.locator("#angela-fecteau .role")).toHaveText(role);
   });
 
-  test('refuses a person with no role, and says so without saving', async ({ page }) => {
-    await signIn(page, '/admin/people');
-    await page.getByRole('link', { name: 'Mrs. Chelsea Miller' }).click();
+  test("refuses a person with no role, and says so without saving", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/people");
+    await page.getByRole("link", { name: "Mrs. Chelsea Miller" }).click();
 
     // A field of spaces is what gets past the browser's own `required`, so it
     // is the server's trim that has to catch it.
-    await page.getByLabel('Role').fill('   ');
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByLabel("Role").fill("   ");
+    await page.getByRole("button", { name: "Save" }).click();
 
-    const banner = page.getByTestId('save-banner');
-    await expect(banner).toHaveAttribute('data-ok', 'false');
-    await expect(banner).toContainText('Nothing was saved');
-    await expect(page.locator('#role')).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.locator('#role-error')).toContainText('cannot be empty');
+    const banner = page.getByTestId("save-banner");
+    await expect(banner).toHaveAttribute("data-ok", "false");
+    await expect(banner).toContainText("Nothing was saved");
+    await expect(page.locator("#role")).toHaveAttribute("aria-invalid", "true");
+    await expect(page.locator("#role-error")).toContainText("cannot be empty");
   });
 
   // AC 4, defended where a photograph can actually get in: a face nobody at the
   // school can vouch for or take down does not go on the staff page.
-  test('refuses a photograph that does not live in this site', async ({ page }) => {
-    await signIn(page, '/admin/people');
-    await page.getByRole('link', { name: 'Mrs. Chelsea Miller' }).click();
-
-    await page.getByLabel('Photograph').fill('https://example.org/somebody.jpg');
-    await page.getByRole('button', { name: 'Save' }).click();
-
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
-    await expect(page.locator('#photo')).toHaveAttribute('aria-invalid', 'true');
-  });
-
-  test('adds somebody with no bio and no photograph, which is a complete person', async ({
+  test("refuses a photograph that does not live in this site", async ({
     page,
   }) => {
-    await signIn(page, '/admin/people');
-    await page.getByRole('link', { name: 'Add a person' }).click();
+    await signIn(page, "/admin/people");
+    await page.getByRole("link", { name: "Mrs. Chelsea Miller" }).click();
 
-    await page.getByLabel('Name').fill('Mrs. Suite Newcomer');
-    await page.getByLabel('Role').fill('Instructor');
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page
+      .getByLabel("Photograph")
+      .fill("https://example.org/somebody.jpg");
+    await page.getByRole("button", { name: "Save" }).click();
+
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "false",
+    );
+    await expect(page.locator("#photo")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+  });
+
+  test("adds somebody with no bio and no photograph, which is a complete person", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/people");
+    await page.getByRole("link", { name: "Add a person" }).click();
+
+    await page.getByLabel("Name").fill("Mrs. Suite Newcomer");
+    await page.getByLabel("Role").fill("Instructor");
+    await page.getByRole("button", { name: "Save" }).click();
 
     /*
      * That it saved, not that the republish reached the live site.
@@ -763,11 +921,15 @@ test.describe('editing a person', () => {
      * the live site hasn't updated yet" — a true statement about a
      * revalidation, and nothing at all about the row this test is checking.
      */
-    await expect(page.getByTestId('save-banner')).toContainText('Saved');
-    await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
+    await expect(page.getByTestId("save-banner")).toContainText("Saved");
+    await expect(page.getByTestId("stamp")).toContainText(
+      "Last edited by Suite Admin",
+    );
 
-    await page.goto('/admin/people');
-    await expect(page.getByRole('link', { name: 'Mrs. Suite Newcomer' })).toBeVisible();
+    await page.goto("/admin/people");
+    await expect(
+      page.getByRole("link", { name: "Mrs. Suite Newcomer" }),
+    ).toBeVisible();
   });
 });
 
@@ -789,87 +951,93 @@ test.describe('editing a person', () => {
  * public specs assert membership rather than totals, so an extra one is not a
  * failure.
  */
-test.describe('deleting a person', () => {
-  test.describe.configure({ mode: 'serial' });
+test.describe("deleting a person", () => {
+  test.describe.configure({ mode: "serial" });
 
-  const DEPARTING = 'Mr. Suite Departing';
-  const ORPHANED = 'A Class the Suite Will Orphan';
-  const ORPHANED_SLUG = 'a-class-the-suite-will-orphan';
+  const DEPARTING = "Mr. Suite Departing";
+  const ORPHANED = "A Class the Suite Will Orphan";
+  const ORPHANED_SLUG = "a-class-the-suite-will-orphan";
 
   /** Somebody to delete, and one class naming them, both made through the admin. */
-  test('sets up somebody who teaches, the way Jill would', async ({ page }) => {
-    await signIn(page, '/admin/people/new');
-    await page.getByLabel('Name').fill(DEPARTING);
-    await page.getByLabel('Role').fill('Instructor');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toContainText('Saved');
+  test("sets up somebody who teaches, the way Jill would", async ({ page }) => {
+    await signIn(page, "/admin/people/new");
+    await page.getByLabel("Name").fill(DEPARTING);
+    await page.getByLabel("Role").fill("Instructor");
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toContainText("Saved");
 
-    await page.goto('/admin/courses/new');
-    await page.locator('#title').fill(ORPHANED);
+    await page.goto("/admin/courses/new");
+    await page.locator("#title").fill(ORPHANED);
     await page
-      .locator('#description')
-      .fill('Added by the suite, to be left without an instructor when its teacher is deleted.');
-    await page.locator('input[name="stages"][value="Elementary (Grammar Stage)"]').check();
+      .locator("#description")
+      .fill(
+        "Added by the suite, to be left without an instructor when its teacher is deleted.",
+      );
+    await page
+      .locator('input[name="stages"][value="Elementary (Grammar Stage)"]')
+      .check();
     await page.locator('input[name="days"][value="Thursday"]').check();
     // A slot the school already meets at, picked rather than typed, so this
     // adds no new time to the editor's list.
-    await page.locator('#time').selectOption('11:20-12:20');
+    await page.locator("#time").selectOption("11:20-12:20");
     await page.locator('input[name="enrolment"][value="year"]').check();
     await page.locator('input[name="enrolmentUnits"][value="year"]').check();
-    await page.locator('#weeks').fill('10');
-    await page.locator('#ageLabel').fill('Ages 6-10');
-    await page.locator('#rateTier').selectOption('standard');
-    await page.locator('#prerequisites').fill('None');
-    await page.locator('#instructorSlug').selectOption({ label: DEPARTING });
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toContainText('Saved');
+    await page.locator("#weeks").fill("10");
+    await page.locator("#ageLabel").fill("Ages 6-10");
+    await page.locator("#rateTier").selectOption("standard");
+    await page.locator("#prerequisites").fill("None");
+    await page.locator("#instructorSlug").selectOption({ label: DEPARTING });
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toContainText("Saved");
 
     // The class names them, on the public page, which is the state the delete
     // is about to change.
     await page.goto(`/classes/${ORPHANED_SLUG}`);
-    await expect(page.locator('.coursefacts')).toContainText(DEPARTING);
+    await expect(page.locator(".coursefacts")).toContainText(DEPARTING);
   });
 
-  test('asks before deleting, names the class that loses its teacher, and takes no for an answer', async ({
+  test("asks before deleting, names the class that loses its teacher, and takes no for an answer", async ({
     page,
   }) => {
     await signIn(page, `/admin/people/${slugify(DEPARTING)}`);
-    await page.getByRole('button', { name: 'Delete this person' }).click();
+    await page.getByRole("button", { name: "Delete this person" }).click();
 
     // A screen, not a dialog: it is in the page, and it says all three things.
-    const confirm = page.getByTestId('confirm');
+    const confirm = page.getByTestId("confirm");
     await expect(confirm).toContainText(`Delete ${DEPARTING}?`);
-    await expect(page.getByTestId('deletion-goes')).toContainText('staff page');
+    await expect(page.getByTestId("deletion-goes")).toContainText("staff page");
     // The surprise, named in the school's own words rather than as a slug.
-    await expect(page.getByTestId('deletion-classes')).toContainText(
+    await expect(page.getByTestId("deletion-classes")).toContainText(
       `${ORPHANED} will have no instructor.`,
     );
-    await expect(page.getByTestId('deletion-undo')).toContainText('no undo');
+    await expect(page.getByTestId("deletion-undo")).toContainText("no undo");
 
     // Backing out is a GET and writes nothing — they are still there, still
     // teaching, and the editor is back.
-    await page.getByRole('link', { name: 'Go back without deleting' }).click();
-    await expect(page.getByTestId('confirm')).toHaveCount(0);
-    await expect(page.getByLabel('Name')).toHaveValue(DEPARTING);
+    await page.getByRole("link", { name: "Go back without deleting" }).click();
+    await expect(page.getByTestId("confirm")).toHaveCount(0);
+    await expect(page.getByLabel("Name")).toHaveValue(DEPARTING);
 
     await page.goto(`/classes/${ORPHANED_SLUG}`);
-    await expect(page.locator('.coursefacts')).toContainText(DEPARTING);
+    await expect(page.locator(".coursefacts")).toContainText(DEPARTING);
   });
 
-  test('deletes them, leaves the class running without an instructor, and reports it', async ({
+  test("deletes them, leaves the class running without an instructor, and reports it", async ({
     page,
   }) => {
     await signIn(page, `/admin/people/${slugify(DEPARTING)}`);
-    await page.getByRole('button', { name: 'Delete this person' }).click();
-    await page.getByRole('button', { name: `Yes, delete ${DEPARTING}` }).click();
+    await page.getByRole("button", { name: "Delete this person" }).click();
+    await page
+      .getByRole("button", { name: `Yes, delete ${DEPARTING}` })
+      .click();
 
     // Lands back on the list, with the outcome in the query string so a
     // refresh repeats nothing.
     await expect(page).toHaveURL(/\/admin\/people\?/);
-    const banner = page.getByTestId('people-banner');
+    const banner = page.getByTestId("people-banner");
     await expect(banner).toContainText(`${DEPARTING} is deleted.`);
-    await expect(banner).toContainText('waiting for an instructor');
-    await expect(page.getByRole('link', { name: DEPARTING })).toHaveCount(0);
+    await expect(banner).toContainText("waiting for an instructor");
+    await expect(page.getByRole("link", { name: DEPARTING })).toHaveCount(0);
 
     // Their editor is gone with them.
     const gone = await page.goto(`/admin/people/${slugify(DEPARTING)}`);
@@ -877,46 +1045,56 @@ test.describe('deleting a person', () => {
 
     // The staff page no longer lists them.
     await page.goto(STAFF_PATH);
-    await expect(page.locator('body')).not.toContainText(DEPARTING);
+    await expect(page.locator("body")).not.toContainText(DEPARTING);
 
     // And the class is still there, still fully described, naming nobody —
     // which is the whole promise: the delete clears, it does not cascade.
     await page.goto(`/classes/${ORPHANED_SLUG}`);
-    const facts = page.locator('.coursefacts');
-    await expect(page.locator('h1')).toHaveText(ORPHANED);
+    const facts = page.locator(".coursefacts");
+    await expect(page.locator("h1")).toHaveText(ORPHANED);
     await expect(facts).not.toContainText(DEPARTING);
-    await expect(facts.locator('dt', { hasText: /^Instructor$/ })).toHaveCount(0);
-    await expect(facts).toContainText('Meets');
+    await expect(facts.locator("dt", { hasText: /^Instructor$/ })).toHaveCount(
+      0,
+    );
+    await expect(facts).toContainText("Meets");
 
     // The admin's Classes list is where the want is visible.
-    await page.goto('/admin/courses');
-    await expect(page.getByTestId(`no-instructor-${ORPHANED_SLUG}`)).toBeVisible();
+    await page.goto("/admin/courses");
+    await expect(
+      page.getByTestId(`no-instructor-${ORPHANED_SLUG}`),
+    ).toBeVisible();
   });
 
-  test('says plainly that somebody who teaches nothing takes nothing with them', async ({
+  test("says plainly that somebody who teaches nothing takes nothing with them", async ({
     page,
   }) => {
     // The case the delete is mostly for — a duplicate, or somebody who never
     // started. Mrs. Suite Newcomer is added by `editing a person` above; this
     // creates its own so the two describes do not depend on each other's order.
-    const NEVER_STARTED = 'Mrs. Suite Never Started';
-    await signIn(page, '/admin/people/new');
-    await page.getByLabel('Name').fill(NEVER_STARTED);
-    await page.getByLabel('Role').fill('Instructor');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toContainText('Saved');
+    const NEVER_STARTED = "Mrs. Suite Never Started";
+    await signIn(page, "/admin/people/new");
+    await page.getByLabel("Name").fill(NEVER_STARTED);
+    await page.getByLabel("Role").fill("Instructor");
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toContainText("Saved");
 
     await page.goto(`/admin/people/${slugify(NEVER_STARTED)}`);
-    await page.getByRole('button', { name: 'Delete this person' }).click();
+    await page.getByRole("button", { name: "Delete this person" }).click();
 
     // Not an empty list, and not "0 classes": a sentence about them.
-    await expect(page.getByTestId('deletion-classes')).toContainText(
-      'They teach no classes, so nothing else on the site changes.',
+    await expect(page.getByTestId("deletion-classes")).toContainText(
+      "They teach no classes, so nothing else on the site changes.",
     );
 
-    await page.getByRole('button', { name: `Yes, delete ${NEVER_STARTED}` }).click();
-    await expect(page.getByTestId('people-banner')).toContainText(`${NEVER_STARTED} is deleted.`);
-    await expect(page.getByRole('link', { name: NEVER_STARTED })).toHaveCount(0);
+    await page
+      .getByRole("button", { name: `Yes, delete ${NEVER_STARTED}` })
+      .click();
+    await expect(page.getByTestId("people-banner")).toContainText(
+      `${NEVER_STARTED} is deleted.`,
+    );
+    await expect(page.getByRole("link", { name: NEVER_STARTED })).toHaveCount(
+      0,
+    );
   });
 });
 
@@ -936,54 +1114,64 @@ test.describe('deleting a person', () => {
  * The person it reads is the one the throwaway database retires for exactly
  * this (`SUITE_RETIRED_PERSON`), who teaches nothing.
  */
-test.describe('the retired people section', () => {
+test.describe("the retired people section", () => {
   /** What that person is called, as the seed writes them. */
-  const DEPARTED = 'Mrs. Suite Departed';
+  const DEPARTED = "Mrs. Suite Departed";
 
-  test('lists a retired person beneath the listed ones, dated, never hidden', async ({ page }) => {
-    await signIn(page, '/admin/people');
+  test("lists a retired person beneath the listed ones, dated, never hidden", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/people");
 
-    const retired = page.getByTestId('retired-people');
+    const retired = page.getByTestId("retired-people");
     await expect(retired).toBeVisible();
-    await expect(retired.getByRole('heading', { name: DEPARTED })).toBeVisible();
-    await expect(page.getByTestId(`retired-on-${SUITE_RETIRED_PERSON}`)).toContainText(
-      'Retired ',
-    );
-    await expect(page.getByTestId(`unretire-${SUITE_RETIRED_PERSON}`)).toBeVisible();
+    await expect(
+      retired.getByRole("heading", { name: DEPARTED }),
+    ).toBeVisible();
+    await expect(
+      page.getByTestId(`retired-on-${SUITE_RETIRED_PERSON}`),
+    ).toContainText("Retired ");
+    await expect(
+      page.getByTestId(`unretire-${SUITE_RETIRED_PERSON}`),
+    ).toBeVisible();
   });
 
-  test('keeps them out of the listed people above', async ({ page }) => {
-    await signIn(page, '/admin/people');
+  test("keeps them out of the listed people above", async ({ page }) => {
+    await signIn(page, "/admin/people");
 
-    const listed = page.getByTestId('listed-people');
+    const listed = page.getByTestId("listed-people");
     await expect(listed).toBeVisible();
     await expect(listed.getByText(DEPARTED)).toHaveCount(0);
   });
 
-  test('says they are retired on their own screen, and offers the one press back', async ({
+  test("says they are retired on their own screen, and offers the one press back", async ({
     page,
   }) => {
     await signIn(page, `/admin/people/${SUITE_RETIRED_PERSON}`);
 
-    const section = page.getByTestId('retirement');
-    await expect(section.getByRole('heading', { name: 'Retired' })).toBeVisible();
-    await expect(section).toContainText('no longer print their name');
-    await expect(page.getByTestId('retire')).toHaveText('Bring them back');
+    const section = page.getByTestId("retirement");
+    await expect(
+      section.getByRole("heading", { name: "Retired" }),
+    ).toBeVisible();
+    await expect(section).toContainText("no longer print their name");
+    await expect(page.getByTestId("retire")).toHaveText("Bring them back");
   });
 
-  test('offers Retire on somebody the school lists', async ({ page }) => {
-    await signIn(page, '/admin/people/jill-kilker');
+  test("offers Retire on somebody the school lists", async ({ page }) => {
+    await signIn(page, "/admin/people/jill-kilker");
 
-    const section = page.getByTestId('retirement');
-    await expect(section.getByRole('heading', { name: 'Listed' })).toBeVisible();
-    await expect(page.getByTestId('retire')).toHaveText('Retire');
+    const section = page.getByTestId("retirement");
+    await expect(
+      section.getByRole("heading", { name: "Listed" }),
+    ).toBeVisible();
+    await expect(page.getByTestId("retire")).toHaveText("Retire");
   });
 
-  test('takes them off the staff page', async ({ page }) => {
+  test("takes them off the staff page", async ({ page }) => {
     await page.goto(STAFF_PATH);
     await expect(page.getByText(DEPARTED)).toHaveCount(0);
     // The screen is not simply empty: somebody the school does list is on it.
-    await expect(page.locator('#jill-kilker')).toBeVisible();
+    await expect(page.locator("#jill-kilker")).toBeVisible();
   });
 });
 
@@ -999,66 +1187,84 @@ test.describe('the retired people section', () => {
  * seeds for exactly this (`src/lib/db/client.ts`). It is the one account in the
  * suite whose disappearance costs nothing.
  */
-test.describe('the Users screen', () => {
-  test.describe.configure({ mode: 'serial' });
+test.describe("the Users screen", () => {
+  test.describe.configure({ mode: "serial" });
 
   /** The account the suite may delete, and the button that starts deleting it. */
-  const SPARE = 'Suite Spare';
+  const SPARE = "Suite Spare";
 
-  test('offers reset and delete, and no way to create an account', async ({ page }) => {
-    await signIn(page, '/admin/users');
+  test("offers reset and delete, and no way to create an account", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/users");
 
-    await expect(page.getByRole('button', { name: 'Reset password' }).first()).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Reset password" }).first(),
+    ).toBeVisible();
     // By shape, not by name: the spare account below is deleted once per dev
     // server, and the suite's own account is always here to offer a delete.
-    await expect(page.getByRole('button', { name: /^Delete / }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Add account' })).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /^Delete / }).first(),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add account" })).toHaveCount(
+      0,
+    );
   });
 
-  test('lets the school back out of deleting an account', async ({ page }) => {
-    await signIn(page, '/admin/users');
+  test("lets the school back out of deleting an account", async ({ page }) => {
+    await signIn(page, "/admin/users");
 
-    const start = page.getByRole('button', { name: `Delete ${SPARE}` });
+    const start = page.getByRole("button", { name: `Delete ${SPARE}` });
     // See the test below: the spare can only be deleted once per dev server.
-    test.skip((await start.count()) === 0, `${SPARE} has already been deleted on this server`);
+    test.skip(
+      (await start.count()) === 0,
+      `${SPARE} has already been deleted on this server`,
+    );
 
     await start.click();
-    await expect(page.getByTestId('confirm')).toContainText(`Delete ${SPARE}?`);
+    await expect(page.getByTestId("confirm")).toContainText(`Delete ${SPARE}?`);
 
-    await page.getByRole('link', { name: 'Go back without deleting' }).click();
+    await page.getByRole("link", { name: "Go back without deleting" }).click();
 
-    await expect(page.getByTestId('confirm')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: `Delete ${SPARE}` })).toBeVisible();
+    await expect(page.getByTestId("confirm")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: `Delete ${SPARE}` }),
+    ).toBeVisible();
   });
 
-  test('will not delete an account until the school confirms it', async ({ page }) => {
-    await signIn(page, '/admin/users');
+  test("will not delete an account until the school confirms it", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/users");
 
-    const start = page.getByRole('button', { name: `Delete ${SPARE}` });
+    const start = page.getByRole("button", { name: `Delete ${SPARE}` });
     // A retried run finds this account already gone: it can only be deleted
     // once per dev server, and no screen can put it back.
-    test.skip((await start.count()) === 0, `${SPARE} has already been deleted on this server`);
+    test.skip(
+      (await start.count()) === 0,
+      `${SPARE} has already been deleted on this server`,
+    );
 
     await start.click();
 
     // Step one: a confirmation naming the account and what cannot be undone,
     // not a delete.
-    const confirm = page.getByTestId('confirm');
+    const confirm = page.getByTestId("confirm");
     await expect(confirm).toContainText(`Delete ${SPARE}?`);
-    await expect(confirm).toContainText('cannot put the account back');
+    await expect(confirm).toContainText("cannot put the account back");
 
     // Nothing has happened yet: coming back shows the account still there.
-    await page.goto('/admin/users');
-    await expect(page.getByRole('heading', { name: SPARE })).toBeVisible();
+    await page.goto("/admin/users");
+    await expect(page.getByRole("heading", { name: SPARE })).toBeVisible();
 
     // Step two: confirm, and now it deletes and says so.
-    await page.getByRole('button', { name: `Delete ${SPARE}` }).click();
-    await page.getByRole('button', { name: `Yes, delete ${SPARE}` }).click();
+    await page.getByRole("button", { name: `Delete ${SPARE}` }).click();
+    await page.getByRole("button", { name: `Yes, delete ${SPARE}` }).click();
 
-    const banner = page.getByTestId('users-banner');
-    await expect(banner).toHaveAttribute('data-ok', 'true');
+    const banner = page.getByTestId("users-banner");
+    await expect(banner).toHaveAttribute("data-ok", "true");
     await expect(banner).toContainText(`Deleted ${SPARE}.`);
-    await expect(page.getByRole('heading', { name: SPARE })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: SPARE })).toHaveCount(0);
   });
 });
 
@@ -1074,11 +1280,14 @@ test.describe('the Users screen', () => {
  * Serial, because these tests share one database with each other and post
  * against it.
  */
-test.describe('announcements', () => {
-  test.describe.configure({ mode: 'serial' });
+test.describe("announcements", () => {
+  test.describe.configure({ mode: "serial" });
 
   /** A real PDF, small enough to compare byte for byte in an assertion. */
-  const PDF = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
+  const PDF = Buffer.from(
+    "%PDF-1.7\n1 0 obj\n<<>>\nendobj\ntrailer\n%%EOF\n",
+    "latin1",
+  );
 
   /** Today, as the date input wants it. */
   function today(): string {
@@ -1087,95 +1296,123 @@ test.describe('announcements', () => {
 
   async function post(
     page: Page,
-    fields: { headline: string; body: string; postedOn?: string; file?: boolean },
+    fields: {
+      headline: string;
+      body: string;
+      postedOn?: string;
+      file?: boolean;
+    },
   ): Promise<void> {
-    await signIn(page, '/admin/announcements');
-    await page.getByRole('link', { name: 'Post an announcement' }).click();
+    await signIn(page, "/admin/announcements");
+    await page.getByRole("link", { name: "Post an announcement" }).click();
 
-    await page.getByLabel('Headline').fill(fields.headline);
-    await page.getByLabel('What it says').fill(fields.body);
-    await page.getByLabel('Posted on').fill(fields.postedOn ?? today());
+    await page.getByLabel("Headline").fill(fields.headline);
+    await page.getByLabel("What it says").fill(fields.body);
+    await page.getByLabel("Posted on").fill(fields.postedOn ?? today());
     if (fields.file) {
       await page
-        .getByLabel('PDF')
-        .setInputFiles({ name: 'suite-notice.pdf', mimeType: 'application/pdf', buffer: PDF });
+        .getByLabel("PDF")
+        .setInputFiles({
+          name: "suite-notice.pdf",
+          mimeType: "application/pdf",
+          buffer: PDF,
+        });
     }
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByRole("button", { name: "Save" }).click();
   }
 
   // AC 1, the half without a file — and #109's absence, checked at the moment it
   // is most likely to be wrong: an announcement posted today, which is exactly
   // what used to put a band on the home page.
-  test('posts an announcement with no PDF, onto the news page and nowhere else', async ({
+  test("posts an announcement with no PDF, onto the news page and nowhere else", async ({
     page,
   }) => {
-    const headline = 'Suite notice, no file';
-    await post(page, { headline, body: 'Posted by the browser suite, with nothing attached.' });
+    const headline = "Suite notice, no file";
+    await post(page, {
+      headline,
+      body: "Posted by the browser suite, with nothing attached.",
+    });
 
-    const banner = page.getByTestId('save-banner');
-    await expect(banner).toHaveAttribute('data-ok', 'true');
-    await expect(banner).toContainText('Saved and live.');
-    await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
+    const banner = page.getByTestId("save-banner");
+    await expect(banner).toHaveAttribute("data-ok", "true");
+    await expect(banner).toContainText("Saved and live.");
+    await expect(page.getByTestId("stamp")).toContainText(
+      "Last edited by Suite Admin",
+    );
 
     // The news page carries it in full…
     await page.goto(NEWS_PATH);
-    const entry = page.locator('#news li', { hasText: headline });
-    await expect(entry.getByRole('heading', { name: headline })).toBeVisible();
+    const entry = page.locator("#news li", { hasText: headline });
+    await expect(entry.getByRole("heading", { name: headline })).toBeVisible();
     await expect(entry.locator('a[href$=".pdf"]')).toHaveCount(0);
 
     // …and the homepage carries neither a band nor the headline, dated today or
     // not (#109).
-    await page.goto('/');
+    await page.goto("/");
     await expect(page.locator('[data-section="announcements"]')).toHaveCount(0);
     await expect(page.getByText(headline)).toHaveCount(0);
   });
 
   // AC 1, the half with a file. The bytes are the assertion: a PDF that comes
   // back as anything but itself is a download that opens on nothing.
-  test('posts one with a PDF, and serves back exactly the bytes it was given', async ({
+  test("posts one with a PDF, and serves back exactly the bytes it was given", async ({
     page,
     request,
   }) => {
-    const headline = 'Suite notice, with a file';
-    await post(page, { headline, body: 'Posted by the browser suite, with a PDF.', file: true });
+    const headline = "Suite notice, with a file";
+    await post(page, {
+      headline,
+      body: "Posted by the browser suite, with a PDF.",
+      file: true,
+    });
 
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "true",
+    );
 
     await page.goto(NEWS_PATH);
     const link = page
-      .locator('#news li', { hasText: headline })
+      .locator("#news li", { hasText: headline })
       .locator('a[href$=".pdf"]');
-    await expect(link).toContainText('suite-notice.pdf');
+    await expect(link).toContainText("suite-notice.pdf");
 
-    const href = await link.getAttribute('href');
+    const href = await link.getAttribute("href");
     const response = await request.get(href!);
     expect(response.status()).toBe(200);
-    expect(response.headers()['content-type']).toBe('application/pdf');
-    expect(response.headers()['content-disposition']).toContain('suite-notice.pdf');
+    expect(response.headers()["content-type"]).toBe("application/pdf");
+    expect(response.headers()["content-disposition"]).toContain(
+      "suite-notice.pdf",
+    );
     expect(Buffer.from(await response.body()).equals(PDF)).toBe(true);
   });
 
-  test('refuses a file that is not a PDF, and says so without saving', async ({ page }) => {
-    await signIn(page, '/admin/announcements');
-    await page.getByRole('link', { name: 'Post an announcement' }).click();
+  test("refuses a file that is not a PDF, and says so without saving", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/announcements");
+    await page.getByRole("link", { name: "Post an announcement" }).click();
 
-    await page.getByLabel('Headline').fill('Suite notice, bad file');
-    await page.getByLabel('What it says').fill('This one should not save.');
-    await page.getByLabel('Posted on').fill(today());
-    await page
-      .getByLabel('PDF')
-      .setInputFiles({
-        name: 'notice.pdf',
-        mimeType: 'application/pdf',
-        buffer: Buffer.from('<html>not a pdf at all</html>'),
-      });
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByLabel("Headline").fill("Suite notice, bad file");
+    await page.getByLabel("What it says").fill("This one should not save.");
+    await page.getByLabel("Posted on").fill(today());
+    await page.getByLabel("PDF").setInputFiles({
+      name: "notice.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("<html>not a pdf at all</html>"),
+    });
+    await page.getByRole("button", { name: "Save" }).click();
 
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
-    await expect(page.locator('#attachment-error')).toContainText('not a PDF');
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "false",
+    );
+    await expect(page.locator("#attachment-error")).toContainText("not a PDF");
 
     await page.goto(NEWS_PATH);
-    await expect(page.getByRole('heading', { name: 'Suite notice, bad file' })).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Suite notice, bad file" }),
+    ).toHaveCount(0);
   });
 
   /*
@@ -1190,23 +1427,30 @@ test.describe('announcements', () => {
    * A fresh announcement at the end leaves the database in a state the rest of
    * the suite recognises.
    */
-  test('keeps every announcement on the news page once they are all stale', async ({ page }) => {
-    await signIn(page, '/admin/announcements');
+  test("keeps every announcement on the news page once they are all stale", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/announcements");
 
     const slugs = await page
       .locator('a[href^="/admin/announcements/"]')
       .evaluateAll((links) =>
         links
-          .map((link) => link.getAttribute('href')!.replace('/admin/announcements/', ''))
-          .filter((slug) => slug !== 'new'),
+          .map((link) =>
+            link.getAttribute("href")!.replace("/admin/announcements/", ""),
+          )
+          .filter((slug) => slug !== "new"),
       );
     expect(slugs.length).toBeGreaterThan(0);
 
     for (const slug of slugs) {
       await page.goto(`/admin/announcements/${slug}`);
-      await page.getByLabel('Posted on').fill('2020-01-01');
-      await page.getByRole('button', { name: 'Save' }).click();
-      await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+      await page.getByLabel("Posted on").fill("2020-01-01");
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByTestId("save-banner")).toHaveAttribute(
+        "data-ok",
+        "true",
+      );
     }
 
     // Nothing was lost: the record is all still on the news page.
@@ -1216,11 +1460,11 @@ test.describe('announcements', () => {
     }
 
     // And one posted today lands on the news page and on nothing else (#109).
-    const fresh = 'Suite notice, back again';
-    await post(page, { headline: fresh, body: 'Dated today.' });
+    const fresh = "Suite notice, back again";
+    await post(page, { headline: fresh, body: "Dated today." });
     await page.goto(NEWS_PATH);
-    await expect(page.getByRole('heading', { name: fresh })).toBeVisible();
-    await page.goto('/');
+    await expect(page.getByRole("heading", { name: fresh })).toBeVisible();
+    await page.goto("/");
     await expect(page.locator('[data-section="announcements"]')).toHaveCount(0);
   });
 
@@ -1239,54 +1483,70 @@ test.describe('announcements', () => {
    * the confirmation has to name it, and the address it was served at has to
    * stop answering.
    */
-  test('asks before deleting an announcement, and takes no for an answer', async ({
+  test("asks before deleting an announcement, and takes no for an answer", async ({
     page,
     request,
   }) => {
-    const headline = 'Suite notice, withdrawn';
+    const headline = "Suite notice, withdrawn";
     const postedOn = today();
     const editor = `/admin/announcements/${announcementSlug(postedOn, headline)}`;
-    await post(page, { headline, body: 'A fundraiser the school withdrew.', postedOn, file: true });
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    await post(page, {
+      headline,
+      body: "A fundraiser the school withdrew.",
+      postedOn,
+      file: true,
+    });
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "true",
+    );
 
     // The first press asks, on a screen, naming the announcement and the PDF
     // that goes with it — and saying there is nothing to undo it with.
-    await page.getByRole('button', { name: 'Delete this announcement' }).click();
-    const confirm = page.getByTestId('confirm');
+    await page
+      .getByRole("button", { name: "Delete this announcement" })
+      .click();
+    const confirm = page.getByTestId("confirm");
     await expect(confirm).toContainText(headline);
-    await expect(confirm).toContainText('suite-notice.pdf');
-    await expect(confirm).toContainText('There is no undo.');
+    await expect(confirm).toContainText("suite-notice.pdf");
+    await expect(confirm).toContainText("There is no undo.");
     await expect(page).toHaveURL(new RegExp(`${editor}$`));
 
     // Declining leaves it on the site and on this screen, fields and all.
-    await page.getByRole('link', { name: 'Go back without deleting' }).click();
-    await expect(page.getByTestId('confirm')).toHaveCount(0);
-    await expect(page.getByLabel('Headline')).toHaveValue(headline);
+    await page.getByRole("link", { name: "Go back without deleting" }).click();
+    await expect(page.getByTestId("confirm")).toHaveCount(0);
+    await expect(page.getByLabel("Headline")).toHaveValue(headline);
 
     await page.goto(NEWS_PATH);
-    await expect(page.getByRole('heading', { name: headline })).toBeVisible();
+    await expect(page.getByRole("heading", { name: headline })).toBeVisible();
 
     // Confirming deletes it and lands on the list, which names what went and
     // says whether the live site caught up.
     await page.goto(editor);
-    await page.getByRole('button', { name: 'Delete this announcement' }).click();
-    await page.getByRole('button', { name: 'Yes, delete this announcement' }).click();
+    await page
+      .getByRole("button", { name: "Delete this announcement" })
+      .click();
+    await page
+      .getByRole("button", { name: "Yes, delete this announcement" })
+      .click();
     await expect(page).toHaveURL(/\/admin\/announcements\?/);
 
-    const banner = page.getByTestId('announcements-banner');
+    const banner = page.getByTestId("announcements-banner");
     await expect(banner).toContainText(`${headline} is off the news page.`);
-    await expect(banner).toHaveAttribute('data-ok', 'true');
+    await expect(banner).toHaveAttribute("data-ok", "true");
 
     // Gone from the list. The banner still names it, which is the point of the
     // banner, so this asks the list rather than the whole page.
-    await expect(page.getByRole('link', { name: headline })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: headline })).toHaveCount(0);
 
     // Gone from the news page, and the PDF with it.
     await page.goto(NEWS_PATH);
-    await expect(page.getByRole('heading', { name: headline })).toHaveCount(0);
-    expect((await request.get(attachmentPath(announcementSlug(postedOn, headline)))).status()).toBe(
-      404,
-    );
+    await expect(page.getByRole("heading", { name: headline })).toHaveCount(0);
+    expect(
+      (
+        await request.get(attachmentPath(announcementSlug(postedOn, headline)))
+      ).status(),
+    ).toBe(404);
 
     // And the editor is nobody's screen now. Driven through the signed-in page
     // rather than a bare request, which would be bounced to the login form and
@@ -1301,20 +1561,30 @@ test.describe('announcements', () => {
    * is JavaScript, so the whole two-post sequence has to work in a browser that
    * runs none. Its own announcement, because it deletes what it posts.
    */
-  test('confirms and deletes with scripts off', async ({ browser }) => {
+  test("confirms and deletes with scripts off", async ({ browser }) => {
     const unscripted = await browser.newContext({ javaScriptEnabled: false });
     const page = await unscripted.newPage();
 
-    const headline = 'Suite notice, unscripted';
-    await post(page, { headline, body: 'Posted and deleted without a line of script.' });
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+    const headline = "Suite notice, unscripted";
+    await post(page, {
+      headline,
+      body: "Posted and deleted without a line of script.",
+    });
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "true",
+    );
 
-    await page.getByRole('button', { name: 'Delete this announcement' }).click();
-    await expect(page.getByTestId('confirm')).toContainText(headline);
+    await page
+      .getByRole("button", { name: "Delete this announcement" })
+      .click();
+    await expect(page.getByTestId("confirm")).toContainText(headline);
 
-    await page.getByRole('button', { name: 'Yes, delete this announcement' }).click();
+    await page
+      .getByRole("button", { name: "Yes, delete this announcement" })
+      .click();
     await expect(page).toHaveURL(/\/admin\/announcements\?/);
-    await expect(page.getByTestId('announcements-banner')).toContainText(
+    await expect(page.getByTestId("announcements-banner")).toContainText(
       `${headline} is off the news page.`,
     );
 
@@ -1336,32 +1606,52 @@ test.describe('announcements', () => {
  * and then read the version it replaced, so they are a sequence rather than a
  * set. The seeded four are left alone so the public suite has a stable list.
  */
-test.describe('policies', () => {
-  test.describe.configure({ mode: 'serial' });
+test.describe("policies", () => {
+  test.describe.configure({ mode: "serial" });
 
   /** Two real PDFs, small enough to compare byte for byte in an assertion. */
-  const FIRST = Buffer.from('%PDF-1.7\n1 0 obj\n<<(first)>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
-  const SECOND = Buffer.from('%PDF-1.7\n1 0 obj\n<<(second)>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
+  const FIRST = Buffer.from(
+    "%PDF-1.7\n1 0 obj\n<<(first)>>\nendobj\ntrailer\n%%EOF\n",
+    "latin1",
+  );
+  const SECOND = Buffer.from(
+    "%PDF-1.7\n1 0 obj\n<<(second)>>\nendobj\ntrailer\n%%EOF\n",
+    "latin1",
+  );
 
-  const TITLE = 'Suite Transport Policy';
-  const SLUG = 'suite-transport-policy';
+  const TITLE = "Suite Transport Policy";
+  const SLUG = "suite-transport-policy";
   const PATH = `/policies/${SLUG}.pdf`;
-  const DESCRIPTION = 'How the suite gets to school, written by a browser test.';
+  const DESCRIPTION =
+    "How the suite gets to school, written by a browser test.";
 
-  async function upload(page: Page, bytes: Buffer, filename: string): Promise<void> {
-    await page.getByLabel(LABELS.file).setInputFiles({ name: filename, mimeType: 'application/pdf', buffer: bytes });
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
+  async function upload(
+    page: Page,
+    bytes: Buffer,
+    filename: string,
+  ): Promise<void> {
+    await page
+      .getByLabel(LABELS.file)
+      .setInputFiles({
+        name: filename,
+        mimeType: "application/pdf",
+        buffer: bytes,
+      });
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "true",
+    );
   }
 
   // AC 4, and the reason this screen is not the same form twice: creating a
   // policy mints a permanent address, so it asks the three structural questions
   // and offers nothing else to get wrong.
-  test('creates one from a title, a position and a tick, and asks nothing else', async ({
+  test("creates one from a title, a position and a tick, and asks nothing else", async ({
     page,
   }) => {
-    await signIn(page, '/admin/policies');
-    await page.getByRole('link', { name: 'Add a policy' }).click();
+    await signIn(page, "/admin/policies");
+    await page.getByRole("link", { name: "Add a policy" }).click();
 
     await expect(page.getByLabel(LABELS.title)).toBeVisible();
     await expect(page.getByLabel(LABELS.position)).toBeVisible();
@@ -1374,24 +1664,26 @@ test.describe('policies', () => {
     await expect(page.locator('input[type="date"]')).toHaveCount(0);
 
     await page.getByLabel(LABELS.title).fill(TITLE);
-    await page.getByLabel(LABELS.position).fill('9');
-    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByLabel(LABELS.position).fill("9");
+    await page.getByRole("button", { name: "Create" }).click();
 
-    const banner = page.getByTestId('save-banner');
-    await expect(banner).toHaveAttribute('data-ok', 'true');
+    const banner = page.getByTestId("save-banner");
+    await expect(banner).toHaveAttribute("data-ok", "true");
     // Created is not published: a policy is published by its file.
-    await expect(banner).toContainText('not on the policies page yet');
-    await expect(page.getByTestId('versions-empty')).toBeVisible();
+    await expect(banner).toContainText("not on the policies page yet");
+    await expect(page.getByTestId("versions-empty")).toBeVisible();
 
     // The address was minted from the title and is now permanent — which is
     // what the create form's three questions are protecting.
-    await page.goto('/admin/policies');
-    await expect(page.locator(`a[href="/admin/policies/${SLUG}"]`)).toBeVisible();
+    await page.goto("/admin/policies");
+    await expect(
+      page.locator(`a[href="/admin/policies/${SLUG}"]`),
+    ).toBeVisible();
   });
 
   // AC 2 and AC 5: the first upload publishes it, and the date it prints is the
   // day the bytes arrived rather than anything a person entered.
-  test('publishes it on the first upload, and stamps the date from the file', async ({
+  test("publishes it on the first upload, and stamps the date from the file", async ({
     page,
     request,
   }) => {
@@ -1401,17 +1693,17 @@ test.describe('policies', () => {
     await expect(page.locator('input[type="date"]')).toHaveCount(0);
 
     await page.getByLabel(LABELS.description).fill(DESCRIPTION);
-    await upload(page, FIRST, 'transport-v1.pdf');
+    await upload(page, FIRST, "transport-v1.pdf");
 
     const today = new Date().toISOString().slice(0, 10);
     await page.goto(POLICIES_PATH);
     const entry = page.locator(`[id="${SLUG}"]`);
     await expect(entry).toContainText(DESCRIPTION);
-    await expect(entry.locator('time')).toHaveAttribute('datetime', today);
+    await expect(entry.locator("time")).toHaveAttribute("datetime", today);
 
     const response = await request.get(PATH);
     expect(response.status()).toBe(200);
-    expect(response.headers()['content-type']).toBe('application/pdf');
+    expect(response.headers()["content-type"]).toBe("application/pdf");
     expect(Buffer.from(await response.body()).equals(FIRST)).toBe(true);
   });
 
@@ -1424,56 +1716,60 @@ test.describe('policies', () => {
    * enrolled in August sign?" is a question the school has to be able to
    * answer.
    */
-  test('replaces the file at the same address, and keeps the one it replaced', async ({
+  test("replaces the file at the same address, and keeps the one it replaced", async ({
     page,
     request,
   }) => {
     await signIn(page, `/admin/policies/${SLUG}`);
-    await upload(page, SECOND, 'transport-v2.pdf');
+    await upload(page, SECOND, "transport-v2.pdf");
 
     // The address did not move…
-    await expect(page.getByTestId('current-file')).toHaveAttribute('href', PATH);
+    await expect(page.getByTestId("current-file")).toHaveAttribute(
+      "href",
+      PATH,
+    );
     const replaced = await request.get(PATH, { maxRedirects: 0 });
     expect(replaced.status()).toBe(200);
     expect(Buffer.from(await replaced.body()).equals(SECOND)).toBe(true);
 
     // …and version 1 is still there, at its own address, with its own bytes.
-    const versions = page.getByTestId('versions').locator('li');
+    const versions = page.getByTestId("versions").locator("li");
     await expect(versions).toHaveCount(2);
-    await expect(versions.first()).toContainText('this is the current one');
+    await expect(versions.first()).toContainText("this is the current one");
 
     const prior = await request.get(`/policies/${SLUG}/v1.pdf`);
     expect(prior.status()).toBe(200);
     expect(Buffer.from(await prior.body()).equals(FIRST)).toBe(true);
-    expect(prior.headers()['cache-control']).toContain('immutable');
+    expect(prior.headers()["cache-control"]).toContain("immutable");
   });
 
   // There is no way to take a *document* down, and there never will be: the
   // versioned address is on printed paper and in a family's record. Replacing
   // the current file is the only thing this screen does to a document.
-  test('offers no way to take a document down', async ({ page }) => {
+  test("offers no way to take a document down", async ({ page }) => {
     await signIn(page, `/admin/policies/${SLUG}`);
 
-    await expect(page.getByRole('button', { name: /remove/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /remove/i })).toHaveCount(0);
   });
 
-  test('refuses a file that is not a PDF, and says so without replacing anything', async ({
+  test("refuses a file that is not a PDF, and says so without replacing anything", async ({
     page,
     request,
   }) => {
     await signIn(page, `/admin/policies/${SLUG}`);
 
-    await page
-      .getByLabel(LABELS.file)
-      .setInputFiles({
-        name: 'transport-v3.pdf',
-        mimeType: 'application/pdf',
-        buffer: Buffer.from('<html>not a pdf at all</html>'),
-      });
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByLabel(LABELS.file).setInputFiles({
+      name: "transport-v3.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("<html>not a pdf at all</html>"),
+    });
+    await page.getByRole("button", { name: "Save" }).click();
 
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
-    await expect(page.locator('#file-error')).toContainText('not a PDF');
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "false",
+    );
+    await expect(page.locator("#file-error")).toContainText("not a PDF");
 
     // And the document families are being served is untouched.
     const response = await request.get(PATH);
@@ -1490,41 +1786,54 @@ test.describe('policies', () => {
    * two versioned addresses answering *after* the row that used to own them is
    * gone, with the same bytes the tests above uploaded.
    */
-  test('asks before deleting a policy, and takes no for an answer', async ({ page }) => {
+  test("asks before deleting a policy, and takes no for an answer", async ({
+    page,
+  }) => {
     await signIn(page, `/admin/policies/${SLUG}`);
 
-    await page.getByRole('button', { name: 'Delete this policy' }).click();
+    await page.getByRole("button", { name: "Delete this policy" }).click();
 
     // A screen, not a dialog: it is in the page, and it says all three things.
-    const confirm = page.getByTestId('confirm');
+    const confirm = page.getByTestId("confirm");
     await expect(confirm).toContainText(`Delete ${TITLE}?`);
-    await expect(page.getByTestId('deletion-goes')).toContainText('policies page');
-    await expect(page.getByTestId('deletion-kept')).toContainText('All 2 documents');
-    await expect(page.getByTestId('deletion-kept')).toContainText('already agreed');
-    await expect(page.getByTestId('deletion-undo')).toContainText('no undo');
+    await expect(page.getByTestId("deletion-goes")).toContainText(
+      "policies page",
+    );
+    await expect(page.getByTestId("deletion-kept")).toContainText(
+      "All 2 documents",
+    );
+    await expect(page.getByTestId("deletion-kept")).toContainText(
+      "already agreed",
+    );
+    await expect(page.getByTestId("deletion-undo")).toContainText("no undo");
 
     // Backing out writes nothing and puts the editor back.
-    await page.getByRole('link', { name: 'Go back without deleting' }).click();
-    await expect(page.getByTestId('confirm')).toHaveCount(0);
-    await expect(page.getByTestId('versions').locator('li')).toHaveCount(2);
+    await page.getByRole("link", { name: "Go back without deleting" }).click();
+    await expect(page.getByTestId("confirm")).toHaveCount(0);
+    await expect(page.getByTestId("versions").locator("li")).toHaveCount(2);
   });
 
-  test('deletes it, and keeps every document families were given', async ({ page, request }) => {
+  test("deletes it, and keeps every document families were given", async ({
+    page,
+    request,
+  }) => {
     await signIn(page, `/admin/policies/${SLUG}`);
 
-    await page.getByRole('button', { name: 'Delete this policy' }).click();
-    await page.getByRole('button', { name: `Yes, delete ${TITLE}` }).click();
+    await page.getByRole("button", { name: "Delete this policy" }).click();
+    await page.getByRole("button", { name: `Yes, delete ${TITLE}` }).click();
 
     // It lands on the list, which says what went and whether the live site
     // caught up — the deleted screen is not there to say it on.
     await expect(page).toHaveURL(/\/admin\/policies\?/);
-    const banner = page.getByTestId('policies-banner');
+    const banner = page.getByTestId("policies-banner");
     await expect(banner).toContainText(`${TITLE} is deleted.`);
-    await expect(banner).toContainText('still readable');
-    await expect(banner).toHaveAttribute('data-ok', 'true');
+    await expect(banner).toContainText("still readable");
+    await expect(banner).toHaveAttribute("data-ok", "true");
 
     // Gone from the admin, from the public page, and from its own screen.
-    await expect(page.locator(`a[href="/admin/policies/${SLUG}"]`)).toHaveCount(0);
+    await expect(page.locator(`a[href="/admin/policies/${SLUG}"]`)).toHaveCount(
+      0,
+    );
     await page.goto(POLICIES_PATH);
     await expect(page.locator(`[id="${SLUG}"]`)).toHaveCount(0);
     const editor = await page.goto(`/admin/policies/${SLUG}`);
@@ -1540,7 +1849,7 @@ test.describe('policies', () => {
     const first = await request.get(`/policies/${SLUG}/v1.pdf`);
     expect(first.status()).toBe(200);
     expect(Buffer.from(await first.body()).equals(FIRST)).toBe(true);
-    expect(first.headers()['cache-control']).toContain('immutable');
+    expect(first.headers()["cache-control"]).toContain("immutable");
 
     const second = await request.get(`/policies/${SLUG}/v2.pdf`);
     expect(second.status()).toBe(200);
@@ -1561,24 +1870,30 @@ test.describe('policies', () => {
    * numbering behind it, are proved at their own seams; what is asserted here
    * is the shape of what the school actually does.
    */
-  test('asks whether a re-added title is the same policy coming back', async ({ page }) => {
-    await signIn(page, '/admin/policies/new');
+  test("asks whether a re-added title is the same policy coming back", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/policies/new");
 
     await page.getByLabel(LABELS.title).fill(TITLE);
-    await page.getByLabel(LABELS.position).fill('9');
-    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByLabel(LABELS.position).fill("9");
+    await page.getByRole("button", { name: "Create" }).click();
 
     // A screen in the page, naming what it found and offering two addresses.
-    await expect(page.getByTestId('inheritance')).toBeVisible();
-    const documents = page.getByTestId('inheritance-documents');
-    await expect(documents).toContainText('documents were uploaded under');
+    await expect(page.getByTestId("inheritance")).toBeVisible();
+    const documents = page.getByTestId("inheritance-documents");
+    await expect(documents).toContainText("documents were uploaded under");
     await expect(documents).toContainText(PATH);
     // And it points "still readable" at the address that actually answers.
     await expect(documents).toContainText(`/policies/${SLUG}/v1.pdf`);
-    await expect(page.getByTestId('inheritance-choice')).toContainText(TITLE);
+    await expect(page.getByTestId("inheritance-choice")).toContainText(TITLE);
     // Two actions, and neither of them is a decline.
-    await expect(page.getByRole('button', { name: /^Continue the history at/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Use \/policies\// })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^Continue the history at/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^Use \/policies\// }),
+    ).toBeVisible();
 
     // Nothing was created by the asking: the address is still orphaned, so a
     // second attempt is asked the same question rather than refused.
@@ -1595,44 +1910,50 @@ test.describe('policies', () => {
    * only asks — pressing neither button writes nothing — so it leaves the
    * orphaned address exactly as it found it, for the two tests below.
    */
-  test('asks with scripts off, because nothing on the screen is script', async ({ browser }) => {
+  test("asks with scripts off, because nothing on the screen is script", async ({
+    browser,
+  }) => {
     const unscripted = await browser.newContext({ javaScriptEnabled: false });
     const page = await unscripted.newPage();
 
-    await signIn(page, '/admin/policies/new');
+    await signIn(page, "/admin/policies/new");
     await page.getByLabel(LABELS.title).fill(TITLE);
-    await page.getByLabel(LABELS.position).fill('9');
-    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByLabel(LABELS.position).fill("9");
+    await page.getByRole("button", { name: "Create" }).click();
 
-    await expect(page.getByTestId('inheritance')).toContainText(
-      'That Address Already Has Documents',
+    await expect(page.getByTestId("inheritance")).toContainText(
+      "That Address Already Has Documents",
     );
-    await expect(page.getByRole('button', { name: /^Continue the history at/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Use \/policies\// })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^Continue the history at/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^Use \/policies\// }),
+    ).toBeVisible();
 
     await unscripted.close();
   });
 
-  test('mints a distinct address for a document that only shares the name', async ({
+  test("mints a distinct address for a document that only shares the name", async ({
     page,
     request,
   }) => {
-    await signIn(page, '/admin/policies/new');
+    await signIn(page, "/admin/policies/new");
 
     await page.getByLabel(LABELS.title).fill(TITLE);
-    await page.getByLabel(LABELS.position).fill('9');
-    await page.getByRole('button', { name: 'Create' }).click();
-    await page.getByRole('button', { name: /^Use \/policies\// }).click();
+    await page.getByLabel(LABELS.position).fill("9");
+    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: /^Use \/policies\// }).click();
 
     // A different address, and a policy with no history of its own.
-    const banner = page.getByTestId('save-banner');
-    await expect(banner).toHaveAttribute('data-ok', 'true');
-    await expect(banner).toContainText('not on the policies page yet');
-    await expect(page.getByTestId('versions-empty')).toBeVisible();
+    const banner = page.getByTestId("save-banner");
+    await expect(banner).toHaveAttribute("data-ok", "true");
+    await expect(banner).toContainText("not on the policies page yet");
+    await expect(page.getByTestId("versions-empty")).toBeVisible();
     const separate = /\/policies\/(suite-transport-policy-\d+)\.pdf/.exec(
       (await banner.textContent())!,
     );
-    expect(separate, 'the banner names the address it created').not.toBeNull();
+    expect(separate, "the banner names the address it created").not.toBeNull();
 
     // And the kept documents are untouched, still orphaned, still readable.
     const kept = await request.get(`/policies/${SLUG}/v1.pdf`);
@@ -1643,53 +1964,64 @@ test.describe('policies', () => {
     // Taken away again, so the address is free for the test below and for the
     // next run: this policy was the wrong answer, deliberately given.
     await page.goto(`/admin/policies/${separate![1]}`);
-    await page.getByRole('button', { name: 'Delete this policy' }).click();
-    await page.getByRole('button', { name: `Yes, delete ${TITLE}` }).click();
+    await page.getByRole("button", { name: "Delete this policy" }).click();
+    await page.getByRole("button", { name: `Yes, delete ${TITLE}` }).click();
     await expect(page).toHaveURL(/\/admin\/policies\?/);
   });
 
-  test('continues the history it left behind, and never repeats a version', async ({
+  test("continues the history it left behind, and never repeats a version", async ({
     page,
     request,
   }) => {
-    await signIn(page, '/admin/policies/new');
+    await signIn(page, "/admin/policies/new");
 
     await page.getByLabel(LABELS.title).fill(TITLE);
-    await page.getByLabel(LABELS.position).fill('9');
-    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByLabel(LABELS.position).fill("9");
+    await page.getByRole("button", { name: "Create" }).click();
 
-    const before = await page.getByTestId('inheritance-documents').textContent();
+    const before = await page
+      .getByTestId("inheritance-documents")
+      .textContent();
     const kept = Number(/(\d+) documents/.exec(before!)![1]);
     expect(kept).toBeGreaterThanOrEqual(2);
 
-    await page.getByRole('button', { name: /^Continue the history at/ }).click();
+    await page
+      .getByRole("button", { name: /^Continue the history at/ })
+      .click();
 
     // Back at the address it always had, holding the documents it left behind —
     // and still off the policies page, because a policy is published by its file.
-    const banner = page.getByTestId('save-banner');
-    await expect(banner).toHaveAttribute('data-ok', 'true');
+    const banner = page.getByTestId("save-banner");
+    await expect(banner).toHaveAttribute("data-ok", "true");
     await expect(banner).toContainText(PATH);
-    await expect(banner).toContainText('not on the policies page yet');
-    await expect(page.getByTestId('versions').locator('li')).toHaveCount(kept);
-    await expect(page.getByTestId('versions')).not.toContainText('this is the current one');
+    await expect(banner).toContainText("not on the policies page yet");
+    await expect(page.getByTestId("versions").locator("li")).toHaveCount(kept);
+    await expect(page.getByTestId("versions")).not.toContainText(
+      "this is the current one",
+    );
 
     // In the admin, and *not* on the policies page: the row is back, and a
     // policy is published by its file rather than by its row.
-    await page.goto('/admin/policies');
-    await expect(page.locator(`a[href="/admin/policies/${SLUG}"]`)).toBeVisible();
+    await page.goto("/admin/policies");
+    await expect(
+      page.locator(`a[href="/admin/policies/${SLUG}"]`),
+    ).toBeVisible();
     await page.goto(POLICIES_PATH);
     await expect(page.locator(`[id="${SLUG}"]`)).toHaveCount(0);
 
     // The next upload continues the numbering rather than restarting it.
-    const THIRD = Buffer.from('%PDF-1.7\n1 0 obj\n<<(third)>>\nendobj\ntrailer\n%%EOF\n', 'latin1');
+    const THIRD = Buffer.from(
+      "%PDF-1.7\n1 0 obj\n<<(third)>>\nendobj\ntrailer\n%%EOF\n",
+      "latin1",
+    );
     await page.goto(`/admin/policies/${SLUG}`);
     await page.getByLabel(LABELS.description).fill(DESCRIPTION);
-    await upload(page, THIRD, 'transport-v3.pdf');
+    await upload(page, THIRD, "transport-v3.pdf");
 
     const next = kept + 1;
-    await expect(page.getByTestId('versions').locator('li').first()).toContainText(
-      `Version ${next} —`,
-    );
+    await expect(
+      page.getByTestId("versions").locator("li").first(),
+    ).toContainText(`Version ${next} —`);
     const latest = await request.get(`/policies/${SLUG}/v${next}.pdf`);
     expect(Buffer.from(await latest.body()).equals(THIRD)).toBe(true);
 
@@ -1701,8 +2033,8 @@ test.describe('policies', () => {
 
     // Deleted again, so this file's sequence ends where it started: an address
     // with documents under it and no policy holding it.
-    await page.getByRole('button', { name: 'Delete this policy' }).click();
-    await page.getByRole('button', { name: `Yes, delete ${TITLE}` }).click();
+    await page.getByRole("button", { name: "Delete this policy" }).click();
+    await page.getByRole("button", { name: `Yes, delete ${TITLE}` }).click();
     await expect(page).toHaveURL(/\/admin\/policies\?/);
   });
 });
@@ -1717,112 +2049,144 @@ test.describe('policies', () => {
  * can show is that a fee changed here reaches the public page a family reads
  * before writing a check.
  */
-test.describe('saving money', () => {
+test.describe("saving money", () => {
   // One row, one database across the suite, and each save posts the whole form.
-  test.describe.configure({ mode: 'serial' });
+  test.describe.configure({ mode: "serial" });
 
-  test('will not save until the school confirms it affects every family', async ({ page }) => {
-    await signIn(page, '/admin/money');
+  test("will not save until the school confirms it affects every family", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/money");
 
-    const field = page.getByLabel('Deposit, per class');
+    const field = page.getByLabel("Deposit, per class");
     const before = await field.inputValue();
     const after = String(Number(before) + 5);
 
     await field.fill(after);
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByRole("button", { name: "Save" }).click();
 
     // Step one: a confirmation naming the change, not a save.
-    const confirm = page.getByTestId('confirm');
-    await expect(confirm).toContainText('This affects every family.');
-    await expect(confirm.locator('[data-change="classDeposit"]')).toContainText(`$${before}`);
-    await expect(confirm.locator('[data-change="classDeposit"]')).toContainText(`$${after}`);
+    const confirm = page.getByTestId("confirm");
+    await expect(confirm).toContainText("This affects every family.");
+    await expect(confirm.locator('[data-change="classDeposit"]')).toContainText(
+      `$${before}`,
+    );
+    await expect(confirm.locator('[data-change="classDeposit"]')).toContainText(
+      `$${after}`,
+    );
     // And it says the thing that makes the change safe to make at all.
-    await expect(confirm).toContainText('keep the terms they agreed to');
+    await expect(confirm).toContainText("keep the terms they agreed to");
 
     // Nothing was written: coming back shows the old figure.
-    await page.goto('/admin/money');
-    await expect(page.getByLabel('Deposit, per class')).toHaveValue(before);
+    await page.goto("/admin/money");
+    await expect(page.getByLabel("Deposit, per class")).toHaveValue(before);
 
     // Step two: confirm, and now it writes and says so.
-    await page.getByLabel('Deposit, per class').fill(after);
-    await page.getByRole('button', { name: 'Save' }).click();
-    await page.getByRole('button', { name: 'Yes, change it for everyone' }).click();
+    await page.getByLabel("Deposit, per class").fill(after);
+    await page.getByRole("button", { name: "Save" }).click();
+    await page
+      .getByRole("button", { name: "Yes, change it for everyone" })
+      .click();
 
-    const banner = page.getByTestId('save-banner');
-    await expect(banner).toHaveAttribute('data-ok', 'true');
-    await expect(page.getByTestId('stamp')).toContainText('Last edited by Suite Admin');
-    await expect(page.getByLabel('Deposit, per class')).toHaveValue(after);
+    const banner = page.getByTestId("save-banner");
+    await expect(banner).toHaveAttribute("data-ok", "true");
+    await expect(page.getByTestId("stamp")).toContainText(
+      "Last edited by Suite Admin",
+    );
+    await expect(page.getByLabel("Deposit, per class")).toHaveValue(after);
 
     // AC 1 and AC 6 together: the figure a family is quoted follows the row.
-    await page.goto('/admissions');
-    await expect(page.locator('#cost')).toContainText(`$${after}`);
+    await page.goto("/admissions");
+    await expect(page.locator("#cost")).toContainText(`$${after}`);
 
     // Put it back, the same way a person would have to.
-    await page.goto('/admin/money');
-    await page.getByLabel('Deposit, per class').fill(before);
-    await page.getByRole('button', { name: 'Save' }).click();
-    await page.getByRole('button', { name: 'Yes, change it for everyone' }).click();
-    await expect(page.getByLabel('Deposit, per class')).toHaveValue(before);
+    await page.goto("/admin/money");
+    await page.getByLabel("Deposit, per class").fill(before);
+    await page.getByRole("button", { name: "Save" }).click();
+    await page
+      .getByRole("button", { name: "Yes, change it for everyone" })
+      .click();
+    await expect(page.getByLabel("Deposit, per class")).toHaveValue(before);
   });
 
-  test('lets the school back out of the confirmation without saving', async ({ page }) => {
-    await signIn(page, '/admin/money');
+  test("lets the school back out of the confirmation without saving", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/money");
 
-    const field = page.getByLabel('Late fee, per class');
+    const field = page.getByLabel("Late fee, per class");
     const before = await field.inputValue();
 
     await field.fill(String(Number(before) + 5));
-    await page.getByRole('button', { name: 'Save' }).click();
-    await page.getByRole('link', { name: 'Go back without saving' }).click();
+    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByRole("link", { name: "Go back without saving" }).click();
 
-    await expect(page.getByTestId('confirm')).toHaveCount(0);
-    await expect(page.getByLabel('Late fee, per class')).toHaveValue(before);
+    await expect(page.getByTestId("confirm")).toHaveCount(0);
+    await expect(page.getByLabel("Late fee, per class")).toHaveValue(before);
   });
 
-  test('does not stamp the row when nothing actually changed', async ({ page }) => {
-    await signIn(page, '/admin/money');
-
-    await page.getByRole('button', { name: 'Save' }).click();
-
-    const banner = page.getByTestId('save-banner');
-    await expect(banner).toContainText('Nothing changed');
-    await expect(page.getByTestId('confirm')).toHaveCount(0);
-  });
-
-  test('holds more than one address for application notifications', async ({ page }) => {
-    await signIn(page, '/admin/money');
-
-    const addresses = 'jkilker@enolacog.com\ngeorge@enolacog.com';
-    await page.getByLabel('Application notifications go to').fill(addresses);
-    await page.getByRole('button', { name: 'Save' }).click();
-    await page.getByRole('button', { name: 'Yes, change it for everyone' }).click();
-
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'true');
-    await page.goto('/admin/money');
-    await expect(page.getByLabel('Application notifications go to')).toHaveValue(addresses);
-  });
-
-  test('refuses a rate of zero, and never offers to confirm one', async ({ page }) => {
-    await signIn(page, '/admin/money');
-
-    await page.getByLabel('Standard rate, per hour').fill('0');
-    await page.getByRole('button', { name: 'Save' }).click();
-
-    await expect(page.getByTestId('confirm')).toHaveCount(0);
-    await expect(page.getByTestId('save-banner')).toHaveAttribute('data-ok', 'false');
-    await expect(page.locator('#standardRate-error')).toContainText('cannot be zero');
-  });
-
-  test('prints the study hall contradiction the school still owes an answer on', async ({
+  test("does not stamp the row when nothing actually changed", async ({
     page,
   }) => {
-    await signIn(page, '/admin/money');
+    await signIn(page, "/admin/money");
+
+    await page.getByRole("button", { name: "Save" }).click();
+
+    const banner = page.getByTestId("save-banner");
+    await expect(banner).toContainText("Nothing changed");
+    await expect(page.getByTestId("confirm")).toHaveCount(0);
+  });
+
+  test("holds more than one address for application notifications", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/money");
+
+    const addresses = "jkilker@enolacog.com\ngeorge@enolacog.com";
+    await page.getByLabel("Application notifications go to").fill(addresses);
+    await page.getByRole("button", { name: "Save" }).click();
+    await page
+      .getByRole("button", { name: "Yes, change it for everyone" })
+      .click();
+
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "true",
+    );
+    await page.goto("/admin/money");
+    await expect(
+      page.getByLabel("Application notifications go to"),
+    ).toHaveValue(addresses);
+  });
+
+  test("refuses a rate of zero, and never offers to confirm one", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/money");
+
+    await page.getByLabel("Standard rate, per hour").fill("0");
+    await page.getByRole("button", { name: "Save" }).click();
+
+    await expect(page.getByTestId("confirm")).toHaveCount(0);
+    await expect(page.getByTestId("save-banner")).toHaveAttribute(
+      "data-ok",
+      "false",
+    );
+    await expect(page.locator("#standardRate-error")).toContainText(
+      "cannot be zero",
+    );
+  });
+
+  test("prints the study hall contradiction the school still owes an answer on", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/money");
 
     // #29 AC 7. The handbook says $10 on page 3 and $60 on page 8; this surface
     // holds one number, so the disagreement is stated beside the field rather
     // than quietly averaged away.
-    await expect(page.locator('#studyHallFee-hint')).toContainText('page 3');
-    await expect(page.locator('#studyHallFee-hint')).toContainText('page 8');
+    await expect(page.locator("#studyHallFee-hint")).toContainText("page 3");
+    await expect(page.locator("#studyHallFee-hint")).toContainText("page 8");
   });
 });
 
@@ -1837,30 +2201,38 @@ test.describe('saving money', () => {
  * the thing a wrong content type or a mangled response body would break without
  * failing a single unit test.
  */
-test.describe('Download everything', () => {
-  test('downloads a ZIP the school can open, from a button in the nav', async ({ page }) => {
-    await signIn(page, '/admin/school-details');
+test.describe("Download everything", () => {
+  test("downloads a ZIP the school can open, from a button in the nav", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/school-details");
 
     // Found by navigating, because a backup nobody can find is the same as no
     // backup.
-    await page.getByRole('link', { name: 'Backup' }).click();
+    await page.getByRole("link", { name: "Backup" }).click();
     await expect(page).toHaveURL(/\/admin\/backup$/);
 
-    const downloading = page.waitForEvent('download');
-    await page.getByTestId('download-everything').click();
+    const downloading = page.waitForEvent("download");
+    await page.getByTestId("download-everything").click();
     const download = await downloading;
 
-    expect(download.suggestedFilename()).toMatch(/^pharos-academy-backup-\d{4}-\d{2}-\d{2}\.zip$/);
+    expect(download.suggestedFilename()).toMatch(
+      /^pharos-academy-backup-\d{4}-\d{2}-\d{2}\.zip$/,
+    );
 
     const path = await download.path();
     const bytes = await readFile(path!);
     // "Readable without Postgres" — opened here with fflate, the independent
     // implementation, on the bytes that actually came down the wire.
     const files = unzipSync(bytes);
-    expect(files['README.txt']).toBeDefined();
-    expect(files['manifest.json']).toBeDefined();
-    expect(Object.keys(files).some((name) => name.startsWith('content/'))).toBe(true);
-    expect(Buffer.from(files['content/people.json']).toString('utf8')).toContain('Jill');
+    expect(files["README.txt"]).toBeDefined();
+    expect(files["manifest.json"]).toBeDefined();
+    expect(Object.keys(files).some((name) => name.startsWith("content/"))).toBe(
+      true,
+    );
+    expect(
+      Buffer.from(files["content/people.json"]).toString("utf8"),
+    ).toContain("Jill");
   });
 
   /*
@@ -1870,27 +2242,36 @@ test.describe('Download everything', () => {
    * endpoint under `/admin` inherits it by existing, and "by existing" is a
    * claim, not an assertion, until something checks.
    */
-  test('hands nothing to anybody who is not signed in', async ({ page, context }) => {
+  test("hands nothing to anybody who is not signed in", async ({
+    page,
+    context,
+  }) => {
     await context.clearCookies();
 
-    const response = await page.goto('/admin/backup.zip');
+    const response = await page.goto("/admin/backup.zip");
 
     expect(response?.status()).toBe(200); // The login page, having followed the redirect.
-    await expect(page).toHaveURL(/\/admin\/login\?next=%2Fadmin%2Fbackup\.zip$/);
-    expect(response?.headers()['content-type']).toContain('text/html');
+    await expect(page).toHaveURL(
+      /\/admin\/login\?next=%2Fadmin%2Fbackup\.zip$/,
+    );
+    expect(response?.headers()["content-type"]).toContain("text/html");
   });
 
-  test('says where the monthly copy goes, and reads it from the settings', async ({ page }) => {
-    await signIn(page, '/admin/school-details');
-    const email = await page.getByLabel('Email').inputValue();
+  test("says where the monthly copy goes, and reads it from the settings", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/school-details");
+    const email = await page.getByLabel("Email").inputValue();
 
-    await page.goto('/admin/backup');
+    await page.goto("/admin/backup");
 
     // AC 4 as the school sees it: the screen names the address the send
     // actually uses, so the two cannot disagree.
-    await expect(page.getByRole('heading', { name: 'Also Arrives by Email' })).toBeVisible();
-    await expect(page.locator('main')).toContainText(email);
-    await expect(page.locator('main')).toContainText('1st of every month');
+    await expect(
+      page.getByRole("heading", { name: "Also Arrives by Email" }),
+    ).toBeVisible();
+    await expect(page.locator("main")).toContainText(email);
+    await expect(page.locator("main")).toContainText("1st of every month");
   });
 });
 
@@ -1910,62 +2291,153 @@ test.describe('Download everything', () => {
  * which is invisible everywhere else on the site, because the parent was
  * correctly told we have their question.
  */
-test.describe('inquiries', () => {
-  test('shows what a family asked, and says when nobody was emailed', async ({ page }) => {
-    const name = 'Suite Admin Reader';
-    const email = 'suite-admin-reader@example.com';
+test.describe("inquiries", () => {
+  test("shows what a family asked, and says when nobody was emailed", async ({
+    page,
+  }) => {
+    const name = "Suite Admin Reader";
+    const email = "suite-admin-reader@example.com";
 
     await page.goto(INQUIRY_PATH);
-    await page.fill('#ask-name', name);
-    await page.fill('#ask-email', email);
-    await page.fill('#ask-phone', '717-555-0142');
-    await page.fill('#ask-ages', '7 and 15');
-    await page.fill('#ask-message', 'Do you take a child mid-year?');
-    await page.getByRole('button', { name: 'Send my question' }).click();
+    await page.fill("#ask-name", name);
+    await page.fill("#ask-email", email);
+    await page.fill("#ask-phone", "717-555-0142");
+    await page.fill("#ask-ages", "7 and 15");
+    await page.fill("#ask-message", "Do you take a child mid-year?");
+    await page.getByRole("button", { name: "Send my question" }).click();
     await expect(page.locator('[data-outcome="received"]')).toBeVisible();
 
     // Found by navigating, because a screen nobody can find is not a screen
     // Jill can read.
-    await signIn(page, '/admin/school-details');
-    await page.getByRole('link', { name: 'Inquiries' }).click();
+    await signIn(page, "/admin/school-details");
+    await page.getByRole("link", { name: "Inquiries" }).click();
     await expect(page).toHaveURL(/\/admin\/inquiries$/);
 
     // Newest first, so the one just submitted is the one at the top.
-    const entry = page.getByTestId('inquiry').first();
-    await expect(entry.getByTestId('inquiry-name')).toHaveText(name);
-    await expect(entry.getByTestId('inquiry-email')).toHaveText(email);
-    await expect(entry.getByTestId('inquiry-ages')).toContainText('7 and 15');
+    const entry = page.getByTestId("inquiry").first();
+    await expect(entry.getByTestId("inquiry-name")).toHaveText(name);
+    await expect(entry.getByTestId("inquiry-email")).toHaveText(email);
+    await expect(entry.getByTestId("inquiry-ages")).toContainText("7 and 15");
     // #311: dialable from the page, rather than a number to copy out by hand.
-    await expect(entry.getByTestId('inquiry-phone').getByRole('link')).toHaveAttribute(
-      'href',
-      'tel:7175550142',
+    await expect(
+      entry.getByTestId("inquiry-phone").getByRole("link"),
+    ).toHaveAttribute("href", "tel:7175550142");
+    await expect(entry.getByTestId("inquiry-message")).toHaveText(
+      "Do you take a child mid-year?",
     );
-    await expect(entry.getByTestId('inquiry-message')).toHaveText('Do you take a child mid-year?');
 
     // AC 2's other direction: the send failed, and the screen says so rather
     // than letting the school assume an email went out.
-    await expect(entry.getByTestId('inquiry-delivery')).toContainText('Nobody was emailed');
-    await expect(entry.getByTestId('inquiry-delivery')).toContainText('RESEND_API_KEY');
+    await expect(entry.getByTestId("inquiry-delivery")).toContainText(
+      "Nobody was emailed",
+    );
+    await expect(entry.getByTestId("inquiry-delivery")).toContainText(
+      "RESEND_API_KEY",
+    );
   });
 
-  test('names the address list it is read at, and where that list is edited', async ({ page }) => {
+  test("names the address list it is read at, and where that list is edited", async ({
+    page,
+  }) => {
     // AC 3 as the school sees it: the recipients are settings, and the screen
     // says which settings — so the two cannot drift apart in Jill's head.
-    await signIn(page, '/admin/money');
-    const addresses = await page.getByLabel('Application notifications go to').inputValue();
+    await signIn(page, "/admin/money");
+    const addresses = await page
+      .getByLabel("Application notifications go to")
+      .inputValue();
 
-    await page.goto('/admin/inquiries');
-    for (const address of addresses.split('\n').filter(Boolean)) {
-      await expect(page.locator('main')).toContainText(address.trim());
+    await page.goto("/admin/inquiries");
+    for (const address of addresses.split("\n").filter(Boolean)) {
+      await expect(page.locator("main")).toContainText(address.trim());
     }
-    await expect(page.locator('main')).toContainText('Money screen');
+    await expect(page.locator("main")).toContainText("Money screen");
   });
 
-  test('offers no way to edit or delete what a family typed', async ({ page }) => {
-    await signIn(page, '/admin/inquiries');
+  /**
+   * Inquiry, then application (#313 AC 6).
+   *
+   * End to end and through the real seam: a family sends an inquiry with a
+   * phone number, Jill's screen carries the ready-filled application link that
+   * her reply pastes, and the form that link opens already holds the number the
+   * family typed. Nothing here inserts a row or builds a URL by hand — an id
+   * this test invented would prove the prefill against an inquiry no parent
+   * sent.
+   */
+  test("prefills the application with the number the family gave (#313)", async ({
+    page,
+  }) => {
+    const name = "Suite Prefill Family";
+    const email = "suite-prefill-family@example.com";
+    const inquired = "717-555-0188";
 
-    await expect(page.getByRole('button', { name: /delete/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /save/i })).toHaveCount(0);
+    await page.goto(INQUIRY_PATH);
+    await page.fill("#ask-name", name);
+    await page.fill("#ask-email", email);
+    await page.fill("#ask-phone", inquired);
+    await page.fill("#ask-ages", "13");
+    await page.getByRole("button", { name: "Send my question" }).click();
+    await expect(page.locator('[data-outcome="received"]')).toBeVisible();
+
+    await signIn(page, "/admin/inquiries");
+    const entry = page.getByTestId("inquiry").filter({ hasText: name }).first();
+    const link = await entry
+      .getByTestId("inquiry-apply-link")
+      .getByRole("link")
+      .getAttribute("href");
+    expect(link).toMatch(/\?inquiry=[0-9a-f-]{36}$/);
+
+    // AC 1: the number is in the field before the family touches it.
+    await page.goto(link!);
+    await expect(page.locator("#apply-phone")).toHaveValue(inquired);
+    await expect(page.locator("#apply-family-name")).toHaveValue(name);
+    await expect(page.locator("#apply-email")).toHaveValue(email);
+
+    // AC 2: it is a starting point, not a fact — what the parent leaves in the
+    // field is what the school ends up holding.
+    await fillContactDetails(page);
+    await page.fill("#apply-child-0-name", "Prefill Child");
+    await page.fill("#apply-child-0-age", "13");
+    await page.check('input[name="child-0-classes"][value="algebra-1:year"]');
+    for (const question of FAITH_QUESTIONS) {
+      await page.check(
+        `input[name="${faithKey("Father", question.id)}"][value="yes"]`,
+      );
+    }
+    await page.check('[data-agreement="handbook"] input[value="yes"]');
+    await page.check('[data-agreement="code-of-conduct"] input[value="yes"]');
+    const method = page.locator('[data-payment-method] input[value="check"]');
+    if ((await method.count()) > 0) await method.check();
+    await page.getByRole("button", { name: "Send the application" }).click();
+    await expect(page.locator('[data-outcome="received"]')).toBeVisible();
+
+    await page.goto("/admin/applications");
+    const row = page
+      .getByTestId("application")
+      .filter({ hasText: name })
+      .first();
+    await expect(row.getByTestId("application-phone")).toContainText(
+      SUITE_ADDRESS.phone,
+    );
+
+    // AC 5: the inquiry is a record of what was asked, and applying did not
+    // write back to it.
+    await page.goto("/admin/inquiries");
+    await expect(
+      page
+        .getByTestId("inquiry")
+        .filter({ hasText: name })
+        .first()
+        .getByTestId("inquiry-phone"),
+    ).toContainText(inquired);
+  });
+
+  test("offers no way to edit or delete what a family typed", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/inquiries");
+
+    await expect(page.getByRole("button", { name: /delete/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /save/i })).toHaveCount(0);
   });
 });
 
@@ -1981,7 +2453,7 @@ test.describe('inquiries', () => {
  * test inserted — which is the only way the tally is genuinely being tested,
  * since the tally's whole job is to reconcile rows nobody wrote on purpose.
  */
-test.describe('applications', () => {
+test.describe("applications", () => {
   /** Send one application through the public form, as a family would. */
   async function apply(
     page: Page,
@@ -1992,20 +2464,23 @@ test.describe('applications', () => {
       offering: string;
       objection?: string;
       /** The two agreements (#71), when the test is about them. */
-      handbook?: 'yes' | 'no';
-      codeOfConduct?: 'yes' | 'no';
+      handbook?: "yes" | "no";
+      codeOfConduct?: "yes" | "no";
       /** The stated payment method (#219); a check when the test does not care. */
-      paying?: 'online' | 'check';
+      paying?: "online" | "check";
     },
   ): Promise<void> {
     await page.goto(APPLICATION_PATH);
-    await page.fill('#apply-family-name', family.name);
-    await page.fill('#apply-email', family.email);
+    await page.fill("#apply-family-name", family.name);
+    await page.fill("#apply-email", family.email);
     await fillContactDetails(page);
-    await page.fill('#apply-child-0-name', family.child);
-    await page.fill('#apply-child-0-age', '13');
-    await page.check(`input[name="child-0-classes"][value="${family.offering}"]`);
-    if (family.objection) await page.fill('#apply-objections', family.objection);
+    await page.fill("#apply-child-0-name", family.child);
+    await page.fill("#apply-child-0-age", "13");
+    await page.check(
+      `input[name="child-0-classes"][value="${family.offering}"]`,
+    );
+    if (family.objection)
+      await page.fill("#apply-objections", family.objection);
 
     /*
      * What #85 added to a sendable application: one respondent's whole column of
@@ -2016,45 +2491,55 @@ test.describe('applications', () => {
      * sends.
      */
     for (const question of FAITH_QUESTIONS) {
-      await page.check(`input[name="${faithKey('Father', question.id)}"][value="yes"]`);
+      await page.check(
+        `input[name="${faithKey("Father", question.id)}"][value="yes"]`,
+      );
     }
-    await page.check(`[data-agreement="handbook"] input[value="${family.handbook ?? 'yes'}"]`);
     await page.check(
-      `[data-agreement="code-of-conduct"] input[value="${family.codeOfConduct ?? 'yes'}"]`,
+      `[data-agreement="handbook"] input[value="${family.handbook ?? "yes"}"]`,
+    );
+    await page.check(
+      `[data-agreement="code-of-conduct"] input[value="${family.codeOfConduct ?? "yes"}"]`,
     );
 
     // Which way the money is coming (#219). Conditional because whether the
     // radio exists at all depends on the shared fee-link columns.
     const method = page.locator(
-      `[data-payment-method] input[value="${family.paying ?? 'check'}"]`,
+      `[data-payment-method] input[value="${family.paying ?? "check"}"]`,
     );
     if ((await method.count()) > 0) await method.check();
 
-    await page.getByRole('button', { name: 'Send the application' }).click();
+    await page.getByRole("button", { name: "Send the application" }).click();
     await expect(page.locator('[data-outcome="received"]')).toBeVisible();
   }
 
   /** The application the school is looking at, found by the family's name. */
   const rowFor = (page: Page, family: string) =>
-    page.getByTestId('application').filter({ hasText: family }).first();
+    page.getByTestId("application").filter({ hasText: family }).first();
 
-  test('moves the money without moving the application, and back (AC 2)', async ({ page }) => {
-    const family = 'Suite Two Axes';
+  test("moves the money without moving the application, and back (AC 2)", async ({
+    page,
+  }) => {
+    const family = "Suite Two Axes";
     await apply(page, {
       name: family,
-      email: 'suite-two-axes@example.com',
-      child: 'Axis Child',
-      offering: 'algebra-1:year',
+      email: "suite-two-axes@example.com",
+      child: "Axis Child",
+      offering: "algebra-1:year",
     });
 
     // Found by navigating: a screen nobody can find is not a screen Jill reads.
-    await signIn(page, '/admin/school-details');
-    await page.getByRole('link', { name: 'Applications' }).click();
+    await signIn(page, "/admin/school-details");
+    await page.getByRole("link", { name: "Applications" }).click();
     await expect(page).toHaveURL(/\/admin\/applications$/);
 
     const row = rowFor(page, family);
-    await expect(row.getByTestId('application-state')).toContainText('Submitted');
-    await expect(row.getByTestId('application-payment')).toContainText('Awaiting check');
+    await expect(row.getByTestId("application-state")).toContainText(
+      "Submitted",
+    );
+    await expect(row.getByTestId("application-payment")).toContainText(
+      "Awaiting check",
+    );
 
     /*
      * The household's contact details, all the way from a real submission
@@ -2062,29 +2547,38 @@ test.describe('applications', () => {
      * hand, and the address as it goes on an envelope — three lines of one
      * string, so the assertion is on the whole block rather than on a town.
      */
-    await expect(row.getByTestId('application-phone').getByRole('link')).toHaveAttribute(
-      'href',
-      'tel:7175550142',
+    await expect(
+      row.getByTestId("application-phone").getByRole("link"),
+    ).toHaveAttribute("href", "tel:7175550142");
+    await expect(row.getByTestId("application-phone")).toContainText(
+      SUITE_ADDRESS.phone,
     );
-    await expect(row.getByTestId('application-phone')).toContainText(SUITE_ADDRESS.phone);
-    await expect(row.getByTestId('application-address')).toContainText(SUITE_ADDRESS.street);
-    await expect(row.getByTestId('application-address')).toContainText(
+    await expect(row.getByTestId("application-address")).toContainText(
+      SUITE_ADDRESS.street,
+    );
+    await expect(row.getByTestId("application-address")).toContainText(
       `${SUITE_ADDRESS.city}, ${SUITE_ADDRESS.state} ${SUITE_ADDRESS.zip}`,
     );
 
     // The check arrives. The application has not moved.
-    await row.getByRole('button', { name: 'Check has arrived' }).click();
-    await expect(rowFor(page, family).getByTestId('application-payment')).toContainText(
-      'Check received',
-    );
-    await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
+    await row.getByRole("button", { name: "Check has arrived" }).click();
+    await expect(
+      rowFor(page, family).getByTestId("application-payment"),
+    ).toContainText("Check received");
+    await expect(
+      rowFor(page, family).getByTestId("application-state"),
+    ).toContainText("Submitted");
 
     // The family enrolls. The money has not moved.
-    await rowFor(page, family).getByRole('button', { name: 'Enroll this family' }).click();
-    await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Enrolled');
-    await expect(rowFor(page, family).getByTestId('application-payment')).toContainText(
-      'Check received',
-    );
+    await rowFor(page, family)
+      .getByRole("button", { name: "Enroll this family" })
+      .click();
+    await expect(
+      rowFor(page, family).getByTestId("application-state"),
+    ).toContainText("Enrolled");
+    await expect(
+      rowFor(page, family).getByTestId("application-payment"),
+    ).toContainText("Check received");
   });
 
   /**
@@ -2096,30 +2590,32 @@ test.describe('applications', () => {
    * beside the buttons that were pressed. The redirect is also what makes the
    * refresh below safe: there is no post left to repeat.
    */
-  test('reports the outcome at the row acted on, and a refresh repeats nothing (AC 1, AC 2)', async ({
+  test("reports the outcome at the row acted on, and a refresh repeats nothing (AC 1, AC 2)", async ({
     page,
   }) => {
-    const family = 'Suite Outcome';
+    const family = "Suite Outcome";
     await apply(page, {
       name: family,
-      email: 'suite-outcome@example.com',
-      child: 'Outcome Child',
-      offering: 'algebra-1:year',
+      email: "suite-outcome@example.com",
+      child: "Outcome Child",
+      offering: "algebra-1:year",
     });
 
-    await signIn(page, '/admin/applications');
-    await rowFor(page, family).getByRole('button', { name: 'Start a conversation' }).click();
+    await signIn(page, "/admin/applications");
+    await rowFor(page, family)
+      .getByRole("button", { name: "Start a conversation" })
+      .click();
 
     const row = rowFor(page, family);
-    const banner = row.getByTestId('applications-banner');
+    const banner = row.getByTestId("applications-banner");
     await expect(banner).toBeVisible();
-    await expect(banner).toHaveAttribute('data-ok', 'true');
-    await expect(banner).toContainText('in conversation');
+    await expect(banner).toHaveAttribute("data-ok", "true");
+    await expect(banner).toContainText("in conversation");
     // Beside that row and nowhere else — no second copy at the top of the page.
-    await expect(page.getByTestId('applications-banner')).toHaveCount(1);
+    await expect(page.getByTestId("applications-banner")).toHaveCount(1);
 
     // And the browser is standing at the row, not at the top of the list.
-    const anchor = await row.getAttribute('id');
+    const anchor = await row.getAttribute("id");
     expect(anchor).toMatch(/^application-/);
     await expect(page).toHaveURL(new RegExp(`#${anchor}$`));
 
@@ -2129,23 +2625,22 @@ test.describe('applications', () => {
      * it may already have moved". It says the same thing it said before.
      */
     await page.reload();
-    await expect(rowFor(page, family).getByTestId('applications-banner')).toHaveAttribute(
-      'data-ok',
-      'true',
-    );
-    await expect(rowFor(page, family).getByTestId('application-state')).toContainText(
-      'In conversation',
-    );
+    await expect(
+      rowFor(page, family).getByTestId("applications-banner"),
+    ).toHaveAttribute("data-ok", "true");
+    await expect(
+      rowFor(page, family).getByTestId("application-state"),
+    ).toContainText("In conversation");
 
     // And an outcome typed into the URL that the row does not bear out says
     // nothing at all, rather than announcing a move nobody made.
     const forged = new URL(page.url());
-    forged.searchParams.set('outcome', 'state-enrolled');
+    forged.searchParams.set("outcome", "state-enrolled");
     await page.goto(`${forged.pathname}${forged.search}`);
-    await expect(page.getByTestId('applications-banner')).toHaveCount(0);
-    await expect(rowFor(page, family).getByTestId('application-state')).toContainText(
-      'In conversation',
-    );
+    await expect(page.getByTestId("applications-banner")).toHaveCount(0);
+    await expect(
+      rowFor(page, family).getByTestId("application-state"),
+    ).toContainText("In conversation");
   });
 
   /**
@@ -2157,29 +2652,37 @@ test.describe('applications', () => {
    * of the row does not move for it — the family's own state is on the other
    * axis and stays where it was.
    */
-  test('records a payment matched by hand, and nothing else moves (AC 3)', async ({ page }) => {
-    const family = 'Suite Matched';
+  test("records a payment matched by hand, and nothing else moves (AC 3)", async ({
+    page,
+  }) => {
+    const family = "Suite Matched";
     await apply(page, {
       name: family,
-      email: 'suite-matched@example.com',
-      child: 'Matched Child',
-      offering: 'algebra-1:year',
+      email: "suite-matched@example.com",
+      child: "Matched Child",
+      offering: "algebra-1:year",
     });
 
-    await signIn(page, '/admin/applications');
+    await signIn(page, "/admin/applications");
     const row = rowFor(page, family);
-    await expect(row.getByTestId('application-payment')).not.toContainText('Paid online');
-
-    await row.getByRole('button', { name: 'Payment matched by hand' }).click();
-    await expect(rowFor(page, family).getByTestId('application-payment')).toContainText(
-      'Paid online',
+    await expect(row.getByTestId("application-payment")).not.toContainText(
+      "Paid online",
     );
-    await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
+
+    await row.getByRole("button", { name: "Payment matched by hand" }).click();
+    await expect(
+      rowFor(page, family).getByTestId("application-payment"),
+    ).toContainText("Paid online");
+    await expect(
+      rowFor(page, family).getByTestId("application-state"),
+    ).toContainText("Submitted");
 
     // And the screen stops offering the move it has already made, rather than
     // offering a click the store would refuse (AC 4).
     await expect(
-      rowFor(page, family).getByRole('button', { name: 'Payment matched by hand' }),
+      rowFor(page, family).getByRole("button", {
+        name: "Payment matched by hand",
+      }),
     ).toHaveCount(0);
   });
 
@@ -2191,81 +2694,99 @@ test.describe('applications', () => {
    * it here. That only works if the code the family was shown is the code on
    * this screen — which is what this walks, family screen to admin row.
    */
-  test('shows the office the same short code the family was given', async ({ page }) => {
-    const family = 'Suite Reference';
+  test("shows the office the same short code the family was given", async ({
+    page,
+  }) => {
+    const family = "Suite Reference";
     await apply(page, {
       name: family,
-      email: 'suite-reference@example.com',
-      child: 'Reference Child',
-      offering: 'algebra-1:year',
+      email: "suite-reference@example.com",
+      child: "Reference Child",
+      offering: "algebra-1:year",
     });
 
     const told = await page.locator('[data-outcome="received"]').innerText();
     const reference = told.match(new RegExp(REFERENCE_SHAPE))?.[0];
     expect(reference).toBeDefined();
 
-    await signIn(page, '/admin/applications');
-    await expect(rowFor(page, family).getByTestId('application-reference')).toContainText(
-      reference!,
-    );
+    await signIn(page, "/admin/applications");
+    await expect(
+      rowFor(page, family).getByTestId("application-reference"),
+    ).toContainText(reference!);
   });
 
-  test('counts a family that applied twice once, and says so (AC 1)', async ({ page }) => {
-    const family = 'Suite Twice';
+  test("counts a family that applied twice once, and says so (AC 1)", async ({
+    page,
+  }) => {
+    const family = "Suite Twice";
     const once = {
       name: family,
-      email: 'suite-twice@example.com',
-      child: 'Twice Child',
-      offering: 'beginner-latin-grades-5-6:year',
+      email: "suite-twice@example.com",
+      child: "Twice Child",
+      offering: "beginner-latin-grades-5-6:year",
     };
 
     await apply(page, once);
     await apply(page, once);
 
-    await signIn(page, '/admin/applications');
+    await signIn(page, "/admin/applications");
 
     // Both applications are kept — nothing was blocked on the email address.
-    await expect(page.getByTestId('application').filter({ hasText: family })).toHaveCount(2);
+    await expect(
+      page.getByTestId("application").filter({ hasText: family }),
+    ).toHaveCount(2);
 
     // And the tally counts the child once, with the note that explains it.
-    await expect(page.getByTestId('class-tally')).toContainText('second submission');
-    await expect(rowFor(page, family).getByTestId('application-resubmitted')).toBeVisible();
+    await expect(page.getByTestId("class-tally")).toContainText(
+      "second submission",
+    );
+    await expect(
+      rowFor(page, family).getByTestId("application-resubmitted"),
+    ).toBeVisible();
   });
 
-  test('raises the conversation flag, and never calls it a rejection (AC 5)', async ({ page }) => {
-    const family = 'Suite Objection';
+  test("raises the conversation flag, and never calls it a rejection (AC 5)", async ({
+    page,
+  }) => {
+    const family = "Suite Objection";
     await apply(page, {
       name: family,
-      email: 'suite-objection@example.com',
-      child: 'Objecting Child',
-      offering: 'algebra-1:year',
-      objection: 'We would like to talk about article 9.',
+      email: "suite-objection@example.com",
+      child: "Objecting Child",
+      offering: "algebra-1:year",
+      objection: "We would like to talk about article 9.",
     });
 
-    await signIn(page, '/admin/applications');
-    const flag = rowFor(page, family).getByTestId('application-flag');
+    await signIn(page, "/admin/applications");
+    const flag = rowFor(page, family).getByTestId("application-flag");
 
     await expect(flag).toBeVisible();
-    await expect(flag).toContainText('article 9');
-    await expect(flag).toContainText('not a refusal');
+    await expect(flag).toContainText("article 9");
+    await expect(flag).toContainText("not a refusal");
     // The family is told the same thing on the way out — an objection routes to
     // a conversation and stops nothing.
-    await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
+    await expect(
+      rowFor(page, family).getByTestId("application-state"),
+    ).toContainText("Submitted");
   });
 
-  test('reads both agreements by hand, each as a sentence (#71 AC 6, #255)', async ({ page }) => {
-    const family = 'Suite Agreements';
+  test("reads both agreements by hand, each as a sentence (#71 AC 6, #255)", async ({
+    page,
+  }) => {
+    const family = "Suite Agreements";
     await apply(page, {
       name: family,
-      email: 'suite-agreements@example.com',
-      child: 'Agreeing Child',
-      offering: 'algebra-1:year',
-      handbook: 'no',
-      codeOfConduct: 'yes',
+      email: "suite-agreements@example.com",
+      child: "Agreeing Child",
+      offering: "algebra-1:year",
+      handbook: "no",
+      codeOfConduct: "yes",
     });
 
-    await signIn(page, '/admin/applications');
-    const agreements = rowFor(page, family).getByTestId('application-agreements');
+    await signIn(page, "/admin/applications");
+    const agreements = rowFor(page, family).getByTestId(
+      "application-agreements",
+    );
 
     /*
      * Each answer as a sentence that says which way it points (#255), against
@@ -2279,61 +2800,75 @@ test.describe('applications', () => {
      * public form, so asserting it here would be asserting a state the form
      * cannot reach.
      */
-    await expect(agreements.locator('[data-agreement="handbook"]')).toContainText(
-      'Family does not agree',
-    );
-    await expect(agreements.locator('[data-agreement="handbook"]')).toContainText('version');
-    await expect(agreements.locator('[data-agreement="code-of-conduct"]')).toContainText(
-      'Family agrees',
-    );
-    await expect(agreements.locator('[data-agreement="code-of-conduct"]')).toContainText('version');
+    await expect(
+      agreements.locator('[data-agreement="handbook"]'),
+    ).toContainText("Family does not agree");
+    await expect(
+      agreements.locator('[data-agreement="handbook"]'),
+    ).toContainText("version");
+    await expect(
+      agreements.locator('[data-agreement="code-of-conduct"]'),
+    ).toContainText("Family agrees");
+    await expect(
+      agreements.locator('[data-agreement="code-of-conduct"]'),
+    ).toContainText("version");
 
     // A "no" routes the application to a conversation (ADR-0020) — and routing
     // is not refusing: it is submitted, like any other.
-    await expect(rowFor(page, family).getByTestId('application-flag')).toHaveCount(1);
-    await expect(rowFor(page, family).getByTestId('application-state')).toContainText('Submitted');
+    await expect(
+      rowFor(page, family).getByTestId("application-flag"),
+    ).toHaveCount(1);
+    await expect(
+      rowFor(page, family).getByTestId("application-state"),
+    ).toContainText("Submitted");
   });
 
-  test('says when nobody at the school was emailed', async ({ page }) => {
+  test("says when nobody at the school was emailed", async ({ page }) => {
     // The suite has no mail credentials, which is exactly the case #32 AC 6
     // cares about: the application saved, the family was told on screen, and
     // only this line says the school's own copy never went.
-    const family = 'Suite Undelivered';
+    const family = "Suite Undelivered";
     await apply(page, {
       name: family,
-      email: 'suite-undelivered@example.com',
-      child: 'Quiet Child',
-      offering: 'algebra-1:year',
+      email: "suite-undelivered@example.com",
+      child: "Quiet Child",
+      offering: "algebra-1:year",
     });
 
-    await signIn(page, '/admin/applications');
-    const delivery = rowFor(page, family).getByTestId('application-delivery');
+    await signIn(page, "/admin/applications");
+    const delivery = rowFor(page, family).getByTestId("application-delivery");
 
-    await expect(delivery).toHaveAttribute('data-delivered', 'false');
-    await expect(delivery).toContainText('Nobody at the school was emailed');
-    await expect(delivery).toContainText('RESEND_API_KEY');
+    await expect(delivery).toHaveAttribute("data-delivered", "false");
+    await expect(delivery).toContainText("Nobody at the school was emailed");
+    await expect(delivery).toContainText("RESEND_API_KEY");
     // And the family's own copy, which is the failure nothing used to name
     // (#136): the reason is on the row, not in a log nobody reads.
-    await expect(delivery).toContainText('The family was not emailed');
-    await expect(delivery).toContainText('No mailer is configured');
+    await expect(delivery).toContainText("The family was not emailed");
+    await expect(delivery).toContainText("No mailer is configured");
   });
 
-  test('names the address list it is read at, and where that list is edited', async ({ page }) => {
-    await signIn(page, '/admin/money');
-    const addresses = await page.getByLabel('Application notifications go to').inputValue();
+  test("names the address list it is read at, and where that list is edited", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/money");
+    const addresses = await page
+      .getByLabel("Application notifications go to")
+      .inputValue();
 
-    await page.goto('/admin/applications');
-    for (const address of addresses.split('\n').filter(Boolean)) {
-      await expect(page.locator('main')).toContainText(address.trim());
+    await page.goto("/admin/applications");
+    for (const address of addresses.split("\n").filter(Boolean)) {
+      await expect(page.locator("main")).toContainText(address.trim());
     }
-    await expect(page.locator('main')).toContainText('Money screen');
+    await expect(page.locator("main")).toContainText("Money screen");
   });
 
-  test('offers no way to edit or delete what a family sent', async ({ page }) => {
-    await signIn(page, '/admin/applications');
+  test("offers no way to edit or delete what a family sent", async ({
+    page,
+  }) => {
+    await signIn(page, "/admin/applications");
 
-    await expect(page.getByRole('button', { name: /delete/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /save/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /delete/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /save/i })).toHaveCount(0);
   });
 });
 

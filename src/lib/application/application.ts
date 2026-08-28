@@ -46,11 +46,11 @@
  * things a browser should download to notice an empty text field.
  */
 
-import { BELIEFS_ARTICLES, BELIEFS_CLOSING } from '../about/beliefs.js';
-import { blankAddress } from '../address.js';
-import { parseAgreements, type AskableAgreement } from './agreements.js';
-import type { EnrolmentUnit } from '../courses/course.js';
-import { textField as text } from '../forms.js';
+import { BELIEFS_ARTICLES, BELIEFS_CLOSING } from "../about/beliefs.js";
+import { blankAddress } from "../address.js";
+import { parseAgreements, type AskableAgreement } from "./agreements.js";
+import type { EnrolmentUnit } from "../courses/course.js";
+import { textField as text } from "../forms.js";
 import {
   FAITH_QUESTIONS,
   FAITH_RESPONDENTS,
@@ -61,15 +61,25 @@ import {
   type ApplicationErrors,
   type ApplicationFields,
   type FaithAnswers,
-} from './validation.js';
-import { sumOwed } from '../money/live.js';
-import { amountOwed, unitPrice, type AmountOwed, type Selection } from '../money/owed.js';
-import type { MoneySettings } from '../money/settings.js';
-import type { SchoolYear } from '../calendar/year.js';
-import { clashesAmong, findOffering, type Offering, type OfferingClash } from './offerings.js';
+} from "./validation.js";
+import { sumOwed } from "../money/live.js";
+import {
+  amountOwed,
+  unitPrice,
+  type AmountOwed,
+  type Selection,
+} from "../money/owed.js";
+import type { MoneySettings } from "../money/settings.js";
+import type { SchoolYear } from "../calendar/year.js";
+import {
+  clashesAmong,
+  findOffering,
+  type Offering,
+  type OfferingClash,
+} from "./offerings.js";
 
 /** The address of the page that holds the flow and takes its POST. */
-export const APPLICATION_PATH = '/admissions/apply';
+export const APPLICATION_PATH = "/admissions/apply";
 
 /**
  * The stages, as anchors on one document.
@@ -87,13 +97,13 @@ export const APPLICATION_PATH = '/admissions/apply';
  * CSS decision rather than a rebuild.
  */
 export const APPLICATION_STAGES = [
-  { id: 'faith', title: 'What We Believe' },
-  { id: 'classes', title: 'Choosing Classes' },
-  { id: 'agreements', title: 'What You Agree To' },
+  { id: "faith", title: "What We Believe" },
+  { id: "classes", title: "Choosing Classes" },
+  { id: "agreements", title: "What You Agree To" },
   // "What to Pay" and no longer "What to Post": the whole of it is one payment
   // through the giving page, and the envelope is the fallback (#219, ADR-0017).
-  { id: 'payment', title: 'What to Pay' },
-  { id: 'confirmation', title: 'Sending It' },
+  { id: "payment", title: "What to Pay" },
+  { id: "confirmation", title: "Sending It" },
 ] as const;
 
 /*
@@ -113,7 +123,7 @@ export {
   firstError,
   paymentMethodOf,
   validateApplication,
-} from './validation.js';
+} from "./validation.js";
 export type {
   ApplicationChild,
   ApplicationErrors,
@@ -125,7 +135,7 @@ export type {
   FaithQuestionId,
   FaithRespondent,
   PaymentMethod,
-} from './validation.js';
+} from "./validation.js";
 
 export type ParsedApplication = {
   /** Always populated, valid or not, so a rejected form redisplays what was typed. */
@@ -180,7 +190,8 @@ export function parseApplication(
 
     // A row nobody touched is not a child. Three blank rows on a two-child
     // application are the normal case, not an error to report.
-    if (name || age || offeringKeys.length > 0) children.push({ name, age, offeringKeys });
+    if (name || age || offeringKeys.length > 0)
+      children.push({ name, age, offeringKeys });
   }
 
   const faith: FaithAnswers = {};
@@ -188,36 +199,36 @@ export function parseApplication(
     for (const question of FAITH_QUESTIONS) {
       const key = faithKey(respondent, question.id);
       const value = text(form, key);
-      faith[key] = value === 'yes' || value === 'no' ? value : '';
+      faith[key] = value === "yes" || value === "no" ? value : "";
     }
   }
 
   const values: ApplicationFields = {
-    familyName: text(form, 'familyName'),
-    email: text(form, 'email'),
+    familyName: text(form, "familyName"),
+    email: text(form, "email"),
     // The household's own contact details (#312, ADR-0024). Read as typed and
     // never normalised here: the rule in `validation.ts` decides whether the
     // shape is acceptable, and a parser that quietly rewrote a number would
     // make that rule unreachable — see `formatPhoneAsTyped`.
-    phone: text(form, 'phone'),
+    phone: text(form, "phone"),
     address: {
-      street: text(form, 'street'),
-      street2: text(form, 'street2'),
-      city: text(form, 'city'),
+      street: text(form, "street"),
+      street2: text(form, "street2"),
+      city: text(form, "city"),
       // Whatever was posted, checked against the list rather than trusted: the
       // dropdown can only produce one of the fifty-one, and a hand-built POST
       // is not a dropdown.
-      state: text(form, 'state'),
-      zip: text(form, 'zip'),
+      state: text(form, "state"),
+      zip: text(form, "zip"),
     },
     children,
     faith,
-    objections: text(form, 'objections'),
+    objections: text(form, "objections"),
     agreements: parseAgreements(form, askable),
     // Anything but one of the two words is unanswered (#219). A page with no
     // giving page posts it from a hidden field rather than a radio, because
     // there is nothing to choose between — and it is the same answer either way.
-    paymentMethod: paymentMethodOf(text(form, 'payment-method')),
+    paymentMethod: paymentMethodOf(text(form, "payment-method")),
   };
 
   // The same `askable` the questions were rendered from, so the gate can only
@@ -251,42 +262,67 @@ export function parseApplication(
  */
 export function isFlagged(values: ApplicationFields): boolean {
   if (values.objections.trim().length > 0) return true;
-  if (Object.values(values.agreements).some((agreement) => agreement.answer === 'no')) return true;
-  return Object.values(values.faith).some((answer) => answer === 'no');
+  if (
+    Object.values(values.agreements).some(
+      (agreement) => agreement.answer === "no",
+    )
+  )
+    return true;
+  return Object.values(values.faith).some((answer) => answer === "no");
 }
 
-/** What the family typed on the inquiry, as much of it as this form can use. */
-export type InquiryPrefill = { name: string; email: string; ages: string };
+/**
+ * What the family typed on the inquiry, as much of it as this form can use.
+ *
+ * `phone` is nullable because the column is (#311): every inquiry sent before
+ * the school added the field has no number, and those rows are never edited.
+ */
+export type InquiryPrefill = {
+  name: string;
+  email: string;
+  phone: string | null;
+  ages: string;
+};
 
 /**
- * The application as it opens, from the inquiry the family already sent (#31 AC 1).
+ * The application as it opens, from the inquiry the family already sent (#31
+ * AC 1, #313).
  *
- * A family that has already told the school its name, its email and its
- * children's ages does not retype them. Null — a family who arrives without an
+ * A family that has already told the school its name, its email, its phone
+ * number and its children's ages does not retype them. Null — a family who arrives without an
  * inquiry, or a link pasted into an email by somebody who did not look one up —
  * gives a clean slate with one blank child row, which is the same form.
  */
 export function prefillFrom(inquiry: InquiryPrefill | null): ApplicationFields {
   const ages = inquiry ? childAges(inquiry.ages) : [];
   return {
-    familyName: inquiry?.name ?? '',
-    email: inquiry?.email ?? '',
+    familyName: inquiry?.name ?? "",
+    email: inquiry?.email ?? "",
     /*
-     * Blank, and the address opens on Pennsylvania (#312). Nothing on an
-     * inquiry carries a postal address, and the number it does carry is
-     * deliberately not brought across: `InquiryPrefill` is the three fields
-     * this form can use, and widening it is a decision about what a stale
-     * inquiry may pre-answer rather than a line of plumbing.
+     * The inquiry's number, if it has one (#313). The parent can still change
+     * it, and what they leave here is what is stored — the inquiry row is a
+     * record of what was asked and is never written back to.
+     *
+     * Empty for an inquiry from before #311, which leaves the field blank and
+     * required, exactly as it is for a family who arrived without a link.
      */
-    phone: '',
+    phone: inquiry?.phone ?? "",
+    /*
+     * The address still opens blank on Pennsylvania (#312): nothing on an
+     * inquiry carries a postal address to bring across.
+     */
     address: blankAddress(),
-    children: (ages.length > 0 ? ages : ['']).map((age) => ({ name: '', age, offeringKeys: [] })),
+    children: (ages.length > 0 ? ages : [""]).map((age) => ({
+      name: "",
+      age,
+      offeringKeys: [],
+    })),
     faith: {},
-    objections: '',
+    objections: "",
     agreements: {},
     // Nothing on an inquiry says how a family means to pay, and guessing at it
     // would tick a radio on their behalf for a question they have not read.
-    paymentMethod: '',
+    paymentMethod: "",
   };
 }
 
@@ -327,7 +363,7 @@ export function statementVersion(
   articles: readonly string[] = BELIEFS_ARTICLES,
   closing: string = BELIEFS_CLOSING,
 ): string {
-  return `sof-${fnv1a([...articles, closing].join('\n'))}`;
+  return `sof-${fnv1a([...articles, closing].join("\n"))}`;
 }
 
 /** FNV-1a, 32-bit, as eight hex digits. */
@@ -336,9 +372,16 @@ function fnv1a(value: string): string {
   for (let index = 0; index < value.length; index += 1) {
     hash ^= value.charCodeAt(index);
     // The FNV prime, 16777619, in the shifts that keep it inside 32 bits.
-    hash = (hash + (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)) >>> 0;
+    hash =
+      (hash +
+        (hash << 1) +
+        (hash << 4) +
+        (hash << 7) +
+        (hash << 8) +
+        (hash << 24)) >>>
+      0;
   }
-  return hash.toString(16).padStart(8, '0');
+  return hash.toString(16).padStart(8, "0");
 }
 
 /**
@@ -349,15 +392,15 @@ function fnv1a(value: string): string {
  * alternative is a `switch` in the page — and a page that gets it wrong quotes
  * a family a semester of Algebra 1 for the price of a year.
  */
-export function priceUnit(unit: EnrolmentUnit): Selection['unit'] {
+export function priceUnit(unit: EnrolmentUnit): Selection["unit"] {
   switch (unit) {
-    case 'year':
-      return 'year';
-    case 'fall':
-    case 'spring':
-      return 'semester';
-    case 'block':
-      return 'flat';
+    case "year":
+      return "year";
+    case "fall":
+    case "spring":
+      return "semester";
+    case "block":
+      return "flat";
   }
 }
 
@@ -379,8 +422,14 @@ export function selectionsOf(offerings: readonly Offering[]): Selection[] {
  * for the same class. A surface that assembled it itself is a surface that can
  * quote a family a semester of Algebra 1 for the price of a year.
  */
-export function offeringPrice(offering: Offering, settings: MoneySettings): number {
-  return unitPrice({ course: offering.course, unit: priceUnit(offering.unit) }, settings);
+export function offeringPrice(
+  offering: Offering,
+  settings: MoneySettings,
+): number {
+  return unitPrice(
+    { course: offering.course, unit: priceUnit(offering.unit) },
+    settings,
+  );
 }
 
 /** One child, their offerings resolved, and what they cost. */
@@ -416,7 +465,11 @@ export function applicationCost(
 ): ApplicationCost {
   const perChild = values.children.map((child) => {
     const chosen = childOfferings(child, offerings);
-    return { child, offerings: chosen, owed: amountOwed(selectionsOf(chosen), settings) };
+    return {
+      child,
+      offerings: chosen,
+      owed: amountOwed(selectionsOf(chosen), settings),
+    };
   });
 
   return { perChild, total: sumOwed(perChild.map((one) => one.owed)) };
