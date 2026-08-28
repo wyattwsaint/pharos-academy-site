@@ -25,13 +25,18 @@
  *
  * **The children's sensitive data does not enter the site.** `ApplicationChild`
  * has a name, an age and the classes, and that is the entire type. Date of
- * birth, home address, allergies, medical conditions, evaluation history and
- * custody arrangements are all on the school's live Google Form and are all
+ * birth, allergies, medical conditions, evaluation history and custody
+ * arrangements are all on the school's live Google Form and are all
  * deliberately absent here — they move to paper signed at enrolment. This is
  * what deletes the stricter storage tier rather than building it, and
  * `application.test.ts` reads this file, `validation.ts` and the form component back
  * and fails if any of them grows one of those words. **ADR-0007** holds the
  * decision and what reversing it would cost.
+ *
+ * Since #312 the family's own phone and one household address sit on
+ * `ApplicationFields` — **on the application and never on a child**. That is
+ * ADR-0024's line: a household's contact details are the class of fact the
+ * email address always was, and the per-child bar above is untouched by it.
  *
  * **The rules themselves live in `validation.ts`, and only their name lives here.**
  * Everything this module exported before #85 it still exports, under the same
@@ -42,6 +47,7 @@
  */
 
 import { BELIEFS_ARTICLES, BELIEFS_CLOSING } from '../about/beliefs.js';
+import { blankAddress } from '../address.js';
 import { parseAgreements, type AskableAgreement } from './agreements.js';
 import type { EnrolmentUnit } from '../courses/course.js';
 import { textField as text } from '../forms.js';
@@ -189,6 +195,21 @@ export function parseApplication(
   const values: ApplicationFields = {
     familyName: text(form, 'familyName'),
     email: text(form, 'email'),
+    // The household's own contact details (#312, ADR-0024). Read as typed and
+    // never normalised here: the rule in `validation.ts` decides whether the
+    // shape is acceptable, and a parser that quietly rewrote a number would
+    // make that rule unreachable — see `formatPhoneAsTyped`.
+    phone: text(form, 'phone'),
+    address: {
+      street: text(form, 'street'),
+      street2: text(form, 'street2'),
+      city: text(form, 'city'),
+      // Whatever was posted, checked against the list rather than trusted: the
+      // dropdown can only produce one of the fifty-one, and a hand-built POST
+      // is not a dropdown.
+      state: text(form, 'state'),
+      zip: text(form, 'zip'),
+    },
     children,
     faith,
     objections: text(form, 'objections'),
@@ -250,6 +271,15 @@ export function prefillFrom(inquiry: InquiryPrefill | null): ApplicationFields {
   return {
     familyName: inquiry?.name ?? '',
     email: inquiry?.email ?? '',
+    /*
+     * Blank, and the address opens on Pennsylvania (#312). Nothing on an
+     * inquiry carries a postal address, and the number it does carry is
+     * deliberately not brought across: `InquiryPrefill` is the three fields
+     * this form can use, and widening it is a decision about what a stale
+     * inquiry may pre-answer rather than a line of plumbing.
+     */
+    phone: '',
+    address: blankAddress(),
     children: (ages.length > 0 ? ages : ['']).map((age) => ({ name: '', age, offeringKeys: [] })),
     faith: {},
     objections: '',

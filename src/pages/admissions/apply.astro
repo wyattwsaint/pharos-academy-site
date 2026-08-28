@@ -3,6 +3,7 @@ export const prerender = false;
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { BELIEFS_ARTICLES, BELIEFS_CLOSING, BELIEFS_PATH } from '../../lib/about/beliefs.js';
+import { addressPartsShort, US_STATES } from '../../lib/address.js';
 import { getSchoolDetails } from '../../lib/admin/school-details.js';
 import {
   APPLICATION_STAGES,
@@ -497,6 +498,23 @@ const childNeeds = ((): { index: number; box: 'name' | 'age' } => {
 const focus: ErrorField | null = rejected ? firstError(errors, childNeeds.index) : null;
 
 /**
+ * Which parts of the address the address sentence is about (#312).
+ *
+ * Off the same rule the browser marks with, so a refused POST and a refusal
+ * raised while the family types put `aria-invalid` on exactly the same boxes.
+ */
+const addressShort = errors.address ? addressPartsShort(values.address) : [];
+
+/**
+ * Which box a refused send lands in, when it is the address that refused it.
+ *
+ * The first part the sentence is about, not the top of the block — a family
+ * whose only gap is the ZIP is put in the ZIP box, and one whose state was
+ * refused is put in the dropdown. `FOCUS.address` is the browser's half.
+ */
+const addressFocus = focus === 'address' ? (addressShort[0] ?? 'street') : null;
+
+/**
  * Which document a refused send should land on — the first one nobody has
  * answered, matching `FOCUS.agreements`. Since #255 there is no radio that
  * un-answers one, so this can only ever be a question nobody has touched.
@@ -516,6 +534,8 @@ const NEEDED: { field: ErrorField; href: string; label: string }[] = [
   { field: 'faith', href: '#apply-faith', label: 'One parent or guardian’s answers to the three questions' },
   { field: 'familyName', href: '#apply-family-name', label: 'Your family name' },
   { field: 'email', href: '#apply-email', label: 'An email address we can reply to' },
+  { field: 'phone', href: '#apply-phone', label: 'A phone number we can call you on' },
+  { field: 'address', href: '#apply-street', label: 'An address we can post paperwork to' },
   {
     field: 'children',
     href: `#apply-child-${childNeeds.index}-${childNeeds.box}`,
@@ -991,7 +1011,130 @@ const description =
                   {errors.email}
                 </p>
               </div>
+
+              {/*
+                The number the school calls back on (#312, ADR-0024). The same
+                rule and the same shared helper as the inquiry — `type="tel"`
+                keeps the dialling keypad on iOS, and `data-phone` is what
+                `components/phone-field.ts` binds the auto-dash to.
+              */}
+              <div>
+                <label for="apply-phone">Phone</label>
+                <input
+                  id="apply-phone"
+                  name="phone"
+                  type="tel"
+                  inputmode="tel"
+                  autocomplete="tel"
+                  placeholder="717-555-0142"
+                  value={values.phone}
+                  data-phone
+                  aria-describedby={errors.phone ? 'apply-phone-error' : undefined}
+                  aria-invalid={errors.phone ? 'true' : undefined}
+                  autofocus={focus === 'phone'}
+                />
+                <p class="error" id="apply-phone-error" hidden={!errors.phone}>
+                  {errors.phone}
+                </p>
+              </div>
             </div>
+
+            {/*
+              Where the school posts paperwork — one address for the household,
+              never one per child (#312, ADR-0024).
+
+              A `fieldset` with a legend, because five controls that are one
+              answer need one accessible name over them; one sentence beneath,
+              for the reason the Statement of Faith grid and the child rows each
+              carry one — a family filling in an address is doing one thing, and
+              four simultaneous complaints about it read as four problems. The
+              error paragraph describes all five inputs, which is the same
+              wiring `faith` uses.
+            */}
+            <fieldset class="address" data-address>
+              <legend>Where we can post paperwork to you</legend>
+
+              <div class="form mt-5">
+                <div class="span-2">
+                  <label for="apply-street">Street address</label>
+                  <input
+                    id="apply-street"
+                    name="street"
+                    autocomplete="address-line1"
+                    value={values.address.street}
+                    aria-describedby={errors.address ? 'apply-address-error' : undefined}
+                    aria-invalid={addressShort.includes('street') ? 'true' : undefined}
+                    autofocus={addressFocus === 'street'}
+                  />
+                </div>
+
+                <div class="span-2">
+                  <label for="apply-street2">Apartment, suite or care of (optional)</label>
+                  <input
+                    id="apply-street2"
+                    name="street2"
+                    autocomplete="address-line2"
+                    value={values.address.street2}
+                  />
+                </div>
+
+                <div>
+                  <label for="apply-city">Town or city</label>
+                  <input
+                    id="apply-city"
+                    name="city"
+                    autocomplete="address-level2"
+                    value={values.address.city}
+                    aria-describedby={errors.address ? 'apply-address-error' : undefined}
+                    aria-invalid={addressShort.includes('city') ? 'true' : undefined}
+                    autofocus={addressFocus === 'city'}
+                  />
+                </div>
+
+                <div>
+                  <label for="apply-state">State</label>
+                  {/*
+                    Pennsylvania preselected: Pharos is a Pennsylvania day
+                    school with a Pennsylvania catchment, so this is right for
+                    almost every family and is one control fewer to touch. It
+                    is a preselection and not a lock — all fifty-one are here.
+                  */}
+                  <select
+                    id="apply-state"
+                    name="state"
+                    autocomplete="address-level1"
+                    aria-describedby={errors.address ? 'apply-address-error' : undefined}
+                    aria-invalid={addressShort.includes('state') ? 'true' : undefined}
+                    autofocus={addressFocus === 'state'}
+                  >
+                    {US_STATES.map((state) => (
+                      <option value={state.code} selected={state.code === values.address.state}>
+                        {state.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label for="apply-zip">ZIP code</label>
+                  <input
+                    id="apply-zip"
+                    name="zip"
+                    inputmode="numeric"
+                    autocomplete="postal-code"
+                    placeholder="17325"
+                    value={values.address.zip}
+                    aria-describedby={errors.address ? 'apply-address-error' : undefined}
+                    aria-invalid={addressShort.includes('zip') ? 'true' : undefined}
+                    autofocus={addressFocus === 'zip'}
+                  />
+                </div>
+              </div>
+
+              <p class="error mt-4" id="apply-address-error" hidden={!errors.address}>
+                {errors.address}
+              </p>
+            </fieldset>
 
             {/*
               Rendered whether or not they say anything, and hidden when they do
@@ -1556,6 +1699,8 @@ const description =
     timetable, which is why `applicationCost` is not reachable from here and
     `validation.test.ts` fails the moment it is.
   */
+  import { addressPartsShort, type AddressPart } from '../../lib/address.js';
+  import { bindPhoneFields } from '../../components/phone-field.js';
   import type {
     AgreementAnswer,
     AgreementSlug,
@@ -1646,7 +1791,42 @@ const description =
       reader. `invalid` is set only where the server sets it.
     */
     const enabledRow = 'fieldset[data-child-row]:not([disabled])';
-    const WIRING: Record<ErrorField, { error: string; describes: string; invalid?: string }> = {
+
+    /**
+      Which box holds which part of the address (#312).
+
+      The map, rather than four selectors written out, because three readings
+      need it — the controls the rule may mark, which of them it is marking,
+      and where a refused send lands — and they have to be the same four.
+    */
+    const ADDRESS_BOXES: Record<string, AddressPart> = {
+      'apply-street': 'street',
+      'apply-city': 'city',
+      'apply-state': 'state',
+      'apply-zip': 'zip',
+    };
+
+    /** The address parts currently short of something, off the boxes themselves. */
+    const partsShort = (): readonly AddressPart[] =>
+      addressPartsShort({
+        street: valueOf('#apply-street'),
+        // Never asked about, so what it holds cannot change the answer.
+        street2: '',
+        city: valueOf('#apply-city'),
+        state: valueOf('#apply-state'),
+        zip: valueOf('#apply-zip'),
+      });
+    const WIRING: Record<
+      ErrorField,
+      {
+        error: string;
+        describes: string;
+        /** Which controls this rule may mark `aria-invalid`. */
+        invalid?: string;
+        /** Which of them are, when it has something to say. All, by default. */
+        offends?: (control: Element) => boolean;
+      }
+    > = {
       faith: { error: 'apply-faith-error', describes: '[data-faith-grid] input' },
       familyName: {
         error: 'apply-family-name-error',
@@ -1654,6 +1834,29 @@ const description =
         invalid: '#apply-family-name',
       },
       email: { error: 'apply-email-error', describes: '#apply-email', invalid: '#apply-email' },
+      phone: { error: 'apply-phone-error', describes: '#apply-phone', invalid: '#apply-phone' },
+      /*
+        One sentence over five controls, the way `faith` is one over nine
+        (#312). `invalid` is deliberately narrower than `describes`: every part
+        of the address is told where the sentence is, but only the parts the
+        sentence is actually about are marked invalid — the optional second
+        street line is never one of them.
+
+        Which parts those are is `addressPartsShort`'s to say, not this file's,
+        so the marks the browser sets and the marks the server rendered cannot
+        come to disagree.
+      */
+      address: {
+        error: 'apply-address-error',
+        describes: '[data-address] input, [data-address] select',
+        invalid: Object.keys(ADDRESS_BOXES)
+          .map((id) => `#${id}`)
+          .join(', '),
+        offends: (control) => {
+          const part = ADDRESS_BOXES[control.id];
+          return part !== undefined && partsShort().includes(part);
+        },
+      },
       children: {
         error: 'apply-children-error',
         describes: `${enabledRow} input[name$="-name"], ${enabledRow} input[name$="-age"]`,
@@ -1674,6 +1877,15 @@ const description =
       faith: () => form.querySelector('[data-faith-grid] input'),
       familyName: () => form.querySelector('#apply-family-name'),
       email: () => form.querySelector('#apply-email'),
+      phone: () => form.querySelector('#apply-phone'),
+      // The first part that is short of something, not the top of the block: a
+      // family whose only gap is the ZIP is put in the ZIP box. Same rule and
+      // same order as the marks, so the cursor lands on a box that is marked.
+      address: () => {
+        const short = partsShort();
+        const id = Object.keys(ADDRESS_BOXES).find((box) => short.includes(ADDRESS_BOXES[box]!));
+        return form.querySelector(`#${id ?? 'apply-street'}`);
+      },
       children: () => {
         for (const row of visibleRows()) {
           const name = row.querySelector<HTMLInputElement>('input[name$="-name"]');
@@ -1717,7 +1929,8 @@ const description =
       scope?.querySelector<HTMLInputElement>('input:checked')?.value ?? '';
 
     const valueOf = (selector: string): string =>
-      form.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)?.value.trim() ?? '';
+      form.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(selector)?.value.trim() ??
+      '';
 
     /**
       The form as the rules see it — the same shape `parseApplication` builds.
@@ -1773,6 +1986,14 @@ const description =
       return {
         familyName: valueOf('#apply-family-name'),
         email: valueOf('#apply-email'),
+        phone: valueOf('#apply-phone'),
+        address: {
+          street: valueOf('#apply-street'),
+          street2: valueOf('#apply-street2'),
+          city: valueOf('#apply-city'),
+          state: valueOf('#apply-state'),
+          zip: valueOf('#apply-zip'),
+        },
         children,
         faith,
         objections: valueOf('#apply-objections'),
@@ -1905,9 +2126,19 @@ const description =
         else control.setAttribute('aria-describedby', wiring.error);
       }
 
-      const invalid = wiring.invalid ? form.querySelector(wiring.invalid) : null;
-      if (message === undefined) invalid?.removeAttribute('aria-invalid');
-      else invalid?.setAttribute('aria-invalid', 'true');
+      /*
+        `invalid` names the controls this rule *could* mark, and `offends` says
+        which of them actually are (#312). Every candidate is cleared on a pass
+        and on a rule that has moved on, so an address whose ZIP is now right
+        cannot keep the mark it was given a keystroke ago — a rule with several
+        boxes under one sentence is the only place that can happen, and it is
+        the same reading the server renders on a refused POST.
+      */
+      for (const control of wiring.invalid ? form.querySelectorAll(wiring.invalid) : []) {
+        const offends = message !== undefined && (wiring.offends?.(control) ?? true);
+        if (offends) control.setAttribute('aria-invalid', 'true');
+        else control.removeAttribute('aria-invalid');
+      }
     }
 
     /**
@@ -1965,6 +2196,11 @@ const description =
       if (name.startsWith('agreement-')) return 'agreements';
       if (name === 'familyName') return 'familyName';
       if (name === 'email') return 'email';
+      if (name === 'phone') return 'phone';
+      // Five controls, one rule (#312) — including the optional second street
+      // line, so that leaving it empty still counts as having been in the
+      // address and earns the sentence beneath it.
+      if (['street', 'street2', 'city', 'state', 'zip'].includes(name)) return 'address';
       if (name === 'payment-method') return 'paymentMethod';
       if (name.endsWith('-classes')) return 'classes';
       if (/^child-\d+-(name|age)$/.test(name)) return 'children';
@@ -2006,6 +2242,14 @@ const description =
     form.addEventListener('blur', check, true);
     form.addEventListener('change', check);
     form.addEventListener('input', () => void render());
+
+    /*
+      The dashes, as the parent types (#312) — the inquiry's behaviour, from the
+      one module both forms bind. It listens on the box itself, so it runs in
+      the target phase and the form-level `input` above sees the reformatted
+      value — the rules are always read off what the family can see.
+    */
+    bindPhoneFields(form);
 
     /*
       The count picker.
@@ -2137,6 +2381,20 @@ const description =
   */
   .method {
     margin-top: 2.5rem;
+  }
+
+  /* The same reset beats `mt-*` on the address block (#312). */
+  .address {
+    margin-top: 2.5rem;
+  }
+
+  /*
+    A street line is longer than a town, so it takes the whole row where there
+    are two columns and the whole row where there is one — which is what the
+    rule below says without a second breakpoint.
+  */
+  .form > .span-2 {
+    grid-column: 1 / -1;
   }
 
   .child {

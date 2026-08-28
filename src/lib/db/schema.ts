@@ -707,16 +707,23 @@ export const inquiries = pgTable('inquiries', {
 /**
  * A family's application — the thing the whole site is for (#31).
  *
- * **Look at what is not here.** No date of birth, no home address, no
- * allergies, no medical conditions, no evaluation history, no custody
- * arrangement. All six are on the school's live Google Form and all six are
- * deliberately absent: the site collects a name, an age and the classes, and
- * the rest moves to paper signed at enrolment. That absence is what deletes the
- * stricter storage tier rather than building it, and it is a decision about
- * children's data rather than a shortcut — a column added here is the thing a
- * later form field would be added to fill. `store.test.ts` reads
- * `information_schema` back and fails if one appears, and **ADR-0007** is the
- * decision to reopen rather than the assertion to delete.
+ * **Look at what is not here.** No date of birth, no allergies, no medical
+ * conditions, no evaluation history, no custody arrangement. All five are on
+ * the school's live Google Form and all five are deliberately absent: the site
+ * collects a name, an age and the classes, and the rest moves to paper signed
+ * at enrolment. That absence is what deletes the stricter storage tier rather
+ * than building it, and it is a decision about children's data rather than a
+ * shortcut — a column added here is the thing a later form field would be added
+ * to fill. `store.test.ts` reads `information_schema` back and fails if one
+ * appears, and **ADR-0007** is the decision to reopen rather than the assertion
+ * to delete.
+ *
+ * **The household address is here since #312, and it is that reopening**
+ * (ADR-0024). It sits on this table and never on `application_children`, which
+ * still refuses `address`, `street` and `zip` along with the five above,
+ * because an address is a fact about the people the school corresponds with and
+ * not about a student. Reopening a door is not removing the wall — the test in
+ * `store.test.ts` relaxes those three words for this table alone.
  *
  * `flagged` is not a rejection. An objection to the Statement of Faith routes
  * the application to a conversation and is recorded beside `statement_version`,
@@ -731,6 +738,29 @@ export const applications = pgTable('applications', {
   id: uuid('id').primaryKey().defaultRandom(),
   familyName: text('family_name').notNull(),
   email: text('email').notNull(),
+  /**
+   * The household's own contact details (#312, ADR-0024).
+   *
+   * **All six nullable, though all but `street2` are mandatory on the form.**
+   * Every application submitted before #312 has none of them and never will —
+   * an application is the record of what a family sent, and the school answers
+   * it in a conversation rather than by editing it — so a not-null column would
+   * mean either inventing a phone number for those rows or making the record
+   * editable, and both are worse than the admin rendering a dash. The mandatory
+   * rules live in `validateApplication`, where a family can be told about them.
+   *
+   * Structured rather than one text column, because the confirmation says the
+   * address back and the admin prints it on an envelope: a single box can hold
+   * a town and nothing else and the site could not tell.
+   */
+  phone: text('phone'),
+  street: text('street'),
+  /** The optional second line. "Apt 3", "c/o Marsh". */
+  street2: text('street2'),
+  city: text('city'),
+  /** A two-letter code — `address.ts` holds the fifty-one. Never a name. */
+  state: text('state'),
+  zip: text('zip'),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   /** Needs a conversation before it is accepted. Never a refusal. */
   flagged: boolean('flagged').notNull().default(false),

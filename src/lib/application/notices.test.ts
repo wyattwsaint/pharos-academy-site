@@ -48,6 +48,8 @@ function fields(over: Partial<ApplicationFields> = {}): ApplicationFields {
   return {
     familyName: 'Okonkwo',
     email: 'okonkwo@example.com',
+    phone: '717-555-0142',
+    address: { street: '12 Oak Lane', street2: '', city: 'Gettysburg', state: 'PA', zip: '17325' },
     children: [{ name: 'Ada', age: '13', offeringKeys: ['algebra-1:year'] }],
     faith: { [faithKey('Father', 'read')]: 'yes', [faithKey('Mother', 'agree')]: 'no' },
     objections: '',
@@ -137,6 +139,66 @@ function amountColumns(text: string): number[] {
     .filter((line) => /^ {2}\S.*\s\$[\d,.]+$|^ {2}\S.*\s-\$[\d,.]+$/.test(line))
     .map((line) => line.length);
 }
+
+/**
+ * The family's own contact details, in both emails (#312, ADR-0024).
+ *
+ * Both, because they are there for different reasons and either one alone is a
+ * gap: the school's copy is what lets somebody acting from their inbox dial the
+ * family or address an envelope without opening the admin, and the family's
+ * copy is what lets them spot a mistyped digit — an application is never
+ * edited, so seeing it said back is the only correction route they have.
+ */
+describe('how the school will reach this family', () => {
+  const both = async () => delivered('check');
+
+  it('carries the phone and the address to the school', async () => {
+    const { toSchool } = await both();
+
+    expect(toSchool.text).toContain('717-555-0142');
+    expect(toSchool.text).toContain('12 Oak Lane');
+    expect(toSchool.text).toContain('Gettysburg, PA 17325');
+  });
+
+  it('says both back to the family', async () => {
+    const { toFamily } = await both();
+
+    expect(toFamily.text).toContain('717-555-0142');
+    expect(toFamily.text).toContain('12 Oak Lane');
+    expect(toFamily.text).toContain('Gettysburg, PA 17325');
+    expect(toFamily.text).toContain('write back and we will correct it');
+  });
+
+  it('says nothing at all about either on an application from before #312', async () => {
+    // A labelled line with nothing after it reads as a fault, and there is no
+    // honest value to recover — the columns are nullable and there is no
+    // backfill.
+    const mailer = recorder();
+    await deliverApplication(
+      submission({
+        values: fields({
+          phone: '',
+          address: { street: '', street2: '', city: '', state: '', zip: '' },
+        }),
+      }),
+      {
+        sender: mailer.send,
+        to: ['jill@example.com'],
+        from: 'site@example.com',
+        postTo: POST_TO,
+        payLinks: PAY_LINKS,
+        schoolEmail: 'school@example.com',
+        site: 'https://pharosacademy.net',
+      },
+    );
+
+    for (const mail of mailer.sent) {
+      expect(mail.text).not.toContain('Phone:');
+      expect(mail.text).not.toContain('Where to post to:');
+      expect(mail.text).not.toContain('How we will reach you:');
+    }
+  });
+});
 
 describe('the school’s copy', () => {
   it('carries the selections with their units and prices, and the amount owed', () => {

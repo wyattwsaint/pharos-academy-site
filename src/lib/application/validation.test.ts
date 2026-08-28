@@ -28,6 +28,8 @@ describe('the validation rules keep their address', () => {
           {
             familyName: '',
             email: 'ruth at example',
+            phone: '',
+            address: { street: '', street2: '', city: '', state: 'PA', zip: '' },
             children: [],
             faith: {},
             objections: '',
@@ -38,6 +40,7 @@ describe('the validation rules keep their address', () => {
         ),
       ).sort(),
     ).toEqual([
+      'address',
       'agreements',
       'children',
       'classes',
@@ -45,6 +48,7 @@ describe('the validation rules keep their address', () => {
       'faith',
       'familyName',
       'paymentMethod',
+      'phone',
     ]);
   });
 });
@@ -66,8 +70,11 @@ describe('the validation rules keep their address', () => {
 describe('the rules are a leaf', () => {
   it('reaches nothing but the shared form helpers', () => {
     // `agreements.ts` since #85 — the gate has to read an answer to a document,
-    // and that module is a leaf itself. Everything else stays out.
+    // and that module is a leaf itself. `address.ts` since #312, on the same
+    // terms: the rule for a household address, and the fifty-one states the
+    // dropdown offers, importing nothing. Everything else stays out.
     expect([...reachableFrom(moduleUrl('validation.ts'))].sort()).toEqual([
+      'address.ts',
       'agreements.ts',
       'forms.ts',
     ]);
@@ -106,10 +113,13 @@ describe('the rules are a leaf', () => {
     }
 
     /*
-      Five, and the two that were added are named (#261, ADR-0019). The browser
-      totals the money now, so it has the arithmetic leaf and the module the
-      currency formatter lives in — both of which import nothing themselves,
-      which is the whole reason they were allowed across.
+      Seven, and each addition is named. Two came with #261/ADR-0019 — the
+      browser totals the money now, so it has the arithmetic leaf and the module
+      the currency formatter lives in. Two more came with #312: `address.ts`,
+      which is the address rule and the fifty-one states, and `phone-field.ts`,
+      which is the auto-dash the inquiry form binds too. All four import
+      nothing beyond this list, which is the whole reason they were allowed
+      across.
 
       What is *not* here is the point of the list: `application.ts`,
       `offerings.ts`, `owed.ts` and `pricing.ts` are all one import away from a
@@ -118,9 +128,11 @@ describe('the rules are a leaf', () => {
       and should.
     */
     expect([...shipped].sort()).toEqual([
+      'address.ts',
       'agreements.ts',
       'forms.ts',
       'live.ts',
+      'phone-field.ts',
       'settings.ts',
       'validation.ts',
     ]);

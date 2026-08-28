@@ -2,10 +2,9 @@
 
 > **Partly superseded by
 > [ADR-0024](0024-the-site-captures-family-contact-info.md).** A phone number is
-> now collected on the inquiry form (#311), and the **household address** is
-> permitted on the application — decided, and built by the second ticket under
-> #310, which has not landed yet. The school could otherwise reach a family only
-> by email. Everything
+> now collected on the inquiry form (#311), and a phone number and the
+> **household address** are collected on the application (#312). The school
+> could otherwise reach a family only by email. Everything
 > else below stands unchanged and is still enforced by tests: a child's date of
 > birth, allergies, medical conditions, evaluation history and custody
 > arrangements remain absent from the form, the parser, the schema and the

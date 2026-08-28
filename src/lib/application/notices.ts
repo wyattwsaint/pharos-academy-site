@@ -21,6 +21,7 @@
  * function was called.
  */
 
+import { formatAddress } from '../address.js';
 import { sendAll, type Mail, type Sender } from '../backup/monthly.js';
 import {
   feesNamed,
@@ -231,7 +232,18 @@ export function applicationNotification(
   }
 
   lines.push(`${values.familyName} has applied to ${SCHOOL_NAME}.`, '', `Email:  ${values.email}`);
+  /*
+   * The two ways to reach this household, in the body (#312, story 4). The
+   * office forwards these emails, and somebody acting from their inbox should
+   * be able to dial the family or address an envelope without opening the
+   * admin. Both are omitted rather than printed empty on an application from
+   * before #312 — a labelled line with nothing after it reads as a fault.
+   */
+  if (values.phone) lines.push(`Phone:  ${values.phone}`);
   if (reference) lines.push(`Reference:  ${reference}`);
+
+  const posted = formatAddress(values.address);
+  if (posted) lines.push('', 'Where to post to:', ...posted.split('\n').map((line) => `  ${line}`));
 
   lines.push('', 'WHO IS APPLYING, AND FOR WHAT', ...chosen(cost, settings));
 
@@ -531,6 +543,20 @@ export function applicationConfirmation(
       'You told us there is something you would like to talk about. That does not hold your ' +
         'application up — we will be in touch about it.',
     );
+  }
+
+  /*
+   * What we hold, said back (#312). An application is never edited, so a family
+   * who mistyped a digit or a house number has one correction route: seeing it
+   * here and writing in. Omitted where there is nothing to say back, which is
+   * every application from before the fields existed.
+   */
+  const contact = formatAddress(values.address);
+  if (values.phone || contact) {
+    lines.push('', 'How we will reach you:');
+    if (values.phone) lines.push('', `  ${values.phone}`);
+    if (contact) lines.push('', ...contact.split('\n').map((line) => `  ${line}`));
+    lines.push('', 'If any of that is wrong, write back and we will correct it.');
   }
 
   return {

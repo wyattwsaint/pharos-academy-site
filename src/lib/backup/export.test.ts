@@ -359,6 +359,8 @@ describe('coverage of the editable set', () => {
       db,
       {
         familyName: 'Marsh',
+        phone: '717-555-0142',
+        address: { street: '12 Oak Lane', street2: '', city: 'Gettysburg', state: 'PA', zip: '17325' },
         email: 'ruth@example.com',
         children: [{ name: 'Tamar', age: '13', offeringKeys: ['algebra-1:year'] }],
         faith: { 'faith-Mother-agree': 'yes' },

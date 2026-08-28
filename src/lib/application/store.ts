@@ -1,5 +1,6 @@
 import { asc, desc, eq, inArray } from 'drizzle-orm';
 
+import type { HouseholdAddress } from '../address.js';
 import type { Db } from '../db/client.js';
 import {
   applicationChildren,
@@ -67,6 +68,10 @@ export type ApplicationRecord = {
   id: string;
   familyName: string;
   email: string;
+  /** `###-###-####`, or empty for a row written before #312. Not backfilled. */
+  phone: string;
+  /** The household's postal address, or every part empty for a pre-#312 row. */
+  address: HouseholdAddress;
   receivedAt: Date;
   flagged: boolean;
   objections: string;
@@ -135,6 +140,13 @@ export async function createApplication(
     .values({
       familyName: values.familyName,
       email: values.email,
+      // As typed, on the application and never on a child (#312, ADR-0024).
+      phone: values.phone,
+      street: values.address.street,
+      street2: values.address.street2,
+      city: values.address.city,
+      state: values.address.state,
+      zip: values.address.zip,
       receivedAt: now,
       flagged: facts.flagged ?? false,
       objections: values.objections,
@@ -374,6 +386,20 @@ function toRecord(row: ApplicationRow): Omit<ApplicationRecord, 'children'> {
     id: row.id,
     familyName: row.familyName,
     email: row.email,
+    /*
+     * Empty rather than null for a row written before #312 (`textField`'s
+     * stance: a missing field and a blank one are the same thing), so every
+     * reader writes one check instead of two — and `formatAddress` returns
+     * nothing for it, which is what puts the dash on the admin screen.
+     */
+    phone: row.phone ?? '',
+    address: {
+      street: row.street ?? '',
+      street2: row.street2 ?? '',
+      city: row.city ?? '',
+      state: row.state ?? '',
+      zip: row.zip ?? '',
+    },
     receivedAt: row.receivedAt,
     flagged: row.flagged,
     objections: row.objections,

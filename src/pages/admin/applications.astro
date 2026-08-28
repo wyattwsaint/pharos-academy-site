@@ -31,8 +31,10 @@ import { offeringsOf } from '../../lib/application/offerings.js';
 import { applicationReference } from '../../lib/application/reference.js';
 import { listApplications, type ApplicationRecord } from '../../lib/application/store.js';
 import { classTally, tallyLines } from '../../lib/application/tally.js';
+import { formatAddress } from '../../lib/address.js';
 import type { Banner } from '../../lib/admin/banner.js';
 import { formatDay, formatTimestamp } from '../../lib/admin/formatting.js';
+import { telHref } from '../../lib/admin/school-details.js';
 import { applicationDeliveryNote } from '../../lib/admin/outbound-mail.js';
 import { listEveryCourse } from '../../lib/courses/store.js';
 import { getDb } from '../../lib/db/client.js';
@@ -263,6 +265,29 @@ const resubmittedIds = new Set(
                 >
                   {application.email}
                 </a>
+              </p>
+              {/*
+                The number, dialable, and the address as it goes on an envelope
+                (#312). Applications taken before that ticket have neither and
+                never will — the school answers an application in a
+                conversation rather than by editing it — so the dash is the
+                honest rendering rather than a gap that reads as a bug.
+              */}
+              <p class="mt-1" data-testid="application-phone">
+                Phone:{' '}
+                {application.phone ? (
+                  <a href={telHref(application.phone)} class="underline underline-offset-4">
+                    {application.phone}
+                  </a>
+                ) : (
+                  '—'
+                )}
+              </p>
+              <p class="mt-1" data-testid="application-address">
+                Address:{' '}
+                <span class="whitespace-pre-line">
+                  {formatAddress(application.address) || '—'}
+                </span>
               </p>
               <p class="mt-1 text-sm">{formatTimestamp(application.receivedAt)}</p>
 
