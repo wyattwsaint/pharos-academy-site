@@ -961,6 +961,17 @@ test.describe('the application page', () => {
     expect(response?.status()).toBe(200);
     await expect(page.locator('form[data-application-form]')).toHaveCount(1);
     await expect(page.locator('#apply-family-name')).toHaveValue('');
+    // And it says so rather than opening silently blank (#317). An expired link
+    // reaches exactly this line: `store.test.ts` proves the reader hands the
+    // page the same value for both, which is all this render branches on.
+    await expect(page.locator('[data-prefill="unopened"]')).toContainText('90 days');
+  });
+
+  test('tells a family who arrived with no link nothing about a prefill', async ({ page }) => {
+    // The notice is owed to somebody who followed a link, not to a family
+    // browsing the site from the Admissions page (#317).
+    await open(page);
+    await expect(page.locator('[data-prefill]')).toHaveCount(0);
   });
 
   test('promises no response time on the page as it is reached', async ({ page }) => {

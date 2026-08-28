@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import { createInquiry, getInquiry, listInquiries, recordInquiryDelivery } from './store.js';
+import { APPLICATION_LINK_DAYS } from '../application/link.js';
 import type { InquiryFields } from './inquiry.js';
 
 /**
@@ -139,5 +140,52 @@ describe('reading one inquiry back', () => {
     await expect(getInquiry(db, 'not-a-uuid')).resolves.toBeUndefined();
     await expect(getInquiry(db, '')).resolves.toBeUndefined();
     await expect(getInquiry(db, "'; drop table inquiries; --")).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * The 90-day life of the application link (#317, ADR-0025).
+ *
+ * The rule lives in this reader rather than at either sender, so the link Jill
+ * pastes obeys the same clock as the link the family was emailed. Both sides of
+ * the boundary are driven by the injected clock: manufacturing a four-month-old
+ * row would prove the same thing while hiding which of the two the test moved,
+ * and there is nothing to wait for.
+ */
+describe('the window an inquiry can be read back through', () => {
+  const RECEIVED = new Date('2026-05-01T09:00:00Z');
+  const after = (days: number, hours: number) =>
+    new Date(RECEIVED.getTime() + (days * 24 + hours) * 60 * 60 * 1000);
+
+  it('answers with the row in the last hour inside the window', async () => {
+    const id = await createInquiry(db, FIELDS, RECEIVED);
+
+    expect((await getInquiry(db, id, after(APPLICATION_LINK_DAYS, -1)))?.name).toBe('Ruth Marsh');
+  });
+
+  it('answers undefined in the first hour outside it', async () => {
+    // The same two-state answer a stale or malformed id gets: the family is
+    // told the link could not be opened, not which of the two it was.
+    const id = await createInquiry(db, FIELDS, RECEIVED);
+
+    expect(await getInquiry(db, id, after(APPLICATION_LINK_DAYS, 1))).toBeUndefined();
+  });
+
+  it('gives an expired id exactly the answer an unknown one gets', async () => {
+    // What the page renders is a conditional on this one value, so proving the
+    // two are the same value here is what makes the "could not open your
+    // inquiry" line provably one state rather than two that happen to match.
+    const id = await createInquiry(db, FIELDS, RECEIVED);
+    const expired = await getInquiry(db, id, after(APPLICATION_LINK_DAYS, 1));
+
+    expect(expired).toBe(await getInquiry(db, '00000000-0000-0000-0000-000000000000'));
+    expect(expired).toBe(await getInquiry(db, 'not-a-uuid'));
+  });
+
+  it('answers with the row for an inquiry taken a moment ago', async () => {
+    // The default clock, which is what both callers actually run on.
+    const id = await createInquiry(db, FIELDS);
+
+    expect(await getInquiry(db, id)).toBeDefined();
   });
 });

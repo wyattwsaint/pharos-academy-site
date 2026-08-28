@@ -1121,6 +1121,40 @@ and are still enforced by tests. Reopening a door is not removing the wall.
 Not: "home address" as ADR-0007 uses the phrase — that reads as a fact filed
 against a student, which is exactly what this is not.
 
+### application link
+
+`/admissions/apply?inquiry=<id>` — the application form opened pre-filled from
+one family's inquiry, carrying that inquiry's id in the query string. Two
+senders emit the same URL: the confirmation email every inquirer receives, and
+the admin's inquiries screen, where Jill copies it into a reply.
+
+**It carries a family's details to whoever holds it, and that is the decision it
+rests on** ([ADR-0025](docs/adr/0025-the-application-link-is-a-bearer-link-with-a-life.md)).
+Anybody with the id gets a form filled with that household's name, email, phone
+and children's ages — their own words, returned to their own address, and email
+is forwarded. What bounds it is a **90-day life**, counted from the inquiry's
+`received_at` and enforced in one place, so the link the school pastes obeys the
+same clock as the link the family was sent.
+
+Past the window, and for an id that never existed, the form opens blank and says
+so in one line rather than silently. The admin stops printing an expired link
+altogether: its only purpose is to be pasted, and a link that will hand the
+family an empty form is worse than no link.
+
+**A copy, not a join.** Following it fills the form; it does not tie the
+application to the inquiry, and nothing on the submitted application records
+which inquiry it came from.
+
+Not: a sign-in. It authenticates nobody, opens no existing application, and
+reaches nothing but the one inquiry named in it — unlike **break-glass**, which
+is an account-shaped thing, and unlike a session.
+
+Not: a **reference**, which is a family-facing payment identifier and a
+different idea wearing a similar shape.
+
+Not: "the quiet application link" (#310) — that phrase names the *sentence* in
+the confirmation email, one of the two places this URL appears.
+
 ### heading case
 
 **Title case, Chicago**, for every heading the site writes for itself: `<h1>` to

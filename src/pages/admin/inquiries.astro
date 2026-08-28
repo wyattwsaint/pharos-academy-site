@@ -3,8 +3,12 @@ export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { formatTimestamp } from '../../lib/admin/formatting.js';
-import { APPLICATION_PATH } from '../../lib/application/application.js';
 import { telHref } from '../../lib/admin/school-details.js';
+import {
+  applicationLink,
+  applicationLinkIsLive,
+  APPLICATION_LINK_DAYS,
+} from '../../lib/application/link.js';
 import { getDb } from '../../lib/db/client.js';
 import { listInquiries } from '../../lib/inquiry/store.js';
 import { getMoneySettings } from '../../lib/money/store.js';
@@ -27,6 +31,15 @@ const actor = Astro.locals.actor!;
 
 const inquiries = await listInquiries(db);
 const settings = await getMoneySettings(db);
+
+/**
+ * One clock for the whole list (#317).
+ *
+ * Read once rather than per row, so a page rendered across a boundary cannot
+ * print a link live at the top of the list and dead at the bottom for two
+ * inquiries taken in the same minute.
+ */
+const now = new Date();
 
 ---
 
@@ -91,13 +104,23 @@ const settings = await getMoneySettings(db);
               number and all, is a feature nobody in the school can reach.
             */}
             <p class="mt-2 text-sm" data-testid="inquiry-apply-link">
-              Ready-filled application:{' '}
-              <a
-                href={`${APPLICATION_PATH}?inquiry=${inquiry.id}`}
-                class="underline underline-offset-4"
-              >
-                {`${APPLICATION_PATH}?inquiry=${inquiry.id}`}
-              </a>
+              {applicationLinkIsLive(inquiry.receivedAt, now) ? (
+                <>
+                  Ready-filled application:{' '}
+                  <a href={applicationLink(inquiry.id)} class="underline underline-offset-4">
+                    {applicationLink(inquiry.id)}
+                  </a>
+                </>
+              ) : (
+                /*
+                  Past the window the link is not printed at all (#317,
+                  ADR-0025). Its only purpose is to be pasted, and a link that
+                  will hand the family an empty form is worse than no link,
+                  because it is sent believing it works and the school finds out
+                  when the family says the form was blank.
+                */
+                `The ready-filled application link expired ${APPLICATION_LINK_DAYS} days after this inquiry came in.`
+              )}
             </p>
             <p class="mt-2 text-sm">{formatTimestamp(inquiry.receivedAt)}</p>
             {inquiry.notifiedAt ? (

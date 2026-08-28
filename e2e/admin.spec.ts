@@ -2391,6 +2391,11 @@ test.describe("inquiries", () => {
     await expect(page.locator("#apply-phone")).toHaveValue(inquired);
     await expect(page.locator("#apply-family-name")).toHaveValue(name);
     await expect(page.locator("#apply-email")).toHaveValue(email);
+    // And the form says where those values came from (#317) rather than
+    // knowing the family's phone number without explanation.
+    await expect(page.locator('[data-prefill="filled"]')).toContainText(
+      "from your inquiry of",
+    );
 
     // AC 2: it is a starting point, not a fact — what the parent leaves in the
     // field is what the school ends up holding.

@@ -1,4 +1,5 @@
 import { BELIEFS_PATH } from '../about/beliefs.js';
+import { applicationLink } from '../application/link.js';
 import { describeFailure, sendAll, type Mail, type Sender } from '../backup/monthly.js';
 import { isEmailAddress, phoneError, textField as text } from '../forms.js';
 import { SCHOOL_NAME } from '../site.js';
@@ -21,16 +22,6 @@ import { SCHOOL_NAME } from '../site.js';
 
 /** The address of the page that holds the form and takes its POST. */
 export const INQUIRY_PATH = '/inquire';
-
-/**
- * Where the confirmation's quiet application line points, today.
- *
- * The application flow is its own ticket (#18 §11); until it exists the honest
- * destination for "I already know we want to apply" is the page that says how
- * applying works, its fees and its dates. A link to a flow that is not built
- * would be the one wrong note in an email whose whole job is to be trustworthy.
- */
-const APPLY_PATH = '/admissions';
 
 /** The class list and the Statement of Faith — the two links #25 names. */
 const CLASSES_PATH = '/classes';
@@ -175,12 +166,18 @@ export function inquiryNotification(
  * already knows they want to apply and should not have to wait for a reply to
  * start (#25).
  *
+ * That last line carries `inquiryId`, so the form opens filled in from what the
+ * family just sent (#317, ADR-0025), and it **names the prefill**: a family who
+ * clicks and finds their own phone number already typed either delights or
+ * flinches, and the sentence decides which. Without an id — the confirmation is
+ * sent even when the write failed — it is the same sentence and a bare link.
+ *
  * `site` is the absolute origin, because an email has no base URL: a
  * root-relative link in a mail client is a link that goes nowhere.
  */
 export function inquiryConfirmation(
   values: InquiryFields,
-  options: { from: string; site: string },
+  options: { from: string; site: string; inquiryId?: string },
 ): Mail {
   const at = (path: string) => new URL(path, options.site).toString();
 
@@ -202,7 +199,8 @@ export function inquiryConfirmation(
       `${values.phone} if a call is easier.`,
     '',
     '—',
-    `If you already know you would like to apply, how it works is here: ${at(APPLY_PATH)}`,
+    `If you already know you would like to apply, we have started the form from what you ` +
+      `told us — ${at(applicationLink(options.inquiryId))}`,
   ].join('\n');
 
   return {
@@ -287,8 +285,14 @@ export async function submitInquiry(
     ),
   );
 
+  /*
+   * The id goes to the family, so their own copy of the link opens the form
+   * pre-filled (#317). It is absent exactly when the write failed, and then the
+   * line offers the bare form: the family is told nothing about the failure,
+   * which is the site's problem rather than theirs.
+   */
   const confirmation = await sendAll(options.sender, [
-    inquiryConfirmation(values, { from: options.from, site: options.site }),
+    inquiryConfirmation(values, { from: options.from, site: options.site, inquiryId: id }),
   ]);
 
   const held = id !== undefined || notification.sent;
