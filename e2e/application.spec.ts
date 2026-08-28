@@ -962,7 +962,8 @@ test.describe('the application page', () => {
     await expect(page.locator('form[data-application-form]')).toHaveCount(1);
     await expect(page.locator('#apply-family-name')).toHaveValue('');
     // And it says so rather than opening silently blank (#317). An expired link
-    // reaches exactly this line — one state, not two.
+    // reaches exactly this line: `store.test.ts` proves the reader hands the
+    // page the same value for both, which is all this render branches on.
     await expect(page.locator('[data-prefill="unopened"]')).toContainText('90 days');
   });
 

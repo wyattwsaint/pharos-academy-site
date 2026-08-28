@@ -1,8 +1,9 @@
 import { desc, eq } from 'drizzle-orm';
 
+import { applicationLinkIsLive } from '../application/link.js';
 import type { Db } from '../db/client.js';
 import { inquiries, type InquiryRow } from '../db/schema.js';
-import { applicationLinkIsLive, type InquiryFields, type InquiryOutcome } from './inquiry.js';
+import type { InquiryFields, InquiryOutcome } from './inquiry.js';
 
 /**
  * The inquiries, as rows (#25).

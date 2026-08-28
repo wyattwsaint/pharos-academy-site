@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createEphemeralDatabase, type Db } from '../db/client.js';
 import { createInquiry, getInquiry, listInquiries, recordInquiryDelivery } from './store.js';
-import { APPLICATION_LINK_DAYS, type InquiryFields } from './inquiry.js';
+import { APPLICATION_LINK_DAYS } from '../application/link.js';
+import type { InquiryFields } from './inquiry.js';
 
 /**
  * The inquiries against real Postgres (#25 AC 2, AC 7).
@@ -168,6 +169,17 @@ describe('the window an inquiry can be read back through', () => {
     const id = await createInquiry(db, FIELDS, RECEIVED);
 
     expect(await getInquiry(db, id, after(APPLICATION_LINK_DAYS, 1))).toBeUndefined();
+  });
+
+  it('gives an expired id exactly the answer an unknown one gets', async () => {
+    // What the page renders is a conditional on this one value, so proving the
+    // two are the same value here is what makes the "could not open your
+    // inquiry" line provably one state rather than two that happen to match.
+    const id = await createInquiry(db, FIELDS, RECEIVED);
+    const expired = await getInquiry(db, id, after(APPLICATION_LINK_DAYS, 1));
+
+    expect(expired).toBe(await getInquiry(db, '00000000-0000-0000-0000-000000000000'));
+    expect(expired).toBe(await getInquiry(db, 'not-a-uuid'));
   });
 
   it('answers with the row for an inquiry taken a moment ago', async () => {

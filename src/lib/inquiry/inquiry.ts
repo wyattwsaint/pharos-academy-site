@@ -1,5 +1,5 @@
 import { BELIEFS_PATH } from '../about/beliefs.js';
-import { APPLICATION_PATH } from '../application/application.js';
+import { applicationLink } from '../application/link.js';
 import { describeFailure, sendAll, type Mail, type Sender } from '../backup/monthly.js';
 import { isEmailAddress, phoneError, textField as text } from '../forms.js';
 import { SCHOOL_NAME } from '../site.js';
@@ -22,44 +22,6 @@ import { SCHOOL_NAME } from '../site.js';
 
 /** The address of the page that holds the form and takes its POST. */
 export const INQUIRY_PATH = '/inquire';
-
-/**
- * How long the pre-filled application link works for (#317, ADR-0025).
- *
- * A named constant rather than a literal at the comparison, because the number
- * is the school's and the design is the code's: shortening the window should be
- * one edit and one test, and reopening the ADR should be reserved for changing
- * the *shape* — removing the expiry, making the link single-use, or letting the
- * two senders diverge.
- *
- * It lives in this module rather than beside the reader that enforces it so the
- * admin screen, which must stop offering a link it knows is dead, can read the
- * same number without importing a database module.
- */
-export const APPLICATION_LINK_DAYS = 90;
-
-/**
- * Whether the link built from an inquiry received at `receivedAt` still opens.
- *
- * Computed from the timestamp the row already carries — no column, no
- * migration, no backfill. The clock is a parameter so both sides of the
- * boundary are testable without manufacturing an old row and waiting.
- */
-export function applicationLinkIsLive(receivedAt: Date, now: Date = new Date()): boolean {
-  const life = APPLICATION_LINK_DAYS * 24 * 60 * 60 * 1000;
-  return now.getTime() - receivedAt.getTime() <= life;
-}
-
-/**
- * The application link a family or the school is given, for one inquiry.
- *
- * With the id when there is one, bare when there is not — a confirmation sent
- * after a failed write has no id to carry, and the family gets a blank form
- * rather than a sentence about our database (#317 AC 2).
- */
-export function applicationLink(inquiryId?: string): string {
-  return inquiryId ? `${APPLICATION_PATH}?inquiry=${inquiryId}` : APPLICATION_PATH;
-}
 
 /** The class list and the Statement of Faith — the two links #25 names. */
 const CLASSES_PATH = '/classes';
