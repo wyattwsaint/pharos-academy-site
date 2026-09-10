@@ -137,6 +137,10 @@ const VERBATIM = new Map([
     'the course catalogue, carried from `docs/mirror/` unedited and reconciled against the school’s nine published sources',
   ],
   ['courses', 'the same course copy as the catalogue seed, as the office edits it in the admin'],
+  [
+    'src/lib/site.ts',
+    'the notice of non-discrimination, the school’s filed policy language; `site.test.ts` fails on any drift, and the IRS is who reads it',
+  ],
 ]);
 
 /**

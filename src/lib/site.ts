@@ -95,3 +95,38 @@ export const INDEXABLE = true;
  * browsers honest; `s-maxage` is what the edge actually holds.
  */
 export const ARTEFACT_CACHE_CONTROL = 'public, max-age=0, s-maxage=3600';
+
+/**
+ * The school's notice of non-discrimination, verbatim (#324).
+ *
+ * Not a `SchoolDetails` field, and deliberately so. The address and the phone
+ * are admin-editable because they drift and Jill is the one who knows; this is
+ * filed policy language, and a text box the wording sits in is a text box the
+ * wording drifts out of. IRS Rev. Proc. 75-50, as amplified by Rev. Proc.
+ * 2019-22, is what lets a private school publish this on its home page instead
+ * of buying a newspaper ad — so the words are a compliance artefact, not copy.
+ *
+ * The same text is in the handbook. If the two ever disagree the handbook is
+ * the source and this follows it. It is transcribed copy, like the Statement of
+ * Faith and the About page — `docs/house-style.md` does not reach it, and the
+ * punctuation audit lists it as verbatim so nobody is invited to tidy a hyphen
+ * in a filed policy.
+ *
+ * The heading's capitals are in the string and not in a `text-transform`, which
+ * is where the footer's other headings put theirs. They are the filed casing,
+ * so they are what a screen reader and a copy-paste should both get.
+ *
+ * "In a manner reasonably expected to be noticed by visitors" is the phrase
+ * that constrains the rendering, not just the wording: the footer sets it in
+ * full, always visible, at the footer's own body size and above its body
+ * contrast — never behind a link, a disclosure or a "read more".
+ */
+export const NON_DISCRIMINATION_NOTICE = {
+  heading: 'NOTICE OF NON-DISCRIMINATION POLICY',
+  body:
+    'Pharos Academy does not discriminate on the basis of race, color, nationality, ' +
+    'or ethnic origin in the administration of any of its policies or programs. It ' +
+    'does reserve the right to select students and faculty on the basis of personal ' +
+    'religious commitment and beliefs, academic performance, and willingness to abide ' +
+    'by its policies.',
+} as const;

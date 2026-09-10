@@ -6,7 +6,7 @@ import { SUPPORT_PATH } from '../lib/about/story.js';
 import { TEACH_PATH } from '../lib/teach/teach.js';
 import { copyrightYear, telHref } from '../lib/admin/school-details.js';
 import { INQUIRY_HREF } from '../lib/home/sections.js';
-import { SCHOOL_NAME } from '../lib/site.js';
+import { NON_DISCRIMINATION_NOTICE, SCHOOL_NAME } from '../lib/site.js';
 import { POLICIES_PATH } from '../lib/policies/views.js';
 
 /**
@@ -83,6 +83,28 @@ const addressLines = details.address.split('\n').filter(Boolean);
       </div>
     </div>
 
-    <p class="mt-9 text-sm">© {year} {SCHOOL_NAME}</p>
+    {/*
+      The notice of non-discrimination (#324). The IRS lets a private school
+      publish this on its home page instead of in a newspaper, but only "in a
+      manner reasonably expected to be noticed by visitors" — so it is set in
+      full, always, at the footer's own reading size and above its body
+      contrast. Not a link, not a disclosure, not beneath the copyright line.
+
+      In the footer rather than as a seventh home page section: the footer is
+      on every page, which over-satisfies a home page requirement, and the
+      section order is a signed-off list the browser suite asserts against.
+    */}
+    <section class="site-footer-notice" aria-labelledby="non-discrimination">
+      {/*
+        A real heading, where the footer's column headings are bold text. The
+        columns label a list of links; this is the one footer block somebody
+        has a legal reason to go looking for, and a screen reader's heading
+        list is how they would. It is styled as the others are.
+      */}
+      <h2 id="non-discrimination">{NON_DISCRIMINATION_NOTICE.heading}</h2>
+      <p>{NON_DISCRIMINATION_NOTICE.body}</p>
+    </section>
+
+    <p class="site-footer-copyright mt-9 text-sm">© {year} {SCHOOL_NAME}</p>
   </div>
 </footer>

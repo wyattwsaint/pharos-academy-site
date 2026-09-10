@@ -1690,22 +1690,66 @@ html.nav-menu-open body {
   color: var(--color-gold-lit);
 }
 
+/* The gold hairline that separates the footer's blocks, set once. */
+.site-footer-cols,
+.site-footer-notice {
+  border-top: 1px solid rgb(224 172 78 / 0.28);
+  padding-top: 34px;
+}
+
 .site-footer-cols {
   display: flex;
   flex-wrap: wrap;
   gap: 40px;
   justify-content: space-between;
-  border-top: 1px solid rgb(224 172 78 / 0.28);
-  padding-top: 34px;
 }
 
-.site-footer-cols b {
+/* The footer's block headings, in one place: the columns' and the notice's. */
+.site-footer-cols b,
+.site-footer-notice h2 {
   font: 400 16px/1.5 var(--font-serif);
   letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: #fff;
   display: block;
   margin-bottom: 6px;
+}
+
+/*
+ * The columns uppercase in CSS; the notice does not, because its capitals are
+ * the filed ones and live in the string (see `NON_DISCRIMINATION_NOTICE`).
+ */
+.site-footer-cols b {
+  text-transform: uppercase;
+}
+
+/*
+ * The notice of non-discrimination (#324).
+ *
+ * Set above the footer's body contrast (#e8eef6 on the navy is ~10.5:1, where
+ * the footer's own #c9d3e1 is ~7:1) and at its own reading size, because the
+ * regulation the notice satisfies asks for it to be "reasonably expected to be
+ * noticed" — the copyright line's smaller type is the floor, not the target.
+ * The measure is capped on the text and not on the block, so the gold rule
+ * above it still runs the full width of the column the way the one above the
+ * link columns does — three lines of prose across 1200px is a measure nobody
+ * reads, but a rule that stops half way looks like a mistake.
+ *
+ * It goes off on paper with the rest of the footer, and that is deliberate: the
+ * requirement names a school's "publicly accessible internet home page", which
+ * a printout is not, and the print rules exist so the one page anybody prints —
+ * the calendar — comes off as a calendar. Not a print-only or screen-only
+ * *variant* of the notice, which is what #324 rules out; one rendering, and the
+ * site's chrome comes off paper whole.
+ */
+.site-footer-notice {
+  margin-top: 40px;
+  color: #e8eef6;
+}
+
+.site-footer-notice p {
+  margin: 0;
+  font-size: 15px;
+  max-width: 62ch;
 }
 
 .site-footer a {
