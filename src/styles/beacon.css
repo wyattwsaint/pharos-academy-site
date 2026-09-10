@@ -1708,6 +1708,39 @@ html.nav-menu-open body {
   margin-bottom: 6px;
 }
 
+/*
+ * The notice of non-discrimination (#324).
+ *
+ * Set above the footer's body contrast (#e8eef6 on the navy is ~10.5:1, where
+ * the footer's own #c9d3e1 is ~7:1) and at its own reading size, because the
+ * regulation the notice satisfies asks for it to be "reasonably expected to be
+ * noticed" — the copyright line's smaller type is the floor, not the target.
+ * The measure is capped on the text and not on the block, so the gold rule
+ * above it still runs the full width of the column the way the one above the
+ * link columns does — three lines of prose across 1200px is a measure nobody
+ * reads, but a rule that stops half way looks like a mistake.
+ */
+.site-footer-notice {
+  border-top: 1px solid rgb(224 172 78 / 0.28);
+  margin-top: 40px;
+  padding-top: 34px;
+  color: #e8eef6;
+}
+
+.site-footer-notice b {
+  font: 400 16px/1.5 var(--font-serif);
+  letter-spacing: 0.1em;
+  color: #fff;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.site-footer-notice p {
+  margin: 0;
+  font-size: 15px;
+  max-width: 62ch;
+}
+
 .site-footer a {
   color: var(--color-gold-lit);
 }
