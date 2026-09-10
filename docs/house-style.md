@@ -148,10 +148,16 @@ written down here and in `CONTEXT.md`, and applied by hand.
 
 ## What this style does not reach
 
-**Transcribed copy.** Four places hold the school's own documents word for word
+**Transcribed copy.** Five places hold the school's own documents word for word
 — `src/lib/about/beliefs.ts`, `src/lib/about/story.ts`,
-`src/lib/courses/catalogue.ts` and the `courses` table behind them — and each
-has a test beside it that fails on any drift from the capture in `docs/mirror/`.
+`src/lib/courses/catalogue.ts`, the `courses` table behind them, and the notice
+of non-discrimination in `src/lib/site.ts` — and each has a test beside it that
+fails on any drift from the capture in `docs/mirror/`. The notice is the one
+without a mirrored capture: its source is the school's handbook, and its
+character-for-character pin in `site.test.ts` is what stands in for one. It is
+also the one with an auditor behind it — the IRS publicity requirement is
+satisfied by *these* words, so a tidied hyphen there is a change to a filed
+policy.
 `story.ts` says so in as many words: the test fails on "a tidied dash or a
 corrected space". A finding there is still a finding, but the school changes its
 document and the transcription follows it. It is never corrected here.

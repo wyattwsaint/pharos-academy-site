@@ -5,7 +5,6 @@ import {
   SCHOOL_DESCRIPTION,
   SCHOOL_DESCRIPTION_INLINE,
   SCHOOL_DESCRIPTION_TITLE,
-  SCHOOL_NAME,
 } from './site.js';
 
 /**
@@ -40,9 +39,5 @@ describe('the notice of non-discrimination', () => {
     expect(NON_DISCRIMINATION_NOTICE.body).toBe(
       'Pharos Academy does not discriminate on the basis of race, color, nationality, or ethnic origin in the administration of any of its policies or programs. It does reserve the right to select students and faculty on the basis of personal religious commitment and beliefs, academic performance, and willingness to abide by its policies.',
     );
-  });
-
-  it('names the school the way the rest of the site does', () => {
-    expect(NON_DISCRIMINATION_NOTICE.body).toContain(SCHOOL_NAME);
   });
 });

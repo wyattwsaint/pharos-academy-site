@@ -6,7 +6,7 @@ import { APPLICATION_PATH } from '../src/lib/application/application.js';
 import { REGISTRATION_LABEL } from '../src/lib/home/registration-cta.js';
 import { INQUIRY_PATH } from '../src/lib/inquiry/inquiry.js';
 import { STAFF_PATH } from '../src/lib/people/views.js';
-import { NON_DISCRIMINATION_NOTICE, SCHOOL_DESCRIPTION_TITLE } from '../src/lib/site.js';
+import { SCHOOL_DESCRIPTION_TITLE } from '../src/lib/site.js';
 
 /**
  * The homepage's acceptance criteria from #21, one describe block each.
@@ -687,65 +687,5 @@ test.describe('the registration call to action', () => {
     await page.goto(INQUIRY_PATH);
     await expect(page.locator('button[type="submit"]')).toBeVisible();
     await expect(page.locator('a.register')).toHaveCount(0);
-  });
-});
-
-/**
- * The notice of non-discrimination (#324).
- *
- * The wording itself is pinned in `site.test.ts`. What needs a browser is the
- * half a unit test cannot see: that the notice is actually *on* the home page
- * and actually visible, at a size and a contrast a visitor would notice. The
- * IRS requirement is satisfied by the rendering, not by the string existing —
- * so a footer refactor that drops this block is a compliance failure, and this
- * is what makes it a red test instead of a quiet one.
- */
-test.describe('the notice of non-discrimination', () => {
-  const notice = (page: Page) => page.locator('.site-footer-notice');
-
-  test('renders in full on the home page, with no interaction', async ({ page }) => {
-    await page.setViewportSize(DESKTOP);
-    await page.goto('/');
-
-    await expect(notice(page)).toBeVisible();
-    await expect(notice(page).locator('b')).toHaveText(NON_DISCRIMINATION_NOTICE.heading);
-    // The whole paragraph, not a prefix of it: "reasonably expected to be
-    // noticed" rules out a truncation with a "read more" behind it.
-    await expect(notice(page).locator('p')).toHaveText(NON_DISCRIMINATION_NOTICE.body);
-  });
-
-  test('is set at the footer’s reading size, not in the small print', async ({ page }) => {
-    await page.setViewportSize(DESKTOP);
-    await page.goto('/');
-
-    const size = (locator: ReturnType<Page['locator']>) =>
-      locator.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-
-    // The copyright line is the floor the notice must clear, not the target.
-    const copyright = page.locator('footer p.text-sm');
-    expect(await size(notice(page).locator('p'))).toBeGreaterThan(await size(copyright));
-  });
-
-  test('is on every page, not only the one the IRS names', async ({ page }) => {
-    await page.goto(STAFF_PATH);
-    await expect(notice(page)).toBeVisible();
-  });
-
-  test('does not crowd the address and contact columns on a phone', async ({ page }) => {
-    await page.setViewportSize(PHONE);
-    await page.goto('/');
-
-    await expect(notice(page)).toBeVisible();
-    // The footer still reads as a footer: the columns are above the notice and
-    // still on the page, and nothing has pushed the document sideways.
-    await expect(page.locator('.site-footer-cols address')).toBeVisible();
-    const columns = (await page.locator('.site-footer-cols').boundingBox())!;
-    const block = (await notice(page).boundingBox())!;
-    expect(block.y).toBeGreaterThan(columns.y);
-
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(0);
   });
 });

@@ -129,9 +129,12 @@ decided by ADR-0011.
 
 Copy the site **transcribes** rather than writes: the Statement of Faith
 (`beliefs.ts`), the About page (`story.ts`), the course catalogue
-(`catalogue.ts`) and the `courses` rows seeded from it. Each has a test beside
-it that fails on any drift from the capture in `docs/mirror/` — `story.ts` says
-"including a tidied dash or a corrected space".
+(`catalogue.ts`), the `courses` rows seeded from it, and the **notice of
+non-discrimination** (`site.ts`). Each has a test beside it that fails on any
+drift from the capture in `docs/mirror/` — `story.ts` says "including a tidied
+dash or a corrected space". The notice is the one with no mirrored capture: its
+source is the school's handbook, and its character-for-character test stands in
+for one.
 
 It is the school's document, not the site's copy, and **no house style reaches
 it**. A tight em dash there is a real finding and still not ours to correct: the
@@ -1168,6 +1171,28 @@ different idea wearing a similar shape.
 
 Not: "the quiet application link" (#310) — that phrase names the *sentence* in
 the confirmation email, one of the two places this URL appears.
+
+### notice of non-discrimination
+
+The school's filed statement that it does not discriminate on the basis of
+race, colour, nationality or ethnic origin — **verbatim copy**, held as a
+constant in `site.ts` and set in the footer of every page (#324).
+
+It is the one string on the site with an auditor behind it. IRS Rev. Proc.
+75-50, as amplified by Rev. Proc. 2019-22, lets a private school meet its
+publicity requirement by showing this on its "primary, publicly accessible
+internet home page in a manner reasonably expected to be noticed by visitors"
+instead of buying a newspaper advertisement. So the **rendering** is half the
+obligation: full text, always visible, at the footer's reading size and above
+its body contrast — never a link to it, a disclosure, a `title`, or a
+truncation with a "read more".
+
+Deliberately **not** a `SchoolDetails` field. The address and the phone are
+admin-editable because they drift and the office is who knows; this is filed
+policy language, and a box the wording sits in is a box it drifts out of. The
+handbook is the source: if the two disagree, the handbook wins and this follows.
+
+Not: an **announcement** — nothing about it is news, and it never expires.
 
 ### heading case
 

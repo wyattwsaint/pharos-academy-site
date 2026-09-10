@@ -95,10 +95,16 @@ const addressLines = details.address.split('\n').filter(Boolean);
       section order is a signed-off list the browser suite asserts against.
     */}
     <section class="site-footer-notice" aria-labelledby="non-discrimination">
-      <b id="non-discrimination">{NON_DISCRIMINATION_NOTICE.heading}</b>
+      {/*
+        A real heading, where the footer's column headings are bold text. The
+        columns label a list of links; this is the one footer block somebody
+        has a legal reason to go looking for, and a screen reader's heading
+        list is how they would. It is styled as the others are.
+      */}
+      <h2 id="non-discrimination">{NON_DISCRIMINATION_NOTICE.heading}</h2>
       <p>{NON_DISCRIMINATION_NOTICE.body}</p>
     </section>
 
-    <p class="mt-9 text-sm">© {year} {SCHOOL_NAME}</p>
+    <p class="site-footer-copyright mt-9 text-sm">© {year} {SCHOOL_NAME}</p>
   </div>
 </footer>
